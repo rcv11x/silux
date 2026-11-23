@@ -14,10 +14,11 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
 use crate::error::{panic_message, Error, Result};
+use crate::kernels::{Isa, Operation};
 use crate::latency::{self, Settings};
 use crate::memory::Pages;
 use crate::timer::Clock;
-use crate::{cancel, topology};
+use crate::{bandwidth, cancel, stats, topology};
 
 pyo3::create_exception!(silux_bench, SiluxBenchError, PyException);
 pyo3::create_exception!(silux_bench, Cancelled, SiluxBenchError);
@@ -122,6 +123,7 @@ fn latency_curve<'py>(
         entry.set_item("noisy", point.ns.is_noisy())?;
         entry.set_item("repetitions", point.ns.count)?;
         entry.set_item("hops", point.hops)?;
+        entry.set_item("retries", point.retries)?;
         points.append(entry)?;
     }
     let result = PyDict::new(py);
@@ -141,6 +143,74 @@ fn latency_curve<'py>(
     Ok(result)
 }
 
+/// How fast memory moves: `operation` ("read", "write" or "copy") over
+/// `bytes` per array and per thread, one thread pinned to each CPU in `cpus`,
+/// with the instruction set `isa` (the widest this processor runs, by
+/// default). A noisy result is measured again, up to twice.
+#[pyfunction]
+#[pyo3(signature = (operation, *, bytes, cpus, isa = None, non_temporal = false, huge_pages = true, repetitions = 7, control = None))]
+#[allow(clippy::too_many_arguments)]
+fn memory_bandwidth<'py>(
+    py: Python<'py>,
+    operation: &str,
+    bytes: usize,
+    cpus: Vec<usize>,
+    isa: Option<&str>,
+    non_temporal: bool,
+    huge_pages: bool,
+    repetitions: usize,
+    control: Option<&Bound<'py, Control>>,
+) -> PyResult<Bound<'py, PyDict>> {
+    let operation = match operation {
+        "read" => Operation::Read,
+        "write" => Operation::Write,
+        "copy" => Operation::Copy,
+        _ => return Err(to_python(&Error::BadSetting("operation"))),
+    };
+    let isa = match isa {
+        None => Isa::widest(),
+        Some(key) => Isa::from_key(key).ok_or_else(|| to_python(&Error::BadSetting("isa")))?,
+    };
+    let control = control_of(control);
+    let settings = bandwidth::Settings {
+        operation,
+        non_temporal,
+        isa,
+        bytes,
+        pages: if huge_pages {
+            Pages::Huge
+        } else {
+            Pages::Small
+        },
+        repetitions,
+    };
+    let (result, retries) = guarded(py, move || {
+        let clock = Clock::check()?;
+        stats::steadiest(
+            || bandwidth::bandwidth(&cpus, &settings, &clock, &control),
+            |b| b.gbps.spread,
+        )
+    })?;
+    let out = PyDict::new(py);
+    out.set_item("isa", isa.key())?;
+    out.set_item("threads", result.threads)?;
+    out.set_item("passes", result.passes)?;
+    out.set_item("median_gbps", result.gbps.median)?;
+    out.set_item("min_gbps", result.gbps.min)?;
+    out.set_item("max_gbps", result.gbps.max)?;
+    out.set_item("spread", result.gbps.spread)?;
+    out.set_item("noisy", result.gbps.is_noisy())?;
+    out.set_item("repetitions", result.gbps.count)?;
+    out.set_item("retries", retries)?;
+    Ok(out)
+}
+
+/// The instruction sets this processor runs, widest last.
+#[pyfunction]
+fn instruction_sets() -> Vec<&'static str> {
+    Isa::available().into_iter().map(Isa::key).collect()
+}
+
 /// The CPUs this process may run on, for choosing where to measure.
 #[pyfunction]
 fn allowed_cpus() -> Vec<usize> {
@@ -150,5 +220,8 @@ fn allowed_cpus() -> Vec<usize> {
 #[pymodule]
 mod silux_bench {
     #[pymodule_export]
-    use super::{allowed_cpus, latency_curve, Cancelled, Control, SiluxBenchError};
+    use super::{
+        allowed_cpus, instruction_sets, latency_curve, memory_bandwidth, Cancelled, Control,
+        SiluxBenchError,
+    };
 }

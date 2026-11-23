@@ -1,4 +1,5 @@
-"""Silux's native memory benchmark. Linux only."""
+"""Silux's native memory benchmark: latency by block size and bandwidth.
+Linux only."""
 
 from typing import Optional, TypedDict
 
@@ -25,6 +26,7 @@ class Point(TypedDict):
     noisy: bool
     repetitions: int
     hops: int
+    retries: int
 
 class Curve(TypedDict):
     points: list[Point]
@@ -44,4 +46,28 @@ def latency_curve(
     seed: int = ...,
     control: Optional[Control] = None,
 ) -> Curve: ...
+class Bandwidth(TypedDict):
+    isa: str
+    threads: int
+    passes: int
+    median_gbps: float
+    min_gbps: float
+    max_gbps: float
+    spread: float
+    noisy: bool
+    repetitions: int
+    retries: int
+
+def memory_bandwidth(
+    operation: str,
+    *,
+    bytes: int,
+    cpus: list[int],
+    isa: Optional[str] = None,
+    non_temporal: bool = False,
+    huge_pages: bool = True,
+    repetitions: int = 7,
+    control: Optional[Control] = None,
+) -> Bandwidth: ...
+def instruction_sets() -> list[str]: ...
 def allowed_cpus() -> list[int]: ...

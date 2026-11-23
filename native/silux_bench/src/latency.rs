@@ -47,6 +47,8 @@ pub struct Point {
     pub ns: Summary,
     /// Loads per repetition.
     pub hops: u64,
+    /// Times the point was measured again for being noisy.
+    pub retries: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,14 +86,19 @@ pub fn curve(
     for bytes in sizes {
         control.check()?;
         let start = link_cycle(&block, bytes, &mut rng, control)?;
-        // SAFETY: `link_cycle` just made every word it reaches from `start`
-        // hold the address of another such word, inside `block`, which lives
-        // until the end of this function.
-        let measured = unsafe { measure(start, (bytes / LINE) as u64, clock, settings, control) }?;
+        let (measured, retries) = stats::steadiest(
+            // SAFETY: `link_cycle` just made every word it reaches from
+            // `start` hold the address of another such word, inside `block`,
+            // which lives until the end of this function; an attempt again
+            // walks the same cycle.
+            || unsafe { measure(start, (bytes / LINE) as u64, clock, settings, control) },
+            |m| m.ns.spread,
+        )?;
         points.push(Point {
             bytes,
             ns: measured.ns,
             hops: measured.hops,
+            retries,
         });
         control.advance();
     }

@@ -20,6 +20,29 @@ impl Summary {
     }
 }
 
+/// How many times a noisy measurement is taken again.
+pub const RETRIES: usize = 2;
+
+/// Measure, and measure again while the result is noisy, up to `RETRIES`
+/// more times: a desktop that wakes up for a moment spoils one attempt, not
+/// three. Keeps the attempt with the least spread, and says how many retries
+/// it took; a result still noisy after them is for the caller to flag.
+pub fn steadiest<T>(
+    mut measure: impl FnMut() -> crate::error::Result<T>,
+    spread: impl Fn(&T) -> f64,
+) -> crate::error::Result<(T, usize)> {
+    let mut best = measure()?;
+    let mut retries = 0;
+    while spread(&best) > NOISY_SPREAD && retries < RETRIES {
+        retries += 1;
+        let again = measure()?;
+        if spread(&again) < spread(&best) {
+            best = again;
+        }
+    }
+    Ok((best, retries))
+}
+
 /// `None` for no values, or for any value that isn't a finite number.
 pub fn summarize(values: &[f64]) -> Option<Summary> {
     if values.is_empty() || values.iter().any(|v| !v.is_finite()) {
@@ -89,6 +112,51 @@ mod tests {
     #[test]
     fn scattered_values_are_noisy() {
         assert!(summarize(&[8.0, 10.0, 12.0, 9.0, 11.0]).unwrap().is_noisy());
+    }
+
+    fn attempts(spreads: &[f64]) -> (f64, usize, usize) {
+        let mut taken = 0;
+        let (best, retries) = steadiest(
+            || {
+                taken += 1;
+                Ok(spreads[taken - 1])
+            },
+            |s| *s,
+        )
+        .unwrap();
+        (best, retries, taken)
+    }
+
+    #[test]
+    fn a_steady_result_is_taken_once() {
+        assert_eq!(attempts(&[0.01]), (0.01, 0, 1));
+    }
+
+    #[test]
+    fn a_noisy_result_is_taken_again_until_steady() {
+        assert_eq!(attempts(&[0.15, 0.02]), (0.02, 1, 2));
+        assert_eq!(attempts(&[0.15, 0.09, 0.03]), (0.03, 2, 3));
+    }
+
+    #[test]
+    fn after_two_retries_the_steadiest_stays() {
+        assert_eq!(attempts(&[0.15, 0.08, 0.12, 0.01]), (0.08, 2, 3));
+    }
+
+    #[test]
+    fn an_error_on_a_retry_is_the_result() {
+        let mut first = true;
+        let result = steadiest(
+            || {
+                if std::mem::take(&mut first) {
+                    Ok(0.5)
+                } else {
+                    Err(crate::error::Error::Cancelled)
+                }
+            },
+            |s: &f64| *s,
+        );
+        assert_eq!(result, Err(crate::error::Error::Cancelled));
     }
 
     #[test]

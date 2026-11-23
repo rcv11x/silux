@@ -1,8 +1,10 @@
-//! Silux's memory benchmark: how long a load that misses takes, by block
-//! size, measured natively. Linux only.
+//! Silux's memory benchmark, measured natively: how long a load that
+//! misses takes, by block size, and how fast memory moves. Linux only.
 
+pub mod bandwidth;
 pub mod cancel;
 pub mod error;
+pub mod kernels;
 pub mod latency;
 pub mod memory;
 pub mod rng;
