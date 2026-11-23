@@ -123,7 +123,7 @@ def name_without_mac(name: str, index: int) -> str:
     match = MAC_IN_NAME.fullmatch(name)
     if match is None:
         return name
-    return match.group(1) + _fake_mac(index).replace(":", "")
+    return match.group(1) + fake_mac(index).replace(":", "")
 
 
 # What the anonymizer writes, and so nobody's: finding it in a dump is
@@ -205,7 +205,7 @@ def _rename(text: Optional[str], changes: dict[str, str]) -> Optional[str]:
     return text
 
 
-def _fake_mac(index: int) -> str:
+def fake_mac(index: int) -> str:
     """The documentation address number `index`, starting from `MAC`.
 
     The block RFC 7042 reserves has 256, and it wraps around: with more
@@ -354,7 +354,7 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
         def _mac_index(real: Optional[str]) -> Optional[str]:
             if not real or real == NO_MAC:
                 return real
-            return macs.setdefault(real.lower(), _fake_mac(len(macs)))
+            return macs.setdefault(real.lower(), fake_mac(len(macs)))
 
         changes["network"] = tuple(
             dataclasses.replace(

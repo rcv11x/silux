@@ -795,6 +795,9 @@ class _Anonymizer:
         self.user = getpass.getuser()
         self.home = str(pathlib.Path.home())
         self.interfaces = self._interfaces()
+        # Numbered once the interfaces in series are gone (`clean_contents`),
+        # as the snapshot read back lists them.
+        self.macs: dict[str, str] = {}
         # The name someone gave an interface is theirs: besides replacing it
         # where it's known to appear, it's looked for in every byte at the end.
         for old in self.interfaces:
@@ -825,6 +828,25 @@ class _Anonymizer:
             if (new := privacidad.name_without_mac(entry, index)) != entry:
                 names[entry] = new
         return names
+
+    def _macs(self) -> dict[str, str]:
+        """Each interface's real address and its substitute, numbered as the
+        report numbers them: by interface name, one per distinct address.
+        Any other address found in the files takes the next number."""
+        macs: dict[str, str] = {}
+        net_dir = self.target / "sys" / "class" / "net"
+        entries = sorted(e.name for e in net_dir.iterdir()) if net_dir.is_dir() else []
+        for entry in entries:
+            path = net_dir / entry / "address"
+            real = path.read_text(errors="replace").strip().lower() if path.is_file() else ""
+            if MAC.fullmatch(real) and real != privacidad.NO_MAC:
+                macs.setdefault(real, privacidad.fake_mac(len(macs)))
+        return macs
+
+    def _mac(self, real: str) -> str:
+        if real in ("00:00:00:00:00:00", "ff:ff:ff:ff:ff:ff"):
+            return real
+        return self.macs.setdefault(real.lower(), privacidad.fake_mac(len(self.macs)))
 
     def drop_serial_interfaces(self) -> int:
         """Remove the surplus interfaces in series and say how many there were.
@@ -863,8 +885,7 @@ class _Anonymizer:
         text = text.replace(self.home, "/home/usuario")
         if len(self.user) >= 3:
             text = re.sub(rf"(?<![\w.-]){re.escape(self.user)}(?![\w.-])", "usuario", text)
-        text = MAC.sub(lambda m: m.group(0) if m.group(0) in ("00:00:00:00:00:00", "ff:ff:ff:ff:ff:ff")
-                        else privacidad.MAC, text)
+        text = MAC.sub(lambda m: self._mac(m.group(0)), text)
         text = UUID.sub("00000000-0000-0000-0000-000000000000", text)
         # An address, wherever it is: /proc/version names whoever built the
         # kernel, and a kernel compiled at home names its owner. The same
@@ -882,6 +903,7 @@ class _Anonymizer:
         return self.mounts.setdefault(mount_point, privacidad.MOUNT.format(len(self.mounts) + 1))
 
     def clean_contents(self) -> None:
+        self.macs = self._macs()
         models = {(_text_of(m) or "").strip().lower() for m in self.target.rglob("model")
                    if m.is_file() and not m.is_symlink()}
         for path in sorted(self.target.rglob("*")):
@@ -919,8 +941,10 @@ class _Anonymizer:
                 continue
             if name in ADDRESS_FILES and "/net/" in relative:
                 if data.strip() and data.strip() not in (b"00:00:00:00:00:00",):
-                    self._secret(data.strip().decode(errors="replace"), "mac")
-                    path.write_text(privacidad.MAC + "\n")
+                    real = data.strip().decode(errors="replace")
+                    self._secret(real, "mac")
+                    path.write_text((self._mac(real) if MAC.fullmatch(real)
+                                     else privacidad.MAC) + "\n")
                 continue
             # What's plugged in. Someone's inventory points to them too: a
             # security key, a specific microphone. Of USB, the vendor:product

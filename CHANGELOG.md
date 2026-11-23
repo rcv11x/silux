@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Anexo del informe: cada tarjeta de red lleva su propia dirección física
+  sustituta, la misma que arriba; antes todas salían con una sola.
 - Batería: «Retenida en el tope» solo cuando está llena. Enchufada y sin
   cargar por debajo, dice eso, o «En modo conservación» cuando el portátil lo
   tiene puesto (el de Lenovo, y el Long_Life del kernel), que además sale en

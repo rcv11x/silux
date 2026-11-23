@@ -392,6 +392,41 @@ class TestUnaInterfazConNombrePropio(unittest.TestCase):
         self.assertIn("proc/self/net/dev", hallazgos[0])
 
 
+class TestEachCardItsOwnAddress(unittest.TestCase):
+    """Two network cards came out of the annex with one substitute address
+    between them, while the report gave each its own."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = pathlib.Path(tmp.name)
+        (self.root / "sys/class/net").mkdir(parents=True)
+        for name, mac in (("wlp0s20f3", "00:00:5e:00:53:01"), ("enp7s0", "00:00:5e:00:53:02"),
+                          ("lo", "00:00:00:00:00:00")):
+            folder = self.root / "sys/devices/pci0000:00/net" / name
+            folder.mkdir(parents=True)
+            (folder / "address").write_text(mac + "\n")
+            (self.root / "sys/class/net" / name).symlink_to(f"../../devices/pci0000:00/net/{name}")
+        uevent = self.root / "sys/devices/pci0000:00/net/wlp0s20f3/uevent"
+        uevent.write_text("INTERFACE=wlp0s20f3\nADDRESS=00:00:5e:00:53:01\n")
+        self.clean = volcar._Anonymizer(self.root, {})
+        self.clean.clean_contents()
+
+    def _address(self, name):
+        return (self.root / "sys/class/net" / name / "address").read_text().strip()
+
+    def test_numbered_as_the_report_numbers_them(self):
+        # By interface name, as `privacidad` numbers the snapshot's.
+        self.assertEqual(self._address("enp7s0"), privacidad.fake_mac(0))
+        self.assertEqual(self._address("wlp0s20f3"), privacidad.fake_mac(1))
+        self.assertEqual(self._address("lo"), "00:00:00:00:00:00")
+
+    def test_the_same_address_elsewhere_gets_the_same_substitute(self):
+        uevent = (self.root / "sys/class/net/wlp0s20f3/uevent").read_text()
+        self.assertIn(f"ADDRESS={privacidad.fake_mac(1)}", uevent)
+        self.assertEqual(volcar.check(self.root, self.clean.secrets), [])
+
+
 class TestAnNvidiaCard(unittest.TestCase):
     """The first annex of the prueba2, from a laptop with an RTX 4050, did not
     come out: «anonimizar todavía encuentra qué tapar: gpus». NVML's UUID
