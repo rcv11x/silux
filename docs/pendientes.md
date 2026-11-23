@@ -131,6 +131,27 @@ la memoria) no va: está propuesto en las notas
   - Red · baja · con la tarjeta Wi-Fi USB sin modelo, el pie dice «El kernel
     no publica modelo»: el modelo de una USB no lo publica el kernel, sale de
     `usb.ids` o de la tarjeta.
+* **De los informes de la prueba10** (volcados `i3-1115g4`, un HP con
+  Fedora y GNOME, y `ryzen5-5600g`, con la integrada desactivada en la BIOS
+  y una RTX 4060):
+  - Batería · media · la del HP no publica `power_now` ni `current_now`,
+    solo `energy_now`: la potencia se queda en «Calculando…» para siempre,
+    porque se da por hecho que el controlador aún no la ha puesto al día.
+    Sin las dos, sale de lo que baja `energy_now` entre muestras (se pone
+    al día cada pocos segundos), por `providers/counters.py`. La segunda
+    lectura del volcado no guarda la batería.
+  - Gráficos · media · la RTX 4060 marca 53 W con la página a 255 MHz de
+    núcleo y 405 MHz de memoria. La única lectura de NVML del volcado la
+    tomó a 1980 y 8501 MHz (en carga), donde 53 W es verosímil, pero el
+    volcado no guarda qué llamada dio los vatios (`GetPowerUsage`, los
+    campos de media o instantánea, o la media de las muestras). Grabar en
+    el volcado lo que contestó cada una y el estado P (`GetPerformanceState`)
+    lo diría. Pedido: `nvidia-smi --query-gpu=power.draw,power.draw.average,
+    power.draw.instant,clocks.gr,clocks.mem,pstate --format=csv -lms 500`
+    con Silux abierto y cerrado.
+  - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos
+    campos: sirve para probar el ayudante de la prueba11 con el IMC, además
+    del LOQ de Coca.
 * **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
   `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
   con Mint en sesión live es el mismo equipo y no se vuelca):
@@ -473,6 +494,17 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   - Fuentes: `kernel/sched/psi.c` en cada etiqueta y la configuración de cada
     distribución; la tabla con sus enlaces, en las notas
     (`propuestas/propuesta-psi.md`).
+  - Cómo, con las ideas de Felix Lara (su `psi_cpu_verdict.py`, con su
+    permiso y su crédito en el código y en Acerca de): la presión de un
+    intervalo es lo que avanza `some_total` (y `full_total`) dividido por el
+    tiempo, por `providers/counters.py`, no las medias `avg10`/`avg60`. Si la
+    presión de CPU coincide con la de memoria o la de disco, el cuello de
+    botella probablemente es la RAM o el disco. Y su límite, dicho en la
+    interfaz: PSI mide espera, no lentitud por hilo. En Python puro, sin
+    pandas ni numpy.
+  - Más adelante, con historial o bandeja: «¿Te hace falta más RAM?», con
+    los días de presión de memoria de cada programa (`memory.pressure` de su
+    cgroup) y los zócalos libres.
 
 * **Tendencias con el historial** (idea, a largo plazo). Con meses de
   medidas, ver si algo empeora: Mann-Kendall sobre una prueba térmica fija
