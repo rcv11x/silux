@@ -421,10 +421,11 @@ cambia el otro.
 - Un test que recorre los volcados va uno por volcado (`tests/per_dump.py`),
   y la foto de cada uno se comparte en el proceso (`shared_snapshot`) salvo
   si el test parchea algo.
-- La suite pinta con DejaVu Sans, la letra del CI (`tests/qt.py`): un ancho
-  que cabe con la de quien desarrolla no dice nada. Y un test que mide anchos
-  o alturas aplica el tema que quiere y lo repone: si no, hereda la letra y
-  la hoja de estilos del test anterior del mismo proceso.
+- La suite pinta con DejaVu Sans a 9 pt, la letra del CI (`tests/qt.py`): un
+  ancho que cabe con la de quien desarrolla no dice nada. Con pytest, cada
+  clase empieza sin tema, como sola, y cada test con esa letra
+  (`tests/conftest.py`): el orden no cambia lo que ve un test. Un test que
+  mide anchos o alturas aplica en su clase el tema que quiere.
 - **Ningún cambio visual se da por hecho sin mirarlo en la captura**, y el
   mensaje del commit dice solo lo que se ve en ella. La suite no pinta: lo
   que se pinta lo vigilan `test_todo_se_pinta.py` y los tests que miran la
