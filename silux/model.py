@@ -1815,7 +1815,15 @@ class DiskHealth:
     percentage_used: Optional[int] = None
     spare_percent: Optional[int] = None
     unsafe_shutdowns: Optional[int] = None
+    # NVMe's «Media and Data Integrity Errors»: data it couldn't give back
+    # intact, since it left the factory.
     media_errors: Optional[int] = None
+    # SATA's attributes 5, 197 and 198: sectors replaced by a spare, sectors
+    # that can't be read now and wait to be replaced, and sectors the
+    # disk's own offline scan couldn't read.
+    reallocated_sectors: Optional[int] = None
+    pending_sectors: Optional[int] = None
+    uncorrectable_sectors: Optional[int] = None
     critical_warning: Optional[int] = None
     # A SATA disk's whole attribute table: (number, normalized, raw). The
     # names depend on the maker; the number doesn't.

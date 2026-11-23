@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Discos: un SATA ya no suma en «datos que no se pudieron leer» tres
+  contadores distintos. El aviso dice cuántos sectores hay sustituidos por
+  otros de reserva, cuántos no se pueden leer ahora y cuántos no pudo leer su
+  revisión interna, cada uno con su atributo SMART (5, 197 y 198).
 - CPU: sin driver de frecuencia, la ficha ya no dice que la frecuencia es
   fija (dice hasta dónde llega), y se explica que la de cada hilo es la
   efectiva que mide el procesador (APERF/MPERF) mientras trabaja, y la

@@ -1989,6 +1989,14 @@ def disk_warnings(health) -> list[tuple[str, str]]:
         key = ("disk.warn.media.one" if health.media_errors == 1
                  else "disk.warn.media.many")
         warnings.append(("alto", _(key).format(n=thousands(health.media_errors))))
+    sectors = [_(f"disk.sectors.{kind}.{'one' if count == 1 else 'many'}").format(
+                   n=thousands(count))
+               for kind, count in (("reallocated", health.reallocated_sectors),
+                                   ("pending", health.pending_sectors),
+                                   ("uncorrectable", health.uncorrectable_sectors))
+               if count]
+    if sectors:
+        warnings.append(("alto", _("disk.warn.sectors").format(lista=enumeration(sectors))))
 
     life = health.life_left_percent
     if life is not None and life <= LOW_LIFE_PCT:

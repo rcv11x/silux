@@ -391,6 +391,10 @@ def _disk_health(health) -> list[str]:
         warnings.append(f"aviso crítico: {health.critical_warning}")
     if health.media_errors:
         warnings.append(f"{health.media_errors} errores de medio")
+    for attribute, count in ((5, health.reallocated_sectors), (197, health.pending_sectors),
+                             (198, health.uncorrectable_sectors)):
+        if count:
+            warnings.append(f"{count} en el atributo {attribute}")
     if health.unsafe_shutdowns:
         warnings.append(f"{health.unsafe_shutdowns} apagones bruscos")
     if warnings:

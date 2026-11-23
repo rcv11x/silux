@@ -108,13 +108,29 @@ class TestAta(unittest.TestCase):
             salud = smart.parse(tabla_ata([(identificador, 70, 0)]), "ata")
             self.assertEqual(salud.life_left_percent, 70, f"atributo {identificador}")
 
-    def test_los_sectores_con_problemas_se_suman(self):
+    def test_each_kind_of_sector_by_its_own_attribute(self):
+        # Not one sum: a reallocated sector is no longer unreadable.
         salud = smart.parse(tabla_ata([
             (5, 100, 4),      # reasignados
             (197, 100, 2),    # pendientes
             (198, 100, 1),    # incorregibles
         ]), "ata")
-        self.assertEqual(salud.media_errors, 7)
+        self.assertEqual((salud.reallocated_sectors, salud.pending_sectors,
+                          salud.uncorrectable_sectors), (4, 2, 1))
+        self.assertIsNone(salud.media_errors)
+
+    def test_the_warning_names_each_attribute(self):
+        from silux import render
+        from silux.i18n import _
+
+        # The Athlon's WD5000LPVX: one reallocated, one pending, none uncorrectable.
+        salud = smart.parse(tabla_ata([(5, 200, 1), (197, 200, 1), (198, 100, 0)]), "ata")
+        avisos = render.disk_warnings(salud)
+        self.assertEqual(len(avisos), 1)
+        texto = avisos[0][1]
+        self.assertIn(_("disk.sectors.reallocated.one").format(n=1), texto)
+        self.assertIn(_("disk.sectors.pending.one").format(n=1), texto)
+        self.assertNotIn("198", texto)
 
     def test_la_temperatura_esta_en_el_byte_bajo(self):
         # Muchos discos guardan mínimos y máximos en los bits altos del mismo

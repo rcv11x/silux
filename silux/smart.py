@@ -270,10 +270,12 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
         read_bytes=in_bytes(*ATA_READ),
         # The attribute keeps the life left; the model keeps it used.
         percentage_used=100 - life_left if life_left is not None else None,
-        # A reallocated sector is a piece of disk that already failed and was
-        # replaced by a spare. A few aren't fatal; their growing over time is.
-        media_errors=(raw(ATA_REALLOCATED) or 0) + (raw(ATA_PENDING) or 0)
-        + (raw(ATA_UNCORRECTABLE) or 0),
+        # Each by its own name: a reallocated sector already failed and was
+        # replaced by a spare; a pending one can't be read now; an
+        # uncorrectable one couldn't be read in the disk's offline scan.
+        reallocated_sectors=raw(ATA_REALLOCATED),
+        pending_sectors=raw(ATA_PENDING),
+        uncorrectable_sectors=raw(ATA_UNCORRECTABLE),
         attributes=tuple((attr_id, normalized, raw_value)
                          for attr_id, (normalized, raw_value) in sorted(table.items())),
     )
