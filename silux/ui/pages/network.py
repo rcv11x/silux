@@ -27,6 +27,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
+    FoldButton,
     InfoGrid,
     Notice,
     ResponsiveRow,
@@ -138,7 +139,7 @@ class NetworkPage(ScrollPage):
 
         # Las virtuales, debajo de las físicas y plegadas: un renglón que dice
         # cuántas hay y cuáles, y que se abre al pulsarlo.
-        self.virtual_toggle = QPushButton("")
+        self.virtual_toggle = FoldButton()
         self.virtual_toggle.setObjectName("TextButton")
         self.virtual_toggle.setFlat(True)
         self.virtual_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -187,6 +188,7 @@ class NetworkPage(ScrollPage):
         self.title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
 
         card.body.addWidget(self.title)
@@ -372,8 +374,7 @@ class NetworkPage(ScrollPage):
         clave = "net.virtual.one" if len(virtuales) == 1 else "net.virtual.many"
         flecha = "▾" if self._virtuales_abiertas else "▸"
         texto = f"{flecha}  " + _(clave).format(n=len(virtuales), nombres=nombres)
-        if self.virtual_toggle.text() != texto:
-            self.virtual_toggle.setText(texto)
+        self.virtual_toggle.set_full_text(texto)
         self.virtual_box.setVisible(self._virtuales_abiertas)
         if self._virtuales_abiertas:
             # Solo se pintan abiertas: plegadas, veinte tarjetas que nadie ve

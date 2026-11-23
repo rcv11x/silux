@@ -65,8 +65,10 @@ class _SeccionBateria(QWidget):
 
         self.title = QLabel("")
         self.title.setObjectName("Headline")
+        self.title.setWordWrap(True)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
         cabecera = Card()
         cabecera.body.addWidget(self.title)

@@ -32,6 +32,7 @@ from PySide6.QtGui import (
     QPen,
 )
 from PySide6.QtWidgets import (
+    QBoxLayout,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -231,6 +232,68 @@ def paint_level(label: QWidget, level: str) -> None:
         label.style().polish(label)
 
 
+class FoldingRow(QWidget):
+    """A row that turns into a column when it doesn't fit.
+
+    Laid out as a row while the window has room, and as narrow as its widest
+    piece when it hasn't: a row of buttons with a large font asked more than
+    a narrow window had, and the page ran off the right edge. Pieces go in
+    with `add_widget`, `add_layout` and `add_stretch`, as in a QHBoxLayout.
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None, spacing: Optional[int] = None):
+        super().__init__(parent)
+        self._box = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
+        self._box.setContentsMargins(0, 0, 0, 0)
+        if spacing is not None:
+            self._box.setSpacing(spacing)
+
+    def add_widget(self, widget: QWidget, stretch: int = 0,
+                   alignment: Qt.AlignmentFlag = Qt.AlignmentFlag(0)) -> None:
+        self._box.addWidget(widget, stretch, alignment)
+
+    def add_layout(self, layout: QLayout, stretch: int = 0) -> None:
+        self._box.addLayout(layout, stretch)
+
+    def add_stretch(self, stretch: int = 1) -> None:
+        self._box.addStretch(stretch)
+
+    def set_margins(self, left: int, top: int, right: int, bottom: int) -> None:
+        self._box.setContentsMargins(left, top, right, bottom)
+
+    def _pieces(self) -> list:
+        """The items that take room: not the stretches, nor what's hidden."""
+        items = (self._box.itemAt(i) for i in range(self._box.count()))
+        return [item for item in items if item.spacerItem() is None
+                and not (item.widget() is not None and item.widget().isHidden())]
+
+    def _row_width(self) -> int:
+        pieces = self._pieces()
+        margins = self._box.contentsMargins()
+        return (sum(p.minimumSize().width() for p in pieces)
+                + self._box.spacing() * max(len(pieces) - 1, 0)
+                + margins.left() + margins.right())
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        margins = self._box.contentsMargins()
+        width = max((p.minimumSize().width() for p in self._pieces()), default=0)
+        return QSize(width + margins.left() + margins.right(),
+                     super().minimumSizeHint().height())
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        row = self.width() >= self._row_width()
+        direction = (QBoxLayout.Direction.LeftToRight if row
+                     else QBoxLayout.Direction.TopToBottom)
+        if self._box.direction() != direction:
+            self._box.setDirection(direction)
+            # In a column each piece keeps its own width, on the left.
+            if not row:
+                for piece in self._pieces():
+                    piece.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            self.updateGeometry()
+
+
 def balanced_columns(count: int, fits: int) -> int:
     """Cuántas columnas usar para `count` elementos si caben `fits`.
 
@@ -297,16 +360,29 @@ class ResponsiveRow(QWidget):
         self._grid.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
 
     def _anchos_minimos(self) -> list[int]:
-        return [self._min_item_width if self._escondido(w)
-                else max(self._min_item_width, w.minimumSizeHint().width())
+        return [self._min_item_width if self._escondido(w) else self._column_width(w)
                 for w in self._items]
+
+    def _column_width(self, widget: QWidget) -> int:
+        """What a column needs to hold this child. Figures with a width
+        reserved so they don't jump (`ReservedLabel`) get it while the
+        columns are chosen; only a single column lets them wrap."""
+        width = max(self._min_item_width, widget.minimumSizeHint().width())
+        if widget.findChild(ReservedLabel) is not None:
+            width = max(width, widget.sizeHint().width())
+        return width
 
     def _ancho_minimo_de_hijo(self) -> int:
         return max(self._anchos_minimos(), default=self._min_item_width)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
         alto = super().minimumSizeHint().height()
-        return QSize(self._ancho_minimo_de_hijo(), max(alto, 0))
+        # What its widest child really needs. `min_item_width` decides how
+        # many columns fit; as a floor, scaled with a large font, it asked
+        # 600 px of a narrow window and the page ran off the right.
+        width = max((w.minimumSizeHint().width() for w in self._items
+                     if not self._escondido(w)), default=0)
+        return QSize(width, max(alto, 0))
 
     def add(self, widget: QWidget) -> None:
         self._items.append(widget)
@@ -335,8 +411,7 @@ class ResponsiveRow(QWidget):
         if not count:
             return 1
         gap = self._grid.spacing()
-        anchos = [max(self._min_item_width, w.minimumSizeHint().width())
-                  for w in visibles]
+        anchos = [self._column_width(w) for w in visibles]
         usable = max(self.width(), max(anchos))
         fits = int(max(1, (usable + gap) // (self._min_item_width + gap)))
         for tope in range(fits, 0, -1):
@@ -474,6 +549,47 @@ class Badge(QLabel):
         painter.end()
 
 
+class FoldButton(QPushButton):
+    """A fold's button: its title cut with an ellipsis where it doesn't fit,
+    whole on hover. A long one («6 interfaces virtuales: …») set the width of
+    the page in a narrow window."""
+
+    def __init__(self) -> None:
+        super().__init__("")
+        self._full = ""
+        # Below its preferred width: a QPushButton's own policy won't shrink.
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+    def full_text(self) -> str:
+        return self._full
+
+    def set_full_text(self, text: str) -> None:
+        if text != self._full:
+            self._full = text
+            self._elide()
+            self.updateGeometry()
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        hint = super().minimumSizeHint()
+        return QSize(min(hint.width(), self.fontMetrics().horizontalAdvance("▸ …") + 16),
+                     hint.height())
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        return QSize(self.fontMetrics().horizontalAdvance(self._full) + 16,
+                     super().sizeHint().height())
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._elide()
+
+    def _elide(self) -> None:
+        shown = self.fontMetrics().elidedText(self._full, Qt.TextElideMode.ElideRight,
+                                              max(self.width() - 12, 1))
+        if self.text() != shown:
+            self.setText(shown)
+        self.setToolTip(self._full if shown != self._full else "")
+
+
 class Plegable(QWidget):
     """Un bloque que nace cerrado: un renglón que lo nombra y lo abre.
 
@@ -489,7 +605,7 @@ class Plegable(QWidget):
         columna.setContentsMargins(0, 0, 0, 0)
         columna.setSpacing(theme.METRICS.grid_vspace)
 
-        self.boton = QPushButton("")
+        self.boton = FoldButton()
         self.boton.setObjectName("TextButton")
         self.boton.setFlat(True)
         self.boton.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -511,7 +627,7 @@ class Plegable(QWidget):
 
     def set_abierto(self, abierto: bool) -> None:
         self._caja.setVisible(abierto)
-        self.boton.setText(f"{'▾' if abierto else '▸'} {self._titulo}")
+        self.boton.set_full_text(f"{'▾' if abierto else '▸'} {self._titulo}")
         self.updateGeometry()
 
 
@@ -1703,17 +1819,17 @@ class Notice(QFrame):
         if action:
             self.action_button = QPushButton(action)
             self.action_button.clicked.connect(self.action_clicked)
-            fila = QHBoxLayout()
-            fila.setContentsMargins(0, 6, 0, 0)
-            fila.addWidget(self.action_button)
-            fila.addStretch(1)
+            fila = FoldingRow()
+            fila.set_margins(0, 6, 0, 0)
+            fila.add_widget(self.action_button)
+            fila.add_stretch(1)
             if dismissible:
                 self.snooze_button, self.dismiss_button = dismiss_buttons()
                 self.snooze_button.clicked.connect(self.snoozed)
                 self.dismiss_button.clicked.connect(self.dismissed)
-                fila.addWidget(self.snooze_button)
-                fila.addWidget(self.dismiss_button)
-            layout.addLayout(fila)
+                fila.add_widget(self.snooze_button)
+                fila.add_widget(self.dismiss_button)
+            layout.addWidget(fila)
 
 
 class LockMark(QWidget):
@@ -1831,14 +1947,14 @@ class PermissionNotice(QFrame):
         self.snooze_button.clicked.connect(self.snoozed)
         self.dismiss_button.clicked.connect(self.dismissed)
 
-        self.buttons = QHBoxLayout()
-        self.buttons.setContentsMargins(0, 4, 0, 0)
-        self.buttons.addWidget(self.grant_button)
-        self.buttons.addWidget(self.explain_button)
-        self.buttons.addStretch(1)
-        self.buttons.addWidget(self.snooze_button)
-        self.buttons.addWidget(self.dismiss_button)
-        layout.addLayout(self.buttons)
+        self.buttons = FoldingRow()
+        self.buttons.set_margins(0, 4, 0, 0)
+        self.buttons.add_widget(self.grant_button)
+        self.buttons.add_widget(self.explain_button)
+        self.buttons.add_stretch(1)
+        self.buttons.add_widget(self.snooze_button)
+        self.buttons.add_widget(self.dismiss_button)
+        layout.addWidget(self.buttons)
 
     def set_missing(self, nombres: Sequence[str], recaida: bool = False,
                     outdated: bool = False) -> None:
@@ -2477,6 +2593,18 @@ class LevelBar(QWidget):
         painter.end()
 
 
+class ReservedLabel(QLabel):
+    """A label that asks for its reserved width when there's room, and can
+    shrink and wrap when there isn't: as a minimum, the reservation pushed
+    a narrow window's page off the right edge."""
+
+    reserved_width = 0
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        hint = super().sizeHint()
+        return QSize(max(hint.width(), self.reserved_width), hint.height())
+
+
 class LevelList(QWidget):
     """Varias medidas de «tanto de tanto», una por renglón.
 
@@ -2504,8 +2632,10 @@ class LevelList(QWidget):
         fila = len(self._rows)
         nombre = QLabel(name)
         nombre.setObjectName("FieldName")
+        # Two lines before the row runs off a narrow window.
+        nombre.setWordWrap(True)
         barra = LevelBar(self._p)
-        cifra = QLabel("")
+        cifra = ReservedLabel("")
         cifra.setObjectName("FieldValue")
         cifra.setFont(value_font())
         porcentaje = QLabel("")
@@ -2513,6 +2643,8 @@ class LevelList(QWidget):
         porcentaje.setFont(value_font(bold=True))
         for etiqueta in (cifra, porcentaje):
             etiqueta.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        # «2.4 GiB de 15.9 GiB» in two lines rather than past a narrow window.
+        cifra.setWordWrap(True)
         # El hueco del «100 %» reservado: sin él la columna bailaba al pasar
         # de una cifra a dos.
         porcentaje.setMinimumWidth(self._ancho_de(porcentaje, "100 %"))
@@ -2561,8 +2693,9 @@ class LevelList(QWidget):
             return
         cifra = fila[2]
         ancho = max((self._ancho_de(cifra, t) for t in texts), default=0)
-        if cifra.minimumWidth() != ancho:
-            cifra.setMinimumWidth(ancho)
+        if cifra.reserved_width != ancho:
+            cifra.reserved_width = ancho
+            cifra.updateGeometry()
 
     @staticmethod
     def _ancho_de(etiqueta: QLabel, texto: str) -> int:

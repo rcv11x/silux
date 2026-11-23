@@ -60,8 +60,10 @@ class CachesPage(ScrollPage):
         summary = Card()
         self.total = QLabel("—")
         self.total.setObjectName("Headline")
+        self.total.setWordWrap(True)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.chips = ChipRow()
         # Que la L3 no sea igual en todo el procesador es la razón de ser de un
         # X3D de dos chiplets, y en una tabla de tamaños se lee como dos filas

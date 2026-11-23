@@ -60,6 +60,7 @@ class DevicesPage(ScrollPage):
         self.title.setWordWrap(True)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
         for widget in (self.title, self.subtitle, self.badges):
             cabecera.body.addWidget(widget)

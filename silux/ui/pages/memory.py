@@ -40,6 +40,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
+    FoldingRow,
     InfoGrid,
     Notice,
     Plegable,
@@ -199,8 +200,10 @@ class MemoryPage(ScrollPage):
         card = Card()
         self.title = QLabel(_("memory.loading"))
         self.title.setObjectName("Headline")
+        self.title.setWordWrap(True)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
         self.bar = StackedBar(self._p)
 
@@ -298,17 +301,16 @@ class MemoryPage(ScrollPage):
         self.snooze_button.clicked.connect(self.permission_snoozed)
         self.dismiss_button.clicked.connect(self.permission_dismissed)
 
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.addWidget(self.elevation_button)
-        row.addWidget(self.explain_button)
-        row.addStretch(1)
-        row.addWidget(self.snooze_button)
-        row.addWidget(self.dismiss_button)
+        row = FoldingRow()
+        row.add_widget(self.elevation_button)
+        row.add_widget(self.explain_button)
+        row.add_stretch(1)
+        row.add_widget(self.snooze_button)
+        row.add_widget(self.dismiss_button)
 
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(self.elevation_hint)
-        card.body.addLayout(row)
+        card.body.addWidget(row)
         # El de sustituir un ayudante atrasado va en su renglón. Sale pocas
         # veces, y en la fila de los otros cuatro no cabe: en compacto a
         # 900 px la tarjeta se salía por la derecha y arrastraba la página.

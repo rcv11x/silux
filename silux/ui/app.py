@@ -407,6 +407,7 @@ class MainWindow(QMainWindow):
         self.brand_mark.setFixedSize(lado_marca, lado_marca)
         wordmark = QLabel("Silux")
         wordmark.setObjectName("Headline")
+        wordmark.setWordWrap(True)
         cabecera = QHBoxLayout()
         cabecera.setContentsMargins(10, 4, 0, 6)
         cabecera.setSpacing(8)

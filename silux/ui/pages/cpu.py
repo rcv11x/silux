@@ -100,6 +100,7 @@ class TypeSection(QWidget):
         if title:
             heading = QLabel(title)
             heading.setObjectName("Subhead")
+            heading.setWordWrap(True)
             layout.addWidget(heading)
 
         processor_card = Card(_("cpu.card.processor"))
@@ -450,6 +451,7 @@ class CpuPage(ScrollPage):
 
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
 
         # Una fila fija de insignias impedía encoger la ventana: entre las
         # cuatro sumaban más de 300 px y el contenido se recortaba en silencio.

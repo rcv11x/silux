@@ -141,7 +141,7 @@ la memoria) no va: está propuesto en las notas
     cada uno. El estado P (`GetPerformanceState`) no se graba.
   - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos
     campos: sirve para probar el ayudante de la prueba11 con el IMC, además
-    del LOQ de Coca.
+    del Lenovo LOQ con DDR5.
 * **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
   `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
   con Mint en sesión live es el mismo equipo y no se vuelca):

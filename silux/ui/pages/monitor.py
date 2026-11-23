@@ -21,7 +21,6 @@ from typing import Optional
 import shiboken6
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -42,6 +41,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ElidingLabel,
+    FoldingRow,
     Notice,
     ScrollPage,
     clear_layout,
@@ -121,10 +121,8 @@ class MonitorPage(ScrollPage):
     # -- construcción -------------------------------------------------------
 
     def _build_sensor_header(self) -> QWidget:
-        holder = QWidget()
-        row = QHBoxLayout(holder)
-        row.setContentsMargins(2, 4, 2, 0)
-        row.setSpacing(10)
+        holder = row = FoldingRow(spacing=10)
+        row.set_margins(2, 4, 2, 0)
 
         title = QLabel(_("sensors.title"))
         title.setObjectName("CardTitle")
@@ -163,12 +161,12 @@ class MonitorPage(ScrollPage):
         )
         self.reset_button.clicked.connect(self._reset_extremes)
 
-        row.addWidget(title)
-        row.addWidget(self.count)
-        row.addStretch(1)
-        row.addWidget(self.search)
-        row.addWidget(self.record_button)
-        row.addWidget(self.reset_button)
+        row.add_widget(title)
+        row.add_widget(self.count)
+        row.add_stretch(1)
+        row.add_widget(self.search)
+        row.add_widget(self.record_button)
+        row.add_widget(self.reset_button)
         return holder
 
     # -- registro a CSV -----------------------------------------------------

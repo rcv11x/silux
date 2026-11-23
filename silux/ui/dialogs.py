@@ -72,6 +72,7 @@ class PermissionsDialog(QDialog):
 
         titulo = QLabel(_("perm.explain.title"))
         titulo.setObjectName("Headline")
+        titulo.setWordWrap(True)
         layout.addWidget(titulo)
 
         self.paragraphs: list[QLabel] = []
@@ -169,6 +170,7 @@ class ModuleLoadDialog(QDialog):
 
         title = QLabel(_("module.load.title").format(modulo=module))
         title.setObjectName("Headline")
+        title.setWordWrap(True)
         layout.addWidget(title)
         self.paragraphs: list[QLabel] = []
         for key in ("module.load.changes", "module.load.gives", "module.load.password",
@@ -226,6 +228,7 @@ class MoveAppImageDialog(QDialog):
         layout.setSpacing(m.card_gap + 4)
         title = QLabel(_("settings.shortcut.move.title"))
         title.setObjectName("Headline")
+        title.setWordWrap(True)
         layout.addWidget(title)
         self.paragraphs: list[QLabel] = []
         for key in ("settings.shortcut.move.text", "settings.shortcut.move.detail"):

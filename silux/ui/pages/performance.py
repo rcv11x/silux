@@ -33,6 +33,7 @@ from ..scorebar import ScoreBar
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
+    FoldingRow,
     InfoGrid,
     Notice,
     ResponsiveRow,
@@ -94,6 +95,7 @@ class PerformancePage(ScrollPage):
         self.score_card = Card(_("bench.card.score"))
         self.score_value = QLabel("")
         self.score_value.setObjectName("Headline")
+        self.score_value.setWordWrap(True)
         self.score_value.setFont(ui_font(theme.METRICS.headline_px))
         self.score_card.body.addWidget(self.score_value)
         self.score_detail = QLabel("")
@@ -199,6 +201,7 @@ class PerformancePage(ScrollPage):
         card = Card()
         titulo = QLabel(_("bench.card.title"))
         titulo.setObjectName("Headline")
+        titulo.setWordWrap(True)
         subtitulo = QLabel(
             _("bench.intro")
         )
@@ -246,20 +249,20 @@ class PerformancePage(ScrollPage):
         # piden unos 760 px, y a 900×680 en compacto la página tiene menos.
         # El área de desplazamiento no tiene barra horizontal, así que lo que
         # no cabía se cortaba contra el borde.
-        botones = QHBoxLayout()
-        botones.addWidget(self.run_button)
-        botones.addWidget(self.quick_button)
-        botones.addWidget(self.cancel_button)
-        botones.addStretch(1)
-        fila = QHBoxLayout()
-        fila.addWidget(QLabel(_("bench.label.each")))
-        fila.addWidget(self.duracion)
+        botones = FoldingRow()
+        botones.add_widget(self.run_button)
+        botones.add_widget(self.quick_button)
+        botones.add_widget(self.cancel_button)
+        botones.add_stretch(1)
+        fila = FoldingRow()
+        fila.add_widget(QLabel(_("bench.label.each")))
+        fila.add_widget(self.duracion)
         # Cuánto tarda la prueba entera. Son diez medidas, así que «30 s» son
         # cinco minutos: la cuenta la hace nadie de cabeza mientras elige.
         self.duracion_total = QLabel("")
         self.duracion_total.setObjectName("Muted")
-        fila.addWidget(self.duracion_total)
-        fila.addStretch(1)
+        fila.add_widget(self.duracion_total)
+        fila.add_stretch(1)
         self.duracion.currentIndexChanged.connect(self._pintar_total)
         self._pintar_total()
 
@@ -270,8 +273,8 @@ class PerformancePage(ScrollPage):
 
         card.body.addWidget(titulo)
         card.body.addWidget(subtitulo)
-        card.body.addLayout(botones)
-        card.body.addLayout(fila)
+        card.body.addWidget(botones)
+        card.body.addWidget(fila)
         card.body.addWidget(self.progress)
         return card
 

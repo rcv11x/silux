@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Interfaz: con la letra más grande y la ventana estrecha, ninguna página se
+  sale ya por la derecha: los títulos y las cifras bajan de línea, las filas
+  de botones se ponen en columna y el título de un plegable largo se
+  recorta (entero al pasar el ratón). Antes se cortaba casi todo a 760 px.
 - Sensores: dos discos del mismo driver (dos NVMe) compartían una fila, y
   con ella el mínimo, el máximo y la media, que mezclaban los dos discos.
   Ahora cada uno tiene la suya.

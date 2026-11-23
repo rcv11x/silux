@@ -28,6 +28,7 @@ from silux.model import Battery
 from silux.settings import Preferences
 from silux.ui import theme
 from tests import muestras, qt
+from tests.per_dump import per_dump
 
 ANCHO, ALTO = 900, 680
 
@@ -219,6 +220,70 @@ class TestLaFilaReparteSegunLoQuePidenSusHijos(unittest.TestCase):
         # Si pidiera el ancho de la rejilla en dos columnas, la ensancharían
         # hasta él y su propia anchura le diría que caben.
         self.assertEqual(self._fila(713).minimumSizeHint().width(), 540)
+
+
+
+
+class TestTheLargestFontInANarrowWindow(unittest.TestCase):
+    """With the largest font, at the narrowest the window allows, no page of
+    any dump runs off the right edge. Header lines that didn't wrap, rows of
+    buttons, widths reserved as minimums and a row's column width scaled
+    with the font pushed every page out at 760 px."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = _app()
+
+    def _check(self, folder, density: str = "normal"):
+        from silux.ui.app import MainWindow
+        from tests.test_equipos import shared_snapshot
+
+        # Left exactly as found: the defaults aren't what other tests expect.
+        from PySide6.QtGui import QPalette
+        saved = (theme.METRICS, self.app.styleSheet(), QPalette(self.app.palette()),
+                 self.app.style().name())
+
+        def restore():
+            theme.METRICS = saved[0]
+            self.app.setStyle(saved[3])
+            self.app.setPalette(saved[2])
+            self.app.setStyleSheet(saved[1])
+
+        self.addCleanup(restore)
+        metrics = theme.set_density(density, "máximo")
+        width = metrics.min_window_w
+        prefs = Preferences(density=density, font_scale="máximo", window_width=width,
+                            window_height=ALTO).normalized()
+        theme.apply(self.app, prefs.theme, prefs.density, prefs.font_scale)
+        window = MainWindow(prefs)
+        self.addCleanup(window.close)
+        window.resize(width, ALTO)
+        window.show()
+        snapshot = shared_snapshot(folder)
+        for _vuelta in range(2):
+            window._on_sample(snapshot)
+            _asentar(self.app)
+        probe = TestNadaSeSalePorLaDerecha.__new__(TestNadaSeSalePorLaDerecha)
+        probe.ventana = window
+        self.assertEqual(window.width(), width)
+        for row in range(window.nav.count()):
+            window.nav.setCurrentRow(row)
+            _asentar(self.app)
+            with self.subTest(dump=folder.name, density=density,
+                              section=window.nav.item(row).text()):
+                self.assertEqual(probe._desbordados()[:12], [])
+
+    def _every_page(self, folder):
+        self._check(folder)
+
+    def test_compact_and_spacious_too(self):
+        from tests.test_equipos import EQUIPOS
+
+        for density in ("compact", "spacious"):
+            self._check(EQUIPOS / "5800x3d", density)
+
+
+per_dump(TestTheLargestFontInANarrowWindow, "every_page", TestTheLargestFontInANarrowWindow._every_page)
 
 
 if __name__ == "__main__":

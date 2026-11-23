@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ... import render, thermal
 from ...i18n import _
@@ -25,6 +25,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
+    FoldingRow,
     InfoGrid,
     Notice,
     Plegable,
@@ -158,6 +159,7 @@ class StoragePage(ScrollPage):
         self.title.setWordWrap(True)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
         self.total_bar = StackedBar(self._p)
 
@@ -229,16 +231,16 @@ class StoragePage(ScrollPage):
         self.snooze_button.clicked.connect(self.permission_snoozed)
         self.dismiss_button.clicked.connect(self.permission_dismissed)
 
-        fila = QHBoxLayout()
-        fila.addWidget(self.elevation_button)
-        fila.addWidget(self.explain_button)
-        fila.addStretch(1)
-        fila.addWidget(self.snooze_button)
-        fila.addWidget(self.dismiss_button)
+        fila = FoldingRow()
+        fila.add_widget(self.elevation_button)
+        fila.add_widget(self.explain_button)
+        fila.add_stretch(1)
+        fila.add_widget(self.snooze_button)
+        fila.add_widget(self.dismiss_button)
 
         card.body.addWidget(self.elevation_text)
         card.body.addWidget(detalle)
-        card.body.addLayout(fila)
+        card.body.addWidget(fila)
         # El de sustituir un ayudante atrasado va en su renglón. Sale pocas
         # veces, y en la fila de los otros cuatro no cabe: en compacto a
         # 900 px la tarjeta se salía por la derecha y arrastraba la página.

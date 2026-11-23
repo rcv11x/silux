@@ -28,6 +28,7 @@ from ..widgets import (
     Card,
     ChipRow,
     PermissionNotice,
+    ReservedLabel,
     ResponsiveRow,
     ScrollPage,
     Series,
@@ -90,8 +91,9 @@ class _TarjetaResumen(Card):
         self.detalle.setObjectName("Subhead")
         self.detalle.setWordWrap(True)
 
-        self.cifras = QLabel("")
+        self.cifras = ReservedLabel("")
         self.cifras.setObjectName("FieldValue")
+        self.cifras.setWordWrap(True)
         self.cifras.setFont(ui_font(m.base_pt + 3))
 
         self.body.addWidget(self.nombre)
@@ -130,10 +132,12 @@ class _TarjetaResumen(Card):
                   for opciones in piezas if opciones]
         ancho = sum(anchos) + metricas.horizontalAdvance(separador) * max(len(anchos) - 1, 0)
         # No encoge: una pieza que falta un momento (la gráfica que se duerme)
-        # también movería la fila al volver.
-        ancho = max(ancho, self.cifras.minimumWidth())
-        if self.cifras.minimumWidth() != ancho:
-            self.cifras.setMinimumWidth(ancho)
+        # también movería la fila al volver. Preferred, not minimum: in a
+        # narrow window the figures wrap instead of pushing the page out.
+        ancho = max(ancho, self.cifras.reserved_width)
+        if self.cifras.reserved_width != ancho:
+            self.cifras.reserved_width = ancho
+            self.cifras.updateGeometry()
 
     def poner(self, nombre: str, detalle: str, cifras: str, pie: str = "") -> None:
         for etiqueta, texto in ((self.nombre, nombre), (self.detalle, detalle),

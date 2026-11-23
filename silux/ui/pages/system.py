@@ -173,6 +173,7 @@ class SystemPage(ScrollPage):
         self.title.setWordWrap(True)
         self.subtitle = QLabel("")
         self.subtitle.setObjectName("Subhead")
+        self.subtitle.setWordWrap(True)
         self.badges = ChipRow()
 
         card.body.addWidget(self.title)

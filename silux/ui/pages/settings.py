@@ -43,7 +43,7 @@ from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Card, Divider, ResponsiveRow, ScrollPage
+from ..widgets import Card, Divider, FoldingRow, ResponsiveRow, ScrollPage
 
 AUTORIA = (
     ("rcv11x", "about.author"),
@@ -248,22 +248,22 @@ class Insignia(QLabel):
             f"{fondo.alphaF():.2f}); border-radius: 9px; padding: 2px 10px; }}")
 
 
-class _Renglon(QWidget):
+class _Renglon(FoldingRow):
     """Un ajuste: su nombre y para qué sirve a la izquierda, el control a la
-    derecha, centrado en vertical con el texto."""
+    derecha, centrado en vertical con el texto. In a narrow window the
+    control goes under the text."""
 
     def __init__(self, nombre: str, control: Optional[QWidget], explicacion: str = "",
                  parent: Optional[QWidget] = None):
-        super().__init__(parent)
+        super().__init__(parent, spacing=24)
         m = theme.METRICS
-        fila = QHBoxLayout(self)
-        fila.setContentsMargins(0, 2, 0, 2)
-        fila.setSpacing(24)
+        self.set_margins(0, 2, 0, 2)
 
         textos = QVBoxLayout()
         textos.setSpacing(2)
         self.nombre = QLabel(nombre)
         self.nombre.setObjectName("FieldValue")
+        self.nombre.setWordWrap(True)
         self.nombre.setFont(ui_font(m.base_pt))
         textos.addWidget(self.nombre)
         self.explicacion = QLabel(explicacion)
@@ -273,14 +273,14 @@ class _Renglon(QWidget):
         self.explicacion.setFont(ui_font(max(7, m.small_pt - 1)))
         self.explicacion.setVisible(bool(explicacion))
         textos.addWidget(self.explicacion)
-        fila.addLayout(textos, 1)
+        self.add_layout(textos, 1)
 
         if control is not None:
             # Los que llevan texto dentro, con el mismo ancho: sin esto el
             # borde derecho de la columna queda en diente de sierra.
             if isinstance(control, (QComboBox, QDoubleSpinBox)):
                 control.setMinimumWidth(ANCHO_DEL_CONTROL)
-            fila.addWidget(control, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.add_widget(control, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
 
 class _Tarea(QThread):
@@ -486,13 +486,11 @@ class SettingsPage(ScrollPage):
         self.remove_helper_button.setObjectName("GhostButton")
         self.remove_helper_button.setToolTip(_("settings.perm.remove.tip"))
         self.remove_helper_button.clicked.connect(self.remove_helper_requested.emit)
-        botones = QWidget()
-        fila = QHBoxLayout(botones)
-        fila.setContentsMargins(0, 0, 0, 0)
-        fila.addWidget(self.remove_helper_button)
-        fila.addStretch(1)
-        fila.addWidget(self.explain_button)
-        fila.addWidget(self.permission_button)
+        botones = FoldingRow()
+        botones.add_widget(self.remove_helper_button)
+        botones.add_stretch(1)
+        botones.add_widget(self.explain_button)
+        botones.add_widget(self.permission_button)
         self._accion_de_permisos = "grant"
         card = self._grupo(_("settings.group.permissions"), self.permission_row, botones)
         self.set_privileges(None)
@@ -595,6 +593,7 @@ class SettingsPage(ScrollPage):
 
         titulo = QLabel(f"Silux {render.version(__version__)}")
         titulo.setObjectName("Headline")
+        titulo.setWordWrap(True)
         card.body.addWidget(titulo)
         lema = QLabel(_("about.tagline"))
         lema.setObjectName("Subhead")
