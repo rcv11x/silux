@@ -66,7 +66,7 @@ apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
     python3 python3-pip \
     libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
-    libfontconfig1 libfreetype6 libglib2.0-0 hwdata >/dev/null
+    libfontconfig1 libfreetype6 libglib2.0-0 hwdata fonts-dejavu-core >/dev/null
 
 TIENE="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
 if [ "$TIENE" != "$SUELO" ]; then

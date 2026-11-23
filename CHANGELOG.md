@@ -12,6 +12,11 @@ que hace falta.
 
 ## Sin publicar
 
+- Interfaz: con una letra ancha (DejaVu Sans, la de Debian y Ubuntu), los
+  títulos largos de las tarjetas y los avisos bajan de línea en vez de sacar
+  la página por la derecha con la letra más grande. Y en Inicio, una ficha
+  que necesita más de media fila para sus cifras la tiene: «1000.0 MB/s» ya
+  no salta a una segunda línea y mueve las demás.
 - Interfaz: «Calculando…» y las demás palabras que van en lugar de una cifra
   («con el cargador») caben enteras en las fichas grandes: bajan de tamaño
   lo justo cuando no hay sitio, también con la letra más grande. Antes salía

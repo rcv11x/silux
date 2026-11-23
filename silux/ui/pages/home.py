@@ -128,9 +128,11 @@ class _TarjetaResumen(Card):
         """
         self.cifras.ensurePolished()
         metricas = QFontMetrics(self.cifras.font())
-        anchos = [max(metricas.horizontalAdvance(t) for t in opciones)
-                  for opciones in piezas if opciones]
-        ancho = sum(anchos) + metricas.horizontalAdvance(separador) * max(len(anchos) - 1, 0)
+        widest = separador.join(max(opciones, key=metricas.horizontalAdvance)
+                                for opciones in piezas if opciones)
+        # The whole line, measured as the label measures it: the sum of the
+        # pieces' advances came out a pixel short, and the line wrapped.
+        ancho = metricas.size(0, widest).width() if widest else 0
         # No encoge: una pieza que falta un momento (la gráfica que se duerme)
         # también movería la fila al volver. Preferred, not minimum: in a
         # narrow window the figures wrap instead of pushing the page out.

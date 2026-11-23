@@ -102,7 +102,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
-            libfontconfig1 libfreetype6 libglib2.0-0 hwdata
+            libfontconfig1 libfreetype6 libglib2.0-0 hwdata fonts-dejavu-core
 
       # PySide6 con el rango del paquete de esa pareja, que es el que se
       # reparte; pytest y xdist, del grupo `dev` de `pyproject.toml`, para que

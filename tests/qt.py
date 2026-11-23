@@ -59,4 +59,21 @@ def app():
                 "se puede crear un widget: quien la crea tiene que pedir antes "
                 "tests.qt.app()")
         _app = actual or QApplication([])
+        _use_ci_font(_app)
     return _app
+
+
+# The CI runner draws with DejaVu Sans, wider than the Noto Sans or Cantarell
+# of many desktops: pages that fit here ran off the edge there, and figures
+# that fit in one line wrapped. The suite uses it wherever it's installed, so
+# a run here measures what the CI measures.
+CI_FONT = "DejaVu Sans"
+
+
+def _use_ci_font(application) -> None:
+    from PySide6.QtGui import QFont, QFontDatabase
+
+    if CI_FONT in QFontDatabase.families():
+        font = QFont(application.font())
+        font.setFamily(CI_FONT)
+        application.setFont(font)

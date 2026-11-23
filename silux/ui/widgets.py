@@ -425,6 +425,7 @@ class ResponsiveRow(QWidget):
     def _relayout(self, force: bool = False) -> None:
         columns = self._wanted_columns()
         visibles = self._a_la_vista()
+        self._hold_column_widths(columns, visibles)
         if columns == self._columns and visibles == self._colocados and not force:
             return
         self._columns = columns
@@ -445,6 +446,21 @@ class ResponsiveRow(QWidget):
             self._grid.addWidget(widget, index // columns, index % columns, 1, ancho)
         for column in range(columns):
             self._grid.setColumnStretch(column, 1)
+
+    def _hold_column_widths(self, columns: int, visibles: list[QWidget]) -> None:
+        """Each column gets at least what its widest child asked for when the
+        columns were chosen. Equal stretch alone split the row in halves,
+        and a child that asked for more than half wrapped its figures.
+
+        With a single column nothing is held: that's where they may wrap."""
+        wanted = [0] * max(columns, self._grid.columnCount())
+        if columns > 1:
+            for index, widget in enumerate(visibles):
+                column = index % columns
+                wanted[column] = max(wanted[column], self._column_width(widget))
+        for column, width in enumerate(wanted):
+            if self._grid.columnMinimumWidth(column) != width:
+                self._grid.setColumnMinimumWidth(column, width)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -489,6 +505,9 @@ class Card(QFrame):
             # «enp6s0» son nombres, y «NVME0N1» no lo es de nada.
             self._title_label = QLabel(title)
             self._title_label.setObjectName("CardTitle")
+            # A long title in a wide font is wider than a narrow window's
+            # page: in two lines rather than pushing the page off the edge.
+            self._title_label.setWordWrap(True)
             outer.addWidget(self._title_label)
 
         self.body = QVBoxLayout()
@@ -1845,6 +1864,7 @@ class Notice(QFrame):
 
         header = QLabel(title)
         header.setObjectName("NoticeTitle")
+        header.setWordWrap(True)
         header.setFont(ui_font(m.small_pt))
 
         text = QLabel(body)
@@ -2100,6 +2120,7 @@ class PermissionNotice(QFrame):
 
         self.title = QLabel("")
         self.title.setObjectName("NoticeTitle")
+        self.title.setWordWrap(True)
         layout.addWidget(self.title)
 
         self._lista = QVBoxLayout()
