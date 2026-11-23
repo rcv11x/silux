@@ -18,13 +18,15 @@ from silux.providers.base import Draft
 from tests import qt
 
 
-def _draft(vendor="AMD", voltaje=None):
+def _draft(vendor="AMD", voltaje=None, family=0x19):
+    """`family`: CPUID's, which a real draft always has (Zen 3 by default)."""
     draft = Draft()
     entrada = draft.type_entry("general") if hasattr(draft, "type_entry") else None
     if entrada is None:                       # la API real, según la versión
         draft.types["general"] = {"vendor": vendor}
         entrada = draft.types["general"]
     entrada["vendor"] = vendor
+    entrada["disp_family"] = family
     if voltaje is not None:
         entrada["voltage_v"] = voltaje
     return draft
@@ -93,6 +95,17 @@ class TestElProveedor(unittest.TestCase):
         draft, _c = self._con({msr_voltage.AMD_PSTATE_STATUS: 0,
                                msr_voltage.AMD_PSTATE_DEF: (1 << 63) | (250 << 14)})
         self.assertIsNone(draft.types["general"].get("voltage_v"))
+
+    def test_an_amd_before_zen_is_not_read_with_zens_layout(self):
+        # An FX-8150 (family 15h) gave 1.550 V: its VID is in other bits.
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        draft = _draft(family=0x15)
+        msr_voltage.MsrVoltage(cliente).collect(draft)
+        cliente.read_msr.assert_not_called()
+        self.assertIsNone(draft.types["general"].get("voltage_v"))
+        self.assertEqual([(n.need, n.key) for n in draft.notes if n.path == "cpu.voltage_v"],
+                         [(Need.DATABASE, "prov.msr.amdformat")])
 
     def test_without_the_module_its_notice_offers_to_load_it(self):
         cliente = mock.Mock()

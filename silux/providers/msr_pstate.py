@@ -23,9 +23,14 @@ from ..i18n import _
 from ..model import Clocks, Need
 from ..privileged.client import HelperError, HelperMissingModule, PrivilegedClient
 from .base import Draft, Provider, is_virtual_machine
-from .msr_voltage import AMD_PSTATE_DEF, AMD_PSTATE_STATUS, AMD_PSTATES, missing_msr_module
+from .msr_voltage import (
+    AMD_PSTATE_DEF,
+    AMD_PSTATE_STATUS,
+    AMD_PSTATES,
+    is_zen,
+    missing_msr_module,
+)
 
-ZEN_FAMILIES = (0x17, 0x19)
 PSTATE_ENABLED = 1 << 63
 FID_MASK = 0xFF
 DFS_SHIFT = 8
@@ -46,10 +51,6 @@ def pstate_hz(definition: Optional[int]) -> Optional[int]:
         return None
     hz = STEP_HZ * fid // dfs
     return hz if MIN_HZ <= hz <= MAX_HZ else None
-
-
-def is_zen(entry: dict) -> bool:
-    return entry.get("vendor") == "AMD" and entry.get("disp_family") in ZEN_FAMILIES
 
 
 class AmdPstateClocks(Provider):

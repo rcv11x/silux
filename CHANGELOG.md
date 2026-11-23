@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: el voltaje del núcleo de los AMD anteriores a Zen (y de Zen 5) ya no se
+  lee con el formato de los Ryzen, que daba una cifra falsa (1.550 V en un
+  FX-8150): el aviso dice que esta versión no sabe leer ese formato.
 - AppImage: si el normal no puede arrancar en ese procesador, lo primero que
   dice es qué descargar y de dónde, también como notificación del escritorio
   cuando se abre con doble clic. La lista de procesadores de cada AppImage

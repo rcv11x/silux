@@ -35,6 +35,16 @@ from ..model import DriverHint, Need
 from ..privileged.client import HelperError, HelperMissingModule, PrivilegedClient
 from .base import Draft, Provider, is_virtual_machine, read_text
 
+# The AMD families whose P-state registers this reads (Zen 1 to Zen 4, from
+# AMD's PPRs for families 17h and 19h). Bulldozer and the others before Zen
+# keep the voltage in other bits and steps; Zen 5 changed the layout again.
+ZEN_FAMILIES = (0x17, 0x19)
+
+
+def is_zen(entry: dict) -> bool:
+    return entry.get("vendor") == "AMD" and entry.get("disp_family") in ZEN_FAMILIES
+
+
 # The running P-state (bits 2:0).
 AMD_PSTATE_STATUS = 0xC0010063
 # Each P-state's definition. There are eight; only the first three are used.
@@ -184,6 +194,12 @@ class MsrVoltage(Provider):
         vendors = {(entry.get("vendor") or "").lower()
                   for entry in draft.types.values()}
         is_amd = any("amd" in m for m in vendors)
+        if is_amd and not any(is_zen(entry) for entry in draft.types.values()):
+            # Read with Zen's layout, an FX-8150 gave 1.550 V: the VID's bits
+            # were others, and zero is the top of the scale.
+            draft.note("cpu.voltage_v", Need.DATABASE, _("prov.msr.amdformat"),
+                       key="prov.msr.amdformat")
+            return
         registers = ([AMD_PSTATE_STATUS]
                      + [AMD_PSTATE_DEF + n for n in range(AMD_PSTATES)]
                      if is_amd else [INTEL_PERF_STATUS])

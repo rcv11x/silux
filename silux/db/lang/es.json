@@ -1359,6 +1359,7 @@
   "prov.mem.smbiosfail": "No se pudo leer la tabla SMBIOS: {error}",
   "prov.missing": "Este equipo no publica este dato.",
   "prov.missing.detail": "No existe {ruta}.",
+  "prov.msr.amdformat": "Este AMD guarda el voltaje del núcleo en un formato que esta versión no sabe leer: solo se lee en los Ryzen de Zen 1 a Zen 4.",
   "prov.msr.helperfail": "El ayudante no pudo leer el registro del procesador.",
   "prov.msr.novalue": "El procesador no dio un voltaje creíble en su registro, y no se enseña.",
   "prov.msr.novolt": "El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.",

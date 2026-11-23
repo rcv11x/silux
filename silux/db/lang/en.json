@@ -1359,6 +1359,7 @@
   "prov.mem.smbiosfail": "Could not read the SMBIOS table: {error}",
   "prov.missing": "This machine does not publish this data.",
   "prov.missing.detail": "{ruta} does not exist.",
+  "prov.msr.amdformat": "This AMD keeps its core voltage in a format this version can't read: it is only read on Ryzen from Zen 1 to Zen 4.",
   "prov.msr.helperfail": "The helper couldn't read the processor's register.",
   "prov.msr.novalue": "The processor gave no believable voltage in its register, so none is shown.",
   "prov.msr.novolt": "Core voltage lives in the processor, not in a board sensor.",
