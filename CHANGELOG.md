@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Informe: la cifra fija de una zona térmica que no mide (un acpitz a 27,8 °C)
+  dice en el árbol de sensores que no es una medida; en la ventana ya salía
+  en gris, pero el informe no tiene color.
 - Memoria: el fabricante y la referencia de un módulo dicen «según la BIOS»
   cuando salen de la tabla del firmware y no de su chip SPD, igual que la
   velocidad y el voltaje, y en todos los módulos por igual. En una DDR5 de

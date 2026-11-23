@@ -62,6 +62,9 @@ def _cifra(texto: str) -> float:
 
 # Dónde guarda cada fila su serie reciente para que el delegate la pinte.
 ROL_SERIE = int(Qt.ItemDataRole.UserRole) + 1
+# A row whose reading is no measurement (`Sensor.placeholder`): greyed here,
+# and said in words where there is no colour (the report).
+ROLE_PLACEHOLDER = int(Qt.ItemDataRole.UserRole) + 2
 
 
 class SparklineDelegate(QStyledItemDelegate):
@@ -879,6 +882,7 @@ class SensorTree(QTreeWidget):
         if apagada:
             colour = self._p.q("muted")
         item.setForeground(1, colour)
+        item.setData(1, ROLE_PLACEHOLDER, apagada)
 
         # El máximo se pinta con su propio nivel y no con el de ahora. Es el
         # dato que sobrevive al pico: quien lanza una prueba de dos minutos y

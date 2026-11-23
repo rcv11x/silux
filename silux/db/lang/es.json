@@ -1397,6 +1397,7 @@
   "report.need.package": "falta un paquete del sistema",
   "report.need.platform": "no aplica a esta plataforma",
   "report.need.root": "requiere permisos de administrador",
+  "report.placeholder": "fijo, no es una medida",
   "report.preview.intro": "Esto es lo que se guarda: todo lo que enseña la ventana, página a página, sin el nombre del equipo, ni direcciones, ni números de serie. Revísalo antes de mandarlo.",
   "report.preview.missing": "Faltan {n} datos que solo puede leer el administrador: los más útiles para reconocer tu equipo.",
   "report.preview.save": "Guardar…",

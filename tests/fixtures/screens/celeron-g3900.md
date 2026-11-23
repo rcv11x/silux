@@ -608,8 +608,8 @@ SENSORES · 13 en 4 dispositivos
     - CPU 1 · 2800.0 MHz · 2800.0 · 2800.0 · 2800.0
 - ASUS H110M-D
   - Temperaturas
-    - Temperatura 1 · 27.8 °C · 27.8 · 27.8 · 27.8
-    - Temperatura 2 · 29.8 °C · 29.8 · 29.8 · 29.8
+    - Temperatura 1 · 27.8 °C (fijo, no es una medida) · 27.8 · 27.8 · 27.8
+    - Temperatura 2 · 29.8 °C (fijo, no es una medida) · 29.8 · 29.8 · 29.8
 - Memoria
   - Uso
     - RAM usada · 57.2 % · 57.2 · 57.2 · 57.2

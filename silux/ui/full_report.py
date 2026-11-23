@@ -349,6 +349,8 @@ def _notice(notice, root) -> list[str]:
 def _arbol(arbol) -> list[str]:
     from PySide6.QtWidgets import QTreeWidgetItemIterator
 
+    from .sensortree import ROLE_PLACEHOLDER
+
     # What the window hides doesn't go in, and columns with nothing in them
     # (the trend line, the stretch) don't either.
     columns = [c for c in range(arbol.columnCount()) if not arbol.isColumnHidden(c)]
@@ -359,7 +361,11 @@ def _arbol(arbol) -> list[str]:
         nivel, padre = 0, fila.parent()
         while padre is not None:
             nivel, padre = nivel + 1, padre.parent()
-        rows.append((nivel, {c: fila.text(c).strip() for c in columns}))
+        cells = {c: fila.text(c).strip() for c in columns}
+        if fila.data(1, ROLE_PLACEHOLDER) and cells.get(1):
+            # Greyed in the window; the report has no colour, so it says it.
+            cells[1] += f" ({_('report.placeholder')})"
+        rows.append((nivel, cells))
         iterador += 1
     used = [c for c in columns if any(cells[c] for _level, cells in rows)]
     lines = []

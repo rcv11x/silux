@@ -1397,6 +1397,7 @@
   "report.need.package": "a system package is missing",
   "report.need.platform": "doesn't apply to this platform",
   "report.need.root": "needs administrator permissions",
+  "report.placeholder": "fixed, not a measurement",
   "report.preview.intro": "This is what gets saved: everything the window shows, page by page, without the machine's name, addresses or serial numbers. Check it before you send it.",
   "report.preview.missing": "{n} readings only the administrator can read are missing: the most useful ones to recognise your machine.",
   "report.preview.save": "Save…",

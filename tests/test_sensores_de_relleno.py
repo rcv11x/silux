@@ -206,6 +206,23 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         self.assertGreaterEqual(len(pie.split("\n")), 3, pie)
 
 
+class TestInTheReport(unittest.TestCase):
+    """Greyed in the window; the report has no colour, so its tree says it."""
+
+    def test_the_fixed_reading_says_what_it_is(self):
+        from silux.i18n import _
+        from silux.ui import full_report
+
+        qt.app()
+        mark = f"({_('report.placeholder')})"
+        for dump, fixed in (("i5-12450h", "27.8 °C"), ("5800x3d", "16.8 °C")):
+            with self.subTest(dump=dump):
+                text = full_report.build(foto(EQUIPOS / dump)[0], sections=["Sensores"])
+                marked = [line for line in text.splitlines() if mark in line]
+                self.assertTrue(marked)
+                self.assertTrue(all(f"{fixed} {mark}" in line for line in marked), marked)
+
+
 class TestNoCuentaComoTemperaturaDeNada(unittest.TestCase):
 
     def test_un_procesador_sin_sensor_propio_no_toma_la_de_relleno(self):
