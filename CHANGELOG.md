@@ -16,6 +16,9 @@ que hace falta.
   N/A) sale sin consumo, con su aviso, y no con la media de su búfer de
   muestras, que el driver no da como su consumo: una RTX 4060 sin consumo
   marcaba 53 W.
+- Memoria: un valor marcado «según la BIOS» o «según la BIOS, no coincide»
+  baja de línea en vez de cortarse con puntos suspensivos, que escondían
+  justo la marca.
 
 ## 0.4-prueba11 (23 de noviembre de 2026)
 

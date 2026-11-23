@@ -133,6 +133,8 @@ class ElidingLabel(QLabel):
         procesador («AMD Ryzen 7 5800X3D 8-Core Processor») salía cortada en
         compacto con un renglón entero libre debajo.
         """
+        if max(1, cuantas) == self._lineas:
+            return
         self._lineas = max(1, cuantas)
         self.setWordWrap(self._lineas > 1)
         self._refresh()
@@ -592,6 +594,9 @@ class InfoGrid(QWidget):
 
     def is_locked(self, name: str) -> bool:
         return name in self._bloqueadas
+
+    def value_label(self, name: str) -> ElidingLabel:
+        return self._values[name]
 
     def is_blank(self, name: str) -> bool:
         """The row holds a dash, not a value nor a padlock."""

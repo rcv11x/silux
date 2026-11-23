@@ -93,5 +93,65 @@ class TestOnThePage(unittest.TestCase):
         # The first module's SPD declares two ranks; the second's is unknown.
         self.assertEqual(ranks, ["2", render.DASH])
 
+
+def _collected_with_its_report():
+    """The Vostro's dump, and its firmware's table as its report gave it."""
+    from unittest import mock
+
+    from silux import volcado
+    from silux.collector import Collector
+    from silux.providers.privileged_memory import PrivilegedMemory
+    from tests.interval import fake_clock, next_snapshot
+
+    def with_permissions(_self, draft):
+        draft.modules = [
+            MemoryModule(locator="DIMM_A", bank="CHANNEL A", populated=True, size_bytes=GIB,
+                         type="DDR", form_factor=SODIMM, speed_mts=667, configured_mts=667,
+                         manufacturer="Samsung", part_number="M4 70T2953EZ3-CE6"),
+            MemoryModule(locator="DIMM_B", bank="CHANNEL B", populated=True, size_bytes=GIB,
+                         type="DDR", form_factor=DIMM, speed_mts=800, configured_mts=800,
+                         manufacturer="Samsung", part_number="M4 70T2864EH3-CF7")]
+
+    with mock.patch.object(PrivilegedMemory, "collect", with_permissions), \
+            volcado.mounted(EQUIPOS / "celeron-560"), fake_clock() as clock:
+        collector = Collector()
+        try:
+            collector.snapshot()
+            return next_snapshot(collector, clock)
+        finally:
+            collector.close()
+
+
+@unittest.skipIf(QApplication is None, "no PySide6")
+class TestTheMarkIsRead(unittest.TestCase):
+    """A value marked with where it comes from is read whole: the mark is the
+    point, and «DDR · según la BIOS, no…» hid it."""
+
+    def test_no_marked_value_is_cut(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.widgets import InfoGrid
+
+        app = qt.app()
+        # With the app's own theme and its fonts, as the window is seen.
+        prefs = Preferences().normalized()
+        self.addCleanup(theme.apply, app, prefs.theme, prefs.density, prefs.font_scale)
+        theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
+        marks = (_("memory.source.bios"),)
+        with pantalla.Ventana(_collected_with_its_report()) as window:
+            window.resize(1000, 900)
+            window.select_section("Memoria")
+            for _turn in range(4):
+                app.processEvents()
+            page = window.stack.currentWidget()
+            marked = [label for grid in page.findChildren(InfoGrid)
+                      for label in grid._values.values()
+                      if label.isVisible() and any(m in label.full_text() for m in marks)]
+            # Type, form, running and rated of the second.
+            self.assertGreaterEqual(len(marked), 4)
+            for label in marked:
+                self.assertEqual(label.text(), label.full_text())
+
+
 if __name__ == "__main__":
     unittest.main()
