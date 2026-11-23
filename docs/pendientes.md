@@ -69,8 +69,10 @@ la memoria) no va: está propuesto en las notas
     tabla en `/run/udev/data/+dmi:id` (`MEMORY_DEVICE_*`, de su
     `dmi_memory_id`), legible por cualquiera; con eudev o sin udev, no.
     Sería una fuente de los módulos sin permisos, con su número de serie
-    tapado en el anexo. Falta confirmar la causa con `sudo dmesg | grep -i
-    spd` en el Vostro (pedido a Felix).
+    tapado en el anexo. La causa, confirmada con el dmesg del Vostro: el
+    kernel registró solo 0x50 (`spd`, 256 bytes) y no probó 0x52, porque
+    `i2c_register_spd` prueba 0x50 + n por cada zócalo que declara el
+    firmware, 0x50 y 0x51 con dos. La orden que da Silux es la correcta.
   - Almacenamiento · media · los atributos SMART estándar de un WD
     (3, 4, 7, 10, 11, 183, 184, 190-193, 196, 200) salen como «propio del
     fabricante»: tienen nombre por defecto en smartmontools (`ata_get_attr_name`).
