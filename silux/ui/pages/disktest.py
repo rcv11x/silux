@@ -296,6 +296,9 @@ class Rows(QWidget):
         inside.setSpacing(0)
         words = QLabel(test_words(test))
         words.setFont(ui_font(theme.METRICS.base_pt + 1))
+        # In a narrow window the name takes two lines before the figures go.
+        words.setWordWrap(True)
+        words.setMinimumWidth(96)
         code = QLabel(test.name)
         code.setObjectName("Muted")
         code.setFont(ui_font(theme.METRICS.small_pt - 1))
@@ -824,7 +827,8 @@ class DiskTestTab(ScrollPage):
                 if partition.free_bytes is not None:
                     parts.append(_("disktest.where.free").format(
                         size=render.decimal_size(partition.free_bytes)))
-                rows.append((" · ".join(p for p in parts if p), folder))
+                # The home's first: it is the disk most people mean.
+                rows.insert(0 if at_home else len(rows), (" · ".join(p for p in parts if p), folder))
         if self._chosen and self._chosen not in [folder for _label, folder in rows]:
             rows.insert(0, (render.home_path(self._chosen), self._chosen))
         rows.append((_("disktest.option.choose"), ""))

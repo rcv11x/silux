@@ -713,6 +713,20 @@ class TestOneTestAtATime(TabCase):
         self.assertFalse(page.cpu_tab.quick_button.isEnabled())
         page.memory_tab.running_changed.emit(False)
         self.assertTrue(page.cpu_tab.run_button.isEnabled())
+        # And the third: while the disk test runs, neither of the others.
+        page.disk_tab.running_changed.emit(True)
+        self.assertFalse(page.cpu_tab.run_button.isEnabled())
+        self.assertFalse(page.memory_tab.run_button.isEnabled())
+        self.assertEqual(page.memory_tab.blocked_note.text(),
+                         _("bench.tabs.busy").format(test=_("bench.tab.disk")))
+        page.disk_tab.running_changed.emit(False)
+        self.assertTrue(page.cpu_tab.run_button.isEnabled())
+        self.assertTrue(page.memory_tab.run_button.isEnabled())
+        page.memory_tab.running_changed.emit(True)
+        self.assertEqual(page.disk_tab.blocked_note.text(),
+                         _("bench.tabs.busy").format(test=_("bench.tab.memory")))
+        self.assertFalse(page.disk_tab.run_button.isEnabled())
+        page.memory_tab.running_changed.emit(False)
 
     def test_the_tabs_that_exist_and_no_other(self):
         from silux.settings import Preferences
@@ -722,11 +736,13 @@ class TestOneTestAtATime(TabCase):
         page = BenchmarksPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
         self.addCleanup(page.deleteLater)
         self.assertEqual([b.text() for b in page.buttons.values()],
-                         [_("bench.tab.cpu"), _("bench.tab.memory")])
+                         [_("bench.tab.cpu"), _("bench.tab.memory"), _("bench.tab.disk")])
         self.assertEqual(page.tab, "cpu")
         self.assertTrue(page.select_tab("memory"))
         self.assertIs(page.stack.currentWidget(), page.memory_tab)
-        self.assertFalse(page.select_tab("disk"))
+        self.assertTrue(page.select_tab("disk"))
+        self.assertIs(page.stack.currentWidget(), page.disk_tab)
+        self.assertFalse(page.select_tab("network"))
 
 
 class TestTheRestOfTheWindow(unittest.TestCase):
