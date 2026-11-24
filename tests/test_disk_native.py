@@ -7,6 +7,7 @@ and a lap arrive in Python as they should.
 from __future__ import annotations
 
 import errno
+import itertools
 import os
 import pathlib
 import shutil
@@ -77,10 +78,14 @@ class TestDiskFile(unittest.TestCase):
     def test_a_lap_says_what_moved_and_how_long_each_request_took(self):
         file = self.file()
         file.fill()
-        for pattern, direction, block, depth in (
-                ("sequential", "read", MIB, 2), ("random", "write", 4096, 4)):
-            lap = file.lap(pattern, direction, block=block, depth=depth, seconds=0.6)
-            self.assertEqual((lap["engine"], lap["threads"]), ("threads", depth))
+        engines = ["threads"] + ([] if silux_bench.uring_error() else ["uring"])
+        for engine, (pattern, direction, block, depth) in itertools.product(engines, (
+                ("sequential", "read", MIB, 2), ("random", "write", 4096, 4))):
+            lap = file.lap(pattern, direction, block=block, depth=depth, seconds=0.6,
+                           engine=engine)
+            # A thread for each request in flight, or one for them all.
+            self.assertEqual((lap["engine"], lap["threads"]),
+                             (engine, depth if engine == "threads" else 1))
             self.assertGreater(lap["requests"], 0)
             self.assertEqual(lap["bytes"], lap["requests"] * block)
             self.assertGreaterEqual(lap["elapsed_ns"], 550_000_000)
@@ -125,6 +130,8 @@ class TestDiskFile(unittest.TestCase):
              "bad_setting", {"setting": "direction"}),
             (lambda: file.lap("random", "read", block=4096, depth=0, seconds=1),
              "bad_setting", {"setting": "depth"}),
+            (lambda: file.lap("random", "read", block=4096, depth=1, seconds=1, engine="libaio"),
+             "bad_setting", {"setting": "engine"}),
             (lambda: file.lap("random", "read", block=4097, depth=1, seconds=1),
              "bad_size", {"bytes": 4097}),
         )
@@ -149,6 +156,24 @@ class TestDiskFile(unittest.TestCase):
         self.assertLess(error.details["free"], error.details["needed"])
         self.assertGreater(error.details["free"], 0)
         self.assertEqual(os.listdir(self.folder), [])
+
+    def test_the_ring_is_there_or_the_kernel_says_why_not(self):
+        why = silux_bench.uring_error()
+        file = self.file()
+        file.fill()
+        if why is None:
+            lap = file.lap("random", "read", block=4096, depth=4, seconds=0.3)
+            self.assertEqual(lap["engine"], "uring")
+            return
+        # A container, or a system that forbids them: the lap says the same
+        # and the threads still measure.
+        self.assertGreater(why, 0)
+        with self.assertRaises(silux_bench.SiluxBenchError) as raised:
+            file.lap("random", "read", block=4096, depth=4, seconds=0.3)
+        self.assertEqual((raised.exception.args[0], raised.exception.details),
+                         ("no_uring", {"errno": why}))
+        lap = file.lap("random", "read", block=4096, depth=4, seconds=0.3, engine="threads")
+        self.assertEqual(lap["engine"], "threads")
 
     def test_a_closed_file_is_gone_and_says_so(self):
         file = self.file()

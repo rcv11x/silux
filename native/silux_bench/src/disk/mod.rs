@@ -7,6 +7,9 @@ pub mod job;
 pub mod run;
 pub mod target;
 pub mod threads;
+pub mod uring;
 
+#[cfg(test)]
+mod engines;
 #[cfg(test)]
 mod killed;

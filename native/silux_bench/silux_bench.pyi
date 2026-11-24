@@ -115,6 +115,7 @@ class DiskFile:
         block: int,
         depth: int,
         seconds: float,
+        engine: str = "uring",
         seed: int = 1,
         control: Optional[Control] = None,
     ) -> Lap: ...
@@ -131,3 +132,7 @@ class DiskFile:
     def filesystem(self) -> int: ...
     @property
     def align(self) -> tuple[int, int, bool]: ...
+
+def uring_error() -> Optional[int]:
+    """The errno the kernel answers to making an io_uring ring, or None
+    where there is one."""

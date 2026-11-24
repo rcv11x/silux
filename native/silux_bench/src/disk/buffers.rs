@@ -95,9 +95,44 @@ pub fn stamps(block: &[u8]) -> impl Iterator<Item = (u64, u64)> + '_ {
     })
 }
 
+/// Check that a block read from `offset` is the one that lives there, by
+/// the stamp it begins with. Every block of the file carries one since it
+/// was filled, so a read that brings another block is a bug of ours: a
+/// figure made of the wrong blocks is not a measurement.
+pub fn check_read(block: &[u8], offset: u64) -> Result<()> {
+    // A block that doesn't begin where a stamp goes can't be told.
+    if !offset.is_multiple_of(STAMP_EVERY as u64) {
+        return Ok(());
+    }
+    match stamps(block).next() {
+        Some((place, _)) if place != offset => Err(Error::Internal(format!(
+            "the block read at offset {offset} says it belongs at {place}"
+        ))),
+        _ => Ok(()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_block_read_from_elsewhere_is_told_by_its_stamp() {
+        let mut buffer = Buffer::random(2 * STAMP_EVERY, 4096, &mut Rng::new(3)).unwrap();
+        buffer.stamp(8192, 1);
+        assert_eq!(check_read(buffer.as_slice(), 8192), Ok(()));
+        let found = check_read(buffer.as_slice(), 4096);
+        let Err(Error::Internal(text)) = &found else {
+            panic!("{found:?}");
+        };
+        assert!(
+            text.contains("read at offset 4096 says it belongs at 8192"),
+            "{text}"
+        );
+        // Where no stamp begins the block there is nothing to compare.
+        assert_eq!(check_read(buffer.as_slice(), 4096 + 512), Ok(()));
+        assert_eq!(check_read(&[], 4096), Ok(()));
+    }
 
     #[test]
     fn starts_where_it_was_asked_to() {

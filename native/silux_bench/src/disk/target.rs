@@ -252,7 +252,7 @@ impl Target {
     /// A request that isn't aligned as the file asks is a bug of ours, and
     /// is stopped here: some file systems would serve it through the page
     /// cache without a word instead of refusing it.
-    fn check_aligned(
+    pub(crate) fn check_aligned(
         &self,
         call: &'static str,
         address: usize,
@@ -276,7 +276,17 @@ impl Target {
 
     /// The error of a request the kernel just refused.
     fn refused(&self, call: &'static str, len: usize, offset: u64) -> Error {
-        let errno = errno();
+        self.refused_with(call, errno(), len, offset)
+    }
+
+    /// The error of a request the kernel refused with `errno`.
+    pub(crate) fn refused_with(
+        &self,
+        call: &'static str,
+        errno: i32,
+        len: usize,
+        offset: u64,
+    ) -> Error {
         let free = filesystem_of(&self.file).ok().map(|(_, free)| free);
         refused(call, errno, self.align, len, offset, free)
     }

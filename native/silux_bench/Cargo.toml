@@ -13,6 +13,8 @@ name = "silux_bench"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+# Only the ring: no liburing and nothing in C. `bindgen` and `sc` stay off.
+io-uring = { version = "0.7", default-features = false }
 libc = "0.2"
 pyo3 = { version = "0.30", features = ["abi3-py310"], optional = true }
 

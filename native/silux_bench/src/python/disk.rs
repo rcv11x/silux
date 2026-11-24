@@ -13,7 +13,7 @@ use super::{control_of, guarded, to_python, Control, SiluxBenchError};
 use crate::common::error::Error;
 use crate::disk::job::{Direction, Job, Pattern};
 use crate::disk::target::{Creation, Target};
-use crate::disk::threads;
+use crate::disk::{threads, uring};
 
 /// The file a disk test reads and writes: made in `folder` without a name,
 /// so that it is gone when this object is, whatever happens to the process.
@@ -60,9 +60,11 @@ impl DiskFile {
 
     /// One lap: `pattern` ("sequential" or "random") and `direction` ("read"
     /// or "write") in requests of `block` bytes, `depth` of them in flight,
-    /// for `seconds`. Returns what moved, how long it took and how long each
-    /// request did.
-    #[pyo3(signature = (pattern, direction, *, block, depth, seconds, seed = 1, control = None))]
+    /// for `seconds`. `engine` is "uring", a real queue kept by one thread,
+    /// or "threads", a thread for each request in flight: what is left
+    /// where `uring_error` says there is no ring. Returns what moved, how
+    /// long it took and how long each request did.
+    #[pyo3(signature = (pattern, direction, *, block, depth, seconds, engine = "uring", seed = 1, control = None))]
     #[allow(clippy::too_many_arguments)]
     fn lap<'py>(
         &self,
@@ -72,9 +74,15 @@ impl DiskFile {
         block: usize,
         depth: usize,
         seconds: f64,
+        engine: &str,
         seed: u64,
         control: Option<&Bound<'py, Control>>,
     ) -> PyResult<Bound<'py, PyDict>> {
+        let (engine, run): (_, fn(&Target, &Job, &_) -> _) = match engine {
+            "uring" => ("uring", uring::run),
+            "threads" => ("threads", threads::run),
+            _ => return Err(to_python(&Error::BadSetting("engine"))),
+        };
         let job = Job {
             pattern: match pattern {
                 "sequential" => Pattern::Sequential,
@@ -92,14 +100,14 @@ impl DiskFile {
             seed,
         };
         let (target, control) = (self.target()?, control_of(control));
-        let lap = guarded(py, move || threads::run(&target, &job, &control))?;
+        let lap = guarded(py, move || run(&target, &job, &control))?;
 
         let samples = PyList::empty(py);
         for sample in &lap.samples {
             samples.append((sample.at_ns, sample.bytes))?;
         }
         let out = PyDict::new(py);
-        out.set_item("engine", "threads")?;
+        out.set_item("engine", engine)?;
         out.set_item("threads", lap.threads)?;
         out.set_item("bytes", lap.bytes)?;
         out.set_item("requests", lap.requests)?;
@@ -173,5 +181,15 @@ impl DiskFile {
     fn align(&self) -> PyResult<(usize, usize, bool)> {
         let align = self.target()?.align();
         Ok((align.memory, align.offset, align.declared))
+    }
+}
+
+/// Why there is no io_uring here, as the errno the kernel answered to making
+/// a ring; `None` where there is one.
+#[pyfunction]
+pub(super) fn uring_error() -> Option<i32> {
+    match uring::probe() {
+        Err(Error::NoUring { errno }) => Some(errno),
+        _ => None,
     }
 }

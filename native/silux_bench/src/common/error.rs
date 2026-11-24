@@ -33,6 +33,9 @@ pub enum Error {
     NoDirect { errno: i32 },
     /// A call on the file failed; errno 0 is a read or a write cut short.
     Io { call: &'static str, errno: i32 },
+    /// The kernel won't give an io_uring ring: it has none, or they are
+    /// forbidden on this system or in this container.
+    NoUring { errno: i32 },
     /// Stopped from outside.
     Cancelled,
     /// A bug of ours: a panic caught before it reached Python.
@@ -57,6 +60,7 @@ impl Error {
             Error::NoSpace { .. } => "no_space",
             Error::NoDirect { .. } => "no_direct",
             Error::Io { .. } => "io",
+            Error::NoUring { .. } => "no_uring",
             Error::Cancelled => "cancelled",
             Error::Internal(_) => "internal",
         }
@@ -91,6 +95,7 @@ impl fmt::Display for Error {
                 )
             }
             Error::Io { call, errno } => write!(f, "{call} failed (errno {errno})"),
+            Error::NoUring { errno } => write!(f, "no io_uring ring here (errno {errno})"),
             Error::Cancelled => write!(f, "cancelled"),
             Error::Internal(why) => write!(f, "internal error: {why}"),
         }

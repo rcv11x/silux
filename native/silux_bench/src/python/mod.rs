@@ -85,7 +85,8 @@ fn details<'py>(py: Python<'py>, error: &Error) -> PyResult<Bound<'py, PyDict>> 
         Error::NoThread { errno }
         | Error::NoFolder { errno }
         | Error::NoWrite { errno }
-        | Error::NoDirect { errno } => details.set_item("errno", errno)?,
+        | Error::NoDirect { errno }
+        | Error::NoUring { errno } => details.set_item("errno", errno)?,
         Error::NoSpace { needed, free } => {
             details.set_item("needed", needed)?;
             details.set_item("free", free)?;
@@ -134,7 +135,7 @@ fn allowed_cpus() -> Vec<usize> {
 #[pymodule]
 mod silux_bench {
     #[pymodule_export]
-    use super::disk::DiskFile;
+    use super::disk::{uring_error, DiskFile};
     #[pymodule_export]
     use super::memory::{instruction_sets, latency_curve, memory_bandwidth};
     #[pymodule_export]
