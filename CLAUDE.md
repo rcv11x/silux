@@ -182,15 +182,17 @@ código nuevo:
   contador también: un vatio negativo o por encima de lo que da la pieza no
   entra en la gráfica, ni en el máximo, ni en la media, y el informe dice sus
   números. Es la red, detrás de la ventana válida, no el arreglo.
-- **Si el driver no da una medida, no se rellena con otra**: ni con un
-  límite, ni con otra cifra que publique al lado (un búfer de muestras), ni
-  con lo de otra pieza. Sale sin dato y con su nota, y el informe dice qué
-  contestó cada llamada. La misma medida por otra vía del driver (la media
-  de un segundo donde no está la instantánea) vale; lo que su propia
-  herramienta da como N/A, no. Y **un dato solo aparece con su propio
-  nombre**: lo que sale de otra fuente (el voltaje nominal del SPD, la
-  resolución preferida del EDID) lo dice en el propio campo, no solo al pie,
-  y en `--json` va en un campo que se llama como lo que es.
+- **Si el driver no da una medida, su sitio no se rellena con otra cifra**:
+  ni con un límite, ni con lo de otra pieza. La medida sale sin dato y con
+  su nota, y el informe dice qué contestó cada llamada. La misma medida por
+  otra vía del driver (la media de un segundo donde no está la instantánea)
+  vale. Otra cifra que el driver publique al lado (un búfer de muestras, una
+  estimación) **sale con su propio nombre**: en su fila y en su campo,
+  diciendo qué es y de cuándo, nunca con el nombre de la medida ni en sus
+  gráficas. Y **un dato solo aparece con su propio nombre**: lo que sale de
+  otra fuente (el voltaje nominal del SPD, la resolución preferida del EDID)
+  lo dice en el propio campo, no solo al pie, y en `--json` va en un campo
+  que se llama como lo que es.
 - **El color de una temperatura sale solo de los límites que declara la
   pieza** (`silux/thermal.py`): normal, ámbar desde su `max` y rojo desde
   su `crit`; sin límites, sin color, y nunca uno inventado ni un degradado.
@@ -422,7 +424,8 @@ cambia el otro.
   y la foto de cada uno se comparte en el proceso (`shared_snapshot`) salvo
   si el test parchea algo.
 - La suite pinta con DejaVu Sans a 9 pt, la letra del CI (`tests/qt.py`): un
-  ancho que cabe con la de quien desarrolla no dice nada. Con pytest, cada
+  ancho que cabe con la de quien desarrolla no dice nada. Donde el sistema no
+  la tiene, se carga la de `tests/fixtures/fonts/`. Con pytest, cada
   clase empieza sin tema, como sola, y cada test con esa letra
   (`tests/conftest.py`): el orden no cambia lo que ve un test. Un test que
   mide anchos o alturas aplica en su clase el tema que quiere.
