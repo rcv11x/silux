@@ -144,7 +144,7 @@ def _processor(snapshot: Snapshot) -> str:
             f"firma {render.signature(cpu_type.signature)}",
             f"- Microcódigo: {cpu_type.microcode or '—'}",
             f"- Relojes: base {render.hz(clocks.base_hz)} · "
-            f"máx kernel {render.hz(clocks.max_hz)} · "
+            f"máx kernel {render.kernel_ceiling(clocks, in_spanish)} · "
             f"máx silicio {render.hz(clocks.max_turbo_hz)} · "
             f"bus {render.hz(clocks.bus_hz, 0)}",
             f"- Driver: {clocks.driver or '—'} · {clocks.governor or '—'}",

@@ -174,3 +174,55 @@ class TestALimitLeftOpen(unittest.TestCase):
         self.assertIn(_("cpu.limit.pl2"), text)
         self.assertIn(_("cpu.limit.unlimited"), text)
         self.assertNotIn("4095", text)
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestFavouredCores(unittest.TestCase):
+    """With Turbo Boost Max 3.0 each core has its own ceiling: the type's is
+    the highest, and the page says some reach higher instead of «the kernel
+    caps it». The i7-12700KF's annex kept cpu0's (4.90 GHz) and cpu16's only:
+    the others are added with the shape of a favoured pair."""
+
+    @classmethod
+    def setUpClass(cls):
+        import shutil
+        import tempfile
+
+        cls.app = qt.app()
+        tmp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(tmp.cleanup)
+        dump = shutil.copytree(EQUIPOS / "i7-12700kf", f"{tmp.name}/i7-12700kf", symlinks=True)
+        policies = f"{dump}/sys/devices/system/cpu/cpufreq"
+        for cpu in range(1, 16):
+            with open(f"{policies}/policy{cpu}/cpuinfo_max_freq", "w") as out:
+                out.write("5000000\n" if cpu in (4, 5) else "4900000\n")
+        cls.snapshot = foto(dump)[0]
+
+    def test_the_type_reaches_its_favoured_cores_ceiling(self):
+        performance = self.snapshot.cpu.types[0].clocks
+        self.assertEqual((performance.max_hz, performance.max_turbo_hz),
+                         (5_000_000_000, 5_000_000_000))
+        self.assertEqual((performance.favoured_cpus, performance.others_max_hz),
+                         ((4, 5), 4_900_000_000))
+        self.assertIsNone(performance.turbo_headroom_hz)
+
+    def test_said_on_the_cpu_page_instead_of_a_cap(self):
+        from PySide6.QtWidgets import QLabel
+
+        sentence = _("clock.max.favoured").format(
+            cpus="4, 5", max=render.hz(5_000_000_000), otros=render.hz(4_900_000_000))
+        with pantalla.Ventana(self.snapshot) as window:
+            window.select_section("CPU")
+            page = window.stack.currentWidget()
+            text = "\n".join(pantalla.textos_de(page))
+            label = next(w for w in page.findChildren(QLabel) if w.text() == sentence)
+            # A fact of the part, not a warning.
+            self.assertEqual(label.objectName(), "Muted")
+        self.assertIn(sentence, text)
+        self.assertNotIn(_("clock.turbo.capped").split("{")[0], text)
+
+    def test_and_in_the_short_report(self):
+        from silux import report
+
+        self.assertIn("máx kernel 5.00 GHz en las CPU 4, 5 y 4.90 GHz en las demás",
+                      report.build(self.snapshot))

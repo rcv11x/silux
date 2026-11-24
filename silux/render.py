@@ -2450,6 +2450,27 @@ def turbo_note(clocks: Clocks) -> Optional[str]:
     return None
 
 
+def favoured_note(clocks: Clocks) -> Optional[str]:
+    """Which CPUs reach the type's ceiling, when not all of them do: a fact
+    of the part, not a warning."""
+    if clocks.favoured_cpus and clocks.others_max_hz:
+        return _("clock.max.favoured").format(
+            cpus=_cpu_range(clocks.favoured_cpus), max=hz(clocks.max_hz),
+            otros=hz(clocks.others_max_hz))
+    return None
+
+
+def kernel_ceiling(clocks: Clocks, translate_key=None) -> str:
+    """«4.90 GHz», or with favoured cores «5.00 GHz en las CPU 2, 3 y 4.90
+    GHz en las demás». `translate_key`, as in `core_type_label`."""
+    tr = translate_key or _
+    if clocks.favoured_cpus and clocks.others_max_hz:
+        return tr("clock.max.split").format(
+            max=hz(clocks.max_hz), cpus=_cpu_range(clocks.favoured_cpus),
+            otros=hz(clocks.others_max_hz))
+    return hz(clocks.max_hz)
+
+
 def _cpu_range(cpus: tuple[int, ...]) -> str:
     """«0-7» instead of «0, 1, 2, 3, 4, 5, 6, 7» when they're consecutive."""
     if not cpus:

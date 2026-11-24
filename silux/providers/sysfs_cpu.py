@@ -282,13 +282,18 @@ class SysfsClocks(Provider):
                 continue
             clocks: Clocks = entry.get("clocks") or Clocks()
             leader = entry["cpus"][0]
-            ceiling = read_int(f"{SYS_CPU}/cpu{leader}/cpufreq/cpuinfo_max_freq")
+            # Every CPU's, not the first one's: favoured cores have a higher
+            # ceiling than the rest of their type.
+            ceilings = {i: khz for i in entry["cpus"]
+                        if (khz := read_int(f"{SYS_CPU}/cpu{i}/cpufreq/cpuinfo_max_freq"))}
+            ceiling = max(ceilings.values(), default=None)
+            lowest = min(ceilings.values(), default=None)
             # acpi-cpufreq doesn't list the boost states: with boost on, the
             # cores run above cpuinfo_max_freq, which is then the top without
             # boost and not a ceiling.
             if (read_text(f"{SYS_CPU}/cpu{leader}/cpufreq/scaling_driver") == "acpi-cpufreq"
                     and read_int(f"{SYS_CPU}/cpufreq/boost") == 1):
-                ceiling = None
+                ceiling = lowest = None
                 if not any(n.path == "cpu.clocks.max_hz" for n in draft.notes):
                     draft.note("cpu.clocks.max_hz", Need.HARDWARE,
                                _("prov.cpu.boosthidden"), _("prov.cpu.boosthidden.hint"))
@@ -303,6 +308,9 @@ class SysfsClocks(Provider):
                 current_hz=int(average),
                 current_from=source,
                 max_hz=ceiling * 1000 if ceiling else clocks.max_hz,
+                favoured_cpus=(tuple(sorted(i for i, khz in ceilings.items() if khz == ceiling))
+                               if ceiling and lowest != ceiling else ()),
+                others_max_hz=lowest * 1000 if ceiling and lowest != ceiling else None,
                 governor=governor or clocks.governor,
                 energy_preference=preference or clocks.energy_preference,
             )

@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: la máxima de cada tipo de núcleo es la de todas sus CPUs, no la de
+  la primera. Con núcleos favoritos (Turbo Boost Max 3.0, los preferidos de
+  AMD), Relojes dice cuáles llegan más alto, en vez de «El kernel limita a
+  4.90 GHz de los 5.00 GHz del silicio».
 - CPU: un límite de potencia de 4095 W, lo máximo que cabe en el registro,
   es la forma del firmware de no poner ninguno: sale como «sin límite»
   (el PL2 de muchas placas de sobremesa), y ya no cuenta como umbral

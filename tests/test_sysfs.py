@@ -118,6 +118,20 @@ class TestCpuHibrida(unittest.TestCase):
         self.assertTrue(by_key["performance"].smt)
         self.assertFalse(by_key["efficiency"].smt)
 
+    def test_favoured_cores_reach_higher_than_the_rest(self):
+        # Turbo Boost Max 3.0: two P-cores above the rest, and not the first.
+        for cpu in range(16):
+            _write(self.root / f"cpu{cpu}" / "cpufreq" / "cpuinfo_max_freq",
+                   "5000000" if cpu in (4, 5, 10, 11) else "4900000")
+        by_key = {t.key: t for t in self._recolectar().freeze().cpu.types}
+        performance = by_key["performance"].clocks
+        self.assertEqual(performance.max_hz, 5_000_000_000)
+        self.assertEqual(performance.favoured_cpus, (4, 5, 10, 11))
+        self.assertEqual(performance.others_max_hz, 4_900_000_000)
+        efficiency = by_key["efficiency"].clocks
+        self.assertEqual((efficiency.max_hz, efficiency.favoured_cpus, efficiency.others_max_hz),
+                         (3_800_000_000, (), None))
+
     def test_totales(self):
         cpu = self._recolectar().freeze().cpu
         self.assertEqual(cpu.total_cores, 12)

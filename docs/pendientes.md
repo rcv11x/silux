@@ -209,14 +209,11 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
-* `providers/sysfs_cpu.py` · media · la máxima del kernel de cada tipo de
-  núcleo se lee solo en su primera CPU. Con Turbo Boost Max 3.0 (o los
-  núcleos preferidos de AMD) cada núcleo tiene la suya: un i7-12700KF da
-  4,90 GHz en cpu0 y 5,00 en sus núcleos favoritos, y la página dice «El
-  kernel limita a 4.90 GHz de los 5.00 GHz del silicio», que casi seguro es
-  falso. Tiene que ser la máxima de las CPUs del tipo. El anexo guarda la
-  `cpufreq` de una CPU por tipo: hace falta que guarde las de todas para
-  probarlo con el volcado `i7-12700kf`.
+* `providers/sysfs_cpu.py` · baja · la máxima de cada tipo de núcleo ya es
+  la de todas sus CPUs, y los núcleos favoritos se dicen; falta verlo con
+  datos de verdad. El volcado `i7-12700kf` (de la prueba11) solo trae la de
+  cpu0 y cpu16, y el test le añade las demás: un anexo nuevo de ese equipo
+  las trae todas.
 * `providers/privileged_memory.py` · media · antes de SMBIOS 3.2, la velocidad
   configurada de un módulo (tipo 17) se daba en MHz de reloj, no en MT/s: en
   una DDR3-1600 son 800. Un FX-8150 con una BIOS de 2013 salía «800 MT/s de

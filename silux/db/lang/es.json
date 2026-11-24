@@ -365,6 +365,8 @@
   "cli.report.unknownsection": "No hay ninguna sección que se llame {names}. Las que hay: {known}.",
   "cli.usage": "uso: ",
   "cli.version": "enseña la versión y sale",
+  "clock.max.favoured": "No todas llegan igual: las CPU {cpus} suben hasta {max} y las demás hasta {otros}. Son sus núcleos favoritos.",
+  "clock.max.split": "{max} en las CPU {cpus} y {otros} en las demás",
   "clock.turbo.capped": "El kernel limita a {actual} de los {max} del silicio",
   "clock.turbo.off": "Turbo desactivado: el silicio llegaría a {max}",
   "core.join": " y ",

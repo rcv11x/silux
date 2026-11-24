@@ -96,6 +96,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
                                             f" · {clocks.energy_preference or render.DASH}"))
         if note := render.turbo_note(clocks):
             lines.append(_row(style, "", style.warn(note)))
+        if note := render.favoured_note(clocks):
+            lines.append(_row(style, "", style.dim(note)))
         if spread := render.core_quality_spread(snapshot.cpu.logical):
             lines.append(_row(style, "Mejores núcleos",
                               f"{render.best_cores(snapshot.cpu.logical)} · {spread}"))

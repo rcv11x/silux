@@ -144,6 +144,12 @@ class TypeSection(QWidget):
         self.turbo_hint.setFont(ui_font(m.small_pt))
         self.turbo_hint.hide()
         clocks_card.body.addWidget(self.turbo_hint)
+        self.favoured_hint = QLabel("")
+        self.favoured_hint.setObjectName("Muted")
+        self.favoured_hint.setWordWrap(True)
+        self.favoured_hint.setFont(ui_font(m.small_pt))
+        self.favoured_hint.hide()
+        clocks_card.body.addWidget(self.favoured_hint)
         # What a machine without a frequency driver has not (rule 5).
         self.clocks_foot = QLabel("")
         self.clocks_foot.setObjectName("Muted")
@@ -306,11 +312,10 @@ class TypeSection(QWidget):
         self.clocks_foot.setText(foot or "")
         self.clocks_foot.setVisible(foot is not None)
 
-        if hint := render.turbo_note(clocks):
-            self.turbo_hint.setText(hint)
-            self.turbo_hint.show()
-        else:
-            self.turbo_hint.hide()
+        for label, note in ((self.turbo_hint, render.turbo_note(clocks)),
+                            (self.favoured_hint, render.favoured_note(clocks))):
+            label.setText(note or "")
+            label.setVisible(note is not None)
 
         self._apply_caches(cpu_type)
         self._apply_features(cpu_type)

@@ -99,6 +99,11 @@ class Clocks:
     current_hz: Optional[int] = None      # mean of this type's cores
     min_hz: Optional[int] = None
     max_hz: Optional[int] = None          # the effective ceiling the kernel applies
+    # When the type's CPUs don't share one ceiling (favoured cores: Turbo
+    # Boost Max 3.0, AMD's preferred cores), the CPUs that reach `max_hz`
+    # and the ceiling of the rest.
+    favoured_cpus: tuple[int, ...] = ()
+    others_max_hz: Optional[int] = None
     base_hz: Optional[int] = None
     # The base at the TDP the machine is configured to now (intel_pstate's
     # `base_frequency`, HWP's guaranteed performance). A laptop whose maker
