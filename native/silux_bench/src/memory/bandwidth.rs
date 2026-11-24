@@ -8,12 +8,13 @@
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Barrier, Condvar, Mutex, PoisonError};
+use std::sync::{Barrier, Mutex};
 use std::thread::Builder;
 
 use crate::common::cancel::Control;
 use crate::common::error::{panic_message, Error, Result};
 use crate::common::frequency::{Meter, Source};
+use crate::common::gate::{Gate, Opener};
 use crate::common::stats::{self, Summary};
 use crate::common::timer::{now_ns, Clock};
 use crate::common::topology::pin_current_thread;
@@ -55,51 +56,6 @@ pub struct Bandwidth {
 
 /// When a thread's repetition began and ended, and the hertz it ran at.
 type Span = (u64, u64, Option<f64>);
-
-/// Holds every thread before its first barrier until all of them exist. The
-/// barrier waits for one thread per CPU, so a thread that couldn't be started
-/// would keep the rest there forever, and the join of any of them too.
-struct Gate {
-    verdict: Mutex<Option<bool>>,
-    opened: Condvar,
-}
-
-impl Gate {
-    fn new() -> Self {
-        Gate {
-            verdict: Mutex::new(None),
-            opened: Condvar::new(),
-        }
-    }
-
-    /// Let the threads through, to measure or to leave. The first verdict
-    /// stands.
-    fn open(&self, measure: bool) {
-        let mut verdict = self.verdict.lock().unwrap_or_else(PoisonError::into_inner);
-        verdict.get_or_insert(measure);
-        self.opened.notify_all();
-    }
-
-    /// Wait for the verdict: whether to measure.
-    fn pass(&self) -> bool {
-        let verdict = self.verdict.lock().unwrap_or_else(PoisonError::into_inner);
-        let verdict = self
-            .opened
-            .wait_while(verdict, |verdict| verdict.is_none())
-            .unwrap_or_else(PoisonError::into_inner);
-        *verdict == Some(true)
-    }
-}
-
-/// Opens the gate without measuring if the thread starting the others
-/// unwinds before it opens it itself: the scope would wait for them.
-struct Opener<'a>(&'a Gate);
-
-impl Drop for Opener<'_> {
-    fn drop(&mut self) {
-        self.0.open(false);
-    }
-}
 
 /// What the threads share: the gate and the barrier, the flag that stops
 /// them all together, how many passes make a repetition long enough, and the
@@ -178,7 +134,7 @@ fn measure(
     kernels::check(settings.isa, settings.operation, settings.non_temporal)?;
     control.begin(settings.repetitions as u64);
     let shared = Shared {
-        gate: Gate::new(),
+        gate: Gate::default(),
         barrier: Barrier::new(cpus.len()),
         stop: AtomicBool::new(false),
         passes: AtomicU64::new(1),
