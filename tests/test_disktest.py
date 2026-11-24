@@ -205,6 +205,13 @@ per_dump(TestWhereOnEveryDump, "every_partition_resolves_to_its_disk",
          _every_partition_resolves_to_its_disk)
 
 
+FIXTURES = pathlib.Path(__file__).parent / "fixtures" / "disktest"
+
+
+def recorded(name: str) -> disktest.Result:
+    return disktest._from_dict(json.loads((FIXTURES / f"{name}.json").read_text(encoding="utf-8")))
+
+
 def _laps(*rates: int) -> tuple[Lap, ...]:
     return tuple(Lap(number, rate, rate / 4096, rate * 5, 50_000.0, 20_000, 48_000, 90_000,
                      200_000, 900_000, ((250_000_000, rate // 4),))
@@ -380,6 +387,37 @@ class TestRunning(unittest.TestCase):
             os.kill(child, signal.SIGKILL)
             self.fail("the child outlived the process that started it")
         self.assertEqual(os.listdir(self.folder), [])
+
+
+class TestRecordedRuns(unittest.TestCase):
+    """Two whole runs with the defaults, recorded on real disks: an NVMe on
+    btrfs and another on ext4."""
+
+    def test_they_read_back_whole(self):
+        for name, disk, filesystem in (("sn850x-btrfs", "nvme0n1", "btrfs"),
+                                       ("970-evo-plus-ext4", "nvme1n1", "ext4")):
+            result = recorded(name)
+            self.assertEqual((result.disks, result.filesystem, result.engine, result.reason),
+                             ((disk,), filesystem, "uring", None), name)
+            self.assertEqual([(m.name, m.direction) for m in result.measures],
+                             [(test.name, direction) for test in disktest.PROFILES["standard"]
+                              for direction in ("read", "write")])
+            for measure in result.measures:
+                self.assertEqual([lap.number for lap in measure.laps], [0, 1, 2, 3, 4, 5])
+                self.assertEqual(measure.cached_bytes, 0)
+                self.assertLessEqual(measure.worst.bytes_per_second,
+                                     measure.median.bytes_per_second)
+                self.assertLessEqual(measure.median.bytes_per_second,
+                                     measure.best.bytes_per_second)
+                # The disk's own counters agree with what was counted.
+                self.assertAlmostEqual(measure.disk_bytes / measure.moved_bytes, 1.0, delta=0.05)
+            self.assertEqual(result.written_bytes, result.bytes_ + sum(
+                m.moved_bytes for m in result.measures if m.direction == "write"))
+            self.assertEqual(disktest.warnings_of(result), ())
+            self.assertGreater(result.temperature_peak_c, result.temperature_start_c)
+            # Saved and read again, it is the same.
+            self.assertEqual(
+                disktest._from_dict(json.loads(json.dumps(dataclasses.asdict(result)))), result)
 
 
 class TestHistory(unittest.TestCase):
