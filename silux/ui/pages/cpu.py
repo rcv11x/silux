@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...features import for_architecture
@@ -104,15 +104,18 @@ class TypeSection(QWidget):
         if title:
             heading = QLabel(title)
             heading.setObjectName("SectionTitle")
+            heading.setWordWrap(True)
             heading.setProperty("report_title", True)
-            # A rule from the heading to the edge sets the group apart from
-            # the cards above it.
-            row = QHBoxLayout()
-            row.setContentsMargins(0, m.section_gap, 0, 0)
-            row.setSpacing(m.grid_hspace)
-            row.addWidget(heading)
-            row.addWidget(Divider(), 1, Qt.AlignmentFlag.AlignVCenter)
-            layout.addLayout(row)
+            # Its own row, the whole width: beside a rule, a wrapping label
+            # takes a guessed width, and without wrapping it can't narrow
+            # with the largest font. The rule under it sets the group apart
+            # from the cards above.
+            block = QVBoxLayout()
+            block.setContentsMargins(0, m.section_gap, 0, 0)
+            block.setSpacing(max(2, m.section_gap // 3))
+            block.addWidget(heading)
+            block.addWidget(Divider())
+            layout.addLayout(block)
             self.report_title_label = heading
 
         processor_card = Card(_("cpu.card.processor"))
