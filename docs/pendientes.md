@@ -335,6 +335,13 @@ la memoria) no va: está propuesto en las notas
   - baja · la copia sin pasar por la caché de un hilo cambia un 10 % entre
     SSE2 y AVX2 según la separación de los dos bloques.
   - baja · compararla con AIDA64 en el mismo equipo.
+  - media · con varios CCD (o varias L3), el ancho de banda de todos los
+    hilos solo deja atrás la L3 de la CPU medida: `make_plan` no conoce la
+    suma de las L3. Con doce CCD de 96 MiB, el GiB repartido cabría en ellas.
+  - baja · la lectura de un hilo varía hasta un 7 % entre pruebas (44 casi
+    siempre, 41–42 algunas veces) sin causa aislada; la mediana de tres
+    bloques no lo arregló. Detalle en
+    [prueba-de-memoria.md](prueba-de-memoria.md).
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
   el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
   distinto tamaño el segundo pisa al primero.

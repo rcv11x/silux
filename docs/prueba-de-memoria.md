@@ -26,10 +26,14 @@ donde acaba cada caché.
 - Cada punto son 7 muestras de al menos 10 ms; se enseña la mediana. Un punto
   disperso se repite solo, hasta dos veces.
 
-**Ancho de banda.** Lectura, escritura y copia sobre un bloque mayor que las
-cachés, con un hilo y con todos, cada hilo fijado a su CPU. La copia cuenta
-lo que lee más lo que escribe, como STREAM. Las escrituras «sin pasar por la
-caché» son las no temporales.
+**Ancho de banda.** Lectura, escritura y copia, con un hilo y con todos,
+cada hilo fijado a su CPU. Un hilo recorre 1 GiB, u ocho veces la caché
+mayor si es más; todos juntos, 1 GiB repartido (o esas ocho veces). Con
+bloques más pequeños la L3 sirve una parte: con una de 96 MiB, un hilo leía
+60 GB/s sobre 128 MiB (más que el máximo teórico de la memoria), 42–44 sobre
+512 MiB y 41–44 sobre 1 o 2 GiB. La copia cuenta lo que lee más lo que
+escribe, como STREAM. Las escrituras «sin pasar por la caché» son las no
+temporales.
 
 ## Lo que acompaña a cada cifra
 
@@ -136,7 +140,43 @@ otra prueba dio 0,90 ns en la L1: los mismos 4,0 ciclos.
 
 La lectura sale por encima de `bw_mem` porque el bucle es otro: con vectores
 de 256 bits (AVX2) da 45 GB/s, y con los de 128 (SSE2), 39,5, a un 4 % de
-`bw_mem`. La diferencia es el bucle, no la memoria.
+`bw_mem`. La diferencia es el bucle, no la memoria. Esa tabla es de antes de
+subir el bloque de un hilo a 1 GiB; la prueba entera con él, seis veces el 24
+por la tarde (15 s cada una):
+
+| Medida, GB/s | Un hilo | Todos los hilos |
+|---|---|---|
+| Lectura | 43,5 · 44,2 · 41,4 · 43,3 · 41,8 · 43,3 | 40,9 · 41,0 · 40,6 · 40,4 · 40,3 · 40,5 |
+| Copia sin caché | 40,4 · 40,0 · 41,2 · 40,7 · 40,8 · 40,8 | 38,7 · 38,8 · 39,0 · 38,9 · 38,6 · 38,9 |
+
+**La lectura con todos los hilos sale por debajo de la de uno, y es de la
+memoria.** `bw_mem rd` con procesos en vez de hilos, sin fijar, con 1 GiB
+repartido entre todos:
+
+| Hilos o procesos | Silux, lectura | `bw_mem -P N rd` |
+|---|---|---|
+| 1 | 41–44 (1 GiB) | 37,1 · 37,7 · 37,5 |
+| 2 | 47,8 · 47,8 · 46,7 | 44,6 · 45,6 · 45,8 |
+| 4 | 44,9 · 45,4 · 42,7 | 44,1 · 44,9 · 44,9 |
+| 8 | 41,2 · 41,5 · 40,9 | 39,9 · 39,9 · 39,0 |
+| 16 | 40,2 · 40,5 · 40,2 | 39,7 · 39,6 · 40,0 |
+
+Con 16 las dos dan lo mismo, y las dos tienen el máximo con dos o cuatro
+flujos y bajan con más. La copia sin caché hace lo mismo con STREAM (42 con
+un hilo, 38,5 con dieciséis). La explicación habitual es que muchas lecturas
+a la vez abren más filas de la memoria y la obligan a cambiar de fila más a
+menudo; no se ha medido aquí. La ventana lo dice debajo de la tabla cuando
+pasa.
+
+**Lo que varía la lectura de un hilo entre pruebas, y lo que no se sabe.**
+Dentro de una medida, las siete repeticiones sobre el mismo bloque se
+separan un 1 %. Entre una medida y la siguiente, cada una sobre un bloque
+recién pedido, salen 44 la mayoría de las veces y 41–42 algunas. Con
+páginas de 4 KiB sale más lento (36) y algo más estable. Medir tres bloques
+y quedarse con la mediana no lo arregló (41,8–44,2 en seis pruebas, y 6 s
+más), así que no es solo qué memoria física le toca a cada bloque. Con todos
+los hilos varía un 1 %. Comparar dos lecturas de un hilo con menos de un 7 %
+de diferencia no dice nada.
 
 ### Lo que falta por validar
 

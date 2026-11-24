@@ -46,9 +46,13 @@ SMALLEST_RAM_BLOCK = 64 * MIB
 FIRST_BLOCK = 4 * KIB
 
 # One thread moves this much per array; with every thread, each its share of
-# MULTI_TOTAL, which a copy takes twice.
-SINGLE_BYTES = 512 * MIB
+# MULTI_TOTAL, which a copy takes twice. Both grow to this many times the
+# largest cache: a block only five times a 96 MiB L3 still read about a tenth
+# faster than one ten times it, part of it served from the cache, and by how
+# much changed from one run to the next.
+SINGLE_BYTES = GIB
 MULTI_TOTAL = GIB
+TIMES_PAST_CACHE_MOVED = 8
 MULTI_SMALLEST = 16 * MIB
 
 # A level's plateau is the blocks that fit in its cache with room: up to
@@ -224,13 +228,16 @@ def make_plan(caches: Sequence[tuple[str, int]], cpus: Sequence[int],
     top = ram_block or min(block, max(largest_cache, FIRST_BLOCK))
     sizes = curve_sizes(top) if top >= FIRST_BLOCK else ()
 
-    single = SINGLE_BYTES
+    moved = max(SINGLE_BYTES, TIMES_PAST_CACHE_MOVED * largest_cache)
+    single = moved - moved % (2 * MIB)
     if room is not None:
         # A copy maps two arrays.
         single = min(single, room // 2 - (room // 2) % (2 * MIB))
     multi = None
     if len(cpus) > 1:
-        total = MULTI_TOTAL if room is None else min(MULTI_TOTAL, room // 2)
+        total = max(MULTI_TOTAL, TIMES_PAST_CACHE_MOVED * largest_cache)
+        if room is not None:
+            total = min(total, room // 2)
         share = total // len(cpus)
         share -= share % (2 * MIB)
         # All of them together have to leave the largest cache behind.

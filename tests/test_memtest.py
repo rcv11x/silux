@@ -69,14 +69,24 @@ class TestPlan(unittest.TestCase):
         # The caches are still walked.
         self.assertEqual(plan.sizes[-1], 12 * MIB)
 
+    def test_one_thread_moves_a_gigabyte(self):
+        """With 512 MiB, a 96 MiB L3 served part of the read: 44 GB/s
+        against 41 over 1 or 2 GiB, and it changed from run to run."""
+        self.assertEqual(self.plan(16 * GIB, l3=96 * MIB).single_bytes, GIB)
+
+    def test_or_eight_times_a_cache_larger_than_an_eighth_of_that(self):
+        plan = self.plan(64 * GIB, l3=256 * MIB)
+        self.assertEqual(plan.single_bytes, 2 * GIB)
+        self.assertEqual(plan.multi_bytes * 4, 2 * GIB)
+
     def test_one_cpu_has_no_all_thread_pass(self):
         self.assertIsNone(self.plan(16 * GIB, cpus=(0,)).multi_bytes)
         self.assertEqual(self.plan(16 * GIB).multi_bytes, 256 * MIB)
 
     def test_many_threads_that_would_stay_in_the_cache_are_not_measured(self):
-        """Sixty-four shares of a gigabyte are 16 MiB each: with a cache of
-        768 MiB all of them together don't leave it."""
-        plan = self.plan(64 * GIB, l3=768 * MIB, cpus=tuple(range(64)))
+        """With 3 GiB free, sixty-four shares are 20 MiB each: with a cache
+        of 768 MiB all of them together don't leave it."""
+        plan = self.plan(3 * GIB, l3=768 * MIB, cpus=tuple(range(64)))
         self.assertIsNone(plan.multi_bytes)
 
 
