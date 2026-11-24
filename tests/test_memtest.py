@@ -1,0 +1,239 @@
+"""The memory test: what it asks for, how it reads a curve, and a short run.
+
+The curves are real: the one in `fixtures/memtest/` is a whole run on a Ryzen
+7 5800X3D, and the short one below it is what an i5-10400 gave. What a test
+checks is the reading of them; the run on whoever executes the suite only
+has to come back whole, with whatever figures that machine gives.
+"""
+
+import dataclasses
+import json
+import pathlib
+import threading
+import unittest
+from unittest import mock
+
+from silux import memtest
+from silux.memtest import GIB, KIB, MIB, Point
+
+FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "memtest" / "5800x3d.json"
+
+# An i5-10400 (L1d 32 KiB, L2 256 KiB, L3 12 MiB), huge pages.
+I5_CACHES = (("L1", 32 * KIB), ("L2", 256 * KIB), ("L3", 12 * MIB))
+I5_CURVE = tuple(Point(size, ns) for size, ns in (
+    (16 * KIB, 0.99), (128 * KIB, 2.96), (4 * MIB, 9.62), (8 * MIB, 23.29),
+    (16 * MIB, 52.86), (48 * MIB, 67.37), (192 * MIB, 66.05), (GIB, 72.01)))
+
+
+def recorded() -> memtest.Result:
+    return memtest._from_dict(json.loads(FIXTURE.read_text(encoding="utf-8")))
+
+
+class TestSizes(unittest.TestCase):
+    def test_two_blocks_per_power_of_two_up_to_the_largest(self):
+        sizes = memtest.curve_sizes(64 * KIB)
+        self.assertEqual(sizes, (4 * KIB, 6 * KIB, 8 * KIB, 12 * KIB, 16 * KIB,
+                                 24 * KIB, 32 * KIB, 48 * KIB, 64 * KIB))
+
+    def test_a_largest_that_is_no_power_of_two_is_still_measured(self):
+        sizes = memtest.curve_sizes(88 * MIB)
+        self.assertEqual(sizes[-1], 88 * MIB)
+        self.assertEqual(list(sizes), sorted(set(sizes)))
+        self.assertTrue(all(size % 64 == 0 for size in sizes))
+
+
+class TestPlan(unittest.TestCase):
+    def plan(self, available, l3=12 * MIB, cpus=(0, 1, 2, 3)):
+        caches = (("L1", 32 * KIB), ("L2", 256 * KIB), ("L3", l3))
+        return memtest.make_plan(caches, cpus, cpu=1, available=available)
+
+    def test_the_ram_is_measured_over_a_gigabyte(self):
+        plan = self.plan(16 * GIB)
+        self.assertEqual((plan.ram_block, plan.ram_block_limited), (GIB, False))
+        self.assertEqual(plan.sizes[-1], GIB)
+
+    def test_or_over_four_times_a_cache_larger_than_a_quarter_of_that(self):
+        self.assertEqual(self.plan(16 * GIB, l3=512 * MIB).ram_block, 2 * GIB)
+
+    def test_with_little_free_memory_the_largest_block_that_fits(self):
+        """And the result says the block was not the method's."""
+        plan = self.plan(GIB)
+        self.assertEqual((plan.ram_block, plan.ram_block_limited), (512 * MIB, True))
+        # A copy maps two arrays, and both have to fit too.
+        self.assertLessEqual(2 * plan.single_bytes, GIB - memtest.membench.FREE_MARGIN)
+
+    def test_without_room_to_leave_the_cache_there_is_no_ram_block(self):
+        plan = self.plan(memtest.membench.FREE_MARGIN + 28 * MIB)
+        self.assertIsNone(plan.ram_block)
+        self.assertFalse(plan.ram_block_limited)
+        # The caches are still walked.
+        self.assertEqual(plan.sizes[-1], 12 * MIB)
+
+    def test_one_cpu_has_no_all_thread_pass(self):
+        self.assertIsNone(self.plan(16 * GIB, cpus=(0,)).multi_bytes)
+        self.assertEqual(self.plan(16 * GIB).multi_bytes, 256 * MIB)
+
+    def test_many_threads_that_would_stay_in_the_cache_are_not_measured(self):
+        """Sixty-four shares of a gigabyte are 16 MiB each: with a cache of
+        768 MiB all of them together don't leave it."""
+        plan = self.plan(64 * GIB, l3=768 * MIB, cpus=tuple(range(64)))
+        self.assertIsNone(plan.multi_bytes)
+
+
+class TestPickCpu(unittest.TestCase):
+    def types(self):
+        cache = lambda level, kind, size: mock.Mock(level=level, kind=kind, size_bytes=size)
+        fast = mock.Mock(cpus=(0, 1, 2, 3), caches=(
+            cache(1, "data", 48 * KIB), cache(1, "instruction", 32 * KIB),
+            cache(2, "unified", 1280 * KIB), cache(3, "unified", 24 * MIB)))
+        small = mock.Mock(cpus=(4, 5), caches=(cache(1, "data", 32 * KIB),))
+        return fast, small
+
+    def test_the_second_cpu_of_the_first_type_with_its_data_caches(self):
+        cpu, caches = memtest.pick_cpu(self.types(), range(6))
+        self.assertEqual(cpu, 1)
+        self.assertEqual(caches, (("L1", 48 * KIB), ("L2", 1280 * KIB), ("L3", 24 * MIB)))
+
+    def test_only_where_this_process_may_run(self):
+        cpu, caches = memtest.pick_cpu(self.types(), [4, 5])
+        self.assertEqual((cpu, caches), (5, (("L1", 32 * KIB),)))
+
+
+class TestReadingTheCurve(unittest.TestCase):
+    def test_each_level_is_the_median_of_the_blocks_that_fit_in_it(self):
+        levels = memtest.levels_from_curve(I5_CURVE, I5_CACHES, GIB)
+        self.assertEqual([(l.level, l.nanoseconds) for l in levels],
+                         [("L1", 0.99), ("L2", 2.96), ("L3", 9.62), ("RAM", 72.01)])
+
+    def test_a_block_as_large_as_its_cache_is_not_its_plateau(self):
+        """8 MiB of a 12 MiB L3 already gave 23 ns: it shares it."""
+        l3 = memtest.levels_from_curve(I5_CURVE, I5_CACHES, GIB)[2]
+        self.assertEqual(l3.bytes_, 4 * MIB)
+
+    def test_without_a_ram_block_there_is_no_ram_level(self):
+        levels = memtest.levels_from_curve(I5_CURVE, I5_CACHES, None)
+        self.assertEqual([l.level for l in levels], ["L1", "L2", "L3"])
+
+    def test_a_whole_run_reads_as_its_caches(self):
+        result = recorded()
+        levels = memtest.levels_from_curve(result.points, result.caches, result.ram_block)
+        self.assertEqual(levels, result.levels)
+        self.assertEqual([l.level for l in levels], ["L1", "L2", "L3", "RAM"])
+        # Zen 3 answers from L1 in four cycles.
+        l1 = levels[0]
+        self.assertAlmostEqual(l1.nanoseconds * l1.frequency_hz / 1e9, 4.0, delta=0.1)
+
+    def test_the_steps_fall_where_the_caches_end(self):
+        for points, caches, levels in (
+                (I5_CURVE, I5_CACHES, memtest.levels_from_curve(I5_CURVE, I5_CACHES, GIB)),
+                (recorded().points, recorded().caches, recorded().levels)):
+            steps = memtest.curve_steps(points, levels, caches)
+            self.assertEqual([s.level for s in steps], ["L1", "L2", "L3"])
+            self.assertTrue(all(s.matches for s in steps), steps)
+
+    def test_a_cache_declared_at_another_size_is_caught(self):
+        """The curve of a 96 MiB L3, read with the 16 MiB a hypervisor could
+        declare: it stays flat far past where that cache would end."""
+        result = recorded()
+        caches = tuple((n, 16 * MIB if n == "L3" else s) for n, s in result.caches)
+        levels = memtest.levels_from_curve(result.points, caches, result.ram_block)
+        steps = {s.level: s for s in memtest.curve_steps(result.points, levels, caches)}
+        self.assertFalse(steps["L3"].matches)
+        self.assertEqual((steps["L3"].flat_until, steps["L3"].rises_by), (64 * MIB, 96 * MIB))
+        self.assertTrue(steps["L1"].matches and steps["L2"].matches)
+
+    def test_two_levels_the_curve_cant_tell_apart_have_no_step(self):
+        points = (Point(16 * KIB, 1.0), Point(128 * KIB, 1.1), Point(GIB, 60.0))
+        caches = (("L1", 32 * KIB), ("L2", 256 * KIB))
+        levels = memtest.levels_from_curve(points, caches, GIB)
+        self.assertEqual([s.level for s in memtest.curve_steps(points, levels, caches)], ["L2"])
+
+
+class TestShare(unittest.TestCase):
+    def test_the_fastest_read_against_what_the_memory_could_move(self):
+        result = dataclasses.replace(recorded(), theoretical_bytes_per_second=51_200_000_000)
+        fastest = max(r.bytes_per_second for r in result.rates if r.operation == "read")
+        self.assertEqual(memtest.share_of_theoretical(result),
+                         round(fastest / 51_200_000_000 * 100, 1))
+
+    def test_without_the_channels_there_is_no_percentage(self):
+        self.assertIsNone(memtest.share_of_theoretical(recorded()))
+
+
+@unittest.skipUnless(memtest.native_module(), "silux_bench is not installed")
+class TestNativeRun(unittest.TestCase):
+    def plan(self) -> memtest.Plan:
+        cpus = tuple(memtest.native_module().allowed_cpus()[:2])
+        return memtest.Plan(
+            cpu=cpus[0], cpus=cpus, sizes=memtest.curve_sizes(64 * KIB), ram_block=None,
+            ram_block_limited=False, single_bytes=2 * MIB,
+            multi_bytes=2 * MIB if len(cpus) > 1 else None,
+            caches=(("L1", 32 * KIB),))
+
+    def test_a_short_run_comes_back_whole(self):
+        phases = []
+        plan = self.plan()
+        result = memtest.run(plan, lambda phase, done: phases.append((phase, done)),
+                             theoretical=1_000_000_000_000)
+        self.assertEqual((result.engine, result.reason), ("native", None), result.detail)
+        self.assertEqual([p.bytes_ for p in result.points], list(plan.sizes))
+        self.assertTrue(all(0 < p.nanoseconds < 10_000 for p in result.points))
+        self.assertEqual(result.cpu, plan.cpu)
+        kinds = {(r.operation, r.non_temporal, r.threads) for r in result.rates}
+        self.assertEqual(len(kinds), len(memtest.OPERATIONS) * (2 if plan.multi_bytes else 1))
+        self.assertTrue(all(r.bytes_per_second > 0 and r.isa for r in result.rates))
+        self.assertEqual([l.level for l in result.levels], ["L1"])
+        # Every point with its frequency, or none of them.
+        with_frequency = [p for p in result.points if p.frequency_hz]
+        self.assertIn(len(with_frequency), (0, len(result.points)))
+        self.assertEqual(bool(with_frequency), result.frequency_source is not None)
+        self.assertEqual(phases[0][0], "latency")
+        self.assertEqual([d for _p, d in phases], sorted(d for _p, d in phases))
+        self.assertIsNotNone(memtest.share_of_theoretical(result))
+
+    def test_stopping_it_says_cancelled(self):
+        stop = threading.Event()
+        stop.set()
+        self.assertEqual(memtest.run(self.plan(), stop=stop).reason, "cancelled")
+
+    def test_a_cpu_that_isnt_there_is_said_not_raised(self):
+        plan = dataclasses.replace(self.plan(), cpu=100_000)
+        result = memtest.run(plan)
+        self.assertEqual(result.reason, "bad_cpu")
+        self.assertFalse(result.measured)
+
+
+class TestWithoutTheModule(unittest.TestCase):
+    def test_the_simple_measure_answers_and_says_it_is(self):
+        plan = memtest.make_plan((("L1", 32 * KIB), ("L2", 256 * KIB)), (0,), cpu=0,
+                                 available=4 * GIB)
+        with mock.patch.object(memtest, "native_module", return_value=None):
+            result = memtest.run(plan)
+        self.assertEqual(result.engine, "simple")
+        self.assertEqual(result.points, ())
+        if result.reason is None:
+            self.assertTrue(result.measured)
+
+
+class TestHistory(unittest.TestCase):
+    def setUp(self):
+        memtest.clear_history()
+        self.addCleanup(memtest.clear_history)
+
+    def test_what_is_saved_comes_back_the_same(self):
+        first = recorded()
+        second = dataclasses.replace(first, timestamp=first.timestamp + 60)
+        memtest.append_history(first)
+        self.assertEqual(memtest.append_history(second), [second, first])
+        self.assertEqual(memtest.load_history(), [second, first])
+
+    def test_a_file_that_isnt_ours_reads_as_none(self):
+        memtest.history_path().parent.mkdir(parents=True, exist_ok=True)
+        for text in ("not json", "[]", '{"version": 99, "tests": []}',
+                     '{"version": 1, "tests": [{"nonsense": 1}]}'):
+            memtest.history_path().write_text(text, encoding="utf-8")
+            self.assertEqual(memtest.load_history(), [], text)
+
+
+if __name__ == "__main__":
+    unittest.main()

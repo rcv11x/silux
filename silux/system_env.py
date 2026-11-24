@@ -5,7 +5,7 @@ and Qt inside the AppImage. Whatever Silux launches inherits that: in Debian
 13, `systemctl` loaded the compat build's `libcrypto` and died with
 «version `OPENSSL_3.4.0' not found», so the boot times were missing; a file
 manager opened from a page would load the AppImage's Qt. A program of the
-system gets its environment back; Silux's own children (`gpuapi`, `membench`)
+system gets its environment back; Silux's own children (`gpuapi`, `membench`, `memtest`)
 run the AppImage's Python and keep it.
 """
 
