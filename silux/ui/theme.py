@@ -680,6 +680,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QPushButton#GhostButton:pressed {{ background: {p.accent_wash}; }}
     QPushButton:hover {{ border-color: {p.accent}; color: {p.accent}; }}
     QPushButton:pressed {{ background: {p.accent_wash}; }}
+    /* A sheet colour overrides the palette's disabled one, so without this a
+       button that can't be pressed looks like one that can. After the hover:
+       of two rules that weigh the same, the later wins. */
+    QPushButton:disabled, QPushButton#Danger:disabled, QPushButton#GhostButton:disabled {{
+        background: {p.surface_alt}; color: {p.disabled}; border-color: {p.line};
+    }}
     /* Los de una fila de una tabla (Renombrar y Borrar en Rendimiento): del
        alto del texto de la fila, no del de un botón suelto. */
     QPushButton[compacto="true"] {{
