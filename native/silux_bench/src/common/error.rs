@@ -19,6 +19,20 @@ pub enum Error {
     NoThread { errno: i32 },
     /// The clock can't time a measurement.
     Clock(&'static str),
+    /// The folder can't be opened as one.
+    NoFolder { errno: i32 },
+    /// The folder is kept in memory (tmpfs, ramfs): there is no disk under it.
+    InMemory,
+    /// The folder is on another machine (NFS, SMB).
+    Network,
+    /// No file can be created in the folder: read-only, or not ours to write.
+    NoWrite { errno: i32 },
+    /// The file doesn't fit: what it needs, margin included, and what is free.
+    NoSpace { needed: u64, free: u64 },
+    /// The file system won't read or write past the page cache here.
+    NoDirect { errno: i32 },
+    /// A call on the file failed; errno 0 is a read or a write cut short.
+    Io { call: &'static str, errno: i32 },
     /// Stopped from outside.
     Cancelled,
     /// A bug of ours: a panic caught before it reached Python.
@@ -36,6 +50,13 @@ impl Error {
             Error::BadCpu { .. } => "bad_cpu",
             Error::NoThread { .. } => "no_thread",
             Error::Clock(_) => "clock",
+            Error::NoFolder { .. } => "no_folder",
+            Error::InMemory => "in_memory",
+            Error::Network => "network",
+            Error::NoWrite { .. } => "no_write",
+            Error::NoSpace { .. } => "no_space",
+            Error::NoDirect { .. } => "no_direct",
+            Error::Io { .. } => "io",
             Error::Cancelled => "cancelled",
             Error::Internal(_) => "internal",
         }
@@ -54,6 +75,22 @@ impl fmt::Display for Error {
             Error::BadCpu { cpu, errno } => write!(f, "can't run on CPU {cpu} (errno {errno})"),
             Error::NoThread { errno } => write!(f, "could not start a thread (errno {errno})"),
             Error::Clock(why) => write!(f, "the clock can't time this: {why}"),
+            Error::NoFolder { errno } => write!(f, "that isn't a folder (errno {errno})"),
+            Error::InMemory => write!(f, "that folder is kept in memory, not on a disk"),
+            Error::Network => write!(f, "that folder is on another machine"),
+            Error::NoWrite { errno } => {
+                write!(f, "no file can be created in that folder (errno {errno})")
+            }
+            Error::NoSpace { needed, free } => {
+                write!(f, "the file needs {needed} bytes and {free} are free")
+            }
+            Error::NoDirect { errno } => {
+                write!(
+                    f,
+                    "no reading or writing past the page cache here (errno {errno})"
+                )
+            }
+            Error::Io { call, errno } => write!(f, "{call} failed (errno {errno})"),
             Error::Cancelled => write!(f, "cancelled"),
             Error::Internal(why) => write!(f, "internal error: {why}"),
         }
