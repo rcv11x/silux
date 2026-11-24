@@ -191,9 +191,9 @@ Disponible 3.4 GiB · sin intercambio
 - Libre: 2.8 GiB
 - Intercambio: sin swap
 
-### Ancho de banda y latencia
+### Última prueba de memoria
 
-Mide cuánto se mueve la memoria de verdad, leyendo un bloque más grande que la caché. Tarda una décima de segundo.
+Sin medir todavía.
 
 ### Lo que falta necesita permisos
 

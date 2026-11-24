@@ -56,6 +56,8 @@ from ..settings import Preferences
 from ..tracking import Tracker
 from . import icons, theme
 from .pages.battery import BatteryPage
+from .pages.benchmarks import TABS as BENCHMARK_TABS
+from .pages.benchmarks import BenchmarksPage
 from .pages.board import BoardPage
 from .pages.caches import CachesPage
 from .pages.cpu import CpuPage
@@ -65,7 +67,6 @@ from .pages.home import HomePage
 from .pages.memory import MemoryPage
 from .pages.monitor import MonitorPage
 from .pages.network import NetworkPage
-from .pages.performance import PerformancePage
 from .pages.settings import SettingsPage
 from .pages.storage import StoragePage
 from .pages.system import SystemPage
@@ -318,7 +319,6 @@ class MainWindow(QMainWindow):
         self.board_page = BoardPage(self._palette, self.prefs)
         self.memory_page = MemoryPage(self._palette, self.prefs)
         self.memory_page.elevation_requested.connect(self._on_elevation_requested)
-        self.memory_page.latencies_measured.connect(self.caches_page.set_latencies)
         self.graphics_page = GraphicsPage(self._palette, self.prefs)
         self.graphics_page.elevation_requested.connect(self._on_elevation_requested)
         self.storage_page = StoragePage(self._palette, self.prefs)
@@ -341,7 +341,10 @@ class MainWindow(QMainWindow):
         self.battery_page = BatteryPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
-        self.performance_page = PerformancePage(self._palette, self.prefs)
+        self.benchmarks_page = BenchmarksPage(self._palette, self.prefs)
+        self.benchmarks_page.memory_tab.measured.connect(self._on_memory_measured)
+        self.memory_page.benchmark_requested.connect(self._open_memory_test)
+        self.memory_page.set_last_test(self.benchmarks_page.memory_tab.result)
         self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
@@ -359,7 +362,7 @@ class MainWindow(QMainWindow):
         for page in (self.home_page, self.cpu_page, self.caches_page, self.board_page,
                      self.memory_page, self.graphics_page, self.storage_page,
                      self.network_page, self.devices_page, self.battery_page,
-                     self.system_page, self.performance_page,
+                     self.system_page, self.benchmarks_page,
                      self.monitor_page, self.settings_page):
             self.stack.addWidget(page)
         self._atrasadas: set = set()
@@ -1382,7 +1385,7 @@ class MainWindow(QMainWindow):
         for page in (self.home_page, self.cpu_page, self.monitor_page, self.caches_page,
                      self.board_page, self.memory_page, self.system_page,
                      self.graphics_page, self.network_page, self.storage_page,
-                     self.devices_page, self.battery_page, self.performance_page,
+                     self.devices_page, self.battery_page, self.benchmarks_page,
                      self.settings_page):
             if page is a_la_vista or (page in con_historia and not hasattr(page, "record")):
                 page.apply(snapshot)
@@ -1394,6 +1397,20 @@ class MainWindow(QMainWindow):
 
         self._ajustar_bateria(snapshot)
 
+    def _on_memory_measured(self, result) -> None:
+        """A memory test just finished: Caches shows each level's latency and
+        Memory its small card, without leaving and coming back."""
+        self.caches_page.set_latencies({l.level: l.nanoseconds for l in result.levels})
+        self.memory_page.set_last_test(result)
+
+    def _open_memory_test(self) -> None:
+        """Performance on its Memory tab. Starts nothing."""
+        self.benchmarks_page.select_tab("memory")
+        self.stack.setCurrentWidget(self.benchmarks_page)
+        row = next((i for i, (key, _on) in enumerate(SECTIONS) if key == "nav.benchmark"), None)
+        if row is not None:
+            self.nav.setCurrentRow(row)
+
     def _paginas_con_historia(self) -> tuple:
         """Las que necesitan cada muestra aunque no se vean.
 
@@ -1404,7 +1421,7 @@ class MainWindow(QMainWindow):
         """
         return (self.home_page, self.cpu_page, self.monitor_page, self.graphics_page,
                 self.network_page, self.storage_page, self.battery_page,
-                self.performance_page)
+                self.benchmarks_page)
 
     def _pagina_a_la_vista(self):
         """La página abierta, o ninguna si la ventana se llegó a ver y ya no
@@ -1606,13 +1623,16 @@ def build_parser():
     parser.add_argument("--samples", type=int, metavar="N", default=MUESTRAS_DE_CAPTURA,
                         help=_("gui.opt.samples"))
     parser.add_argument("--page", metavar=_("gui.metavar.page"), help=_("gui.opt.page"))
+    parser.add_argument("--tab", choices=[key for key, _name in BENCHMARK_TABS],
+                        help=_("gui.opt.tab"))
     parser.add_argument("--welcome", type=int, choices=(1, 2), metavar="N",
                         help=_("gui.opt.welcome"))
     for espanol, ingles in (("--intervalo", "--interval"), ("--oscuro", "--dark"),
                             ("--claro", "--light"), ("--compacto", "--compact"),
                             ("--letra", "--font-scale"), ("--tamano", "--size"),
                             ("--anonimo", "--anonymous"), ("--captura", "--screenshot"),
-                            ("--muestras", "--samples"), ("--pagina", "--page")):
+                            ("--muestras", "--samples"), ("--pagina", "--page"),
+                            ("--pestana", "--tab")):
         parser.alias(espanol, of=ingles)
     return parser
 
@@ -1730,6 +1750,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     # que no era. Para una bandera cuyo único uso es automatizar capturas —para
     # documentación, para un informe— entregar la equivocada en silencio es
     # justo lo que no puede hacer.
+    if args.tab:
+        window.benchmarks_page.select_tab(args.tab)
     if args.page and not window.select_section(args.page):
         print(_("app.page.unknown").format(nombre=args.page), file=sys.stderr)
         print(_("app.page.available").format(

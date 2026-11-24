@@ -649,6 +649,24 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.muted};
     }}
     QPushButton#TextButton:hover {{ color: {p.ink}; text-decoration: underline; }}
+    /* A tab of a page (Performance's tests): its name, and a line of the
+       accent under the one shown. Not Qt's tab bar, whose frame doesn't
+       match the cards. */
+    QPushButton#Tab {{
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 6px 12px;
+        color: {p.muted};
+    }}
+    QPushButton#Tab:hover {{ color: {p.ink}; }}
+    QPushButton#Tab:checked {{
+        background: transparent;
+        color: {p.ink};
+        border-bottom: 2px solid {p.accent};
+        font-weight: 600;
+    }}
     /* Para lo que acompaña a la acción principal sin competir con ella: el
        de al lado es el que la gente ha venido a pulsar. */
     QPushButton#GhostButton {{

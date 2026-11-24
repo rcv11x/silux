@@ -66,6 +66,8 @@ DURACIONES = (
 class PerformancePage(ScrollPage):
     _finished = Signal(object)
     _progressed = Signal(str, float)
+    # Whether a run is under way: the other tests wait for it.
+    running_changed = Signal(bool)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -295,8 +297,20 @@ class PerformancePage(ScrollPage):
 
     # -- ejecución ----------------------------------------------------------
 
+    @property
+    def running(self) -> bool:
+        return self._hilo is not None and self._hilo.is_alive()
+
+    def set_blocked(self, by: str | None) -> None:
+        """Another test is under way, called `by`, or none is."""
+        for button in (self.run_button, self.quick_button):
+            button.setEnabled(by is None and not self.running)
+            button.setToolTip("" if by is None else _("bench.tabs.busy").format(test=by))
+        if by is None:
+            self.quick_button.setToolTip(_("bench.quick.tip"))
+
     def _start(self, quick: bool) -> None:
-        if self._hilo is not None and self._hilo.is_alive():
+        if self.running or not self.run_button.isEnabled():
             return
         self._parar.clear()
         self.cancel_button.setEnabled(True)
@@ -321,6 +335,7 @@ class PerformancePage(ScrollPage):
 
         self._hilo = threading.Thread(target=trabajo, daemon=True)
         self._hilo.start()
+        self.running_changed.emit(True)
 
     def _on_progress(self, que: str, cuanto: float) -> None:
         self.progress.setValue(int(cuanto * 100))
@@ -550,10 +565,12 @@ class PerformancePage(ScrollPage):
 
     def _on_finished(self, resultado: benchmark.Result) -> None:
         self._resultado = resultado
+        self._hilo = None
         self.run_button.setEnabled(True)
         self.quick_button.setEnabled(True)
         self.cancel_button.hide()
         self.progress.hide()
+        self.running_changed.emit(False)
         if not resultado.measures:
             # Cancelada antes de la primera medida: no hay nada que enseñar ni
             # que guardar, y apuntar media prueba en el historial la

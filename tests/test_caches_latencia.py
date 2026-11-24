@@ -45,14 +45,15 @@ class TestLaLatenciaEnSuNivel(unittest.TestCase):
     def test_al_medir_en_memoria_sale_en_cada_fila_sin_salir_de_caches(self):
         with pantalla.Ventana(self.foto) as ventana:
             pagina = self._abrir(ventana)
-            # Lo que emite Memoria al terminar su medida.
-            ventana.memory_page.latencies_measured.emit(dict(MEDIDA))
+            # What Performance's memory tab emits when its test ends.
+            from tests.test_memtest import recorded
+            ventana.benchmarks_page.memory_tab.measured.emit(recorded())
             for _vez in range(4):
                 self.app.processEvents()
             self.assertEqual(pagina.table._headers[-1], _("caches.col.latency"))
             ultimas = {fila[0]: fila[-1] for fila in self._filas(pagina)}
-            self.assertEqual(ultimas, {"L1 datos": "0.9 ns", "L1 instr.": "", "L2": "2.8 ns",
-                                       "L3": "12.0 ns", _("caches.row.ram"): "76.6 ns"})
+            self.assertEqual(ultimas, {"L1 datos": "0.9 ns", "L1 instr.": "", "L2": "2.7 ns",
+                                       "L3": "11.3 ns", _("caches.row.ram"): "77.4 ns"})
             self.assertTrue(pagina.latency_note.isVisible())
             self.assertTrue(pagina.table.isVisible())
 

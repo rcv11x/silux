@@ -11,8 +11,7 @@ hay forma segura de distinguir una vacía de verdad de una fantasma.
 
 from __future__ import annotations
 
-import threading
-from typing import Optional
+import time
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -23,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import db, kernel, membench, render
+from ... import db, kernel, render
 from ...i18n import _
 from ...model import (
     JEDEC_TOP_MTS,
@@ -56,11 +55,6 @@ from ..widgets import (
     paint_level,
     tone_for,
 )
-
-# A partir de esta fracción del techo de la herramienta, la cifra deja de
-# hablar solo de la memoria y hay que decirlo.
-CERCA_DEL_TECHO = 0.85
-
 
 NEED_TITLES = {
     Need.ROOT: "note.needsroot",
@@ -116,12 +110,8 @@ class MemoryPage(ScrollPage):
     explain_requested = Signal()
     permission_snoozed = Signal()
     permission_dismissed = Signal()
-    # La medida corre en otro hilo y en otro proceso; vuelve por aquí, que es
-    # la forma de tocar widgets desde fuera del hilo de la interfaz.
-    _bw_listo = Signal(object)
-    # La latencia de cada nivel, recién medida: nivel → nanosegundos. La
-    # página de Cachés la pone en la fila de cada caché.
-    latencies_measured = Signal(dict)
+    # Someone wants the memory test: it lives in Performance.
+    benchmark_requested = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -192,9 +182,6 @@ class MemoryPage(ScrollPage):
         self._notice_signature: tuple = ()
         self._slot_grids: list[InfoGrid] = []
         self._sin_avisos_de_permisos = False
-        self._cache_mas_grande: Optional[int] = None
-        self._niveles: list = []
-        self._bw_listo.connect(self._pintar_ancho_de_banda)
 
     # -- construcción -------------------------------------------------------
 
@@ -349,158 +336,61 @@ class MemoryPage(ScrollPage):
         return card
 
     def _build_bandwidth(self) -> QWidget:
-        """Lo que la memoria mueve de verdad, medido a petición.
+        """The last memory test, in short, and the way to its tab.
 
-        A petición y no al abrir la página: ocupa la máquina un instante y pide
-        un bloque más grande que la caché, así que quien mira la cifra tiene
-        que saber cuándo se tomó. Una medida que corre sola mientras el equipo
-        hace otra cosa sale peor y nadie sabe por qué.
+        The test itself lives in Performance, with the others: here is only
+        what it gave, next to the modules it was measured on.
         """
-        card = Card(_("memory.card.bandwidth"))
-
-        # Solo la RAM. El bloque que cabe en la caché se sigue midiendo, pero
-        # no como dato: ahí lo que limita no es la memoria sino esta forma de
-        # medir, y las tres cachés de este equipo daban la misma cifra.
-        self.bw_grid = InfoGrid()
-        self.bw_grid.add(_("memory.bw.ram"))
-        self.bw_grid.setVisible(False)
-
-        self.bw_intro = QLabel(_("memory.bw.intro"))
-        self.bw_intro.setObjectName("Muted")
-        self.bw_intro.setWordWrap(True)
-        self.bw_intro.setFont(ui_font(theme.METRICS.small_pt))
-
-        # Debajo del ancho de banda y en su propia rejilla: son dos preguntas
-        # distintas —cuánto cabe por el tubo y cuánto tarda en llegar lo
-        # primero— y juntas en una lista se leen como si fueran lo mismo.
-        self.lat_title = QLabel(_("memory.lat.title"))
-        self.lat_title.setObjectName("FieldName")
-        self.lat_title.setFont(ui_font(theme.METRICS.small_pt))
-        self.lat_title.setVisible(False)
-        self.lat_grid = InfoGrid()
-        for nivel in ("L1", "L2", "L3", "RAM"):
-            self.lat_grid.add(nivel)
-        self.lat_grid.setVisible(False)
-        self.lat_note = QLabel("")
-        self.lat_note.setObjectName("Muted")
-        self.lat_note.setWordWrap(True)
-        self.lat_note.setFont(ui_font(theme.METRICS.small_pt))
-        self.lat_note.setVisible(False)
-
-        self.bw_note = QLabel(_("memory.bw.note"))
-        self.bw_note.setObjectName("Muted")
-        self.bw_note.setWordWrap(True)
-        self.bw_note.setFont(ui_font(theme.METRICS.small_pt))
-        self.bw_note.setVisible(False)
-
-        self.bw_button = QPushButton(_("memory.bw.measure"))
-        self.bw_button.clicked.connect(self._medir_ancho_de_banda)
-
-        fila = QHBoxLayout()
-        fila.setContentsMargins(0, 0, 0, 0)
-        fila.addWidget(self.bw_button)
-        fila.addStretch(1)
-
-        card.body.addWidget(self.bw_intro)
-        card.body.addWidget(self.bw_grid)
-        card.body.addWidget(self.bw_note)
-        card.body.addSpacing(theme.METRICS.card_gap)
-        card.body.addWidget(self.lat_title)
-        card.body.addWidget(self.lat_grid)
-        card.body.addWidget(self.lat_note)
-        card.body.addLayout(fila)
-
-        self._bw_hilo = None
-        self._bw_modulos: tuple = ()
+        card = Card(_("memory.card.lasttest"))
+        self.test_when = QLabel("")
+        self.test_when.setObjectName("Muted")
+        self.test_when.setFont(ui_font(theme.METRICS.small_pt))
+        self.test_summary = QLabel("")
+        self.test_summary.setWordWrap(True)
+        self.test_link = QPushButton("")
+        self.test_link.setObjectName("TextButton")
+        self.test_link.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.test_link.clicked.connect(self.benchmark_requested)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(self.test_link)
+        row.addStretch(1)
+        card.body.addWidget(self.test_when)
+        card.body.addWidget(self.test_summary)
+        card.body.addLayout(row)
+        self.set_last_test(None)
         return card
 
-    # -- ancho de banda -----------------------------------------------------
+    def set_last_test(self, result) -> None:
+        """What the last memory test gave, or that there is none yet."""
+        from ... import memtest
 
-    def _medir_ancho_de_banda(self) -> None:
-        if self._bw_hilo is not None and self._bw_hilo.is_alive():
+        if result is None or not result.measured:
+            self.test_when.hide()
+            self.test_summary.setText(_("memory.lasttest.none"))
+            self.test_link.setText(_("memory.lasttest.measure"))
             return
-        self.bw_button.setEnabled(False)
-        self.bw_button.setText(_("memory.bw.measuring"))
-        cache = self._cache_mas_grande
-        niveles = self._niveles
+        parts = []
+        if (ram := result.level("RAM")) is not None:
+            parts.append(_("memory.lasttest.ram").format(ns=render.nanoseconds(ram.nanoseconds)))
+        if (read := result.rate("read")) is not None:
+            text = _("memory.lasttest.read").format(
+                rate=render.bandwidth(read.bytes_per_second, 1))
+            if (share := memtest.share_of_theoretical(result)) is not None:
+                text += " " + _("memory.lasttest.share").format(pct=f"{share:.0f}")
+            parts.append(text)
+        self.test_when.setText(time.strftime("%d/%m/%Y %H:%M", time.localtime(result.timestamp)))
+        self.test_when.show()
+        self.test_summary.setText(" · ".join(parts))
+        self.test_link.setText(_("memory.lasttest.open"))
 
-        def trabajo() -> None:
-            # Fuera del hilo de la interfaz: son cien milisegundos, pero el
-            # hijo tiene un minuto de plazo y si algo va mal se comería la
-            # ventana entera.
-            self._bw_listo.emit(membench.query(cache, niveles))
-
-        self._bw_hilo = threading.Thread(target=trabajo, daemon=True)
-        self._bw_hilo.start()
-
-    def _pintar_ancho_de_banda(self, resultado) -> None:
-        self.bw_button.setEnabled(True)
-        self.bw_button.setText(_("memory.bw.again"))
-        self.bw_intro.setVisible(False)
-        self.bw_grid.setVisible(True)
-        self.bw_note.setVisible(True)
-
-        self._pintar_latencias(resultado)
-        self.latencies_measured.emit({l.level: l.nanoseconds for l in resultado.latencies})
-        por_donde = {m.where: m for m in resultado.measurements}
-        teorico = render.memory_theoretical_bandwidth(self._bw_modulos)
-        techo = por_donde.get("techo")
-
-        ram = por_donde.get("ram")
-        if ram is None:
-            motivos = {"sin_memoria": "memory.bw.nomem",
-                       "cache_enorme": "memory.bw.hugecache"}
-            self.bw_grid.set(_("memory.bw.ram"), render.DASH)
-            self.bw_note.setText(_(motivos.get(resultado.reason,
-                                               "memory.bw.failed")))
-        else:
-            parte = render.memory_bandwidth_share(ram.bandwidth_bytes, teorico)
-            texto = render.bandwidth(ram.bandwidth_bytes)
-            if parte is not None:
-                texto += "   " + _("memory.bw.share").format(
-                    pct=f"{parte:.0f}", total=render.bandwidth(teorico))
-            self.bw_grid.set(_("memory.bw.ram"), texto)
-            # Una memoria muy rápida puede chocar con el techo de esta forma de
-            # medir, y entonces la cifra habla de la herramienta. Decirlo es la
-            # diferencia entre una medida y un número bajo con cara de medida.
-            if (techo and ram.bandwidth_bytes
-                    > techo.bandwidth_bytes * CERCA_DEL_TECHO):
-                self.bw_note.setText(_("memory.bw.capped").format(
-                    techo=render.bandwidth(techo.bandwidth_bytes)))
-            else:
-                self.bw_note.setText(_("memory.bw.note"))
 
     # -- actualización ------------------------------------------------------
-
-    def _pintar_latencias(self, resultado) -> None:
-        """Cada nivel con lo que tarda un acceso suyo.
-
-        Los que no se hayan podido medir se esconden en vez de salir con un
-        guion: en un procesador sin L3 no falta el dato, es que no hay nivel.
-        """
-        por_nivel = {l.level: l for l in resultado.latencies}
-        hay = bool(por_nivel)
-        self.lat_title.setVisible(hay)
-        self.lat_grid.setVisible(hay)
-        for nivel in ("L1", "L2", "L3", "RAM"):
-            medida = por_nivel.get(nivel)
-            self.lat_grid.set_visible(nivel, medida is not None)
-            if medida is not None:
-                self.lat_grid.set(nivel, render.nanoseconds(medida.nanoseconds))
-
-        motivos = {"cadena_enorme": "memory.lat.partial",
-                   "no_x86": "memory.lat.nox86",
-                   "sin_ejecutable": "memory.lat.noexec"}
-        clave = motivos.get(resultado.latency_reason)
-        texto = _(clave) if clave else (_("memory.lat.note") if hay else "")
-        self.lat_note.setText(texto)
-        self.lat_note.setVisible(bool(texto))
 
     def apply(self, snapshot: Snapshot) -> None:
         self.module_notices.apply(snapshot.driver_hints)
         memory = snapshot.system.memory
         array = snapshot.memory_array
-        modules = snapshot.modules
 
         instalada = snapshot.installed_memory_bytes
         if instalada:
@@ -515,22 +405,6 @@ class MemoryPage(ScrollPage):
         self._nota_spd = next((n for n in snapshot.notes if n.path == "spd"), None)
         self._apply_avisos(snapshot)
         self._apply_badges(snapshot)
-
-        # Para la medida: el tamaño de la caché más grande decide los bloques,
-        # y los módulos, el teórico con el que compararla. Se guardan en cada
-        # muestreo porque la medida la lanza el usuario cuando quiere.
-        self._cache_mas_grande = max(
-            (c.size_bytes for t in snapshot.cpu.types for c in t.caches
-             if c.size_bytes), default=None)
-        self._bw_modulos = modules
-        # Un nivel por cada caché de datos o unificada, del más pequeño al
-        # mayor. Las de instrucciones no entran: por ellas no pasan los datos
-        # que persigue la medida.
-        self._niveles = [list(n) for n in sorted(
-            {(f"L{c.level}", c.size_bytes) for t in snapshot.cpu.types
-             for c in t.caches
-             if c.kind in ("data", "unified") and c.size_bytes},
-            key=lambda par: par[1])]
 
         self.bar.set_segments(
             memory_segments(memory),

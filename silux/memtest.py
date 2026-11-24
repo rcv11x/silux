@@ -140,6 +140,8 @@ class Result:
     # What the memory could move, from its channels and its speed when it was
     # measured: a percentage against today's modules would lie after a change.
     theoretical_bytes_per_second: Optional[int] = None
+    channels: Optional[int] = None
+    speed_mts: Optional[int] = None
     seconds: float = 0.0
     # Why there is nothing, or less than asked: a key the interface translates.
     reason: Optional[str] = None
@@ -159,6 +161,15 @@ class Result:
     @property
     def measured(self) -> bool:
         return bool(self.levels or self.rates)
+
+
+@dataclass(frozen=True)
+class Memory:
+    """What the memory could move when it was measured, and from what."""
+
+    theoretical_bytes_per_second: Optional[int] = None
+    channels: Optional[int] = None
+    speed_mts: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -323,7 +334,7 @@ def native_module():
 
 def run(plan: Plan, on_progress: Optional[Callable[[str, float], None]] = None,
         stop: Optional[threading.Event] = None,
-        theoretical: Optional[int] = None) -> Result:
+        memory: Memory = Memory()) -> Result:
     """Measure in a child process and wait for it. Call from a thread.
 
     `on_progress` gets the phase's key and the fraction done; setting `stop`
@@ -331,7 +342,7 @@ def run(plan: Plan, on_progress: Optional[Callable[[str, float], None]] = None,
     """
     started = time.time()
     if native_module() is None:
-        return _simple(plan, started, theoretical)
+        return _simple(plan, started, memory)
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
@@ -377,11 +388,10 @@ def run(plan: Plan, on_progress: Optional[Callable[[str, float], None]] = None,
     if answer is None:
         return Result("native", started, reason="failed",
                       detail=errors.strip()[-2000:] or f"exit {child.returncode}")
-    return _result(answer, plan, started, theoretical)
+    return _result(answer, plan, started, memory)
 
 
-def _result(answer: dict, plan: Plan, started: float,
-            theoretical: Optional[int]) -> Result:
+def _result(answer: dict, plan: Plan, started: float, memory: Memory) -> Result:
     points = tuple(Point(**p) for p in answer.get("points", ()))
     return Result(
         engine="native", timestamp=started, cpu=answer.get("cpu"), points=points,
@@ -392,12 +402,12 @@ def _result(answer: dict, plan: Plan, started: float,
         ram_block=plan.ram_block, ram_block_limited=plan.ram_block_limited,
         caches=plan.caches, governor=answer.get("governor"),
         energy_preference=answer.get("energy_preference"),
-        theoretical_bytes_per_second=theoretical,
         seconds=round(time.time() - started, 1),
-        reason=answer.get("reason"), detail=answer.get("detail", ""))
+        reason=answer.get("reason"), detail=answer.get("detail", ""),
+        **dataclasses.asdict(memory))
 
 
-def _simple(plan: Plan, started: float, theoretical: Optional[int]) -> Result:
+def _simple(plan: Plan, started: float, memory: Memory) -> Result:
     """`membench`'s measure, as a result of this kind."""
     largest = max((s for _n, s in plan.caches), default=None)
     old = membench.query(largest, [list(c) for c in plan.caches])
@@ -406,9 +416,9 @@ def _simple(plan: Plan, started: float, theoretical: Optional[int]) -> Result:
         engine="simple", timestamp=started,
         levels=tuple(Level(l.level, l.nanoseconds, l.bytes_) for l in old.latencies),
         rates=(Rate("read", 1, ram.bandwidth_bytes),) if ram else (),
-        caches=plan.caches, theoretical_bytes_per_second=theoretical,
-        seconds=round(time.time() - started, 1),
-        reason=None if (ram or old.latencies) else (old.reason or "failed"))
+        caches=plan.caches, seconds=round(time.time() - started, 1),
+        reason=None if (ram or old.latencies) else (old.reason or "failed"),
+        **dataclasses.asdict(memory))
 
 
 # -- the child ---------------------------------------------------------------

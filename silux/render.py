@@ -1101,11 +1101,19 @@ def possible_texts(formatter, top: float) -> list[str]:
     return texts
 
 
-def bandwidth(value: Optional[int]) -> str:
+def bandwidth(value: Optional[int], decimals: int = 0) -> str:
     """Memory bandwidth, in spec sheets' units."""
     if _none(value):
         return DASH
-    return f"{float(value) / 1e9:.0f} GB/s"
+    return f"{float(value) / 1e9:.{decimals}f} GB/s"
+
+
+def core_cycles(nanoseconds: Optional[float], frequency_hz: Optional[float]) -> Optional[float]:
+    """How many of the core's cycles a latency is. A cache answers in
+    cycles, so this is the figure that doesn't move with the clock."""
+    if _none(nanoseconds) or not frequency_hz:
+        return None
+    return float(nanoseconds) * float(frequency_hz) / 1e9
 
 
 def vram_kind(memory: GpuMemory) -> str:
@@ -1253,6 +1261,15 @@ def memory_theoretical_bandwidth(modules) -> Optional[int]:
     that once gave a wrong warning: in single channel memory performs half,
     and this would show a percentage double the real one.
     """
+    parts = memory_theoretical_parts(modules)
+    if parts is None:
+        return None
+    channels, mts = parts
+    return mts * 1_000_000 * 8 * channels
+
+
+def memory_theoretical_parts(modules) -> Optional[tuple[int, int]]:
+    """The populated channels and the MT/s the theoretical figure is made of."""
     channels = memory_channels(modules)
     if not channels:
         return None
@@ -1261,7 +1278,7 @@ def memory_theoretical_bandwidth(modules) -> Optional[int]:
     if not speeds:
         return None
     # The slowest: the controller runs everything at the lowest it's given.
-    return min(speeds) * 1_000_000 * 8 * channels
+    return channels, min(speeds)
 
 
 def memory_bandwidth_share(measured_value: Optional[int], theoretical: Optional[int]) -> Optional[float]:

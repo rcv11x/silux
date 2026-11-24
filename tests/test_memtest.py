@@ -174,7 +174,8 @@ class TestNativeRun(unittest.TestCase):
         phases = []
         plan = self.plan()
         result = memtest.run(plan, lambda phase, done: phases.append((phase, done)),
-                             theoretical=1_000_000_000_000)
+                             memory=memtest.Memory(1_000_000_000_000, 2, 3200))
+        self.assertEqual((result.channels, result.speed_mts), (2, 3200))
         self.assertEqual((result.engine, result.reason), ("native", None), result.detail)
         self.assertEqual([p.bytes_ for p in result.points], list(plan.sizes))
         self.assertTrue(all(0 < p.nanoseconds < 10_000 for p in result.points))
