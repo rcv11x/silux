@@ -133,12 +133,16 @@ la memoria) no va: está propuesto en las notas
   - Batería · baja · la segunda lectura del volcado no guarda la batería:
     la potencia que sale de `energy_now` no se puede comprobar con un
     informe, solo en el equipo.
-  - Gráficos · baja · las dos RTX 4060 de sobremesa (esta, con el 620, y
+  - Gráficos · media · las dos RTX 4060 de sobremesa (esta, con el 620, y
     la del volcado `i7-10700f`, con el 595) dan N/A en los tres consumos de
-    `nvidia-smi`: sus 53 W salían de la media de las muestras, que ya no se
-    usa, y ahora salen sin consumo. El volcado guarda qué llamada dio el
-    consumo (`power_source`): falta confirmarlo con la próxima prueba de
-    cada uno. El estado P (`GetPerformanceState`) no se graba.
+    `nvidia-smi` y salen sin consumo. La tarjeta no tiene sensor: los 53 W
+    del búfer de muestras son la estimación del driver, que en reposo marca
+    unos 40 W de más ([nvml.md](nvml.md#las-tarjetas-sin-sensor-de-consumo)).
+    Por hacer: enseñarla con su nombre («Consumo estimado», en su campo, no
+    en `power_w`), descartar las lecturas imposibles de una portátil recién
+    despertada (588 W en una tarjeta de 95) y llevar al informe lo que
+    contesta cada vía, el búfer y el contador de energía incluidos. El
+    estado P (`GetPerformanceState`) no se graba.
   - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos
     campos: sirve para probar el ayudante de la prueba11 con el IMC, además
     del Lenovo LOQ con DDR5.
