@@ -45,7 +45,7 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
 python3 tools/probar_actualizador.py VIEJO NUEVO  # el actualizador contra un GitHub falso
-uv pip install ./native/silux_bench    # el módulo nativo de la prueba de memoria (pide Rust)
+uv pip install ./native/silux_bench    # el módulo nativo de las pruebas de memoria y de disco (pide Rust)
 (cd native/silux_bench && cargo test --release && cargo clippy --all-targets --features python -- -D warnings)
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
 QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo (-n 4 si corre algo más)
@@ -278,6 +278,11 @@ silux/
 ├─ membench.py     la medida sencilla de la memoria, sin el módulo nativo
 ├─ memtest.py      la prueba de memoria: lanza el módulo nativo en otro
 │                  proceso y lee su curva (niveles, escalones, % del máximo)
+├─ disktest.py     la prueba de disco: qué hay debajo de una carpeta, y
+│                  las pruebas, sus vueltas y sus pausas, en otro proceso
+├─ childrun.py     lanzar una prueba en un proceso hijo y leer lo que dice
+├─ saved.py        el historial de una prueba, que no pierde lo que guardó
+│                  una versión más nueva ni pisa un archivo que no entiende
 ├─ history.py      historial de pruebas de este equipo
 ├─ updates.py      lo único que sale a la red, y solo si se pide: la versión
 │                  nueva y la sustitución comprobada del AppImage

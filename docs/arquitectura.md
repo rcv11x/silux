@@ -214,6 +214,11 @@ silux/
 ├─ membench.py     la medida sencilla de la memoria, sin el módulo nativo
 ├─ memtest.py      la prueba de memoria: lanza el módulo nativo
 │                  (native/silux_bench, en Rust) en otro proceso y lee su curva
+├─ disktest.py     la prueba de disco: qué hay debajo de una carpeta, y
+│                  las pruebas, sus vueltas y sus pausas, en otro proceso
+├─ childrun.py     lanzar una prueba en un proceso hijo y leer lo que dice
+├─ saved.py        el historial de una prueba, que no pierde lo que guardó
+│                  una versión más nueva ni pisa un archivo que no entiende
 ├─ history.py      historial de pruebas de este equipo
 ├─ updates.py      buscar una versión nueva y sustituir el AppImage
 ├─ score.py        la puntuación comparable entre equipos, y su escala
