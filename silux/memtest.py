@@ -630,28 +630,34 @@ def _saved_file() -> Optional[dict]:
     return data if isinstance(data, dict) else None
 
 
-def _saved_rows(data: Optional[dict]) -> list[dict]:
-    """The tests of a file of this version, as they are written. A file that
-    isn't ours has none."""
-    if data is None or data.get("version") != HISTORY_VERSION:
-        return []
-    tests = data.get("tests")
-    return [row for row in tests if isinstance(row, dict)] if isinstance(tests, list) else []
+def _version(data: Optional[dict]) -> Optional[int]:
+    """The version a history file says it is, when it says one."""
+    version = None if data is None else data.get("version")
+    return version if type(version) is int else None
+
+
+def _saved_rows(data: Optional[dict]) -> Optional[list[dict]]:
+    """The tests of a file of this version, as they are written. None for a
+    file that isn't one."""
+    if _version(data) != HISTORY_VERSION or not isinstance(data.get("tests"), list):
+        return None
+    return [row for row in data["tests"] if isinstance(row, dict)]
 
 
 def _set_aside(path: pathlib.Path, data: Optional[dict]) -> None:
-    """Move a history written by another version out of the way, under a
-    name that says which, so that nothing is written over it. Raises
+    """Move out of the way a history this version can't read, so that
+    nothing is written over it: another version's under a name that says
+    which, and one that is cut short or isn't a history as broken. Raises
     `OSError` when it can't be moved."""
-    version = None if data is None else data.get("version")
-    if (version == HISTORY_VERSION or isinstance(version, bool)
-            or not isinstance(version, int)):
+    if _saved_rows(data) is not None or not os.path.lexists(path):
         return
-    aside = path.with_name(f"{path.name}.v{version}")
+    version = _version(data)
+    kind = "broken" if version in (None, HISTORY_VERSION) else f"v{version}"
+    aside = path.with_name(f"{path.name}.{kind}")
     number = 0
-    while aside.exists():
+    while os.path.lexists(aside):
         number += 1
-        aside = path.with_name(f"{path.name}.v{version}.{number}")
+        aside = path.with_name(f"{path.name}.{kind}.{number}")
     path.rename(aside)
 
 
@@ -659,7 +665,7 @@ def load_history() -> list[Result]:
     """Saved tests, newest first. A row that can't be read is left out
     without taking the rest with it."""
     results = []
-    for row in _saved_rows(_saved_file()):
+    for row in _saved_rows(_saved_file()) or ():
         try:
             results.append(_from_dict(row))
         except (TypeError, ValueError, AttributeError):
@@ -670,7 +676,7 @@ def load_history() -> list[Result]:
 def save_history(results: Sequence[Result]) -> bool:
     path = history_path()
     data = _saved_file()
-    saved = _by_identity(_saved_rows(data), lambda row: row.get("timestamp"))
+    saved = _by_identity(_saved_rows(data) or (), lambda row: row.get("timestamp"))
     times = collections.Counter(r.timestamp for r in results)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

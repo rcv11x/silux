@@ -229,7 +229,9 @@ class TestWithoutTheModule(unittest.TestCase):
 class TestHistory(unittest.TestCase):
     def setUp(self):
         memtest.clear_history()
+        self._remove_what_was_set_aside()
         self.addCleanup(memtest.clear_history)
+        self.addCleanup(self._remove_what_was_set_aside)
 
     def test_what_is_saved_comes_back_the_same(self):
         first = recorded()
@@ -360,9 +362,11 @@ class TestHistory(unittest.TestCase):
         text = json.dumps({"version": 2, "tests": [{"of": "a later format"}], "more": 1})
         memtest.history_path().parent.mkdir(parents=True, exist_ok=True)
         memtest.history_path().write_text(text, encoding="utf-8")
-        self.addCleanup(lambda: [aside.unlink() for aside in
-                                 memtest.history_path().parent.glob("memory-tests.json.v*")])
         return text
+
+    def _remove_what_was_set_aside(self) -> None:
+        for aside in memtest.history_path().parent.glob("memory-tests.json.*"):
+            aside.unlink()
 
     def test_a_file_of_another_version_is_set_aside_not_written_over(self):
         path = memtest.history_path()
@@ -387,6 +391,46 @@ class TestHistory(unittest.TestCase):
         with mock.patch.object(pathlib.Path, "rename", side_effect=OSError("read-only")):
             self.assertFalse(memtest.save_history([recorded()]))
         self.assertEqual(memtest.history_path().read_text(encoding="utf-8"), text)
+
+    def test_a_file_that_cant_be_read_is_set_aside_not_written_over(self):
+        path = memtest.history_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        whole = json.dumps({"version": memtest.HISTORY_VERSION,
+                            "tests": [json.loads(FIXTURE.read_text(encoding="utf-8"))]})
+        again = dataclasses.replace(recorded(), timestamp=recorded().timestamp + 60)
+        # Cut short while it was being written, empty, not JSON, not an
+        # object, without a version, and one of ours without its tests.
+        for text in (whole[:len(whole) // 2], "", "not json", "[]", '{"tests": []}',
+                     '{"version": true, "tests": []}', '{"version": 1, "tests": 3}'):
+            self._remove_what_was_set_aside()
+            path.write_text(text, encoding="utf-8")
+            self.assertEqual(memtest.load_history(), [], text)
+            self.assertEqual(memtest.append_history(recorded()), [recorded()], text)
+            aside = path.with_name("memory-tests.json.broken")
+            self.assertEqual(aside.read_text(encoding="utf-8"), text)
+
+            # A second one doesn't take the first one's place.
+            path.write_text(text + " ", encoding="utf-8")
+            memtest.append_history(again)
+            self.assertEqual(aside.read_text(encoding="utf-8"), text)
+            self.assertEqual(path.with_name("memory-tests.json.broken.1")
+                             .read_text(encoding="utf-8"), text + " ")
+            self.assertEqual(memtest.load_history(), [again], text)
+
+    def test_a_file_that_cant_be_read_nor_moved_stays_as_it_is(self):
+        path = memtest.history_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('{"version": 1, "tests": [{"engine": "nat', encoding="utf-8")
+        with mock.patch.object(pathlib.Path, "rename", side_effect=OSError("read-only")):
+            self.assertFalse(memtest.save_history([recorded()]))
+        self.assertEqual(path.read_text(encoding="utf-8"),
+                         '{"version": 1, "tests": [{"engine": "nat')
+
+    def test_saving_ours_sets_nothing_aside(self):
+        memtest.append_history(recorded())
+        memtest.append_history(dataclasses.replace(recorded(), timestamp=1.0))
+        self.assertEqual([p.name for p in memtest.history_path().parent.glob("memory-tests*")],
+                         ["memory-tests.json"])
 
     def test_a_rate_measured_inside_a_cache_isnt_the_memorys(self):
         row = json.loads(FIXTURE.read_text(encoding="utf-8"))
