@@ -14,6 +14,7 @@ algo que crea la suya pide antes esta (`test_desktop`).
 """
 
 import atexit
+import pathlib
 
 _app = None
 
@@ -59,6 +60,7 @@ def app():
                 "se puede crear un widget: quien la crea tiene que pedir antes "
                 "tests.qt.app()")
         _app = actual or QApplication([])
+        _load_ci_font()
         reset_font()
         reset_theme()
     return _app
@@ -71,6 +73,21 @@ def app():
 # that says none, the CI's, rather than this desktop's.
 CI_FONT = "DejaVu Sans"
 CI_FONT_POINTS = 9
+# The same font, for the desktops that don't have it installed: without it
+# the suite fell back to whatever they draw with, and what fit here broke
+# the CI.
+FONTS = pathlib.Path(__file__).parent / "fixtures" / "fonts"
+
+
+def _load_ci_font() -> None:
+    """Give Qt the suite's font where the system has none. Before any widget
+    exists: one already built keeps the font it was laid out with."""
+    from PySide6.QtGui import QFontDatabase
+
+    if CI_FONT in QFontDatabase.families():
+        return
+    for font in sorted(FONTS.glob("*.ttf")):
+        QFontDatabase.addApplicationFont(str(font))
 
 # What a test finds when it starts: this font, and before each class what a
 # new application has, no theme. A window doesn't apply the theme (the

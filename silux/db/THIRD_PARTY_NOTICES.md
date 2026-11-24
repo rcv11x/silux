@@ -185,3 +185,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
+
+# Solo en el repositorio
+
+Lo que sigue no va en el programa ni en ninguno de sus paquetes: lo usan los
+tests.
+
+## DejaVu
+
+<https://dejavu-fonts.github.io/>
+
+`tests/fixtures/fonts/` lleva DejaVu Sans 2.37, normal y negrita, tal como
+las publica su proyecto: la letra con la que pinta la suite donde el sistema
+no la tiene instalada. Su licencia entera va junto a ellas, en
+`tests/fixtures/fonts/LICENSE`, y empieza así:
+
+```
+Fonts are (c) Bitstream (see below). DejaVu changes are in public domain.
+Glyphs imported from Arev fonts are (c) Tavmjong Bah (see below)
+
+Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. Bitstream Vera is
+a trademark of Bitstream, Inc.
+
+Copyright (c) 2006 by Tavmjong Bah. All Rights Reserved.
+```

@@ -31,6 +31,9 @@ def _avisos() -> str:
     return AVISOS.read_text(encoding="utf-8")
 
 
+# The heading after which the notices are of what only the repository has.
+REPOSITORY_ONLY = "\n# Solo en el repositorio\n"
+
 class TestElArchivo(unittest.TestCase):
 
     def test_cada_fuente_de_la_tabla_tiene_su_aviso(self):
@@ -157,10 +160,26 @@ class TestEnAcercaDe(unittest.TestCase):
         names = {"amd.com": "AMD"}
         texto = " ".join(w.text() for w in self.pagina.findChildren(QLabel)
                          if w.isVisibleTo(self.pagina))
-        notices = AVISOS.read_text(encoding="utf-8")
+        # What the program is made with. What only the repository carries
+        # (the suite's font) is no part of it, and About doesn't name it.
+        notices, only_here = AVISOS.read_text(encoding="utf-8").split(REPOSITORY_ONLY)
         for heading in re.findall(r"^## (.+)$", notices, re.M):
             with self.subTest(heading=heading):
                 self.assertIn(names.get(heading, heading), texto)
+        for heading in re.findall(r"^## (.+)$", only_here, re.M):
+            with self.subTest(heading=heading):
+                self.assertNotIn(heading, texto)
+
+    def test_the_suites_font_has_its_notice_among_the_repositorys(self):
+        only_here = AVISOS.read_text(encoding="utf-8").split(REPOSITORY_ONLY)[1]
+        self.assertEqual(re.findall(r"^## (.+)$", only_here, re.M), ["DejaVu"])
+        licence = (qt.FONTS / "LICENSE").read_text(encoding="utf-8")
+        for line in ("Fonts are (c) Bitstream (see below). DejaVu changes are in public domain.",
+                     "Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. Bitstream Vera is",
+                     "Copyright (c) 2006 by Tavmjong Bah. All Rights Reserved."):
+            with self.subTest(line=line):
+                self.assertIn(line, only_here)
+                self.assertIn(line, licence)
 
     def test_el_boton_enseña_los_avisos_enteros(self):
         self.pagina.notices_button.click()
