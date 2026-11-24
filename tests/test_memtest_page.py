@@ -347,6 +347,57 @@ class TestRunningIt(TabCase):
         self.assertTrue(tab.run_button.isEnabled())
 
 
+@unittest.skipUnless(memtest.native_module(), "silux_bench is not installed")
+class TestATestOutlivesTheRebuild(unittest.TestCase):
+    """F-M5: the window rebuilds its pages when the theme or the language
+    changes. The test went on in its child process and was saved, but the new
+    tab didn't know: no progress, «Start» enabled again, and the result only
+    after reopening."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = app()
+        cls.snapshot = shared_snapshot(EQUIPOS / "5800x3d")
+
+    def setUp(self):
+        memtest.clear_history()
+        self.addCleanup(memtest.clear_history)
+
+    def test_changing_the_theme_or_the_language_half_way(self):
+        from silux import i18n
+        from silux.ui import theme
+
+        # The window changes both for the whole process.
+        self.addCleanup(i18n.set_language, i18n.current())
+        self.addCleanup(theme.apply, self.app, "dark", "normal")
+        for change in (dict(theme="light"), dict(language="en")):
+            with self.subTest(**change), pantalla.Ventana(self.snapshot) as window:
+                memtest.clear_history()
+                old = window.benchmarks_page.memory_tab
+                # Long enough to outlast the rebuild on a loaded machine.
+                plan = dataclasses.replace(TestRunningIt.short_plan(self),
+                                           sizes=memtest.curve_sizes(32 * MIB))
+                with mock.patch.object(old, "plan", return_value=plan):
+                    old.start()
+                window._on_preferences(dataclasses.replace(window.prefs, **change))
+                new = window.benchmarks_page.memory_tab
+                self.assertIsNot(new, old)
+                self.assertTrue(new.running)
+                self.assertTrue(new.cancel_button.isVisibleTo(new))
+                self.assertFalse(new.run_button.isEnabled())
+                self.assertFalse(window.benchmarks_page.cpu_tab.run_button.isEnabled())
+                deadline = time.monotonic() + 60
+                while new.running and time.monotonic() < deadline:
+                    self.app.processEvents()
+                    time.sleep(0.01)
+                self.app.processEvents()
+                self.assertEqual(len(memtest.load_history()), 1)
+                self.assertIsNotNone(new.result)
+                self.assertTrue(new.result_card.isVisibleTo(new))
+                self.assertTrue(new.run_button.isEnabled())
+                self.assertTrue(window.benchmarks_page.cpu_tab.run_button.isEnabled())
+
+
 class TestOneTestAtATime(TabCase):
     def test_while_one_runs_the_other_cant_start_and_says_why(self):
         from silux.settings import Preferences

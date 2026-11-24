@@ -22,7 +22,7 @@ from ...i18n import _
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from .memtest import MemoryTestTab
+from .memtest import MemoryTestRun, MemoryTestTab
 from .performance import PerformancePage
 
 # Each tab's key, which `--tab` takes, and its name.
@@ -33,10 +33,13 @@ class BenchmarksPage(QWidget):
     # The tab shown changed, by key.
     tab_changed = Signal(str)
 
-    def __init__(self, palette: Palette, prefs: Preferences, parent=None):
+    def __init__(self, palette: Palette, prefs: Preferences, parent=None,
+                 memory_run: Optional[MemoryTestRun] = None):
+        """`memory_run`: the window's memory test, which outlives this page
+        when the window rebuilds it."""
         super().__init__(parent)
         self.cpu_tab = PerformancePage(palette, prefs)
-        self.memory_tab = MemoryTestTab(palette, prefs)
+        self.memory_tab = MemoryTestTab(palette, prefs, run=memory_run)
         self._tabs = {"cpu": self.cpu_tab, "memory": self.memory_tab}
 
         layout = QVBoxLayout(self)
@@ -71,6 +74,8 @@ class BenchmarksPage(QWidget):
         self.memory_tab.running_changed.connect(
             lambda running: self.cpu_tab.set_blocked(
                 _("bench.tab.memory") if running else None))
+        if self.memory_tab.running:
+            self.cpu_tab.set_blocked(_("bench.tab.memory"))
 
     @property
     def tab(self) -> str:

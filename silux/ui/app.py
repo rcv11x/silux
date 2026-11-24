@@ -65,6 +65,7 @@ from .pages.devices import DevicesPage
 from .pages.graphics import GraphicsPage
 from .pages.home import HomePage
 from .pages.memory import MemoryPage
+from .pages.memtest import MemoryTestRun
 from .pages.monitor import MonitorPage
 from .pages.network import NetworkPage
 from .pages.settings import SettingsPage
@@ -341,7 +342,10 @@ class MainWindow(QMainWindow):
         self.battery_page = BatteryPage(self._palette, self.prefs)
         self.network_page.unit_changed.connect(self._on_network_unit)
         self.system_page = SystemPage(self._palette, self.prefs)
-        self.benchmarks_page = BenchmarksPage(self._palette, self.prefs)
+        if not hasattr(self, "_memory_run"):
+            self._memory_run = MemoryTestRun(self)
+        self.benchmarks_page = BenchmarksPage(self._palette, self.prefs,
+                                              memory_run=self._memory_run)
         self.benchmarks_page.memory_tab.measured.connect(self._on_memory_measured)
         self.benchmarks_page.memory_tab.elevation_requested.connect(self._on_elevation_requested)
         self.memory_page.benchmark_requested.connect(self._open_memory_test)
@@ -553,6 +557,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # noqa: N802
         self.sampler.stop()
+        # Its child would go on measuring for nobody.
+        self._memory_run.cancel()
         if self._instalacion is not None:
             self._instalacion.done.disconnect(self._instalacion_terminada)
             self._instalacion.cancel()

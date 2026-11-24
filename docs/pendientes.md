@@ -370,8 +370,10 @@ la memoria) no va: está propuesto en las notas
 * **F-M3 · `ui/sampler.py`** · media · cerrar la ventana durante un muestreo
   largo (con el diálogo de polkit abierto) aborta el proceso con código 134.
 * **F-M5 · `ui/pages/performance.py`** · media · cambiar tema, densidad,
-  letra, idioma o unidades durante una prueba la mata sin decirlo. Lo mismo a
-  la medida de memoria.
+  letra, idioma o unidades durante la prueba del procesador la mata sin
+  decirlo: la ventana reconstruye las páginas. La de memoria ya sigue
+  (`MemoryTestRun`, que vive en la ventana); la del procesador necesita lo
+  mismo.
 * **F-M7 · `ui/pages/performance.py`** · media · la carga de fondo máxima no
   se ve: `CONDITION_FIELDS` no incluye su fila.
 * **F-M8 · `benchmark.py`** · media · el nombre y la descripción de cada

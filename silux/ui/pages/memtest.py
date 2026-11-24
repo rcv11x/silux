@@ -13,7 +13,7 @@ import threading
 import time
 from typing import Optional
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QObject, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -180,9 +180,64 @@ class LevelTile(Card):
         self.detail.setVisible(cycles is not None)
 
 
+class MemoryTestRun(QObject):
+    """A memory test under way, apart from the tab that shows it.
+
+    The window rebuilds every page when the theme, the font, the language or
+    the units change. The tab goes; the test, which runs in a child process,
+    carries on, and the new tab picks it up here: its progress, its result
+    and the history, saved once whichever tab is showing.
+    """
+
+    progressed = Signal(str, float)
+    # The result, and the history with it when it measured something.
+    finished = Signal(object, object)
+
+    def __init__(self, parent: Optional[QObject] = None):
+        super().__init__(parent)
+        self._thread: Optional[threading.Thread] = None
+        self._stop = threading.Event()
+        # The last step reported, for a tab that arrives half way.
+        self.last: tuple[str, float] = ("", 0.0)
+        self._done.connect(self._on_done)
+
+    _done = Signal(object)
+
+    @property
+    def running(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    @property
+    def cancelling(self) -> bool:
+        return self.running and self._stop.is_set()
+
+    def start(self, plan: memtest.Plan, memory: memtest.Memory) -> bool:
+        if self.running:
+            return False
+        self._stop.clear()
+        self.last = ("", 0.0)
+
+        def step(phase: str, done: float) -> None:
+            self.last = (phase, done)
+            self.progressed.emit(phase, done)
+
+        def work() -> None:
+            self._done.emit(memtest.run(plan, step, self._stop, memory))
+
+        self._thread = threading.Thread(target=work, daemon=True)
+        self._thread.start()
+        return True
+
+    def cancel(self) -> None:
+        self._stop.set()
+
+    def _on_done(self, result: memtest.Result) -> None:
+        self._thread = None
+        history = memtest.append_history(result) if result.measured else None
+        self.finished.emit(result, history)
+
+
 class MemoryTestTab(ScrollPage):
-    _finished = Signal(object)
-    _progressed = Signal(str, float)
     # Whether a test is under way: the other tabs wait for it.
     running_changed = Signal(bool)
     # A test just measured, for the pages that show part of it.
@@ -190,12 +245,13 @@ class MemoryTestTab(ScrollPage):
     # The padlock of what is read with permissions.
     elevation_requested = Signal()
 
-    def __init__(self, palette: Palette, prefs: Preferences, parent=None):
+    def __init__(self, palette: Palette, prefs: Preferences, parent=None,
+                 run: Optional[MemoryTestRun] = None):
+        """`run`: the window's, which outlives this tab; without one, its own."""
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
-        self._thread: Optional[threading.Thread] = None
-        self._stop = threading.Event()
+        self._run = run if run is not None else MemoryTestRun(self)
         self._types: tuple = ()
         self._memory = memtest.Memory()
         # Whether the channels are missing for want of permissions, and with
@@ -222,12 +278,18 @@ class MemoryTestTab(ScrollPage):
         layout.addWidget(self.history_card)
         layout.addStretch(1)
 
-        self._finished.connect(self._on_finished)
-        self._progressed.connect(self._on_progress)
+        self._run.finished.connect(self._on_finished)
+        self._run.progressed.connect(self._on_progress)
         history = memtest.load_history()
         self._paint_history(history)
         if history:
             self.show_result(history[0])
+        if self._run.running:
+            self._show_running()
+            if self._run.cancelling:
+                self._cancel()
+            elif self._run.last[0]:
+                self._on_progress(*self._run.last)
 
     # -- building ------------------------------------------------------------
 
@@ -354,7 +416,7 @@ class MemoryTestTab(ScrollPage):
 
     @property
     def running(self) -> bool:
-        return self._thread is not None and self._thread.is_alive()
+        return self._run.running
 
     def set_blocked(self, by: Optional[str]) -> None:
         """Another test is under way, called `by`, or none is."""
@@ -372,17 +434,9 @@ class MemoryTestTab(ScrollPage):
     def start(self) -> None:
         if self.running or not self.run_button.isEnabled():
             return
-        self._stop.clear()
+        if not self._run.start(self.plan(), self._memory):
+            return
         self._show_running()
-        plan, memory = self.plan(), self._memory
-
-        def work() -> None:
-            self._finished.emit(memtest.run(
-                plan, lambda phase, done: self._progressed.emit(phase, done),
-                self._stop, memory))
-
-        self._thread = threading.Thread(target=work, daemon=True)
-        self._thread.start()
         self.running_changed.emit(True)
 
     def _show_running(self) -> None:
@@ -396,12 +450,12 @@ class MemoryTestTab(ScrollPage):
         self._drop_failure()
 
     def _cancel(self) -> None:
-        self._stop.set()
+        self._run.cancel()
         self.cancel_button.setEnabled(False)
         self.progress.set_state(_("bench.state.cancelling"))
 
     def _on_progress(self, phase: str, done: float) -> None:
-        if self._stop.is_set():
+        if self._run.cancelling:
             return
         self.progress.set_state(_(PHASES.get(phase, "memtest.phase.latency")), done)
 
@@ -411,8 +465,7 @@ class MemoryTestTab(ScrollPage):
             self._failure.deleteLater()
             self._failure = None
 
-    def _on_finished(self, result: memtest.Result) -> None:
-        self._thread = None
+    def _on_finished(self, result: memtest.Result, history) -> None:
         self.run_button.setEnabled(True)
         self.cancel_button.hide()
         self.progress.hide()
@@ -423,7 +476,7 @@ class MemoryTestTab(ScrollPage):
                                        _(REASONS.get(result.reason, "memtest.reason.failed")))
                 self._notices.insertWidget(0, self._failure)
             return
-        self._paint_history(memtest.append_history(result))
+        self._paint_history(history)
         self.show_result(result)
         self.measured.emit(result)
 
@@ -625,4 +678,4 @@ class MemoryTestTab(ScrollPage):
             self.show_result(self.result)
 
     def stop(self) -> None:
-        self._stop.set()
+        self._run.cancel()
