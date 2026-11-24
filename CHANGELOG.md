@@ -12,6 +12,12 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: una integrada ya no se llama como el equipo en el que va («HP
+  EliteDesk 800 G1» en vez de «HD Graphics 4600»): el nombre que pci.ids da
+  al subsistema solo cuenta si es el de la tarjeta. Sin pci.ids en el
+  sistema, una gráfica de Intel se llama por la tabla de Mesa que lleva
+  Silux, y otra sin nombre, por su marca («AMD, gráfica integrada») en vez
+  de «Gráfica 0».
 - CPU: si el procesador no publica su reloj base por ninguna vía (los AMD
   anteriores a Zen), la fila «Base» ya no sale con un guion: lo dice el
   aviso de la página.

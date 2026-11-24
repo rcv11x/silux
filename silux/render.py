@@ -2230,8 +2230,15 @@ def board_name(board) -> str:
 
 
 def gpu_name(gpu) -> str:
-    """The card's name, or which one it is when nothing names it."""
-    return gpu.display_name or _("sensor.dev.gpu").format(n=gpu.index)
+    """The card's name; without one (no pci.ids on the system), its maker and
+    whether it's integrated, «Intel, gráfica integrada»; and with not even
+    the maker, which one it is."""
+    if gpu.display_name:
+        return gpu.display_name
+    if brand := maker(gpu.vendor):
+        kind = "gpu.unnamed.integrated" if gpu.integrated else "gpu.unnamed.card"
+        return _("gpu.unnamed").format(brand=brand, kind=_(kind))
+    return _("sensor.dev.gpu").format(n=gpu.index)
 
 
 def monitor_name(monitor: Optional[Edid]) -> str:

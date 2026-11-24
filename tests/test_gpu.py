@@ -1911,3 +1911,78 @@ class TestEachResolutionUnderItsName(unittest.TestCase):
         snapshot, header, cell = self._table("5800x3d")
         self.assertEqual(header, _("gpu.display.res").upper())
         self.assertIn(cell, {d.resolution for g in snapshot.gpus for d in g.displays})
+
+
+class TestWhatAGpuIsCalled(unittest.TestCase):
+    """pci.ids names a subsystem by what it was sold as: a card's own model,
+    or for a GPU inside a machine, the machine. An HP EliteDesk 800 G1's HD
+    Graphics 4600 was titled «EliteDesk 800 G1». And with no pci.ids on the
+    system (a minimal Debian) an Intel GPU had no name, though Mesa's table
+    ships with Silux."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = pathlib.Path(self._tmp.name)
+
+    def _identity(self, ids, answers):
+        from unittest import mock
+
+        from silux.providers import drm
+        from silux.providers.base import Draft
+
+        for name, value in zip(("vendor", "device", "subsystem_vendor", "subsystem_device"), ids):
+            (self.root / name).write_text(f"0x{value:04x}\n", encoding="utf-8")
+        gpu = {}
+        with mock.patch.object(drm.pciids, "lookup", return_value=answers):
+            drm.DrmGpus._identity(gpu, self.root, Draft())
+        return gpu
+
+    def test_the_machine_is_no_name_for_its_graphics(self):
+        # What the EliteDesk's pci.ids answered, from its report's annex.
+        gpu = self._identity((0x8086, 0x0412, 0x103C, 0x1998), {
+            (0x8086, 0x0412): ("Intel Corporation", "Xeon E3-1200 v3/4th Gen Core "
+                               "Processor Integrated Graphics Controller"),
+            (0x8086, 0x0412, 0x103C, 0x1998): ("Hewlett-Packard Company", "EliteDesk 800 G1"),
+        })
+        self.assertEqual(gpu["name"], "HD Graphics 4600")
+        self.assertEqual(gpu["subsystem_name"], "Hewlett-Packard Company")
+
+    def test_a_cards_own_model_still_names_it(self):
+        # The RX 9070 XT's, as the 5800X3D's dump recorded them.
+        gpu = self._identity((0x1002, 0x7550, 0x148C, 0x2435), {
+            (0x1002, 0x7550): ("Advanced Micro Devices, Inc. [AMD/ATI]",
+                               "Navi 48 [Radeon RX 9070/9070 XT/9070 GRE]"),
+            (0x1002, 0x7550, 0x148C, 0x2435): ("Tul Corporation / PowerColor",
+                                               "Radeon RX 9070 XT 16GB"),
+        })
+        self.assertEqual((gpu["name"], gpu["codename"]), ("Radeon RX 9070 XT 16GB", "Navi 48"))
+
+    def test_without_pci_ids_mesa_names_an_intel_gpu(self):
+        gpu = self._identity((0x8086, 0x9BC5, 0x1462, 0x7D23), {})
+        self.assertEqual(gpu["name"], "UHD Graphics 630")
+
+    def test_with_no_name_at_all_its_maker_and_kind(self):
+        from silux import render
+        from silux.model import Gpu
+
+        self.assertEqual(render.gpu_name(Gpu(vendor="AMD", integrated=True)),
+                         _("gpu.unnamed").format(brand="AMD", kind=_("gpu.unnamed.integrated")))
+        self.assertEqual(render.gpu_name(Gpu(vendor="NVIDIA", integrated=False)),
+                         _("gpu.unnamed").format(brand="NVIDIA", kind=_("gpu.unnamed.card")))
+        self.assertEqual(render.gpu_name(Gpu(index=1)), _("sensor.dev.gpu").format(n=1))
+
+    def test_home_names_it_without_pci_ids(self):
+        from unittest import mock
+
+        from tests import pantalla, qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        qt.app()
+        with mock.patch.object(drm.pciids, "lookup", return_value={}):
+            snapshot = foto(EQUIPOS / "i5-10400")[0]
+        with pantalla.Ventana(snapshot) as window:
+            text = "\n".join(pantalla.textos_de(window.home_page))
+        self.assertIn("UHD Graphics 630", text)
+        self.assertNotIn(_("sensor.dev.gpu").format(n=0), text)
+

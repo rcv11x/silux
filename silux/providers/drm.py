@@ -142,17 +142,34 @@ INTEL = 0x8086
 
 def _intel_commercial_name(name: Optional[str], vendor_id: int, device_id: int) -> Optional[str]:
     """«HD Graphics 4600» where pci.ids says «4th Gen Core Processor
-    Integrated Graphics Controller»: Mesa's name for the device ID."""
-    if vendor_id != INTEL or not name or not _ONLY_A_FAMILY.search(name):
+    Integrated Graphics Controller», or where there is no pci.ids at all:
+    Mesa's name for the device ID, which ships with Silux."""
+    if vendor_id != INTEL or (name and not _ONLY_A_FAMILY.search(name)):
         return name
     from .. import db
 
     commercial = db.intel_gpus().get(f"{device_id:04x}")
-    if commercial:
+    if commercial or not name:
         return commercial
     # Older than Mesa names: «Mobile GM965/GL960 Integrated Graphics».
     name = re.sub(r"\s*\((?:primary|secondary)\)", "", name)
     return re.sub(r"\s+Controller$", "", name.strip())
+
+
+# Words that say nothing of which GPU it is.
+_GENERIC_WORDS = frozenset(("graphics", "controller", "integrated", "series", "mobile",
+                            "and", "with", "the"))
+
+
+def _names_the_gpu(subsystem_model: str, device_name: Optional[str]) -> bool:
+    """Whether a subsystem's name in pci.ids is the card's own («Radeon RX
+    9070 XT» for «Radeon RX 9070/9070 XT/9070 GRE») and not the machine the
+    GPU came in («EliteDesk 800 G1», «ThinkPad T14»), which pci.ids also
+    writes there: it shares a word with the device's name."""
+    def words(text: Optional[str]) -> set[str]:
+        return set(re.findall(r"[a-z]{2,}", (text or "").lower())) - _GENERIC_WORDS
+
+    return bool(words(subsystem_model) & words(device_name))
 
 
 def _split_name(text: str) -> tuple[Optional[str], Optional[str]]:
@@ -401,7 +418,7 @@ class DrmGpus(Provider):
             brand, model = found_one
             gpu["vendor"] = gpu["vendor"] or brand
             gpu["codename"], gpu["name"] = _split_name(model)
-            gpu["name"] = _intel_commercial_name(gpu.get("name"), vendor_id, device_id)
+        gpu["name"] = _intel_commercial_name(gpu.get("name"), vendor_id, device_id)
 
         if subsystem and (found_one := names.get(subsystem[0])):
             # Who built the card and what they called it: what turns «Radeon RX
@@ -409,7 +426,8 @@ class DrmGpus(Provider):
             maker, model = found_one
             gpu["subsystem_name"] = maker or None
             entry_key, marketing_name = _split_name(model)
-            gpu["name"] = marketing_name or gpu.get("name")
+            if marketing_name and _names_the_gpu(marketing_name, gpu.get("name")):
+                gpu["name"] = marketing_name
             gpu["codename"] = gpu.get("codename") or entry_key
 
         # pci.ids only carries the full subsystem line for combinations someone
