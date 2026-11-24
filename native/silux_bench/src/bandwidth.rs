@@ -8,7 +8,8 @@
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Barrier, Mutex};
+use std::sync::{Barrier, Condvar, Mutex, PoisonError};
+use std::thread::Builder;
 
 use crate::cancel::Control;
 use crate::error::{panic_message, Error, Result};
@@ -47,10 +48,56 @@ pub struct Bandwidth {
     pub passes: u64,
 }
 
-/// What the threads share: the barrier, the flag that stops them all
-/// together, how many passes make a repetition long enough, and the first
-/// thing that went wrong.
+/// Holds every thread before its first barrier until all of them exist. The
+/// barrier waits for one thread per CPU, so a thread that couldn't be started
+/// would keep the rest there forever, and the join of any of them too.
+struct Gate {
+    verdict: Mutex<Option<bool>>,
+    opened: Condvar,
+}
+
+impl Gate {
+    fn new() -> Self {
+        Gate {
+            verdict: Mutex::new(None),
+            opened: Condvar::new(),
+        }
+    }
+
+    /// Let the threads through, to measure or to leave. The first verdict
+    /// stands.
+    fn open(&self, measure: bool) {
+        let mut verdict = self.verdict.lock().unwrap_or_else(PoisonError::into_inner);
+        verdict.get_or_insert(measure);
+        self.opened.notify_all();
+    }
+
+    /// Wait for the verdict: whether to measure.
+    fn pass(&self) -> bool {
+        let verdict = self.verdict.lock().unwrap_or_else(PoisonError::into_inner);
+        let verdict = self
+            .opened
+            .wait_while(verdict, |verdict| verdict.is_none())
+            .unwrap_or_else(PoisonError::into_inner);
+        *verdict == Some(true)
+    }
+}
+
+/// Opens the gate without measuring if the thread starting the others
+/// unwinds before it opens it itself: the scope would wait for them.
+struct Opener<'a>(&'a Gate);
+
+impl Drop for Opener<'_> {
+    fn drop(&mut self) {
+        self.0.open(false);
+    }
+}
+
+/// What the threads share: the gate and the barrier, the flag that stops
+/// them all together, how many passes make a repetition long enough, and the
+/// first thing that went wrong.
 struct Shared<'a> {
+    gate: Gate,
     barrier: Barrier,
     stop: AtomicBool,
     passes: AtomicU64,
@@ -99,6 +146,18 @@ pub fn bandwidth(
     clock: &Clock,
     control: &Control,
 ) -> Result<Bandwidth> {
+    measure(cpus, settings, clock, control, |_, builder| builder)
+}
+
+/// `bandwidth`, with `prepare` adjusting each thread's builder by its index:
+/// how a test makes one of them fail to start.
+fn measure(
+    cpus: &[usize],
+    settings: &Settings,
+    clock: &Clock,
+    control: &Control,
+    prepare: impl Fn(usize, Builder) -> Builder,
+) -> Result<Bandwidth> {
     if !(1..=MAX_REPETITIONS).contains(&settings.repetitions) {
         return Err(Error::BadSetting("repetitions"));
     }
@@ -111,6 +170,7 @@ pub fn bandwidth(
     kernels::check(settings.isa, settings.operation, settings.non_temporal)?;
     control.begin(settings.repetitions as u64);
     let shared = Shared {
+        gate: Gate::new(),
         barrier: Barrier::new(cpus.len()),
         stop: AtomicBool::new(false),
         passes: AtomicU64::new(1),
@@ -119,35 +179,33 @@ pub fn bandwidth(
     };
     let target = clock.min_sample_ns();
     let spans: Vec<Vec<(u64, u64)>> = std::thread::scope(|scope| {
+        let opener = Opener(&shared.gate);
         let workers: Vec<_> = cpus
             .iter()
             .enumerate()
             .map(|(index, &cpu)| {
                 let shared = &shared;
-                std::thread::Builder::new()
-                    .name(format!("silux-bench-{cpu}"))
+                prepare(index, Builder::new().name(format!("silux-bench-{cpu}")))
                     .spawn_scoped(scope, move || {
                         worker(cpu, index == 0, settings, target, shared)
                     })
             })
             .collect();
-        let mut spans = Vec::with_capacity(workers.len());
-        let mut spawned = true;
+        let mut handles = Vec::with_capacity(workers.len());
         for worker in workers {
             match worker {
-                Ok(handle) => spans.push(handle.join().unwrap_or_default()),
-                Err(error) => {
-                    spawned = false;
-                    shared.fail(Error::Internal(format!("no thread: {error}")));
-                }
+                Ok(handle) => handles.push(handle),
+                Err(error) => shared.fail(Error::NoThread {
+                    errno: error.raw_os_error().unwrap_or(0),
+                }),
             }
         }
-        if !spawned {
-            // A thread that never started would have left the others at the
-            // barrier: say so instead of returning half a measurement.
-            spans.clear();
-        }
-        spans
+        shared.gate.open(handles.len() == cpus.len());
+        drop(opener);
+        handles
+            .into_iter()
+            .map(|handle| handle.join().unwrap_or_default())
+            .collect()
     });
 
     if let Some(error) = shared.failure.lock().ok().and_then(|mut f| f.take()) {
@@ -178,8 +236,9 @@ pub fn bandwidth(
     })
 }
 
-/// One thread: pin, map and touch its block, time one pass, then the
-/// repetitions in step with the others. Returns when each began and ended.
+/// One thread: wait for the rest to exist, pin, map and touch its block,
+/// time one pass, then the repetitions in step with the others. Returns when
+/// each began and ended.
 fn worker(
     cpu: usize,
     leader: bool,
@@ -188,6 +247,9 @@ fn worker(
     shared: &Shared<'_>,
 ) -> Vec<(u64, u64)> {
     let mut spans = Vec::with_capacity(settings.repetitions);
+    if !shared.gate.pass() {
+        return spans;
+    }
     let copy = settings.operation == Operation::Copy;
     let ready = shared.guarded(|| {
         pin_current_thread(cpu)?;
@@ -333,6 +395,62 @@ mod tests {
             &Control::default(),
         );
         assert!(matches!(result, Err(Error::BadCpu { .. })), "{result:?}");
+    }
+
+    #[test]
+    fn a_thread_that_cannot_start_lets_the_others_go() {
+        let cpus: Vec<usize> = allowed_cpus().into_iter().cycle().take(3).collect();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let clock = Clock::check().unwrap();
+            // No address space holds a stack of 4 EiB: the third spawn fails.
+            let result = measure(
+                &cpus,
+                &settings(Operation::Read, false),
+                &clock,
+                &Control::default(),
+                |index, builder| {
+                    if index == 2 {
+                        builder.stack_size(1 << 62)
+                    } else {
+                        builder
+                    }
+                },
+            );
+            sender.send(result).ok();
+        });
+        let result = receiver
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .expect("the threads that started never came back");
+        assert!(matches!(result, Err(Error::NoThread { .. })), "{result:?}");
+    }
+
+    #[test]
+    fn a_panic_while_starting_them_lets_the_others_go() {
+        let cpus: Vec<usize> = allowed_cpus().into_iter().cycle().take(3).collect();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let clock = Clock::check().unwrap();
+            let unwound = catch_unwind(|| {
+                measure(
+                    &cpus,
+                    &settings(Operation::Read, false),
+                    &clock,
+                    &Control::default(),
+                    |index, builder| {
+                        if index == 2 {
+                            panic!("while starting the third");
+                        }
+                        builder
+                    },
+                )
+            });
+            sender.send(unwound.is_err()).ok();
+        });
+        let unwound = receiver
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .expect("the threads that started never came back");
+        assert!(unwound);
     }
 
     #[test]

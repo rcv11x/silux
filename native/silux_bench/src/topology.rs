@@ -21,7 +21,9 @@ where
                 }
                 work()
             })
-            .map_err(|e| Error::Internal(format!("no thread: {e}")))?;
+            .map_err(|e| Error::NoThread {
+                errno: e.raw_os_error().unwrap_or(0),
+            })?;
         match worker.join() {
             Ok(result) => result,
             Err(payload) => Err(Error::Internal(panic_message(&*payload))),

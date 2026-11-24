@@ -15,6 +15,8 @@ pub enum Error {
     NoMemory { bytes: usize, errno: i32 },
     /// The CPU doesn't exist, or this process may not run on it.
     BadCpu { cpu: usize, errno: i32 },
+    /// The system refused another thread.
+    NoThread { errno: i32 },
     /// The clock can't time a measurement.
     Clock(&'static str),
     /// Stopped from outside.
@@ -32,6 +34,7 @@ impl Error {
             Error::BadSetting(_) => "bad_setting",
             Error::NoMemory { .. } => "no_memory",
             Error::BadCpu { .. } => "bad_cpu",
+            Error::NoThread { .. } => "no_thread",
             Error::Clock(_) => "clock",
             Error::Cancelled => "cancelled",
             Error::Internal(_) => "internal",
@@ -49,6 +52,7 @@ impl fmt::Display for Error {
                 write!(f, "could not map {bytes} bytes (errno {errno})")
             }
             Error::BadCpu { cpu, errno } => write!(f, "can't run on CPU {cpu} (errno {errno})"),
+            Error::NoThread { errno } => write!(f, "could not start a thread (errno {errno})"),
             Error::Clock(why) => write!(f, "the clock can't time this: {why}"),
             Error::Cancelled => write!(f, "cancelled"),
             Error::Internal(why) => write!(f, "internal error: {why}"),
