@@ -138,11 +138,16 @@ otra prueba dio 0,90 ns en la L1: los mismos 4,0 ciclos.
 | Copia sin caché, 1 hilo | 41,0 · 41,2 · 40,5 | STREAM Copy 41,6 · 42,4 · 42,7 |
 | Copia sin caché, 16 hilos | 38,7 · 38,8 · 38,8 | STREAM Copy 38,5 · 38,6 · 38,5 |
 
-La lectura sale por encima de `bw_mem` porque el bucle es otro: con vectores
-de 256 bits (AVX2) da 45 GB/s, y con los de 128 (SSE2), 39,5, a un 4 % de
-`bw_mem`. La diferencia es el bucle, no la memoria. Esa tabla es de antes de
-subir el bloque de un hilo a 1 GiB; la prueba entera con él, seis veces el 24
-por la tarde (15 s cada una):
+La lectura sale por encima de `bw_mem` porque el bucle es otro. Sobre 1 GiB
+en la CPU 1, alternando seis veces cada uno, los vectores de 256 bits (AVX2)
+dan 38,8–41,0 GB/s y los de 128 (SSE2), 35,4–37,1, a un 2 % de `bw_mem`
+medido justo después (35,3–36,1). Con SSE2 las dos cuadran: la diferencia
+es el bucle, no la memoria. Ese rato todo medía un 5 % menos que en la tabla
+de arriba, `bw_mem` también; con el bloque viejo de 512 MiB, que la L3
+servía en parte, había salido 45 frente a 39,5.
+
+Esa tabla es de antes de subir el bloque de un hilo a 1 GiB; la prueba
+entera con él, seis veces el 24 por la tarde (15 s cada una):
 
 | Medida, GB/s | Un hilo | Todos los hilos |
 |---|---|---|
@@ -189,6 +194,9 @@ de diferencia no dice nada.
 - **Un procesador con dos clases de núcleo.** El contador de ciclos se pide
   para la clase del núcleo donde se mide, sin haberlo probado en uno.
 - **Un equipo antiguo**, con el AppImage compatible, y uno con poca memoria.
+- **AVX-512**: el camino de 512 bits no ha corrido nunca en una pieza de
+  verdad (el 5800X3D no lo tiene). Hace falta un Ryzen 7000 o 9000, o un
+  Intel con AVX-512.
 - **ARM**: escrito sin la pieza delante.
 
 ## Límites

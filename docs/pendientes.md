@@ -323,6 +323,8 @@ la memoria) no va: está propuesto en las notas
   - alta · validarla en un Intel de sobremesa, en un procesador con dos
     clases de núcleo y en uno antiguo con el AppImage compatible. El
     contador de ciclos de un híbrido está escrito sin probar.
+  - alta · el camino AVX-512 no ha corrido nunca en una pieza de verdad:
+    hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
   - alta · el CI (`cargo fmt`, `clippy`, `cargo test`, y la suite con el
     módulo y sin él) y el módulo dentro de los dos AppImage, con AVX2 solo
     en las funciones que lo comprueban.
