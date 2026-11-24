@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: si el consumo de una integrada de Intel no se puede leer (sale
+  del contador RAPL del procesador), su página dice por qué en vez de un
+  guion a secas. Dentro de un contenedor, el aviso de RAPL culpa al
+  contenedor, que los esconde, y no a la CPU.
 - Informe: en un sistema sin las bibliotecas gráficas (un servidor, un
   contenedor mínimo), `--report` ya no sale con un error: escribe el
   informe corto y dice qué falta.

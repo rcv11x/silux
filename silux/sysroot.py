@@ -31,7 +31,10 @@ RECORDING_FILE = "grabado.json"
 
 # Not `/dev`: what is read there goes through ioctls, which are recorded.
 # Of `/run`, only udev's database: the rest is sockets and runtime state.
-PREFIXES = ("/sys/", "/proc/", "/etc/", "/run/udev/data/")
+# And the marks Podman and Docker leave: a dump from inside a container is
+# one, and a test must not see the machine running it.
+PREFIXES = ("/sys/", "/proc/", "/etc/", "/run/udev/data/",
+            "/run/.containerenv", "/.dockerenv")
 
 T = TypeVar("T")
 

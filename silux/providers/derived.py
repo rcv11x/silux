@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ..i18n import _
-from ..model import DeviceKind, Need, Sensor, SensorKind, short_brand, thread_name
+from ..model import DeviceKind, Gpu, Need, Sensor, SensorKind, short_brand, thread_name
 from .base import Draft, Provider
 
 # Rounded to one decimal, 0.845 V becomes 0.8 and says nothing: each kind
@@ -44,6 +44,7 @@ class DerivedSensors(Provider):
 
     def collect(self, draft: Draft) -> None:
         self._shared_package(draft)
+        self._power_from_rapl(draft)
         if not draft.types:
             # The GPUs may have data even without an identified processor.
             draft.sensors.extend(self._graphics(draft))
@@ -56,6 +57,22 @@ class DerivedSensors(Provider):
         draft.sensors.extend(self._usage(draft, device))
         draft.sensors.extend(self._graphics(draft))
         draft.sensors.extend(self._network(draft))
+
+    @staticmethod
+    def _power_from_rapl(draft: Draft) -> None:
+        """An Intel GPU inside the processor gets its power from RAPL's PP1.
+        Without RAPL, its page said nothing of why: it says so, with RAPL's
+        reason. Missing for permissions, the padlock already says it."""
+        rapl = next((n for n in draft.notes if n.path == "cpu.power"), None)
+        if rapl is None or rapl.need is Need.ROOT:
+            return
+        for index, gpu in enumerate(draft.gpus):
+            where = Gpu(vendor=gpu.get("vendor"), vendor_id=gpu.get("vendor_id"),
+                        device_id=gpu.get("device_id"), integrated=gpu.get("integrated"))
+            if (gpu.get("power_w") is None and where.built_in == "cpu"
+                    and gpu.get("vendor") == "Intel"):
+                draft.note(f"gpus.{index}.power_w", rapl.need, _("gpu.power.rapl.note"),
+                           rapl.message)
 
     @staticmethod
     def _shared_package(draft: Draft) -> None:

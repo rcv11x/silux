@@ -40,6 +40,15 @@ def _core_is_one_cores(draft: Draft) -> bool:
     return any(t.get("vendor_id") in CORE_DOMAIN_ON_ONE_CORE for t in draft.types.values())
 
 
+# Podman and Docker leave these marks, and hide powercap since CVE-2020-8694:
+# inside one, the counters missing is the container's doing, not the CPU's.
+CONTAINER_MARKS = ("/run/.containerenv", "/.dockerenv")
+
+
+def _in_a_container() -> bool:
+    return any(pathlib.Path(sysroot.path(mark)).exists() for mark in CONTAINER_MARKS)
+
+
 # The framework is named «intel-rapl» after its origin, but AMD uses it too
 # and, depending on the kernel, it may show as «amd-rapl».
 RAPL_ZONES = ("intel-rapl:*", "amd-rapl:*", "*-rapl:*")
@@ -258,6 +267,9 @@ class RaplPower(Provider):
             return ("cpu.power", Need.ROOT,
                     _("prov.rapl.denied"), _("prov.rapl.denied.hint"),
                     _("what.cpu.power"))
+        if _in_a_container():
+            return ("cpu.power", Need.HARDWARE,
+                    _("prov.rapl.container"), _("prov.rapl.container.hint"))
         return ("cpu.power", Need.HARDWARE,
                 _("prov.rapl.none"), _("prov.rapl.none.hint"))
 

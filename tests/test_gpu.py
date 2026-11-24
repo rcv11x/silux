@@ -2042,3 +2042,42 @@ class TestWhatPermissionsWouldAdd(unittest.TestCase):
         snapshot = shared_snapshot(EQUIPOS / "i5-1135g7")
         self.assertIsNotNone(snapshot.permission_note("cpu.power"))
         self.assertIn(_("home.gpu.locked"), self._home_gpu_text(snapshot))
+
+
+class TestAnIntelGpusPowerInAContainer(unittest.TestCase):
+    """Podman and Docker hide powercap: inside one, RAPL's note blamed the
+    CPU («exposes no RAPL counters») and the GPU's power was a dash with no
+    reason on its page."""
+
+    @classmethod
+    def setUpClass(cls):
+        import shutil
+
+        from tests import qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        qt.app()
+        tmp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(tmp.cleanup)
+        dump = pathlib.Path(shutil.copytree(EQUIPOS / "i5-10400", f"{tmp.name}/i5-10400",
+                                            symlinks=True))
+        # As podman shows it: no powercap, and its mark.
+        shutil.rmtree(dump / "sys/devices/virtual/powercap")
+        shutil.rmtree(dump / "sys/class/powercap")
+        (dump / "run").mkdir(exist_ok=True)
+        (dump / "run/.containerenv").write_text("")
+        cls.snapshot = foto(dump)[0]
+
+    def test_rapls_note_blames_the_container(self):
+        note = next(n for n in self.snapshot.notes if n.path == "cpu.power")
+        self.assertEqual(note.message, _("prov.rapl.container"))
+
+    def test_the_gpus_page_says_why_its_power_is_missing(self):
+        from tests import pantalla
+
+        self.assertIsNone(self.snapshot.gpus[0].power_w)
+        with pantalla.Ventana(self.snapshot) as window:
+            window.select_section("Gráficos")
+            text = "\n".join(pantalla.textos_de(window.stack.currentWidget()))
+        self.assertIn(_("gpu.power.rapl.note"), text)
+        self.assertIn(_("prov.rapl.container"), text)
