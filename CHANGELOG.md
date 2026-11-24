@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: sin consumo medido, la ficha de Consumo dice el límite por su
+  nombre («límite 115 W») bajo el guion, y no «de 115 W», que se leía como
+  una cifra sobre 115.
 - Inicio y Gráficos: en una integrada de Intel, lo que falta por permisos
   se dice tal cual. Donde el consumo ya se lee sin permisos (RAPL legible,
   como en Fedora), la ficha dice «El uso, con permisos» y el aviso habla

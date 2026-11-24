@@ -452,9 +452,15 @@ class TestTheDesktopRtx4060WithoutPower(unittest.TestCase):
         with pantalla.Ventana(f) as ventana:
             ventana.select_section("Gráficos")
             textos = pantalla.textos_de(ventana.stack.currentWidget())
+            from silux.ui.widgets import StatTile
+            details = [tile.detail.text()
+                       for tile in ventana.stack.currentWidget().findChildren(StatTile)]
         self.assertIn(render.gpu_factory_power_limit(gpu), textos)
         self.assertIn(_("gpu.sensor.powercap"), textos)
         self.assertIn(_("prov.nvml.nopower"), " ".join(textos))
+        # The power tile: no figure, and the limit by its name, not «of 115 W».
+        self.assertIn(_("gpu.tile.limit").format(limit=render.limit_watts(115.0)), details)
+        self.assertNotIn(_("gpu.tile.of").format(valor=render.limit_watts(115.0)), details)
 
 
 class TestAProprietaryNvidiaInSensors(unittest.TestCase):

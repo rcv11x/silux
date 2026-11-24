@@ -1153,9 +1153,15 @@ class GpuSection(QWidget):
             self.tile_power.update_value(
                 render.power_figure(gpu.power_w),
                 gpu.power_w, series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/power", "W"))
-            self.tile_power.set_detail(
-                _("gpu.tile.of").format(valor=render.limit_watts(gpu.power_cap_w))
-                if gpu.power_cap_w else "")
+            # Without a measurement the limit goes by its name: «— of 115 W»
+            # read as a figure out of 115 W.
+            if not gpu.power_cap_w:
+                detail = ""
+            elif gpu.power_w is None:
+                detail = _("gpu.tile.limit").format(limit=render.limit_watts(gpu.power_cap_w))
+            else:
+                detail = _("gpu.tile.of").format(valor=render.limit_watts(gpu.power_cap_w))
+            self.tile_power.set_detail(detail)
 
     def _apply_now(self, gpu: Gpu) -> None:
         """Las tres barras de «Ahora mismo». La que no tiene dato no sale, y

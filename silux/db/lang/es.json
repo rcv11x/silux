@@ -818,6 +818,7 @@
   "gpu.tile.asleep": "en reposo el {pct} del tiempo",
   "gpu.tile.clock": "Frecuencia",
   "gpu.tile.hotspot": "punto caliente {valor}",
+  "gpu.tile.limit": "límite {limit}",
   "gpu.tile.memclock": "memoria {valor}",
   "gpu.tile.of": "de {valor}",
   "gpu.tile.package": "compartida con la CPU",
