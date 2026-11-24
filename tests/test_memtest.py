@@ -306,6 +306,56 @@ class TestHistory(unittest.TestCase):
         self.assertNotIn("later", new)
         self.assertEqual(memtest.load_history(), [again, recorded()])
 
+    def _tagged(self) -> dict:
+        """The recorded test with a field this version doesn't know in every
+        point, level and rate, saying which one it is."""
+        row = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for point in row["points"]:
+            point["later"] = point["bytes_"]
+        for level in row["levels"]:
+            level["later"] = level["level"]
+        for rate in row["rates"]:
+            rate["later"] = [rate["operation"], rate["threads"], rate["non_temporal"]]
+        return row
+
+    def _assert_each_kept_its_own(self, row: dict) -> None:
+        for point in row["points"]:
+            self.assertEqual(point["later"], point["bytes_"])
+        for level in row["levels"]:
+            self.assertEqual(level["later"], level["level"])
+        for rate in row["rates"]:
+            self.assertEqual(rate["later"],
+                             [rate["operation"], rate["threads"], rate["non_temporal"]])
+
+    def test_what_is_kept_goes_by_what_each_row_is_not_by_its_place(self):
+        self._write(self._tagged())
+        result = recorded()
+        memtest.save_history([dataclasses.replace(
+            result, points=result.points[::-1], levels=result.levels[::-1],
+            rates=result.rates[::-1])])
+        row, = self._saved_rows()
+        self.assertEqual(row["points"][0]["bytes_"], result.points[-1].bytes_)
+        self._assert_each_kept_its_own(row)
+
+    def test_a_list_that_lost_a_row_keeps_the_rest(self):
+        self._write(self._tagged())
+        result = recorded()
+        memtest.save_history([dataclasses.replace(
+            result, points=result.points[1:], levels=result.levels[1:],
+            rates=result.rates[1:])])
+        row, = self._saved_rows()
+        self.assertEqual(len(row["rates"]), len(result.rates) - 1)
+        self._assert_each_kept_its_own(row)
+
+    def test_two_rows_that_are_the_same_keep_nothing_of_either(self):
+        tagged = self._tagged()
+        tagged["points"][1]["bytes_"] = tagged["points"][0]["bytes_"]
+        self._write(tagged)
+        memtest.save_history([recorded()])
+        row, = self._saved_rows()
+        self.assertNotIn("later", row["points"][0])
+        self.assertEqual(row["points"][2]["later"], row["points"][2]["bytes_"])
+
     def test_a_rate_measured_inside_a_cache_isnt_the_memorys(self):
         row = json.loads(FIXTURE.read_text(encoding="utf-8"))
         row["theoretical_bytes_per_second"] = 51_200_000_000

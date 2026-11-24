@@ -17,7 +17,9 @@ and the result says so: no curve, no pinned threads, one thread reading.
 
 from __future__ import annotations
 
+import collections
 import dataclasses
+import functools
 import json
 import os
 import pathlib
@@ -547,8 +549,11 @@ def history_path() -> pathlib.Path:
     return history.data_dir() / "memory-tests.json"
 
 
-# The parts of a saved test that are lists of rows of their own.
-PARTS = (("points", Point), ("levels", Level), ("rates", Rate))
+# The parts of a saved test that are lists of rows of their own, and the
+# fields that tell one row of each from another.
+PARTS = (("points", Point, ("bytes_",)),
+         ("levels", Level, ("level",)),
+         ("rates", Rate, ("operation", "threads", "level", "non_temporal")))
 
 
 def _known(kind, row: dict) -> dict:
@@ -560,43 +565,85 @@ def _known(kind, row: dict) -> dict:
 
 def _from_dict(row: dict) -> Result:
     row = _known(Result, row)
-    for part, kind in PARTS:
+    for part, kind, _names in PARTS:
         row[part] = tuple(kind(**_known(kind, r)) for r in row.get(part, ()))
     row["caches"] = tuple((str(n), int(s)) for n, s in row.get("caches", ()))
     return Result(**row)
 
 
+def _identity(kind, names: Sequence[str], row: dict) -> tuple:
+    """What tells `row` from the others in its list. A field the file left
+    out counts as its default, which is what reading it gives."""
+    defaults = {f.name: f.default for f in dataclasses.fields(kind)}
+    return tuple(row.get(name, defaults[name]) for name in names)
+
+
+def _by_identity(rows, identity: Callable[[dict], object]) -> dict:
+    """Each row under what identifies it, without those that share it: there
+    is no telling which of them is which."""
+    found, shared = {}, set()
+    for row in rows if isinstance(rows, (list, tuple)) else ():
+        if not isinstance(row, dict):
+            continue
+        try:
+            key = identity(row)
+            if key in found:
+                shared.add(key)
+            found[key] = row
+        except TypeError:
+            # A list or an object where a number or a name goes.
+            continue
+    return {key: row for key, row in found.items() if key not in shared}
+
+
 def _to_dict(result: Result, saved: Optional[dict]) -> dict:
     """The row to write over `saved`, the one the file has for that test.
     What this version has no name for stays in it: going back a version and
-    measuring mustn't strip what the newer one saved."""
+    measuring mustn't strip what the newer one saved.
+
+    Each point, level and rate keeps what its own saved row had, matched by
+    what it is and never by its place in the list.
+    """
     row = dataclasses.asdict(result)
     if saved is None:
         return row
-    for part, _kind in PARTS:
-        before = saved.get(part)
-        if isinstance(before, list) and len(before) == len(row[part]):
-            row[part] = [{**old, **new} if isinstance(old, dict) else new
-                         for old, new in zip(before, row[part])]
+    for part, kind, names in PARTS:
+        identity = functools.partial(_identity, kind, names)
+        before = _by_identity(saved.get(part), identity)
+        unmistakable = _by_identity(row[part], identity)
+        merged = []
+        for new in row[part]:
+            key = identity(new)
+            old = before.get(key) if key in unmistakable else None
+            merged.append(new if old is None else {**old, **new})
+        row[part] = merged
     return {**saved, **row}
 
 
-def _saved_rows() -> list[dict]:
-    """The file's tests as they are written. A file that isn't ours has none."""
+def _saved_file() -> Optional[dict]:
+    """The history file as it is written, when there is one and it is a
+    JSON object."""
     try:
         data = json.loads(history_path().read_text(encoding="utf-8"))
-        if data.get("version") != HISTORY_VERSION:
-            return []
-        return [row for row in data.get("tests", ()) if isinstance(row, dict)]
-    except (OSError, ValueError, TypeError, AttributeError):
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _saved_rows(data: Optional[dict]) -> list[dict]:
+    """The tests of a file of this version, as they are written. A file that
+    isn't ours has none."""
+    if data is None or data.get("version") != HISTORY_VERSION:
         return []
+    tests = data.get("tests")
+    return [row for row in tests if isinstance(row, dict)] if isinstance(tests, list) else []
 
 
 def load_history() -> list[Result]:
     """Saved tests, newest first. A row that can't be read is left out
     without taking the rest with it."""
     results = []
-    for row in _saved_rows():
+    for row in _saved_rows(_saved_file()):
         try:
             results.append(_from_dict(row))
         except (TypeError, ValueError, AttributeError):
@@ -606,14 +653,16 @@ def load_history() -> list[Result]:
 
 def save_history(results: Sequence[Result]) -> bool:
     path = history_path()
-    saved = {row["timestamp"]: row for row in _saved_rows()
-             if isinstance(row.get("timestamp"), (int, float))}
+    data = _saved_file()
+    saved = _by_identity(_saved_rows(data), lambda row: row.get("timestamp"))
+    times = collections.Counter(r.timestamp for r in results)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(
             {"version": HISTORY_VERSION,
-             "tests": [_to_dict(r, saved.get(r.timestamp)) for r in results[:MAX_ENTRIES]]},
+             "tests": [_to_dict(r, saved.get(r.timestamp) if times[r.timestamp] == 1 else None)
+                       for r in results[:MAX_ENTRIES]]},
             indent=1), encoding="utf-8")
         temporary.replace(path)
     except OSError:
