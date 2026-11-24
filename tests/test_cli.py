@@ -241,3 +241,31 @@ class TestReportArguments(unittest.TestCase):
         code, out, _err = self.run_cli("--report", "-", "--short", "--without-permissions")
         self.assertEqual(code, 0)
         self.assertNotIn("silux-annex", out)
+
+
+class TestTheReportWithoutGraphicsLibraries(unittest.TestCase):
+    """On a system without libGL (a server, a minimal container) the full
+    report, built from the window's pages, died with a traceback. It writes
+    the short one and says why."""
+
+    def test_the_short_one_and_why(self):
+        import contextlib
+        import io
+        import sys
+        import tempfile
+        from unittest import mock
+
+        from silux import cli
+        from silux.i18n import _
+
+        errors = io.StringIO()
+        with tempfile.TemporaryDirectory() as folder, \
+             mock.patch.object(cli, "Collector", return_value=mock.MagicMock()), \
+             mock.patch.object(cli.report, "build", return_value="informe corto\n"), \
+             mock.patch.object(cli, "qt_can_start", return_value=True), \
+             mock.patch.dict(sys.modules, {"PySide6.QtWidgets": None}), \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+            cli.main(["--report", f"{folder}/informe.md", "--without-permissions"])
+            written = open(f"{folder}/informe.md", encoding="utf-8").read()
+        self.assertEqual(written, "informe corto\n")
+        self.assertIn(_("cli.report.nolibs").split("(")[0], errors.getvalue())

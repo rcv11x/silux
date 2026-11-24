@@ -364,6 +364,7 @@
   "cli.options": "opciones",
   "cli.report.asking": "Pidiendo permisos para leer también lo que solo ve el administrador (con --without-permissions no se piden)…",
   "cli.report.empty": "falta el archivo del informe: un nombre, o «-» para sacarlo por pantalla",
+  "cli.report.nolibs": "Faltan las bibliotecas gráficas del sistema ({error}): sale el informe corto.",
   "cli.report.noqt": "Qt no puede arrancar aquí: sale el informe corto.",
   "cli.report.unknownsection": "No hay ninguna sección que se llame {names}. Las que hay: {known}.",
   "cli.usage": "uso: ",

@@ -364,6 +364,7 @@
   "cli.options": "options",
   "cli.report.asking": "Asking for permissions to also read what only the administrator sees (--without-permissions skips this)…",
   "cli.report.empty": "the report needs a file name, or «-» to print it",
+  "cli.report.nolibs": "The system's graphics libraries are missing ({error}): writing the short report.",
   "cli.report.noqt": "Qt cannot start here: writing the short report.",
   "cli.report.unknownsection": "There is no section called {names}. These are the ones: {known}.",
   "cli.usage": "usage: ",

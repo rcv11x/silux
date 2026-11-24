@@ -336,6 +336,19 @@ def qt_can_start() -> bool:
     return version is not None and version < (6, 10)
 
 
+def qt_missing_library() -> Optional[str]:
+    """What the system lacks for Qt's widgets, or None. The AppImage leaves
+    the graphics driver's libraries to the system (libGL, libEGL, X11…); on a
+    system without them, a server or a minimal container, the full report
+    died with a traceback. Only after `qt_can_start`: loading Qt on a
+    processor without x86-64-v2 kills the process."""
+    try:
+        import PySide6.QtWidgets  # noqa: F401
+    except ImportError as error:
+        return str(error)
+    return None
+
+
 def build_parser() -> argparse.ArgumentParser:
     """The terminal dump's options.
 
@@ -439,7 +452,11 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if args.report:
         full = not args.short and qt_can_start()
-        if not args.short and not full:
+        missing = qt_missing_library() if full else None
+        if missing:
+            full = False
+            print(_("cli.report.nolibs").format(error=missing), file=sys.stderr)
+        elif not args.short and not full:
             print(_("cli.report.noqt"), file=sys.stderr)
         if full:
             from .ui import full_report

@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Informe: en un sistema sin las bibliotecas gráficas (un servidor, un
+  contenedor mínimo), `--report` ya no sale con un error: escribe el
+  informe corto y dice qué falta.
 - Informe: el tamaño de cada caché lleva los decimales que tiene, como en la
   ventana: la L2 de un núcleo P de Alder Lake es «1.25 MiB», no «1.2 MiB».
 
