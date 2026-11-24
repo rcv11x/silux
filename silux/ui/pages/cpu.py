@@ -295,6 +295,7 @@ class TypeSection(QWidget):
             hidden |= {"cpu.clock.turbo", "cpu.clock.maxsilicon"}
         # What this machine doesn't publish: its notice on the page says why.
         for key, value, note in (
+                ("cpu.clock.base", clocks.base_hz, "cpu.clocks.base_hz"),
                 ("cpu.clock.bus", clocks.bus_hz, "cpu.clocks.bus_hz"),
                 ("cpu.clock.multiplier", clocks.multiplier, "cpu.clocks.bus_hz"),
                 ("cpu.clock.maxsilicon", clocks.max_turbo_hz, "cpu.clocks.max_turbo_hz"),
@@ -304,9 +305,10 @@ class TypeSection(QWidget):
         if render.without_energy_preference(clocks):
             hidden.add("cpu.clock.epp")
         # Once per row and sample: shown and hidden again, the page moved.
-        for key in ("cpu.clock.min", "cpu.clock.maxkernel", "cpu.clock.driver",
-                    "cpu.clock.governor", "cpu.clock.epp", "cpu.clock.turbo",
-                    "cpu.clock.maxsilicon", "cpu.clock.bus", "cpu.clock.multiplier"):
+        for key in ("cpu.clock.base", "cpu.clock.min", "cpu.clock.maxkernel",
+                    "cpu.clock.driver", "cpu.clock.governor", "cpu.clock.epp",
+                    "cpu.clock.turbo", "cpu.clock.maxsilicon", "cpu.clock.bus",
+                    "cpu.clock.multiplier"):
             self.clocks.set_visible(_(key), key not in hidden)
         foot = render.clocks_footnote(clocks)
         self.clocks_foot.setText(foot or "")

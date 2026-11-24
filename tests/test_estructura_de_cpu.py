@@ -171,3 +171,24 @@ class TestEachCoreTypeIsASection(unittest.TestCase):
                     self.assertLess(heading.height(), 1.5 * heading.fontMetrics().height())
                     self.assertGreater(heading.font().pixelSize(), heading.parentWidget()
                                        .findChildren(QLabel, "CardTitle")[0].font().pixelSize())
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestABaseTheMachineDoesntPublish(unittest.TestCase):
+    """«Base: —» sat above a notice saying the machine doesn't publish it.
+    What the hardware lacks is hidden and named at the foot (rule 5); what
+    needs permissions keeps its row, with its padlock."""
+
+    def test_hidden_when_absent_kept_when_locked(self):
+        from silux.ui.pages.cpu import TypeSection
+
+        app = qt.app()
+        base = _("cpu.clock.base")
+        for dump, shown, locked in (("fx-8150", False, False), ("athlon-3000g", True, True),
+                                    ("i5-10400", True, False)):
+            with self.subTest(dump=dump), pantalla.Ventana(shared_snapshot(EQUIPOS / dump)) as window:
+                window.select_section("CPU")
+                app.processEvents()
+                section = window.cpu_page.findChildren(TypeSection)[0]
+                self.assertEqual(section.clocks._names[base].isVisible(), shown)
+                self.assertEqual(section.clocks.is_locked(base), locked)

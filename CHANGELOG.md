@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: si el procesador no publica su reloj base por ninguna vía (los AMD
+  anteriores a Zen), la fila «Base» ya no sale con un guion: lo dice el
+  aviso de la página.
 - Ajustes → Acerca de: entre los datos de terceros salen también
   smartmontools y Mesa, de donde salen las unidades del SMART y el nombre de
   las gráficas de Intel; sus avisos ya iban en el programa.
