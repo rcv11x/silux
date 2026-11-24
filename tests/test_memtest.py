@@ -258,6 +258,77 @@ class TestHistory(unittest.TestCase):
             self.assertIn(expected, text)
         self.assertEqual(text.count("| Bloque | ns |"), 1)
 
+    def _write(self, *rows: dict) -> None:
+        memtest.history_path().parent.mkdir(parents=True, exist_ok=True)
+        memtest.history_path().write_text(
+            json.dumps({"version": memtest.HISTORY_VERSION, "tests": list(rows)}),
+            encoding="utf-8")
+
+    def _saved_rows(self) -> list[dict]:
+        return json.loads(memtest.history_path().read_text(encoding="utf-8"))["tests"]
+
+    def _row_from_a_newer_version(self) -> dict:
+        """The recorded test with a field this version doesn't know in the
+        result and in one of each of its parts."""
+        row = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        row["later"] = {"anything": [1, 2]}
+        for part in ("points", "levels", "rates"):
+            row[part][0]["later"] = part
+        return row
+
+    def test_a_name_comes_back_and_none_is_no_name(self):
+        named = dataclasses.replace(recorded(), label="after the BIOS update")
+        self.assertEqual(recorded().label, "")
+        self.assertEqual(memtest.append_history(named)[0].label, "after the BIOS update")
+        self.assertEqual(memtest.load_history()[0].label, "after the BIOS update")
+
+    def test_a_file_with_more_fields_reads_whole(self):
+        self._write(self._row_from_a_newer_version())
+        self.assertEqual(memtest.load_history(), [recorded()])
+
+    def test_one_row_that_cant_be_read_doesnt_empty_the_rest(self):
+        good = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        for bad in ({"nonsense": 1}, "text", {**good, "points": [3]},
+                    {**good, "caches": [["L1"]]}):
+            self._write(bad, good)
+            self.assertEqual(memtest.load_history(), [recorded()], bad)
+
+    def test_measuring_again_keeps_what_a_newer_version_saved(self):
+        self._write(self._row_from_a_newer_version())
+        again = dataclasses.replace(recorded(), timestamp=recorded().timestamp + 60)
+        memtest.append_history(again)
+        new, old = self._saved_rows()
+        self.assertEqual(old["later"], {"anything": [1, 2]})
+        for part in ("points", "levels", "rates"):
+            self.assertEqual(old[part][0]["later"], part)
+            self.assertNotIn("later", old[part][1])
+            self.assertNotIn("later", new[part][0])
+        self.assertNotIn("later", new)
+        self.assertEqual(memtest.load_history(), [again, recorded()])
+
+    def test_a_rate_measured_inside_a_cache_isnt_the_memorys(self):
+        row = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        row["theoretical_bytes_per_second"] = 51_200_000_000
+        in_cache = {**row["rates"][0], "bytes_per_second": 280_000_000_000, "level": "L1"}
+        self._write({**row, "rates": row["rates"] + [in_cache]})
+        result = memtest.load_history()[0]
+        self.assertTrue(all(r.level == "RAM" for r in result.rates[:-1]))
+        self.assertEqual(result.rate("read"), recorded().rate("read"))
+        self.assertEqual(result.rate("read", 1), recorded().rate("read", 1))
+        self.assertEqual(result.rate("read", level="L1").bytes_per_second, 280_000_000_000)
+        self.assertEqual(memtest.share_of_theoretical(result), 85.7)
+
+    def test_the_report_names_the_level_of_a_rate_inside_a_cache(self):
+        from silux import report
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        row = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        in_cache = {**row["rates"][0], "bytes_per_second": 280_000_000_000, "level": "L1"}
+        self._write({**row, "rates": row["rates"] + [in_cache]})
+        text = report.build(shared_snapshot(EQUIPOS / "5800x3d"))
+        self.assertIn("| read | 1 | 43.9 | avx2 | 4.43 GHz |", text)
+        self.assertIn("| L1 read | 1 | 280.0 | avx2 | 4.43 GHz |", text)
+
     def test_a_file_that_isnt_ours_reads_as_none(self):
         memtest.history_path().parent.mkdir(parents=True, exist_ok=True)
         for text in ("not json", "[]", '{"version": 99, "tests": []}',

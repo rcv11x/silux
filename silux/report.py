@@ -569,6 +569,8 @@ def _memory_test() -> str:
                   "|---|---|---|---|---|"]
         for rate in result.rates:
             name = rate.operation + (" (no temporal)" if rate.non_temporal else "")
+            if rate.level != "RAM":
+                name = f"{rate.level} {name}"
             lines.append(
                 f"| {name} | {rate.threads} | {rate.bytes_per_second / 1e9:.1f}"
                 f"{' (con ruido)' if rate.noisy else ''} | {rate.isa or render.DASH} | "

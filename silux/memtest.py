@@ -107,6 +107,8 @@ class Rate:
     isa: Optional[str] = None
     noisy: bool = False
     frequency_hz: Optional[int] = None
+    # Where its block fits: "L1", "L2", "L3" or "RAM".
+    level: str = "RAM"
 
 
 @dataclass(frozen=True)
@@ -150,16 +152,19 @@ class Result:
     # Why there is nothing, or less than asked: a key the interface translates.
     reason: Optional[str] = None
     detail: str = ""
+    # A name the user gives it, as in the processor's history.
+    label: str = ""
 
     def level(self, name: str) -> Optional[Level]:
         return next((l for l in self.levels if l.level == name), None)
 
     def rate(self, operation: str, threads: Optional[int] = None,
-             non_temporal: bool = False) -> Optional[Rate]:
-        """That operation's rate with `threads`, or its fastest without."""
+             non_temporal: bool = False, level: str = "RAM") -> Optional[Rate]:
+        """That operation's rate over a block of that level with `threads`,
+        or its fastest without."""
         found = [r for r in self.rates
                  if r.operation == operation and r.non_temporal == non_temporal
-                 and threads in (None, r.threads)]
+                 and r.level == level and threads in (None, r.threads)]
         return max(found, key=lambda r: r.bytes_per_second, default=None)
 
     @property
@@ -542,34 +547,73 @@ def history_path() -> pathlib.Path:
     return history.data_dir() / "memory-tests.json"
 
 
+# The parts of a saved test that are lists of rows of their own.
+PARTS = (("points", Point), ("levels", Level), ("rates", Rate))
+
+
+def _known(kind, row: dict) -> dict:
+    """`row` without the fields this version has no name for: a newer one
+    may have saved more."""
+    names = {f.name for f in dataclasses.fields(kind)}
+    return {name: value for name, value in row.items() if name in names}
+
+
 def _from_dict(row: dict) -> Result:
-    row = dict(row)
-    row["points"] = tuple(Point(**p) for p in row.get("points", ()))
-    row["levels"] = tuple(Level(**l) for l in row.get("levels", ()))
-    row["rates"] = tuple(Rate(**r) for r in row.get("rates", ()))
+    row = _known(Result, row)
+    for part, kind in PARTS:
+        row[part] = tuple(kind(**_known(kind, r)) for r in row.get(part, ()))
     row["caches"] = tuple((str(n), int(s)) for n, s in row.get("caches", ()))
     return Result(**row)
 
 
-def load_history() -> list[Result]:
-    """Saved tests, newest first. A file that isn't ours reads as none."""
+def _to_dict(result: Result, saved: Optional[dict]) -> dict:
+    """The row to write over `saved`, the one the file has for that test.
+    What this version has no name for stays in it: going back a version and
+    measuring mustn't strip what the newer one saved."""
+    row = dataclasses.asdict(result)
+    if saved is None:
+        return row
+    for part, _kind in PARTS:
+        before = saved.get(part)
+        if isinstance(before, list) and len(before) == len(row[part]):
+            row[part] = [{**old, **new} if isinstance(old, dict) else new
+                         for old, new in zip(before, row[part])]
+    return {**saved, **row}
+
+
+def _saved_rows() -> list[dict]:
+    """The file's tests as they are written. A file that isn't ours has none."""
     try:
         data = json.loads(history_path().read_text(encoding="utf-8"))
         if data.get("version") != HISTORY_VERSION:
             return []
-        return [_from_dict(row) for row in data.get("tests", ())]
+        return [row for row in data.get("tests", ()) if isinstance(row, dict)]
     except (OSError, ValueError, TypeError, AttributeError):
         return []
 
 
+def load_history() -> list[Result]:
+    """Saved tests, newest first. A row that can't be read is left out
+    without taking the rest with it."""
+    results = []
+    for row in _saved_rows():
+        try:
+            results.append(_from_dict(row))
+        except (TypeError, ValueError, AttributeError):
+            continue
+    return results
+
+
 def save_history(results: Sequence[Result]) -> bool:
     path = history_path()
+    saved = {row["timestamp"]: row for row in _saved_rows()
+             if isinstance(row.get("timestamp"), (int, float))}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(
             {"version": HISTORY_VERSION,
-             "tests": [dataclasses.asdict(r) for r in results[:MAX_ENTRIES]]},
+             "tests": [_to_dict(r, saved.get(r.timestamp)) for r in results[:MAX_ENTRIES]]},
             indent=1), encoding="utf-8")
         temporary.replace(path)
     except OSError:
