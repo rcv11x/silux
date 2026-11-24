@@ -36,6 +36,12 @@ def visible_texts(widget) -> str:
                      if label.isVisibleTo(widget) and label.text())
 
 
+def theme_palette(application):
+    from silux.ui import theme
+
+    return theme.palette_for(application, "dark")
+
+
 class TabCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -216,6 +222,39 @@ class TestTheChannelsWaitForPermissions(TabCase):
         tab.share_button.click()
         tab.share_lock.clicked.emit()
         self.assertEqual(asked, [True, True])
+
+    def locked_tab(self, width: int):
+        tab = self.tab()
+        tab.apply(self.without)
+        tab.show_result(recorded())
+        tab.resize(width, 900)
+        for _turn in range(3):
+            self.app.processEvents()
+        return tab
+
+    def test_the_button_looks_like_the_status_bar_one(self):
+        """It read as plain text."""
+        from PySide6.QtGui import QColor
+
+        button = self.locked_tab(1000).share_button
+        self.assertTrue(button.font().underline())
+        self.assertGreaterEqual(button.font().weight(), 600)
+        self.assertEqual(button.palette().buttonText().color().name(),
+                         QColor(theme_palette(self.app).info).name())
+
+    def test_the_padlock_and_the_button_sit_on_the_text_line(self):
+        """The padlock rode above the words."""
+        for width in (1400, 700):
+            with self.subTest(width=width):
+                tab = self.locked_tab(width)
+                share, lock, button = tab.share, tab.share_lock, tab.share_button
+
+                def middle(widget, height):
+                    return widget.mapTo(tab, widget.rect().topLeft()).y() + height / 2
+
+                text = middle(share, share.fontMetrics().height())
+                self.assertLessEqual(abs(text - middle(lock, lock.height())), 1.5)
+                self.assertLessEqual(abs(text - middle(button, button.height())), 1.5)
 
     def test_as_root_there_is_nothing_to_give(self):
         from silux.model import PrivilegedState

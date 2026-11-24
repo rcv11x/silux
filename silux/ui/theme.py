@@ -507,8 +507,9 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     /* El aviso de la barra de estado. Va en azul por lo mismo que la banda
        de un Notice: es de lo que el usuario puede arreglar. Y con el subrayado
        puesto, que en una barra llena de texto apagado nada dice que se pueda
-       pulsar salvo que se note. */
-    QPushButton#StatusAction {{
+       pulsar salvo que se note. The same for a permissions link inside a
+       page's text (LinkAction). */
+    QPushButton#StatusAction, QPushButton#LinkAction {{
         background: transparent;
         border: none;
         padding: 0 6px;
@@ -522,7 +523,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         font-size: {m.base_pt}px;
         font-weight: 600;
     }}
-    QPushButton#StatusAction:hover {{ color: {p.ink}; }}
+    QPushButton#StatusAction:hover, QPushButton#LinkAction:hover {{ color: {p.ink}; }}
 
     QFrame#Divider {{ background: {p.line_soft}; max-height: 1px; border: none; }}
 

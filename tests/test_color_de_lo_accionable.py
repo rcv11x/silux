@@ -76,7 +76,11 @@ class TestElColorDeLoAccionable(unittest.TestCase):
         hoja = theme.stylesheet(ventana._palette)
         self.assertIn(f'QFrame#Notice[tone="action"] {{ border-left-color: {ventana._palette.info}; }}',
                       hoja)
-        regla = hoja.split("QPushButton#StatusAction {")[1].split("}")[0]
+        # The rule that names it, alone or with others that share its look.
+        regla = next(cuerpo for selectores, cuerpo in
+                     (bloque.split("{", 1) for bloque in hoja.split("}") if "{" in bloque)
+                     if any(selector.strip().endswith("QPushButton#StatusAction")
+                            for selector in selectores.split(",")))
         self.assertIn(f"color: {ventana._palette.info};", regla)
 
     def test_el_interruptor_encendido_va_en_el_acento_y_no_en_azul(self):

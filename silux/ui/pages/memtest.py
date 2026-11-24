@@ -358,16 +358,23 @@ class MemoryTestTab(ScrollPage):
         self.share = QLabel("")
         self.share.setObjectName("Muted")
         self.share.setWordWrap(True)
+        self.share.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.share_lock = LockMark(self._p.info, theme.METRICS.small_pt + 3)
         self.share_lock.hacer_pulsable()
         self.share_lock.clicked.connect(self.elevation_requested)
         self.share_button = QPushButton("")
-        self.share_button.setObjectName("TextButton")
+        self.share_button.setObjectName("LinkAction")
         self.share_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.share_button.clicked.connect(self.elevation_requested)
         share_row = QHBoxLayout()
         share_row.setSpacing(6)
-        share_row.addWidget(self.share_lock, 0, Qt.AlignmentFlag.AlignTop)
+        # The padlock in the middle of the text's first line, however tall
+        # the letter is (`_paint_share`).
+        self._lock_column = QVBoxLayout()
+        self._lock_column.setContentsMargins(0, 0, 0, 0)
+        self._lock_column.addWidget(self.share_lock)
+        self._lock_column.addStretch(1)
+        share_row.addLayout(self._lock_column)
         share_row.addWidget(self.share, 1)
         share_row.addWidget(self.share_button, 0, Qt.AlignmentFlag.AlignTop)
         card.body.addLayout(share_row)
@@ -602,6 +609,9 @@ class MemoryTestTab(ScrollPage):
         else:
             self.share.setText(_("memtest.share.unknown") if result.rates else "")
         self.share.setVisible(bool(self.share.text()))
+        self.share.ensurePolished()
+        self._lock_column.setContentsMargins(
+            0, max(0, (self.share.fontMetrics().height() - self.share_lock.height()) // 2), 0, 0)
         self.share_lock.setVisible(locked)
         self.share_button.setVisible(locked)
 
