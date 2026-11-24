@@ -4,6 +4,7 @@
 pub mod bandwidth;
 pub mod cancel;
 pub mod error;
+pub mod frequency;
 pub mod kernels;
 pub mod latency;
 pub mod memory;

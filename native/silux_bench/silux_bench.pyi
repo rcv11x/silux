@@ -25,6 +25,8 @@ class Point(TypedDict):
     spread: float
     noisy: bool
     repetitions: int
+    mhz: Optional[float]
+    mhz_min: Optional[float]
     hops: int
     retries: int
 
@@ -34,6 +36,7 @@ class Curve(TypedDict):
     rss_bytes: Optional[int]
     huge_bytes: Optional[int]
     cpu: Optional[int]
+    frequency_source: Optional[str]
     clock_resolution_ns: float
     clock_read_ns: float
 
@@ -56,6 +59,9 @@ class Bandwidth(TypedDict):
     spread: float
     noisy: bool
     repetitions: int
+    mhz: Optional[float]
+    mhz_min: Optional[float]
+    frequency_source: Optional[str]
     retries: int
 
 def memory_bandwidth(

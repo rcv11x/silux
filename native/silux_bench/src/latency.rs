@@ -13,6 +13,7 @@ use std::hint::black_box;
 
 use crate::cancel::Control;
 use crate::error::{Error, Result};
+use crate::frequency::{Meter, Source};
 use crate::memory::{Block, Pages, Residency, LINE};
 use crate::rng::Rng;
 use crate::stats::{self, Summary};
@@ -31,6 +32,14 @@ const WARMUP_MAX_HOPS: u64 = 8 * 1024 * 1024;
 /// slowest, a random swap that misses every cache.
 const SWAPS_PER_CHECK: usize = 1 << 19;
 const HOPS_PER_CHECK: u64 = 1 << 19;
+/// A core that was idle takes a while to come up to speed, and the first
+/// point would be timed on the way up. Before it, samples are thrown away
+/// until two in a row ran at the same frequency: at least SETTLE_MIN of
+/// them, since a core can sit at one step before the next, and at most
+/// SETTLE_MAX, about a second, since some never hold still.
+const SETTLE_MIN: usize = 5;
+const SETTLE_MAX: usize = 100;
+const SETTLED_WITHIN: f64 = 0.01;
 pub const MAX_REPETITIONS: usize = 1000;
 
 #[derive(Debug, Clone, Copy)]
@@ -45,6 +54,9 @@ pub struct Point {
     pub bytes: usize,
     /// Nanoseconds per load, over the repetitions.
     pub ns: Summary,
+    /// Hertz the core ran at, over the same repetitions, where it could be
+    /// measured.
+    pub hz: Option<Summary>,
     /// Loads per repetition.
     pub hops: u64,
     /// Times the point was measured again for being noisy.
@@ -60,6 +72,8 @@ pub struct Curve {
     pub residency: Option<Residency>,
     /// Where the last point ran.
     pub cpu: Option<usize>,
+    /// How each point's frequency was measured.
+    pub frequency: Option<Source>,
 }
 
 /// Latency at each block size, smallest first, all on one block mapped once.
@@ -81,22 +95,29 @@ pub fn curve(
     let largest = *sizes.last().ok_or(Error::NoSizes)?;
     let block = Block::reserve(largest, settings.pages)?;
     let mut rng = Rng::new(settings.seed);
+    // Opened here, by the thread that measures and where it is pinned.
+    let meter = Meter::open();
     control.begin(sizes.len() as u64);
     let mut points = Vec::with_capacity(sizes.len());
     for bytes in sizes {
         control.check()?;
         let start = link_cycle(&block, bytes, &mut rng, control)?;
+        let settle = points.is_empty();
         let (measured, retries) = stats::steadiest(
             // SAFETY: `link_cycle` just made every word it reaches from
             // `start` hold the address of another such word, inside `block`,
             // which lives until the end of this function; an attempt again
             // walks the same cycle.
-            || unsafe { measure(start, (bytes / LINE) as u64, clock, settings, control) },
+            || unsafe {
+                let lines = (bytes / LINE) as u64;
+                measure(start, lines, clock, settings, &meter, settle, control)
+            },
             |m| m.ns.spread,
         )?;
         points.push(Point {
             bytes,
             ns: measured.ns,
+            hz: measured.hz,
             hops: measured.hops,
             retries,
         });
@@ -107,6 +128,7 @@ pub fn curve(
         pages: settings.pages,
         residency: block.residency(),
         cpu: crate::topology::current_cpu(),
+        frequency: meter.source(),
     })
 }
 
@@ -216,23 +238,27 @@ impl Walk {
         self.hops += hops;
     }
 
-    /// Nanoseconds to chase the next `hops` links.
+    /// Nanoseconds to chase the next `hops` links, and the hertz it ran at.
     ///
     /// # Safety
     /// As `advance`.
-    unsafe fn timed(&mut self, hops: u64) -> f64 {
+    unsafe fn timed(&mut self, hops: u64, meter: &Meter) -> (f64, Option<f64>) {
+        let mark = meter.begin();
         let begin = now_ns();
         // SAFETY: passed on from the caller.
         self.position = unsafe { chase(black_box(self.position), hops) };
         let end = now_ns();
+        let ns = end.saturating_sub(begin) as f64;
+        let hz = meter.end(mark, ns);
         black_box(self.position);
         self.hops += hops;
-        end.saturating_sub(begin) as f64
+        (ns, hz)
     }
 }
 
 struct Measured {
     ns: Summary,
+    hz: Option<Summary>,
     hops: u64,
     /// The whole walk, warm-up and calibration included, and where it ended:
     /// what the test that the walk carries on looks at.
@@ -242,8 +268,8 @@ struct Measured {
     end: *const usize,
 }
 
-/// Warm up, find how many hops make a sample long enough, and take the
-/// repetitions.
+/// Warm up, find how many hops make a sample long enough, wait for the core
+/// to hold its frequency if asked to `settle`, and take the repetitions.
 ///
 /// # Safety
 /// As `chase`, for `start`.
@@ -252,6 +278,8 @@ unsafe fn measure(
     lines: u64,
     clock: &Clock,
     settings: &Settings,
+    meter: &Meter,
+    settle: bool,
     control: &Control,
 ) -> Result<Measured> {
     let mut walk = Walk {
@@ -271,7 +299,7 @@ unsafe fn measure(
     let mut hops = 1024;
     loop {
         // SAFETY: passed on from the caller.
-        if unsafe { walk.timed(hops) } >= target {
+        if unsafe { walk.timed(hops, meter) }.0 >= target {
             break;
         }
         hops = hops
@@ -280,15 +308,41 @@ unsafe fn measure(
         control.check()?;
     }
 
+    if settle {
+        let mut last: Option<f64> = None;
+        for taken in 1..=SETTLE_MAX {
+            control.check()?;
+            // SAFETY: passed on from the caller.
+            let hz = unsafe { walk.timed(hops, meter) }.1;
+            let held = match (last, hz) {
+                (Some(before), Some(now)) => (now - before).abs() <= SETTLED_WITHIN * before,
+                // Without a frequency there is nothing to wait for but time.
+                _ => hz.is_none(),
+            };
+            if held && taken >= SETTLE_MIN {
+                break;
+            }
+            last = hz;
+        }
+    }
+
     let mut samples = Vec::with_capacity(settings.repetitions);
+    let mut hertz = Vec::with_capacity(settings.repetitions);
     for _ in 0..settings.repetitions {
         control.check()?;
         // SAFETY: passed on from the caller.
-        samples.push(unsafe { walk.timed(hops) } / hops as f64);
+        let (ns, hz) = unsafe { walk.timed(hops, meter) };
+        samples.push(ns / hops as f64);
+        hertz.extend(hz);
     }
     let ns = stats::summarize(&samples).ok_or(Error::Clock("a sample came out empty"))?;
+    // A frequency for some repetitions and not for others describes none.
+    let hz = (hertz.len() == samples.len())
+        .then(|| stats::summarize(&hertz))
+        .flatten();
     Ok(Measured {
         ns,
+        hz,
         hops,
         walked: walk.hops,
         end: walk.position,
@@ -366,8 +420,19 @@ mod tests {
         for (lines, seed) in [(1009, 1), (4093, 2)] {
             let start = link_cycle(&block, lines * LINE, &mut Rng::new(seed), &control).unwrap();
             // SAFETY: `link_cycle` built the chain inside `block`.
-            let measured =
-                unsafe { measure(start, lines as u64, &clock, &settings(), &control) }.unwrap();
+            let measured = unsafe {
+                let meter = Meter::off();
+                measure(
+                    start,
+                    lines as u64,
+                    &clock,
+                    &settings(),
+                    &meter,
+                    false,
+                    &control,
+                )
+            }
+            .unwrap();
             assert!(measured.walked >= lines as u64 + 3 * measured.hops);
             let mut p = start;
             for _ in 0..measured.walked % lines as u64 {
@@ -384,6 +449,50 @@ mod tests {
             repetitions: 3,
             seed: 1,
         }
+    }
+
+    /// The samples thrown away before the first point: with no frequency to
+    /// watch, the fewest; and never more than the most, however the
+    /// frequency moves.
+    #[test]
+    fn settling_takes_its_samples_and_ends() {
+        let block = Block::reserve(1 << 20, Pages::Small).unwrap();
+        let clock = Clock::check().unwrap();
+        let control = Control::default();
+        let lines = 1009;
+        let start = link_cycle(&block, lines * LINE, &mut Rng::new(1), &control).unwrap();
+        let run = |meter: &Meter, settle: bool| {
+            // SAFETY: `link_cycle` built the chain inside `block`.
+            unsafe {
+                measure(
+                    start,
+                    lines as u64,
+                    &clock,
+                    &settings(),
+                    meter,
+                    settle,
+                    &control,
+                )
+            }
+            .unwrap()
+        };
+        let off = Meter::off();
+        let settled = run(&off, true);
+        let samples = |m: &Measured| (m.walked - lines as u64) / m.hops;
+        // One sample ends the calibration, three are the repetitions.
+        assert!(
+            samples(&settled) >= 1 + SETTLE_MIN as u64 + 3,
+            "{}",
+            samples(&settled)
+        );
+        let live = run(&Meter::open(), true);
+        // Calibrating doubles the hops: all its samples add up to less than
+        // two of the final size.
+        assert!(
+            samples(&live) <= 2 + SETTLE_MAX as u64 + 3,
+            "{}",
+            samples(&live)
+        );
     }
 
     #[test]
@@ -405,6 +514,13 @@ mod tests {
             );
             assert_eq!(point.ns.count, 3);
             assert_eq!(point.hops % UNROLL, 0);
+            // Every point with its frequency, or none: by the way it was
+            // measured, the same for the whole curve.
+            assert_eq!(point.hz.is_some(), curve.frequency.is_some(), "{point:?}");
+            if let Some(hz) = point.hz {
+                assert_eq!(hz.count, 3);
+                assert!(hz.median > 50e6 && hz.median < 10e9, "{hz:?}");
+            }
         }
         assert!(curve.residency.unwrap().rss_bytes >= 64 * 1024);
     }

@@ -14,6 +14,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
 use crate::error::{panic_message, Error, Result};
+use crate::frequency::Source;
 use crate::kernels::{Isa, Operation};
 use crate::latency::{self, Settings};
 use crate::memory::Pages;
@@ -83,8 +84,9 @@ fn control_of(control: Option<&Bound<'_, Control>>) -> Arc<cancel::Control> {
 }
 
 /// Latency at each block size in `sizes` (bytes), on one thread pinned to
-/// `cpu`. Returns a dict with `points` (one per size, smallest first), the
-/// pages asked for and those the kernel gave, the CPU and the clock.
+/// `cpu`. Returns a dict with `points` (one per size, smallest first, each
+/// with the frequency it ran at), the pages asked for and those the kernel
+/// gave, the CPU, how the frequency was measured and the clock.
 #[pyfunction]
 #[pyo3(signature = (sizes, *, huge_pages = true, cpu = None, repetitions = 7, seed = 0x5111_0c5e, control = None))]
 fn latency_curve<'py>(
@@ -122,6 +124,8 @@ fn latency_curve<'py>(
         entry.set_item("spread", point.ns.spread)?;
         entry.set_item("noisy", point.ns.is_noisy())?;
         entry.set_item("repetitions", point.ns.count)?;
+        entry.set_item("mhz", point.hz.map(|hz| hz.median / 1e6))?;
+        entry.set_item("mhz_min", point.hz.map(|hz| hz.min / 1e6))?;
         entry.set_item("hops", point.hops)?;
         entry.set_item("retries", point.retries)?;
         points.append(entry)?;
@@ -138,6 +142,7 @@ fn latency_curve<'py>(
     result.set_item("rss_bytes", curve.residency.map(|r| r.rss_bytes))?;
     result.set_item("huge_bytes", curve.residency.map(|r| r.huge_bytes))?;
     result.set_item("cpu", curve.cpu)?;
+    result.set_item("frequency_source", curve.frequency.map(Source::key))?;
     result.set_item("clock_resolution_ns", clock.resolution_ns)?;
     result.set_item("clock_read_ns", clock.read_cost_ns)?;
     Ok(result)
@@ -201,6 +206,9 @@ fn memory_bandwidth<'py>(
     out.set_item("spread", result.gbps.spread)?;
     out.set_item("noisy", result.gbps.is_noisy())?;
     out.set_item("repetitions", result.gbps.count)?;
+    out.set_item("mhz", result.hz.map(|hz| hz.median / 1e6))?;
+    out.set_item("mhz_min", result.hz.map(|hz| hz.min / 1e6))?;
+    out.set_item("frequency_source", result.frequency.map(Source::key))?;
     out.set_item("retries", retries)?;
     Ok(out)
 }

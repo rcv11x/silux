@@ -13,6 +13,7 @@ use std::thread::Builder;
 
 use crate::cancel::Control;
 use crate::error::{panic_message, Error, Result};
+use crate::frequency::{Meter, Source};
 use crate::kernels::{self, Isa, Operation, STEP};
 use crate::memory::{Block, Pages};
 use crate::stats::{self, Summary};
@@ -46,7 +47,14 @@ pub struct Bandwidth {
     pub threads: usize,
     /// Passes over the block per repetition, the same for every thread.
     pub passes: u64,
+    /// Hertz the cores ran at, the mean of the threads in each repetition,
+    /// where every thread could measure it.
+    pub hz: Option<Summary>,
+    pub frequency: Option<Source>,
 }
+
+/// When a thread's repetition began and ended, and the hertz it ran at.
+type Span = (u64, u64, Option<f64>);
 
 /// Holds every thread before its first barrier until all of them exist. The
 /// barrier waits for one thread per CPU, so a thread that couldn't be started
@@ -178,7 +186,7 @@ fn measure(
         control,
     };
     let target = clock.min_sample_ns();
-    let spans: Vec<Vec<(u64, u64)>> = std::thread::scope(|scope| {
+    let spans: Vec<(Vec<Span>, Option<Source>)> = std::thread::scope(|scope| {
         let opener = Opener(&shared.gate);
         let workers: Vec<_> = cpus
             .iter()
@@ -219,6 +227,8 @@ fn measure(
         1
     };
     let moved = passes * settings.bytes as u64 * arrays * cpus.len() as u64;
+    let frequency = spans.first().and_then(|(_, source)| *source);
+    let spans: Vec<Vec<Span>> = spans.into_iter().map(|(spans, _)| spans).collect();
     let samples: Vec<f64> = (0..settings.repetitions)
         .filter_map(|rep| {
             let begin = spans.iter().filter_map(|s| s.get(rep)).map(|s| s.0).min()?;
@@ -229,26 +239,43 @@ fn measure(
     if samples.len() != settings.repetitions {
         return Err(Error::Internal("a repetition went missing".to_owned()));
     }
+    // The mean of the threads in each repetition; a repetition some thread
+    // couldn't measure has none, and then neither has the result.
+    let hertz: Vec<f64> = (0..settings.repetitions)
+        .filter_map(|rep| {
+            let of_threads: Vec<f64> = spans
+                .iter()
+                .filter_map(|s| s.get(rep).and_then(|s| s.2))
+                .collect();
+            (of_threads.len() == cpus.len())
+                .then(|| of_threads.iter().sum::<f64>() / of_threads.len() as f64)
+        })
+        .collect();
+    let hz = (hertz.len() == samples.len())
+        .then(|| stats::summarize(&hertz))
+        .flatten();
     Ok(Bandwidth {
         gbps: stats::summarize(&samples).ok_or(Error::Clock("a sample came out empty"))?,
         threads: cpus.len(),
         passes,
+        hz,
+        frequency: hz.and(frequency),
     })
 }
 
 /// One thread: wait for the rest to exist, pin, map and touch its block,
 /// time one pass, then the repetitions in step with the others. Returns when
-/// each began and ended.
+/// each began and ended and what it ran at, and how that was measured.
 fn worker(
     cpu: usize,
     leader: bool,
     settings: &Settings,
     target: f64,
     shared: &Shared<'_>,
-) -> Vec<(u64, u64)> {
+) -> (Vec<Span>, Option<Source>) {
     let mut spans = Vec::with_capacity(settings.repetitions);
     if !shared.gate.pass() {
-        return spans;
+        return (spans, None);
     }
     let copy = settings.operation == Operation::Copy;
     let ready = shared.guarded(|| {
@@ -280,18 +307,20 @@ fn worker(
         std::hint::black_box(folded);
         let passes = (target / one_pass).ceil().max(1.0) as u64;
         shared.passes.fetch_max(passes, Ordering::Relaxed);
-        Ok(block)
+        // Opened once pinned: the counter is this thread's, on this CPU.
+        Ok((block, Meter::open()))
     });
     if !shared.meet() {
-        return spans;
+        return (spans, None);
     }
-    let Some(block) = ready else {
-        return spans;
+    let Some((block, meter)) = ready else {
+        return (spans, None);
     };
     let (a, b) = arrays(&block, settings.bytes, copy);
     let passes = shared.passes.load(Ordering::Relaxed);
     for _ in 0..settings.repetitions {
         let span = shared.guarded(|| {
+            let mark = meter.begin();
             let begin = now_ns();
             for _ in 0..passes {
                 // SAFETY: as in the timed pass above.
@@ -307,7 +336,9 @@ fn worker(
                 };
                 std::hint::black_box(folded);
             }
-            Ok((begin, now_ns()))
+            let end = now_ns();
+            let hz = meter.end(mark, end.saturating_sub(begin) as f64);
+            Ok((begin, end, hz))
         });
         if let Some(span) = span {
             spans.push(span);
@@ -322,7 +353,7 @@ fn worker(
             shared.control.advance();
         }
     }
-    spans
+    (spans, meter.source())
 }
 
 /// The two arrays of a copy, `COPY_GAP` apart, or the one of a read or a
@@ -378,6 +409,12 @@ mod tests {
                     result.gbps.median > 0.1 && result.gbps.median < 10_000.0,
                     "{result:?}"
                 );
+                // The frequency with the way it was measured, or neither.
+                assert_eq!(result.hz.is_some(), result.frequency.is_some());
+                if let Some(hz) = result.hz {
+                    assert_eq!(hz.count, 3);
+                    assert!(hz.median > 50e6 && hz.median < 10e9, "{hz:?}");
+                }
             }
         }
     }
