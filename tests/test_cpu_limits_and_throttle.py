@@ -210,7 +210,7 @@ class TestFavouredCores(unittest.TestCase):
         from PySide6.QtWidgets import QLabel
 
         sentence = _("clock.max.favoured").format(
-            cpus="4, 5", max=render.hz(5_000_000_000), otros=render.hz(4_900_000_000))
+            cpus="4, 5", max=render.hz(5_000_000_000), others=render.hz(4_900_000_000))
         with pantalla.Ventana(self.snapshot) as window:
             window.select_section("CPU")
             page = window.stack.currentWidget()

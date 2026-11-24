@@ -461,7 +461,7 @@ def cache_blocks_short(count: int, short: str) -> str:
 
 def cache_block_tip(label: str, size_bytes: Optional[int], cpus) -> str:
     """«L2 P · 1.25 MiB · CPU 0, 1»: what one block of the cache map is."""
-    return _("caches.map.tip").format(nivel=label, tam=cache_size(size_bytes),
+    return _("caches.map.tip").format(level=label, size=cache_size(size_bytes),
                                       cpus=_cpu_range(tuple(sorted(cpus))))
 
 
@@ -2484,7 +2484,7 @@ def favoured_note(clocks: Clocks) -> Optional[str]:
     if clocks.favoured_cpus and clocks.others_max_hz:
         return _("clock.max.favoured").format(
             cpus=_cpu_range(clocks.favoured_cpus), max=hz(clocks.max_hz),
-            otros=hz(clocks.others_max_hz))
+            others=hz(clocks.others_max_hz))
     return None
 
 
@@ -2495,7 +2495,7 @@ def kernel_ceiling(clocks: Clocks, translate_key=None) -> str:
     if clocks.favoured_cpus and clocks.others_max_hz:
         return tr("clock.max.split").format(
             max=hz(clocks.max_hz), cpus=_cpu_range(clocks.favoured_cpus),
-            otros=hz(clocks.others_max_hz))
+            others=hz(clocks.others_max_hz))
     return hz(clocks.max_hz)
 
 
