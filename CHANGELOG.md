@@ -10,7 +10,16 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba12 (24 de noviembre de 2026)
+
+Con informes de Anianin27, Erziok, Felix Lara, jwpitr y widecoocaa23_.
+
+El AppImage compatible ya no pide un sistema más nuevo que el normal (glibc
+2.30); los Intel híbridos, con sus núcleos P y E como secciones, la máxima
+de todas sus CPUs y los núcleos favoritos; los módulos del kernel que faltan
+se cargan desde Silux (cambia el ayudante), y lo que trajeron los informes de
+la prueba11: el disco SATA en una caja USB, los AMD anteriores a Zen y las
+NVIDIA cuyo driver no da el consumo.
 
 - Gráficos: sin consumo medido, la ficha de Consumo dice el límite por su
   nombre («límite 115 W») bajo el guion, y no «de 115 W», que se leía como
