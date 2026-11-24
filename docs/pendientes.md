@@ -330,10 +330,6 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
-* `ui/pages/caches.py` · baja · en «Quién comparte qué», un bloque cuya
-  etiqueta no cabe sale vacío: en un híbrido, la L2 de 1.25 MiB de cada
-  núcleo P y la L1 de cada núcleo E (volcado `i7-12700kf`, a 1200 px). El
-  dato está en la tabla de debajo, pero el bloque no dice nada.
 * `ui/pages/storage.py` · baja · con Silux abierto como root, «Vida
   restante» de un pendrive se enseña y se esconde entre dos fotos iguales
   (`test_nada_se_mueve` como root, en el contenedor de

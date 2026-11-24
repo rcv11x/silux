@@ -444,6 +444,27 @@ def cache_size(value: Optional[int]) -> str:
     return f"{value} B"
 
 
+def cache_size_short(value: Optional[int]) -> str:
+    """«48K», «1.25M»: a cache's size where «48 KiB» doesn't fit, written
+    as sysfs writes it."""
+    full = cache_size(value)
+    for unit, letter in ((" MiB", "M"), (" KiB", "K")):
+        if full.endswith(unit):
+            return full[:-len(unit)] + letter
+    return full
+
+
+def cache_blocks_short(count: int, short: str) -> str:
+    """«4 × 32K»: a run of blocks of the cache map, labelled once."""
+    return f"{count} × {short}" if count > 1 else short
+
+
+def cache_block_tip(label: str, size_bytes: Optional[int], cpus) -> str:
+    """«L2 P · 1.25 MiB · CPU 0, 1»: what one block of the cache map is."""
+    return _("caches.map.tip").format(nivel=label, tam=cache_size(size_bytes),
+                                      cpus=_cpu_range(tuple(sorted(cpus))))
+
+
 def cache_summary(cache: Cache) -> str:
     """«6 × 32 KiB, 8 vías»: how a cache hierarchy reads."""
     parts = [cache_size(cache.size_bytes)]

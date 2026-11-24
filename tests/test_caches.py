@@ -4,6 +4,7 @@ import unittest
 
 from silux.model import Cache, CpuInfo, CpuType, LogicalCpu, Snapshot
 from tests import qt
+from tests.per_dump import per_dump
 
 
 def _snapshot(hybrid: bool = False) -> Snapshot:
@@ -163,3 +164,67 @@ class TestTabla(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEveryBlockSaysItsSize(unittest.TestCase):
+    """A block of the cache map too narrow for its figure was left blank.
+    The size goes in it, shorter, or once over its run of blocks («4 ×
+    32K»), and every block has it in its tooltip."""
+
+    @classmethod
+    def setUpClass(cls):
+        from silux.settings import Preferences
+        from silux.ui import theme
+
+        cls.app = qt.app()
+        prefs = Preferences().normalized()
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale)
+
+    def _every_width(self, folder):
+        from tests import pantalla
+        from tests.test_equipos import shared_snapshot
+
+        with pantalla.Ventana(shared_snapshot(folder)) as window:
+            window.select_section("Cachés")
+            cache_map = window.caches_page.map
+            for width in (600, 760, 900):
+                window.resize(width, 700)
+                for _round in range(3):
+                    self.app.processEvents()
+                plan = cache_map.plan()
+                for row, inner, instance in cache_map.blocks():
+                    with self.subTest(width=width, row=row, cpus=instance[0]):
+                        self.assertTrue(any(
+                            index == row and area.left() <= inner.center().x() <= area.right()
+                            for index, area, _text, _font, _pill in plan))
+                        self.assertIn(instance[2].rstrip("KMB"), instance[3])
+
+
+per_dump(TestEveryBlockSaysItsSize, "every_width", TestEveryBlockSaysItsSize._every_width)
+
+
+class TestABlocksTooltip(unittest.TestCase):
+
+    def test_hovering_a_narrow_block_says_its_size(self):
+        from PySide6.QtCore import QEvent, QPoint
+        from PySide6.QtGui import QHelpEvent
+        from PySide6.QtWidgets import QToolTip
+
+        from silux import render
+        from tests import pantalla
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        app = qt.app()
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "i7-12700kf")) as window:
+            window.select_section("Cachés")
+            window.resize(760, 700)
+            for _round in range(3):
+                app.processEvents()
+            cache_map = window.caches_page.map
+            _row, inner, instance = next(b for b in cache_map.blocks() if b[2][0] == (16,))
+            point = inner.center().toPoint()
+            cache_map.event(QHelpEvent(QEvent.Type.ToolTip, point, cache_map.mapToGlobal(point)))
+            self.assertEqual(QToolTip.text(), instance[3])
+            self.assertIn(render.cache_size(32 * 1024), QToolTip.text())
+            QToolTip.hideText()
+            cache_map.event(QHelpEvent(QEvent.Type.ToolTip, QPoint(1, 1), cache_map.mapToGlobal(QPoint(1, 1))))

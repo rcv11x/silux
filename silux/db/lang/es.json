@@ -290,6 +290,7 @@
   "caches.latency.note": "La latencia es la medida en Memoria («Ancho de banda y latencia»): lo que tarda un acceso que el procesador no puede adelantar. Vale para esta sesión; se mide otra vez desde allí.",
   "caches.line.note": "La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la línea entera, y por eso recorrer datos contiguos es mucho más rápido que saltar por la memoria.",
   "caches.map.note": "Cada bloque es una instancia física de caché; su anchura son las CPUs lógicas que la comparten.",
+  "caches.map.tip": "{nivel} · {tam} · CPU {cpus}",
   "caches.row.ram": "RAM",
   "caches.shared.many": "{n} hilos",
   "caches.shared.one": "{n} hilo",

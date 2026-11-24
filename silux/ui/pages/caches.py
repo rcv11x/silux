@@ -211,16 +211,20 @@ class CachesPage(ScrollPage):
         else:
             self.reparto.hide()
 
-        self.map.set_data(cache_axis(snapshot), [
-            {
-                "label": self._label(level, kind, key, cpu.hybrid),
+        rows = []
+        for (level, kind, key, _tam), cache in grouped.items():
+            if not cache.instance_cpus:
+                continue
+            label = self._label(level, kind, key, cpu.hybrid)
+            rows.append({
+                "label": label,
                 "level": level,
-                "instances": [(cpus, render.cache_size(cache.size_bytes))
+                "instances": [(cpus, render.cache_size(cache.size_bytes),
+                               render.cache_size_short(cache.size_bytes),
+                               render.cache_block_tip(label, cache.size_bytes, cpus))
                               for cpus in cache.instance_cpus],
-            }
-            for (level, kind, key, _tam), cache in grouped.items()
-            if cache.instance_cpus
-        ])
+            })
+        self.map.set_data(cache_axis(snapshot), rows)
 
         def latencia(level: int, kind: str) -> list[str]:
             if not self._latencias:

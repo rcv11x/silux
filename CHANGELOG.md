@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Cachés: en «Quién comparte qué», un bloque estrecho ya no se queda en
+  blanco: lleva su tamaño corto («48K», «1.25M»), o una vez por cada tramo
+  de bloques iguales («4 × 32K») si ni eso cabe, y al pasar el ratón cada
+  bloque dice su nivel, su tamaño y qué CPUs lo comparten.
 - CPU: la máxima de cada tipo de núcleo es la de todas sus CPUs, no la de
   la primera. Con núcleos favoritos (Turbo Boost Max 3.0, los preferidos de
   AMD), Relojes dice cuáles llegan más alto, en vez de «El kernel limita a

@@ -290,6 +290,7 @@
   "caches.latency.note": "Latency is the one measured in Memory (“Bandwidth and latency”): how long an access the processor cannot predict takes. It holds for this session; measure again from there.",
   "caches.line.note": "The smallest unit that travels between memory and cache. Reading a single byte pulls in the whole line, which is why walking contiguous data is far faster than jumping around memory.",
   "caches.map.note": "Each block is one physical cache instance; its width is the logical CPUs that share it.",
+  "caches.map.tip": "{nivel} · {tam} · CPU {cpus}",
   "caches.row.ram": "RAM",
   "caches.shared.many": "{n} threads",
   "caches.shared.one": "{n} thread",

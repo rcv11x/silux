@@ -9,10 +9,11 @@ from __future__ import annotations
 
 from typing import Optional, Sequence
 
-from PySide6.QtCore import QRectF, QSize, Qt
-from PySide6.QtGui import QBrush, QPainter, QPen
-from PySide6.QtWidgets import QSizePolicy, QWidget
+from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt
+from PySide6.QtGui import QBrush, QFontMetricsF, QPainter, QPen
+from PySide6.QtWidgets import QSizePolicy, QToolTip, QWidget
 
+from .. import render
 from ..i18n import _
 from . import theme
 from .theme import Palette, ui_font, value_font
@@ -50,6 +51,10 @@ class CacheMap(QWidget):
     ROW_H = 30
     ROW_GAP = 5
     AXIS_H = 18
+    # Room a figure leaves inside its block, on each side, and a pill around
+    # the figure of a run of blocks.
+    TEXT_PAD = 3
+    PILL_PAD = 4
 
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -60,8 +65,8 @@ class CacheMap(QWidget):
         self.setMinimumWidth(150)
 
     def set_data(self, axis: Sequence[int], rows: Sequence[dict]) -> None:
-        """`axis` son las CPUs en orden de dibujo; cada fila lleva etiqueta,
-        nivel e instancias como tuplas de CPUs con su tamaño ya formateado."""
+        """`axis` is the CPUs in drawing order; each row has its label, level
+        and instances as (CPUs, size, short size, tooltip), already written."""
         self._axis = list(axis)
         self._rows = list(rows)
         self.setFixedHeight(self.sizeHint().height())
@@ -71,49 +76,135 @@ class CacheMap(QWidget):
         rows = max(len(self._rows), 1)
         return QSize(320, rows * self.ROW_H + (rows - 1) * self.ROW_GAP + self.AXIS_H + 4)
 
+    def _geometry(self) -> tuple[float, float, float]:
+        """The gutter's width, where the plot starts and one CPU's width."""
+        gutter = min(self.GUTTER, self.width() * 0.3)
+        plot_left = gutter + 6
+        plot_width = max(self.width() - plot_left - 2, 40)
+        return gutter, plot_left, plot_width / max(len(self._axis), 1)
+
+    def blocks(self) -> list[tuple[int, QRectF, tuple]]:
+        """Each drawn block: its row, its rectangle and its instance. An
+        instance over CPUs that aren't together on the axis is one block per
+        run."""
+        _gutter, plot_left, column = self._geometry()
+        position = {cpu: i for i, cpu in enumerate(self._axis)}
+        found = []
+        for index, row in enumerate(self._rows):
+            top = index * (self.ROW_H + self.ROW_GAP)
+            for instance in row["instances"]:
+                for start, end in _contiguous_runs(
+                        sorted(position[c] for c in instance[0] if c in position)):
+                    rect = QRectF(plot_left + start * column, top,
+                                  (end - start + 1) * column, self.ROW_H)
+                    found.append((index, rect.adjusted(1.0, 1.0, -1.0, -1.0), instance))
+        return found
+
+    def _fitting(self, width: float, *texts: str):
+        """The first text that fits `width`, with its font: at the figures'
+        size, or a point smaller."""
+        normal = value_font(max(7, theme.METRICS.mono_pt - 1))
+        smaller = value_font(max(7, theme.METRICS.mono_pt - 2))
+        for text in texts:
+            for font in (normal, smaller):
+                if QFontMetricsF(font).horizontalAdvance(text) <= width - 2 * self.TEXT_PAD:
+                    return text, font
+        return None
+
+    def plan(self) -> list[tuple[int, QRectF, str, object, bool]]:
+        """What text goes where: (row, area, text, font, on a pill).
+
+        Each block with its size, the short one if the size doesn't fit. A
+        row whose blocks can't all hold theirs is labelled once per run of
+        adjacent blocks («4 × 32K»), on a pill over them. A run too narrow
+        for even «32K» is left to the tooltip.
+        """
+        rows: dict[int, list[tuple[QRectF, tuple]]] = {}
+        for index, inner, instance in self.blocks():
+            rows.setdefault(index, []).append((inner, instance))
+        found = []
+        for index, blocks in rows.items():
+            each = [self._fitting(inner.width(), instance[1], instance[2])
+                    for inner, instance in blocks]
+            if all(each):
+                found += [(index, inner, text, font, False)
+                          for (inner, _instance), (text, font) in zip(blocks, each)]
+                continue
+            for run in self._runs(blocks):
+                area = QRectF(run[0][0].left(), run[0][0].top(),
+                              run[-1][0].right() - run[0][0].left(), run[0][0].height())
+                short = run[0][1][2]
+                if fitting := self._fitting(area.width() - 2 * self.PILL_PAD,
+                                            render.cache_blocks_short(len(run), short), short):
+                    found.append((index, area, fitting[0], fitting[1], True))
+        return found
+
+    @staticmethod
+    def _runs(blocks: list[tuple[QRectF, tuple]]) -> list[list[tuple[QRectF, tuple]]]:
+        """Blocks side by side, as runs. A row is one size of one level, so
+        its blocks are all alike."""
+        runs: list[list[tuple[QRectF, tuple]]] = []
+        for block in sorted(blocks, key=lambda b: b[0].left()):
+            last = runs[-1][-1] if runs else None
+            if last and block[0].left() - last[0].right() < 3:
+                runs[-1].append(block)
+            else:
+                runs.append([block])
+        return runs
+
+    def event(self, event) -> bool:  # noqa: N802
+        if event.type() == QEvent.Type.ToolTip:
+            point = QPointF(event.pos())
+            for _row, inner, instance in self.blocks():
+                if inner.contains(point):
+                    QToolTip.showText(event.globalPos(), instance[3], self)
+                    return True
+            QToolTip.hideText()
+            event.ignore()
+            return True
+        return super().event(event)
+
     def paintEvent(self, event) -> None:  # noqa: N802
         if not self._axis or not self._rows:
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        gutter = min(self.GUTTER, self.width() * 0.3)
-        plot_left = gutter + 6
-        plot_width = max(self.width() - plot_left - 2, 40)
-        column = plot_width / len(self._axis)
-        position = {cpu: i for i, cpu in enumerate(self._axis)}
+        gutter, plot_left, column = self._geometry()
+        plot_width = column * len(self._axis)
 
         label_font = ui_font(max(7, theme.METRICS.small_pt - 1))
         letra_de_cifras = value_font(max(7, theme.METRICS.mono_pt - 1))
         max_level = max((row.get("level", 1) for row in self._rows), default=1)
 
+        painter.setFont(label_font)
+        painter.setPen(self._p.q("muted"))
         for index, row in enumerate(self._rows):
             top = index * (self.ROW_H + self.ROW_GAP)
-            band = QRectF(plot_left, top, plot_width, self.ROW_H)
-
-            painter.setFont(label_font)
-            painter.setPen(self._p.q("muted"))
             painter.drawText(
                 QRectF(0, top, gutter, self.ROW_H),
                 int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter),
                 row["label"],
             )
 
+        for index, inner, instance in self.blocks():
             # Cuanto más alto el nivel, más presencia: la L3 es la que manda.
-            weight = 0.10 + 0.16 * (row.get("level", 1) / max_level)
-            for cpus, text in row["instances"]:
-                for start, end in _contiguous_runs(sorted(position[c] for c in cpus if c in position)):
-                    rect = QRectF(band.left() + start * column, band.top(),
-                                  (end - start + 1) * column, band.height())
-                    inner = rect.adjusted(1.0, 1.0, -1.0, -1.0)
-                    painter.setPen(QPen(self._p.q("accent", 0.55), 1))
-                    painter.setBrush(QBrush(self._p.q("accent", weight)))
-                    painter.drawRoundedRect(inner, 4, 4)
+            weight = 0.10 + 0.16 * (self._rows[index].get("level", 1) / max_level)
+            painter.setPen(QPen(self._p.q("accent", 0.55), 1))
+            painter.setBrush(QBrush(self._p.q("accent", weight)))
+            painter.drawRoundedRect(inner, 4, 4)
 
-                    painter.setFont(letra_de_cifras)
-                    if painter.fontMetrics().horizontalAdvance(text) + 10 <= inner.width():
-                        painter.setPen(self._p.q("ink"))
-                        painter.drawText(inner, int(Qt.AlignmentFlag.AlignCenter), text)
+        for _index, area, text, font, pill in self.plan():
+            painter.setFont(font)
+            if pill:
+                width = QFontMetricsF(font).horizontalAdvance(text) + 2 * (self.TEXT_PAD + self.PILL_PAD)
+                box = QRectF(area.center().x() - width / 2, area.top() + 4,
+                             width, area.height() - 8)
+                painter.setPen(QPen(self._p.q("accent", 0.55), 1))
+                painter.setBrush(QBrush(self._p.q("surface")))
+                painter.drawRoundedRect(box, 4, 4)
+            painter.setPen(self._p.q("ink"))
+            painter.drawText(area, int(Qt.AlignmentFlag.AlignCenter), text)
 
         axis_top = len(self._rows) * (self.ROW_H + self.ROW_GAP)
         painter.setFont(letra_de_cifras)
