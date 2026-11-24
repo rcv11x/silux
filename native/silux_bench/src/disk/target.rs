@@ -28,6 +28,9 @@ const ASSUMED_ALIGN: usize = 4096;
 const MODE: libc::c_uint = 0o600;
 /// Names tried when the file has to be given one for an instant.
 const NAME_TRIES: usize = 8;
+/// What that name begins with; sixteen hexadecimal digits follow.
+const NAME_PREFIX: &str = ".silux-disk-test-";
+const NAME_DIGITS: usize = 16;
 
 // `linux/magic.h`.
 const TMPFS_MAGIC: u32 = 0x0102_1994;
@@ -146,6 +149,7 @@ impl Target {
             return Err(Error::NoSpace { needed, free });
         }
 
+        remove_leftovers(path, &folder);
         let (file, creation) = open_without_a_name(&folder, unnamed)?;
         // While it's empty: btrfs only takes the flag then. Without it a
         // direct write to a file with checksums goes through the page cache
@@ -470,7 +474,7 @@ fn open_without_a_name(folder: &OwnedFd, unnamed: bool) -> Result<(File, Creatio
     }
     let mut rng = Rng::new(now_ns() ^ (u64::from(std::process::id()) << 32));
     for _ in 0..NAME_TRIES {
-        let name = CString::new(format!(".silux-disk-test-{:016x}", rng.next_u64()))
+        let name = CString::new(format!("{NAME_PREFIX}{:016x}", rng.next_u64()))
             .map_err(|_| Error::Internal("a name with a NUL in it".to_owned()))?;
         // Never an existing file, nor through a link someone left there.
         // SAFETY: `folder` is an open directory and `name` is a
@@ -495,10 +499,17 @@ fn open_without_a_name(folder: &OwnedFd, unnamed: bool) -> Result<(File, Creatio
         // file is freed when the descriptor closes, as the unnamed one.
         // SAFETY: as the call above.
         if unsafe { libc::unlinkat(folder.as_raw_fd(), name.as_ptr(), 0) } != 0 {
-            return Err(Error::Io {
-                call: "unlinkat",
-                errno: errno(),
-            });
+            match errno() {
+                // Another test starting in this folder took it for a
+                // leftover: the name is gone all the same.
+                libc::ENOENT => {}
+                errno => {
+                    return Err(Error::Io {
+                        call: "unlinkat",
+                        errno,
+                    })
+                }
+            }
         }
         return Ok((file, Creation::Unlinked));
     }
@@ -506,6 +517,58 @@ fn open_without_a_name(folder: &OwnedFd, unnamed: bool) -> Result<(File, Creatio
         call: "openat",
         errno: libc::EEXIST,
     })
+}
+
+/// Whether a name is one this module gives a file for an instant.
+fn is_ours(name: &[u8]) -> bool {
+    name.strip_prefix(NAME_PREFIX.as_bytes())
+        .is_some_and(|digits| {
+            digits.len() == NAME_DIGITS
+                && digits
+                    .iter()
+                    .all(|digit| matches!(digit, b'0'..=b'9' | b'a'..=b'f'))
+        })
+}
+
+/// Remove what a process that died between naming its file and unlinking it
+/// left in the folder: files with our name, ours, and empty. Nothing else is
+/// touched, and whatever can't be read or removed is left as it is.
+fn remove_leftovers(path: &Path, folder: &OwnedFd) {
+    let Ok(entries) = std::fs::read_dir(path) else {
+        return;
+    };
+    // SAFETY: no arguments; it only reads who this process runs as.
+    let me = unsafe { libc::geteuid() };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        if !is_ours(name.as_bytes()) {
+            continue;
+        }
+        let Ok(name) = CString::new(name.as_bytes()) else {
+            continue;
+        };
+        // SAFETY: stat is plain numbers, and all zeros is a valid one.
+        let mut found: libc::stat = unsafe { std::mem::zeroed() };
+        // The entry itself, not what a link with that name points at.
+        // SAFETY: `folder` is an open directory, `name` a NUL-terminated
+        // string that outlives the call, and `found` is valid and writable.
+        let failed = unsafe {
+            libc::fstatat(
+                folder.as_raw_fd(),
+                name.as_ptr(),
+                &mut found,
+                libc::AT_SYMLINK_NOFOLLOW,
+            )
+        } != 0;
+        let empty_file_of_ours = !failed
+            && found.st_mode & libc::S_IFMT == libc::S_IFREG
+            && found.st_size == 0
+            && found.st_uid == me;
+        if empty_file_of_ours {
+            // SAFETY: as the call above; no memory is written.
+            unsafe { libc::unlinkat(folder.as_raw_fd(), name.as_ptr(), 0) };
+        }
+    }
 }
 
 /// What `chattr +C` does, on an empty file of ours: no root needed, and it
@@ -1075,6 +1138,77 @@ mod tests {
                 errno: libc::EIO
             }
         );
+    }
+
+    #[test]
+    fn only_our_own_empty_leftovers_are_removed() {
+        let folder = Folder::new("leftovers");
+        let ours = ".silux-disk-test-0123456789abcdef";
+        let kept = [
+            // Ours by its name, but with something in it.
+            ".silux-disk-test-00000000000000aa",
+            // Not our name: a letter that isn't a digit, too short, too
+            // long, something after it, something before it, capitals.
+            ".silux-disk-test-0123456789abcdeg",
+            ".silux-disk-test-0123456789abcde",
+            ".silux-disk-test-0123456789abcdef0",
+            ".silux-disk-test-0123456789abcdef.bak",
+            "a.silux-disk-test-0123456789abcdef",
+            ".silux-disk-test-0123456789ABCDEF",
+            "notes.txt",
+        ];
+        std::fs::write(folder.0.join(ours), b"").unwrap();
+        std::fs::write(folder.0.join(kept[0]), b"someone's data").unwrap();
+        for name in &kept[1..] {
+            std::fs::write(folder.0.join(name), b"").unwrap();
+        }
+        // Our name on what isn't a file: a folder, a link to an empty file
+        // and a pipe, which has no size either.
+        let folder_named = ".silux-disk-test-1111111111111111";
+        let link_named = ".silux-disk-test-2222222222222222";
+        let pipe_named = ".silux-disk-test-3333333333333333";
+        std::fs::create_dir(folder.0.join(folder_named)).unwrap();
+        std::os::unix::fs::symlink("notes.txt", folder.0.join(link_named)).unwrap();
+        let pipe = CString::new(folder.0.join(pipe_named).as_os_str().as_bytes()).unwrap();
+        // SAFETY: a NUL-terminated path that outlives the call.
+        assert_eq!(unsafe { libc::mkfifo(pipe.as_ptr(), 0o600) }, 0);
+
+        let target = folder.target(SMALL);
+        let mut names = folder.names();
+        names.sort();
+        let mut expected: Vec<String> = kept
+            .iter()
+            .chain(&[folder_named, link_named, pipe_named])
+            .map(|name| (*name).to_owned())
+            .collect();
+        expected.sort();
+        if target.is_some() {
+            assert_eq!(names, expected);
+            assert_eq!(
+                std::fs::read(folder.0.join(kept[0])).unwrap(),
+                b"someone's data"
+            );
+        }
+    }
+
+    #[test]
+    fn a_name_is_ours_only_if_it_is_exactly_one_we_give() {
+        assert!(is_ours(b".silux-disk-test-0123456789abcdef"));
+        assert!(is_ours(
+            format!("{NAME_PREFIX}{:016x}", u64::MAX).as_bytes()
+        ));
+        assert!(is_ours(format!("{NAME_PREFIX}{:016x}", 0).as_bytes()));
+        for name in [
+            "",
+            ".silux-disk-test-",
+            ".silux-disk-test-0123456789abcde",
+            ".silux-disk-test-0123456789abcdef0",
+            ".silux-disk-test-0123456789abcdeF",
+            ".silux-disk-test-0123456789abcde/",
+            "silux-disk-test-0123456789abcdef",
+        ] {
+            assert!(!is_ours(name.as_bytes()), "{name}");
+        }
     }
 
     #[test]
