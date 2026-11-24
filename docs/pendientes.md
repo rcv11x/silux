@@ -381,8 +381,8 @@ la memoria) no va: está propuesto en las notas
 * `ui/widgets.py`, `ui/pages/storage.py` · media-baja · la temperatura de un
   disco SATA sigue con «—» en la tabla de unidades aunque su ficha lleve
   candado: `Table.set_cell_locked` existe y falta usarlo ahí.
-* `ui/widgets.py` · baja · el globo «copiado» se come el clic siguiente durante
-  1,4 s; y arrastrar para seleccionar parte de un valor copia el valor entero.
+* `ui/widgets.py` · baja · arrastrar para seleccionar parte de un valor copia
+  el valor entero.
 * `ui/widgets.py` · baja · `Table.set_rows` indexa fuera de rango si una fila
   trae más columnas que la anterior.
 * `ui/widgets.py` · baja · una gráfica transparente repinta su tarjeta y la

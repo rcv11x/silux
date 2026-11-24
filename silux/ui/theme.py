@@ -443,8 +443,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.accent};
         background: {p.surface};
         border: 1px solid {p.accent};
-        border-radius: 5px;
-        padding: 3px 9px;
+        border-radius: 4px;
+        padding: 1px 6px;
     }}
 
     QLabel#Headline {{ color: {p.ink}; font-size: {m.headline_px}px; font-weight: 650; }}

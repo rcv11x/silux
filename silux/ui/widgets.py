@@ -64,12 +64,6 @@ def avisar_copiado(cerca_de: QLabel, texto: str = "") -> None:
     hacer clic está mirando el valor, no el borde inferior de la pantalla, y
     un aviso que aparece donde no se está mirando no confirma nada.
 
-    Sale a la derecha del valor y a su misma altura, no bajo el cursor: así
-    aparece en el mismo sitio se pinche donde se pinche dentro de la fila, en
-    vez de bailar unos píxeles según dónde cayera el ratón. Y ahí no tapa lo
-    que se acaba de copiar, que es lo que uno mira para comprobar que copió
-    lo que quería.
-
     Se destruye solo. No se reutiliza uno guardado porque dos clics seguidos
     en dos filas distintas tienen que poder solaparse sin que el primero le
     robe el sitio al segundo.
@@ -79,27 +73,47 @@ def avisar_copiado(cerca_de: QLabel, texto: str = "") -> None:
         return
     globo = QLabel(texto or _("app.copied"), ventana)
     globo.setObjectName("Toast")
-    globo.setFont(ui_font(theme.METRICS.small_pt))
+    globo.setFont(ui_font(max(7, theme.METRICS.small_pt - 1)))
     globo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    # It sits over other values for a moment, and a click on one of them
+    # has to reach it.
+    globo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
     globo.adjustSize()
-
-    # El final del texto, no el del widget: la etiqueta ocupa toda la columna
-    # aunque el valor sea corto, y midiendo el widget el aviso aparecía a un
-    # palmo de «AMD».
-    esquina = cerca_de.mapTo(ventana, QPoint(0, 0))
-    ancho_texto = cerca_de.fontMetrics().horizontalAdvance(cerca_de.text())
-    x = esquina.x() + min(ancho_texto, cerca_de.width()) + 10
-    y = esquina.y() + (cerca_de.height() - globo.height()) // 2
-
-    # Siempre dentro de la ventana: en la columna de la derecha, o con la
-    # ventana estrecha, se salía por el borde.
-    x = min(max(0, x), max(0, ventana.width() - globo.width() - 4))
-    y = min(max(0, y), max(0, ventana.height() - globo.height() - 4))
-    globo.move(x, y)
+    globo.move(*_toast_position(cerca_de, ventana, globo.size()))
     globo.show()
     globo.raise_()
 
     QTimer.singleShot(MILISEGUNDOS_DEL_AVISO, globo.deleteLater)
+
+
+def _toast_position(label: QLabel, window: QWidget, size: QSize) -> tuple[int, int]:
+    """Where the «copied» goes: beside the text on the side the label leaves
+    empty, at its height, so it lands in the same place wherever the row was
+    clicked; above the text if that side has no room. Never over the value
+    just copied, which is what one looks at to check it, and never outside
+    the window."""
+    corner = label.mapTo(window, QPoint(0, 0))
+    text_width = min(label.fontMetrics().horizontalAdvance(label.text()), label.width())
+    right_aligned = bool(label.alignment() & Qt.AlignmentFlag.AlignRight)
+    text_left = corner.x() + (label.width() - text_width if right_aligned else 0)
+    text = QRect(text_left, corner.y(), text_width, label.height())
+    gap = 8
+    if right_aligned:
+        # Within its own cell: further left is the value of the next column.
+        x = text.left() - gap - size.width()
+        fits = x >= corner.x()
+    else:
+        x = text.right() + gap
+        fits = x + size.width() <= window.width() - 4
+    y = text.top() + (text.height() - size.height()) // 2
+    if not fits:
+        x = text.right() - size.width() if right_aligned else text.left()
+        y = text.top() - size.height() - 2
+        if y < 0:
+            y = text.bottom() + 2
+    x = min(max(0, x), max(0, window.width() - size.width() - 4))
+    y = min(max(0, y), max(0, window.height() - size.height() - 4))
+    return x, y
 
 
 # Cuánto dura el «copiado». Lo justo para verlo sin que estorbe: por debajo de
