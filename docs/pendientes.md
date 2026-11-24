@@ -646,6 +646,15 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   desde `decode-dimms` de i2c-tools, y la marca de un NVMe por el `pci.ids` de
   su controladora. Detalle en las notas (`revision-memoria-discos-placas.md`).
 
+* **Revisión de arquitectura del código de gráficas (después de la 0.4).**
+  NVIDIA (NVML y nouveau), AMD (amdgpu, radeon, la telemetría del firmware),
+  Intel (i915 y xe), integradas y dedicadas: cada arreglo de una tarjeta se
+  ha hecho donde caía (`providers/drm.py`, `nvidia.py`, `derived.py`,
+  `rapl.py`, las páginas), y puede haber crecido a parches. Ver qué decide
+  cada cosa (el nombre, el consumo, la temperatura, lo que falta por
+  permisos) y si hay una sola fuente para cada una. Las referencias de
+  pantalla de los 22 volcados son la red.
+
 * **El código, en inglés (después de la 0.4).** Los nombres de funciones,
   variables, parámetros, atributos y clases, y los comentarios y docstrings,
   pasan a inglés en un proyecto propio, módulo a módulo y con los tests como
