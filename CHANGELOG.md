@@ -10,6 +10,11 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+- Informe: el tamaño de cada caché lleva los decimales que tiene, como en la
+  ventana: la L2 de un núcleo P de Alder Lake es «1.25 MiB», no «1.2 MiB».
+
 ## 0.4-prueba12 (24 de noviembre de 2026)
 
 Con informes de Anianin27, Erziok, Felix Lara, jwpitr y widecoocaa23_.

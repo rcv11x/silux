@@ -158,7 +158,7 @@ def _caches(cpu_type) -> str:
     if not cpu_type.caches:
         return "—"
     return " · ".join(
-        f"{render.cache_label(cache)} {render.size(cache.size_bytes)}"
+        f"{render.cache_label(cache)} {render.cache_size(cache.size_bytes)}"
         + (f" ×{cache.instances}" if cache.instances > 1 else "")
         for cache in cpu_type.caches
     )

@@ -562,3 +562,15 @@ class TestLaTablaDeDecimalesEsUna(unittest.TestCase):
         from silux.ui.pages import monitor
 
         self.assertIs(monitor.DECIMALS, render.SENSOR_DECIMALS)
+
+
+class TestCacheSizesKeepTheirDecimals(unittest.TestCase):
+    """A P-core's L2 is 1.25 MiB: the report wrote «1.2 MiB», a figure the
+    window doesn't show and the part doesn't have."""
+
+    def test_as_the_window_writes_them(self):
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        text = report.build(shared_snapshot(EQUIPOS / "i7-12700kf"))
+        self.assertIn("L2 1.25 MiB ×8", text)
+        self.assertNotIn("1.2 MiB", text)
