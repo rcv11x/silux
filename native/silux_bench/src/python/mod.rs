@@ -13,13 +13,14 @@ use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
-use crate::error::{panic_message, Error, Result};
-use crate::frequency::Source;
-use crate::kernels::{Isa, Operation};
-use crate::latency::{self, Settings};
-use crate::memory::Pages;
-use crate::timer::Clock;
-use crate::{bandwidth, cancel, stats, topology};
+use crate::common::error::{panic_message, Error, Result};
+use crate::common::frequency::Source;
+use crate::common::timer::Clock;
+use crate::common::{cancel, stats, topology};
+use crate::memory::bandwidth;
+use crate::memory::block::Pages;
+use crate::memory::kernels::{Isa, Operation};
+use crate::memory::latency::{self, Settings};
 
 pyo3::create_exception!(silux_bench, SiluxBenchError, PyException);
 pyo3::create_exception!(silux_bench, Cancelled, SiluxBenchError);

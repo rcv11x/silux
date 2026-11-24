@@ -1,7 +1,7 @@
 //! The block being measured: mapped at a huge-page boundary, with the page
 //! size asked for, and a way to see which pages the kernel actually gave.
 
-use crate::error::{errno, Error, Result};
+use crate::common::error::{errno, Error, Result};
 
 /// A cache line: the unit a load brings in.
 pub const LINE: usize = 64;

@@ -11,14 +11,14 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Barrier, Condvar, Mutex, PoisonError};
 use std::thread::Builder;
 
-use crate::cancel::Control;
-use crate::error::{panic_message, Error, Result};
-use crate::frequency::{Meter, Source};
-use crate::kernels::{self, Isa, Operation, STEP};
-use crate::memory::{Block, Pages};
-use crate::stats::{self, Summary};
-use crate::timer::{now_ns, Clock};
-use crate::topology::pin_current_thread;
+use crate::common::cancel::Control;
+use crate::common::error::{panic_message, Error, Result};
+use crate::common::frequency::{Meter, Source};
+use crate::common::stats::{self, Summary};
+use crate::common::timer::{now_ns, Clock};
+use crate::common::topology::pin_current_thread;
+use crate::memory::block::{Block, Pages};
+use crate::memory::kernels::{self, Isa, Operation, STEP};
 
 pub const MAX_REPETITIONS: usize = 1000;
 /// How far past the end of a copy's source its destination starts. Two
@@ -371,7 +371,7 @@ fn arrays(block: &Block, bytes: usize, copy: bool) -> (*mut u8, *mut u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::topology::allowed_cpus;
+    use crate::common::topology::allowed_cpus;
 
     fn settings(operation: Operation, non_temporal: bool) -> Settings {
         Settings {

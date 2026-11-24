@@ -16,7 +16,7 @@ use std::fs::File;
 use std::os::fd::{AsRawFd, FromRawFd};
 use std::path::{Path, PathBuf};
 
-use crate::topology::current_cpu;
+use crate::common::topology::current_cpu;
 
 /// Below or above these no core runs: a counter that reads so is counting
 /// something else.
@@ -227,7 +227,7 @@ fn read_khz(path: &Path) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::timer::now_ns;
+    use crate::common::timer::now_ns;
 
     #[test]
     fn cpu_lists() {

@@ -6,7 +6,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crate::error::{Error, Result};
+use crate::common::error::{Error, Result};
 
 #[derive(Debug, Default)]
 pub struct Control {

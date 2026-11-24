@@ -2,7 +2,7 @@
 
 use std::mem::size_of;
 
-use crate::error::{errno, panic_message, Error, Result};
+use crate::common::error::{errno, panic_message, Error, Result};
 
 /// Run `work` on a new thread pinned to `cpu` (or wherever the scheduler
 /// puts it, for `None`). A thread of its own, so the caller's affinity is
