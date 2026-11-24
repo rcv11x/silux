@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.89"
 license = "GPL-3.0-or-later"
-description = "Silux's memory benchmark: latency by block size and bandwidth"
+description = "Silux's native benchmarks: memory latency and bandwidth, and disk speed"
 publish = false
 
 [lib]
