@@ -111,19 +111,19 @@ impl Target {
 
     /// `create`, starting from a name when `unnamed` is false: what happens
     /// by itself where a file can't be made without one.
-    fn create_as(folder: &Path, bytes: u64, unnamed: bool) -> Result<Target> {
+    fn create_as(path: &Path, bytes: u64, unnamed: bool) -> Result<Target> {
         if bytes == 0 || !bytes.is_multiple_of(FILL_BLOCK as u64) || i64::try_from(bytes).is_err() {
             return Err(Error::BadSetting("bytes"));
         }
-        let path = CString::new(folder.as_os_str().as_bytes()).map_err(|_| Error::NoFolder {
+        let c_path = CString::new(path.as_os_str().as_bytes()).map_err(|_| Error::NoFolder {
             errno: libc::EINVAL,
         })?;
         // `O_DIRECTORY`: a device or a file given as the folder is refused
         // here, before anything could be written to it.
-        // SAFETY: `path` is a NUL-terminated string that outlives the call.
+        // SAFETY: `c_path` is a NUL-terminated string that outlives the call.
         let raw = unsafe {
             libc::open(
-                path.as_ptr(),
+                c_path.as_ptr(),
                 libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC,
             )
         };
@@ -237,13 +237,49 @@ impl Target {
         }
         // SAFETY: a descriptor we own; no memory involved.
         if unsafe { libc::fdatasync(self.file.as_raw_fd()) } != 0 {
-            return Err(failed("fdatasync"));
+            return Err(Error::Io {
+                call: "fdatasync",
+                errno: errno(),
+            });
         }
         Ok(())
     }
 
+    /// A request that isn't aligned as the file asks is a bug of ours, and
+    /// is stopped here: some file systems would serve it through the page
+    /// cache without a word instead of refusing it.
+    fn check_aligned(
+        &self,
+        call: &'static str,
+        address: usize,
+        len: usize,
+        offset: u64,
+    ) -> Result<()> {
+        let Align {
+            memory, offset: by, ..
+        } = self.align;
+        if address.is_multiple_of(memory)
+            && len.is_multiple_of(by)
+            && offset.is_multiple_of(by as u64)
+        {
+            return Ok(());
+        }
+        Err(Error::Internal(format!(
+            "{call} of {len} bytes at offset {offset} from address {address:#x} isn't aligned \
+             to {by} in the file and {memory} in memory"
+        )))
+    }
+
+    /// The error of a request the kernel just refused.
+    fn refused(&self, call: &'static str, len: usize, offset: u64) -> Error {
+        let errno = errno();
+        let free = filesystem_of(&self.file).ok().map(|(_, free)| free);
+        refused(call, errno, self.align, len, offset, free)
+    }
+
     /// Read the whole of `block` from `offset` of the file.
     pub fn read_at(&self, block: &mut [u8], offset: u64) -> Result<()> {
+        self.check_aligned("pread", block.as_ptr() as usize, block.len(), offset)?;
         let mut done = 0;
         while let Some(rest) = block.get_mut(done..).filter(|rest| !rest.is_empty()) {
             // SAFETY: `rest` is writable memory of its own length for the
@@ -266,7 +302,7 @@ impl Target {
                     })
                 }
                 _ if errno() == libc::EINTR => {}
-                _ => return Err(failed("pread")),
+                _ => return Err(self.refused("pread", block.len(), offset)),
             }
         }
         Ok(())
@@ -274,6 +310,7 @@ impl Target {
 
     /// Write the whole of `block` at `offset` of the file.
     pub fn write_at(&self, block: &[u8], offset: u64) -> Result<()> {
+        self.check_aligned("pwrite", block.as_ptr() as usize, block.len(), offset)?;
         let mut done = 0;
         while let Some(rest) = block.get(done..).filter(|rest| !rest.is_empty()) {
             // SAFETY: `rest` is readable memory of its own length for the
@@ -295,7 +332,7 @@ impl Target {
                     })
                 }
                 _ if errno() == libc::EINTR => {}
-                _ => return Err(failed("pwrite")),
+                _ => return Err(self.refused("pwrite", block.len(), offset)),
             }
         }
         Ok(())
@@ -343,16 +380,33 @@ impl Target {
     }
 }
 
-/// The error of a call on the file that just failed.
-fn failed(call: &'static str) -> Error {
-    match errno() {
-        // What a file system that took `O_DIRECT` and then can't do it
-        // answers to the request itself.
-        libc::EINVAL => Error::NoDirect {
-            errno: libc::EINVAL,
+/// What a request the kernel refused with `errno` means. It was aligned to
+/// `align` (`check_aligned`), and `free` is what the file system has left,
+/// where that could be asked.
+fn refused(
+    call: &'static str,
+    errno: i32,
+    align: Align,
+    len: usize,
+    offset: u64,
+    free: Option<u64>,
+) -> Error {
+    match (errno, free) {
+        // The file said this alignment was enough: the fault isn't a file
+        // system without direct requests, it is in what was sent.
+        (libc::EINVAL, _) if align.declared => Error::Internal(format!(
+            "{call} of {len} bytes at offset {offset} was refused as invalid, aligned to the \
+             {} in the file and {} in memory that the file declared",
+            align.offset, align.memory
+        )),
+        // It didn't say: what a file system that took `O_DIRECT` and then
+        // can't do it answers to the request itself.
+        (libc::EINVAL, _) => Error::NoDirect { errno },
+        (libc::ENOSPC | libc::EDQUOT, Some(free)) => Error::NoSpace {
+            needed: len as u64,
+            free,
         },
-        libc::ENOSPC | libc::EDQUOT => Error::NoSpace { needed: 0, free: 0 },
-        other => Error::Io { call, errno: other },
+        _ => Error::Io { call, errno },
     }
 }
 
@@ -499,7 +553,10 @@ fn reserve(file: &File, bytes: u64) -> Result<()> {
             if unsafe { libc::ftruncate64(fd, bytes as i64) } == 0 {
                 Ok(())
             } else {
-                Err(failed("ftruncate"))
+                Err(Error::Io {
+                    call: "ftruncate",
+                    errno: errno(),
+                })
             }
         }
         other => Err(Error::Io {
@@ -914,6 +971,110 @@ mod tests {
         let cached = target.cached_bytes().unwrap();
         assert!(cached >= FILL_BLOCK as u64, "{cached}");
         assert!(cached <= SMALL);
+    }
+
+    #[test]
+    fn a_request_that_isnt_aligned_is_our_bug_and_never_reaches_the_file() {
+        let folder = Folder::new("misaligned");
+        let Some(target) = folder.target(SMALL) else {
+            return;
+        };
+        target.fill(1, &Control::default()).unwrap();
+        let mut buffer =
+            Buffer::random(2 * FILL_BLOCK, target.align().memory, &mut Rng::new(1)).unwrap();
+        let by = target.align().offset;
+        // The offset, the length and the address, each off by itself.
+        let (whole, _) = buffer.as_mut_slice().split_at_mut(FILL_BLOCK);
+        for (found, expected) in [
+            (
+                target.read_at(whole, 1),
+                "pread of 1048576 bytes at offset 1 ",
+            ),
+            (
+                target.write_at(whole, 7),
+                "pwrite of 1048576 bytes at offset 7 ",
+            ),
+            (
+                target.read_at(&mut whole[..by + 1], 0),
+                &*format!("pread of {} bytes at offset 0 ", by + 1),
+            ),
+            (
+                target.write_at(&whole[1..by + 1], 0),
+                &*format!("pwrite of {by} bytes at offset 0 "),
+            ),
+        ] {
+            let Err(Error::Internal(text)) = found else {
+                panic!("{found:?}");
+            };
+            assert!(text.contains(expected), "{text}");
+            assert!(
+                text.contains(&format!("aligned to {by} in the file")),
+                "{text}"
+            );
+        }
+        // Nothing of that was read through the page cache, nor written.
+        if target.no_cow() != Some(false) {
+            assert_eq!(target.cached_bytes(), Ok(0));
+        }
+        target.read_at(whole, 0).unwrap();
+        assert_eq!(stamps(whole).next(), Some((0, 0)));
+    }
+
+    #[test]
+    fn a_refused_request_says_whose_fault_it_is() {
+        let declared = Align {
+            memory: 4096,
+            offset: 512,
+            declared: true,
+        };
+        let assumed = Align {
+            declared: false,
+            ..declared
+        };
+        // The file said how to ask, we asked that way and it said no: ours.
+        let ours = refused("pwrite", libc::EINVAL, declared, 4096, 8192, Some(5));
+        let Error::Internal(text) = &ours else {
+            panic!("{ours:?}");
+        };
+        for expected in [
+            "pwrite of 4096 bytes at offset 8192",
+            "512 in the file",
+            "4096 in memory",
+        ] {
+            assert!(text.contains(expected), "{text}");
+        }
+        // It never said: the file system has no direct requests.
+        assert_eq!(
+            refused("pread", libc::EINVAL, assumed, 4096, 8192, Some(5)),
+            Error::NoDirect {
+                errno: libc::EINVAL
+            }
+        );
+        // No space, with what was asked for and what is left; and without
+        // knowing what is left, no figure is made up.
+        for errno in [libc::ENOSPC, libc::EDQUOT] {
+            assert_eq!(
+                refused("pwrite", errno, declared, 4096, 0, Some(1234)),
+                Error::NoSpace {
+                    needed: 4096,
+                    free: 1234
+                }
+            );
+            assert_eq!(
+                refused("pwrite", errno, assumed, 4096, 0, None),
+                Error::Io {
+                    call: "pwrite",
+                    errno
+                }
+            );
+        }
+        assert_eq!(
+            refused("pread", libc::EIO, declared, 4096, 0, Some(5)),
+            Error::Io {
+                call: "pread",
+                errno: libc::EIO
+            }
+        );
     }
 
     #[test]
