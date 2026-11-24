@@ -1,0 +1,715 @@
+"""The disk test: how fast a folder's disk reads and writes, with its context.
+
+The native module (`silux_bench`) makes a file without a name in the folder
+and runs one lap of a test at a time; this decides the tests, their laps and
+the pauses between them, runs them in a child process and reads what came
+back. It also says what a folder sits on (which file system, which disks,
+what lies in between), since that decides whether a test there means
+anything.
+
+In a child process so that the file goes with it: it has no name, and the
+kernel frees it when the child ends, is killed to cancel the test or dies
+with the window. The child says how far it has got on its standard output,
+one JSON object per line.
+
+A test is named as CrystalDiskMark names it, by what really ran: «RND4K
+Q32T1» is one thread keeping 32 requests in flight. Where there is no
+io_uring a queue is made of threads with one request each, and that is
+«RND4K Q1T32»: another test, with another figure.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import os
+import pathlib
+import statistics
+import sys
+import threading
+import time
+from dataclasses import dataclass
+from typing import Callable, Optional, Sequence, Union
+
+from . import childrun, saved, sysroot
+
+KIB = 1024
+MIB = 1024 * KIB
+GIB = 1024 * MIB
+
+# CrystalDiskMark's defaults: the lap is timed, not a set amount of data.
+FILE_BYTES = GIB
+LAPS = 5
+LAP_SECONDS = 5.0
+PAUSE_SECONDS = 5.0
+# A test whose laps are scattered above this is flagged, as in the memory
+# test: the median absolute deviation over the median.
+NOISY_SPREAD = 0.05
+
+HISTORY_VERSION = 1
+MAX_ENTRIES = 60
+
+PROC_MOUNTS = "/proc/mounts"
+SYS_BLOCK = "/sys/block"
+SYS_BTRFS = "/sys/fs/btrfs"
+SECTOR = 512
+
+# Mount types that are a folder in memory.
+IN_MEMORY = frozenset({"tmpfs", "ramfs", "devtmpfs", "hugetlbfs"})
+# Mount types that are a folder on another machine. Several come through
+# FUSE, which the file's own magic number can't tell from a local driver.
+NETWORK = frozenset({
+    "nfs", "nfs4", "cifs", "smb3", "smbfs", "ncpfs", "afs", "coda", "ceph", "9p",
+    "glusterfs", "lustre", "beegfs", "davfs", "virtiofs", "vboxsf",
+    "fuse.sshfs", "fuse.glusterfs", "fuse.ceph", "fuse.ceph-fuse", "fuse.davfs2",
+    "fuse.rclone", "fuse.s3fs", "fuse.curlftpfs", "fuse.gvfsd-fuse", "fuse.smbnetfs",
+    "fuse.vmhgfs-fuse", "fuse.nfs", "fuse.portal",
+})
+
+
+@dataclass(frozen=True)
+class Test:
+    """What one row of the table asks of the disk."""
+
+    pattern: str                     # "sequential" | "random"
+    block: int
+    depth: int                       # requests each thread keeps in flight
+    threads: int = 1
+
+    @property
+    def name(self) -> str:
+        """As CrystalDiskMark writes it: «SEQ1M Q8T1»."""
+        size = next((f"{self.block // unit}{letter}" for unit, letter in ((MIB, "M"), (KIB, "K"))
+                     if self.block % unit == 0), f"{self.block}B")
+        kind = "SEQ" if self.pattern == "sequential" else "RND"
+        return f"{kind}{size} Q{self.depth}T{self.threads}"
+
+    def as_run_by(self, engine: str) -> "Test":
+        """The test that really runs: without a ring a queue is made of
+        threads with one request each."""
+        if engine != "threads" or self.depth == 1:
+            return self
+        return dataclasses.replace(self, depth=1, threads=self.depth * self.threads)
+
+
+# What each profile measures. Only the standard one for now; the table and
+# the history take whatever tests a result brings.
+PROFILES = {
+    "standard": (Test("sequential", MIB, 8), Test("sequential", MIB, 1),
+                 Test("random", 4 * KIB, 32), Test("random", 4 * KIB, 1)),
+}
+
+
+@dataclass(frozen=True)
+class Lap:
+    """One timed lap of a test."""
+
+    number: int                      # 0 is the first, which doesn't count
+    bytes_per_second: int = 0
+    requests_per_second: float = 0.0
+    bytes_: int = 0
+    latency_mean_ns: Optional[float] = None
+    latency_min_ns: Optional[int] = None
+    latency_p50_ns: Optional[int] = None
+    latency_p99_ns: Optional[int] = None
+    latency_p999_ns: Optional[int] = None
+    latency_max_ns: Optional[int] = None
+    # How much had moved in all, and how far into the lap: (ns, bytes).
+    samples: tuple[tuple[int, int], ...] = ()
+
+    def __post_init__(self):
+        object.__setattr__(self, "samples", tuple((int(a), int(b)) for a, b in self.samples))
+
+
+@dataclass(frozen=True)
+class Measure:
+    """One test in one direction: its laps and what was checked after them."""
+
+    pattern: str
+    block: int
+    depth: int
+    threads: int
+    direction: str                   # "read" | "write"
+    # The test this one ran in place of, when it isn't the one asked for.
+    stands_for: str = ""
+    laps: tuple[Lap, ...] = ()
+    # Bytes of the file left in the page cache: none, if every request went
+    # past it. None where it couldn't be asked.
+    cached_bytes: Optional[int] = None
+    # What the disks' own counters say they moved meanwhile.
+    disk_bytes: Optional[int] = None
+    temperature_c: Optional[float] = None
+
+    def __post_init__(self):
+        object.__setattr__(self, "laps", tuple(self.laps))
+
+    @property
+    def test(self) -> Test:
+        return Test(self.pattern, self.block, self.depth, self.threads)
+
+    @property
+    def name(self) -> str:
+        return self.test.name
+
+    @property
+    def counted(self) -> tuple[Lap, ...]:
+        return tuple(lap for lap in self.laps if lap.number > 0)
+
+    @property
+    def median(self) -> Optional[Lap]:
+        """The lap in the middle: the figure of the test, with the requests
+        and the latency of that same lap."""
+        laps = sorted(self.counted, key=lambda lap: lap.bytes_per_second)
+        return laps[(len(laps) - 1) // 2] if laps else None
+
+    @property
+    def best(self) -> Optional[Lap]:
+        """The fastest lap: the one CrystalDiskMark would give."""
+        return max(self.counted, key=lambda lap: lap.bytes_per_second, default=None)
+
+    @property
+    def worst(self) -> Optional[Lap]:
+        return min(self.counted, key=lambda lap: lap.bytes_per_second, default=None)
+
+    @property
+    def spread(self) -> Optional[float]:
+        rates = [lap.bytes_per_second for lap in self.counted]
+        if not rates:
+            return None
+        middle = statistics.median(rates)
+        if middle <= 0:
+            return 0.0
+        return statistics.median(abs(rate - middle) for rate in rates) / middle
+
+    @property
+    def noisy(self) -> bool:
+        spread = self.spread
+        return spread is not None and spread > NOISY_SPREAD
+
+    @property
+    def moved_bytes(self) -> int:
+        """Every lap's, the one that doesn't count too."""
+        return sum(lap.bytes_ for lap in self.laps)
+
+
+@dataclass(frozen=True)
+class Place:
+    """What a folder sits on."""
+
+    mountpoint: str
+    filesystem: str                  # the mount's type: "ext4", "fuseblk"
+    source: str                      # what is mounted: "/dev/sda1", "host:/export"
+    options: tuple[str, ...] = ()
+    # The whole disks under it, by their kernel name; none where they can't
+    # be told.
+    disks: tuple[str, ...] = ()
+    # What lies between the file system and them: "crypt", "lvm", "raid",
+    # "mapped", "loop".
+    layers: tuple[str, ...] = ()
+    # Why no test makes sense here: a key the interface translates.
+    refusal: Optional[str] = None
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Plan:
+    """What the child is asked to measure."""
+
+    folder: str
+    tests: tuple[Test, ...]
+    profile: str = "standard"
+    bytes_: int = FILE_BYTES
+    laps: int = LAPS
+    lap_seconds: float = LAP_SECONDS
+    pause_seconds: float = PAUSE_SECONDS
+    write: bool = True
+    # None: the ring where there is one, and threads where there isn't.
+    engine: Optional[str] = None
+    mountpoint: Optional[str] = None
+    filesystem: Optional[str] = None
+    disks: tuple[str, ...] = ()
+    layers: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Result:
+    timestamp: float = 0.0
+    profile: str = "standard"
+    measures: tuple[Measure, ...] = ()
+    engine: Optional[str] = None             # "uring" | "threads"
+    # What the kernel answered to making a ring, where there is none.
+    uring_errno: Optional[int] = None
+    bytes_: int = 0
+    laps: int = 0
+    lap_seconds: float = 0.0
+    pause_seconds: float = 0.0
+    # The mount and not the folder, which carries the user's name.
+    mountpoint: Optional[str] = None
+    filesystem: Optional[str] = None
+    disks: tuple[str, ...] = ()
+    layers: tuple[str, ...] = ()
+    # The disk's model as it was then, when there is just one.
+    model: Optional[str] = None
+    creation: Optional[str] = None           # "unnamed" | "unlinked"
+    no_cow: Optional[bool] = None
+    align_declared: Optional[bool] = None
+    # Everything written: the file once, and every lap that wrote.
+    written_bytes: int = 0
+    temperature_start_c: Optional[float] = None
+    temperature_peak_c: Optional[float] = None
+    temperature_end_c: Optional[float] = None
+    seconds: float = 0.0
+    warnings: tuple[str, ...] = ()
+    # Why there is nothing, or less than asked: a key the interface
+    # translates, the module's message for the report, and its figures.
+    reason: Optional[str] = None
+    detail: str = ""
+    figures: tuple[tuple[str, Union[int, str]], ...] = ()
+    # A name the user gives it, as in the processor's history.
+    label: str = ""
+
+    def __post_init__(self):
+        for name in ("measures", "disks", "layers", "warnings"):
+            object.__setattr__(self, name, tuple(getattr(self, name)))
+        object.__setattr__(self, "figures", tuple((str(k), v) for k, v in self.figures))
+
+    def measure(self, name: str, direction: str) -> Optional[Measure]:
+        return next((m for m in self.measures
+                     if m.direction == direction and name in (m.name, m.stands_for)), None)
+
+    @property
+    def measured(self) -> bool:
+        return any(m.counted for m in self.measures)
+
+
+# -- what a folder sits on ---------------------------------------------------
+
+def _unescape(text: str) -> str:
+    """`/proc/mounts` writes a space as \\040, and so on, in octal."""
+    for code in ("040", "011", "012", "134"):
+        text = text.replace("\\" + code, chr(int(code, 8)))
+    return text
+
+
+def _mounts() -> list[tuple[str, str, str, tuple[str, ...]]]:
+    """Every mount: its source, where, its type and its options."""
+    found = []
+    try:
+        with open(sysroot.path(PROC_MOUNTS), encoding="utf-8") as handle:
+            for line in handle:
+                fields = line.split()
+                if len(fields) >= 4:
+                    found.append((_unescape(fields[0]), _unescape(fields[1]), fields[2],
+                                  tuple(fields[3].split(","))))
+    except OSError:
+        pass
+    return found
+
+
+def _is_inside(folder: str, mountpoint: str) -> bool:
+    return (folder == mountpoint or mountpoint == "/"
+            or folder.startswith(mountpoint.rstrip("/") + "/"))
+
+
+def _read(path: pathlib.Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _names(path: pathlib.Path) -> list[str]:
+    try:
+        return sorted(entry.name for entry in path.iterdir())
+    except OSError:
+        return []
+
+
+def _under(name: str, disks: list[str], layers: list[str], seen: set[str]) -> None:
+    """Add to `disks` the whole disks a block device stands on, and to
+    `layers` what is found on the way down."""
+    if name in seen:
+        return
+    seen.add(name)
+    block = pathlib.Path(sysroot.path(SYS_BLOCK))
+    if not (block / name).is_dir():
+        # A partition: it lives in its disk's folder.
+        for disk in _names(block):
+            if (block / disk / name).is_dir():
+                _under(disk, disks, layers, seen)
+        return
+    below = _names(block / name / "slaves")
+    if name.startswith("dm-"):
+        uuid = _read(block / name / "dm" / "uuid")
+        layers.append("crypt" if uuid.startswith("CRYPT-") else
+                      "lvm" if uuid.startswith("LVM-") else "mapped")
+    elif name.startswith("md"):
+        layers.append("raid")
+    elif name.startswith("loop"):
+        layers.append("loop")
+        return
+    elif name.startswith(("zram", "ram")):
+        return
+    elif not below:
+        disks.append(name)
+        return
+    for one in below:
+        _under(one, disks, layers, seen)
+
+
+def where(folder: Union[str, os.PathLike]) -> Optional[Place]:
+    """What `folder` sits on, as `findmnt -T` would say, down to its disks.
+    None if no mount holds it."""
+    folder = os.path.realpath(os.fspath(folder))
+    held = [mount for mount in _mounts() if _is_inside(folder, mount[1])]
+    if not held:
+        return None
+    # The deepest mount holds it, and of two in the same place, the last.
+    longest = max(len(mount[1]) for mount in held)
+    source, mountpoint, filesystem, options = [m for m in held if len(m[1]) == longest][-1]
+
+    disks: list[str] = []
+    layers: list[str] = []
+    if source.startswith("/dev/"):
+        real = sysroot.recorded("realpath", source, os.path.realpath, source) or source
+        names = {os.path.basename(real)}
+        # A btrfs over several devices only names one of them in its mount.
+        for volume in _names(pathlib.Path(sysroot.path(SYS_BTRFS))):
+            devices = _names(pathlib.Path(sysroot.path(SYS_BTRFS)) / volume / "devices")
+            if names & set(devices):
+                names |= set(devices)
+        seen: set[str] = set()
+        for name in sorted(names):
+            _under(name, disks, layers, seen)
+
+    refusal = None
+    warnings: list[str] = []
+    if filesystem in IN_MEMORY:
+        refusal = "in_memory"
+    elif filesystem in NETWORK:
+        refusal = "network"
+    elif filesystem == "fuseblk":
+        # A driver outside the kernel (ntfs-3g): it may be what limits.
+        warnings.append("fuse_driver")
+    elif filesystem.startswith("fuse"):
+        warnings.append("fuse")
+    elif filesystem == "zfs":
+        warnings.append("zfs")
+    elif filesystem == "overlay":
+        warnings.append("overlay")
+    elif not source.startswith("/dev/"):
+        refusal = "not_a_disk"
+    if refusal is None and "ro" in options:
+        refusal = "read_only"
+    if "crypt" in layers:
+        warnings.append("encrypted")
+    if "loop" in layers:
+        warnings.append("loop")
+    if len(disks) > 1:
+        warnings.append("several_disks")
+    return Place(mountpoint, filesystem, source, options, tuple(disks),
+                 tuple(dict.fromkeys(layers)), refusal, tuple(warnings))
+
+
+def make_plan(folder: Union[str, os.PathLike], place: Optional[Place] = None,
+              profile: str = "standard", **changes) -> Plan:
+    """The plan to measure `folder` with a profile's tests. `changes` are
+    the plan's own fields: the file's size, the laps, whether to write."""
+    place = place if place is not None else where(folder)
+    plan = Plan(folder=os.fspath(folder), tests=PROFILES[profile], profile=profile)
+    if place is not None:
+        plan = dataclasses.replace(
+            plan, mountpoint=place.mountpoint, filesystem=place.filesystem,
+            disks=place.disks, layers=place.layers, warnings=place.warnings)
+    return dataclasses.replace(plan, **changes)
+
+
+def written_estimate(plan: Plan, bytes_per_second: float) -> int:
+    """About how much a run of `plan` writes on a disk that writes that
+    fast: the file once, and every lap of every test for as long as it
+    lasts."""
+    if not plan.write:
+        return plan.bytes_
+    laps = len(plan.tests) * (plan.laps + 1)
+    return plan.bytes_ + int(laps * plan.lap_seconds * bytes_per_second)
+
+
+def seconds_estimate(plan: Plan) -> float:
+    """How long a run of `plan` takes, without writing the file."""
+    directions = 2 if plan.write else 1
+    return len(plan.tests) * directions * (
+        plan.pause_seconds + (plan.laps + 1) * plan.lap_seconds)
+
+
+# -- running it --------------------------------------------------------------
+
+def native_module():
+    """`silux_bench` with its disk test, or None where it isn't there."""
+    try:
+        import silux_bench
+    except ImportError:
+        return None
+    return silux_bench if hasattr(silux_bench, "DiskFile") else None
+
+
+def run(plan: Plan, on_progress: Optional[Callable[[dict], None]] = None,
+        stop: Optional[threading.Event] = None) -> Result:
+    """Measure in a child process and wait for it. Call from a thread.
+
+    `on_progress` gets each of the child's messages: its `phase` ("fill",
+    "pause", "lap" or "lapped"), the fraction `done` and, for a lap, which
+    test, direction and lap. Setting `stop` kills the child, and the file
+    goes with it.
+    """
+    started = time.time()
+    if native_module() is None:
+        return _result({"reason": "no_module"}, plan, started)
+    # Time to write the file on a slow pen drive, and the tests half as
+    # long again.
+    timeout = 120 + plan.bytes_ / (2 * MIB) + 1.5 * seconds_estimate(plan)
+    outcome = childrun.run("silux.disktest", json.dumps(dataclasses.asdict(plan)),
+                           on_progress, stop, timeout)
+    if outcome.not_started is not None:
+        return _result({"reason": "not_started", "detail": outcome.not_started}, plan, started)
+    if outcome.cancelled:
+        return _result({"reason": "cancelled"}, plan, started)
+    if outcome.answer is None:
+        return _result({"reason": "failed", "detail": outcome.detail}, plan, started)
+    return _result(outcome.answer, plan, started)
+
+
+def _result(answer: dict, plan: Plan, started: float) -> Result:
+    measures = tuple(saved.from_dict(Measure, m, MEASURE_PARTS)
+                     for m in answer.get("measures", ()))
+    result = Result(
+        timestamp=started, profile=plan.profile, measures=measures,
+        engine=answer.get("engine"), uring_errno=answer.get("uring_errno"),
+        bytes_=plan.bytes_, laps=plan.laps, lap_seconds=plan.lap_seconds,
+        pause_seconds=plan.pause_seconds, mountpoint=plan.mountpoint,
+        filesystem=plan.filesystem, disks=plan.disks, layers=plan.layers,
+        creation=answer.get("creation"), no_cow=answer.get("no_cow"),
+        align_declared=answer.get("align_declared"),
+        written_bytes=int(answer.get("written_bytes", 0)),
+        temperature_start_c=answer.get("temperature_start_c"),
+        temperature_peak_c=answer.get("temperature_peak_c"),
+        temperature_end_c=answer.get("temperature_end_c"),
+        seconds=round(time.time() - started, 1),
+        reason=answer.get("reason"), detail=answer.get("detail", ""),
+        figures=tuple((answer.get("figures") or {}).items()))
+    return dataclasses.replace(result, warnings=warnings_of(result, plan.warnings))
+
+
+def warnings_of(result: Result, place: Sequence[str] = ()) -> tuple[str, ...]:
+    """Everything a result has to be read with: what the folder sits on,
+    and what the checks after each test found. Keys the interface translates."""
+    found = list(place)
+    if result.no_cow is False:
+        # btrfs, and the file kept its checksums: direct writes may not be.
+        found.append("copy_on_write")
+    if any(m.cached_bytes for m in result.measures):
+        found.append("through_the_cache")
+    if any(m.stands_for for m in result.measures):
+        found.append("queue_of_threads")
+    for measure in result.measures:
+        if measure.disk_bytes is None or not measure.moved_bytes:
+            continue
+        ratio = measure.disk_bytes / measure.moved_bytes
+        # The disks moved much less than was counted: something answered
+        # for them. Much more: another program was using them.
+        if ratio < 0.9:
+            found.append("disk_moved_less")
+        elif ratio > 1.5:
+            found.append("disk_was_busy")
+    return tuple(dict.fromkeys(found))
+
+
+# -- the child ---------------------------------------------------------------
+
+def _temperature(disks: Sequence[str]) -> Optional[float]:
+    """The hottest of the disks, where they say."""
+    from .providers import storage
+
+    found = [storage._temperature(pathlib.Path(sysroot.path(SYS_BLOCK)) / name)[0]
+             for name in disks]
+    return max((t for t in found if t is not None), default=None)
+
+
+def _disk_bytes(disks: Sequence[str], direction: str) -> Optional[int]:
+    """What the disks have read, or written, since they were attached: the
+    kernel's own count, in sectors of 512 bytes."""
+    total = 0
+    for name in disks:
+        fields = _read(pathlib.Path(sysroot.path(SYS_BLOCK)) / name / "stat").split()
+        try:
+            total += int(fields[2 if direction == "read" else 6]) * SECTOR
+        except (IndexError, ValueError):
+            return None
+    return total if disks else None
+
+
+def die_with_parent() -> None:
+    """Ask the kernel to kill this process when the one that started it
+    ends: the file goes then, whatever the window died of."""
+    import ctypes
+    import signal
+
+    parent = os.getppid()
+    try:
+        ctypes.CDLL(None, use_errno=True).prctl(1, int(signal.SIGKILL), 0, 0, 0)  # PR_SET_PDEATHSIG
+    except (OSError, AttributeError):
+        return
+    if os.getppid() != parent:
+        # It ended before the kernel was asked.
+        os._exit(0)
+
+
+def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
+    """Everything the plan asks for, in this process."""
+    import silux_bench
+
+    tests = [Test(**test) for test in plan["tests"]]
+    disks = plan["disks"]
+    why = silux_bench.uring_error()
+    engine = plan["engine"] or ("uring" if why is None else "threads")
+    answer: dict = {"engine": engine, "uring_errno": why, "measures": [], "written_bytes": 0}
+    answer["temperature_start_c"] = peak = _temperature(disks)
+
+    def hottest(now: Optional[float]) -> Optional[float]:
+        return now if peak is None else peak if now is None else max(peak, now)
+
+    try:
+        file = silux_bench.DiskFile(plan["folder"], bytes=plan["bytes_"])
+        answer.update(creation=file.creation, no_cow=file.no_cow, align_declared=file.align[2])
+
+        control = silux_bench.Control()
+        filled = threading.Event()
+
+        def report() -> None:
+            while not filled.wait(0.1):
+                step, of = control.progress()
+                if of:
+                    emit({"phase": "fill", "done": step / of})
+
+        reporter = threading.Thread(target=report, daemon=True)
+        reporter.start()
+        try:
+            file.fill(control=control)
+        finally:
+            filled.set()
+            reporter.join()
+        answer["written_bytes"] = plan["bytes_"]
+
+        directions = ("read", "write") if plan["write"] else ("read",)
+        steps = len(tests) * len(directions) * (plan["laps"] + 1)
+        step = 0
+        for asked in tests:
+            ran = asked.as_run_by(engine)
+            for direction in directions:
+                about = {"test": ran.name, "direction": direction, "laps": plan["laps"]}
+                emit({"phase": "pause", "done": step / steps, **about})
+                time.sleep(plan["pause_seconds"])
+                before = _disk_bytes(disks, direction)
+                laps = []
+                for number in range(plan["laps"] + 1):
+                    emit({"phase": "lap", "lap": number, "done": step / steps, **about})
+                    lap = file.lap(asked.pattern, direction, block=asked.block,
+                                   depth=asked.depth * asked.threads,
+                                   seconds=plan["lap_seconds"], engine=engine, seed=number + 1)
+                    step += 1
+                    laps.append({
+                        "number": number,
+                        "bytes_per_second": int(lap["bytes_per_second"]),
+                        "requests_per_second": lap["requests_per_second"],
+                        "bytes_": lap["bytes"],
+                        **{name: lap[name] for name in lap if name.startswith("latency_")},
+                        "samples": lap["samples"]})
+                    if direction == "write":
+                        answer["written_bytes"] += lap["bytes"]
+                    emit({"phase": "lapped", "lap": number, "done": step / steps,
+                          "bytes_per_second": int(lap["bytes_per_second"]), **about})
+                after = _disk_bytes(disks, direction)
+                now = _temperature(disks)
+                peak = hottest(now)
+                try:
+                    cached = file.cached_bytes()
+                except silux_bench.SiluxBenchError:
+                    cached = None
+                answer["measures"].append({
+                    "pattern": ran.pattern, "block": ran.block, "depth": ran.depth,
+                    "threads": ran.threads, "direction": direction,
+                    "stands_for": asked.name if ran != asked else "", "laps": laps,
+                    "cached_bytes": cached, "temperature_c": now,
+                    "disk_bytes": None if before is None or after is None else after - before})
+        file.close()
+    except silux_bench.SiluxBenchError as error:
+        # What was measured before it stays in the answer.
+        answer.update(reason=str(error.args[0]), detail=str(error.args[-1]),
+                      figures=dict(getattr(error, "details", {}) or {}))
+    answer["temperature_end_c"] = now = _temperature(disks)
+    answer["temperature_peak_c"] = hottest(now)
+    return answer
+
+
+def main() -> int:
+    die_with_parent()
+    plan = json.loads(sys.argv[1])
+
+    def emit(message: dict) -> None:
+        sys.stdout.write(json.dumps(message) + "\n")
+        sys.stdout.flush()
+
+    try:
+        answer = _measure(plan, emit)
+    except BrokenPipeError:
+        # Nobody is reading any more: the file goes with this process.
+        return 1
+    except Exception as error:  # whatever it was, the parent says it
+        answer = {"reason": "failed", "detail": f"{type(error).__name__}: {error}"}
+    emit({"result": answer})
+    return 0
+
+
+# -- this machine's earlier tests --------------------------------------------
+
+# The parts of a saved test that are lists of rows of their own, and the
+# fields that tell one row of each from another.
+MEASURE_PARTS = (("laps", Lap, ("number",), ()),)
+PARTS = (("measures", Measure, ("pattern", "block", "depth", "threads", "direction"),
+          MEASURE_PARTS),)
+
+
+def history_path() -> pathlib.Path:
+    from . import history
+
+    return history.data_dir() / "disk-tests.json"
+
+
+def _from_dict(row: dict) -> Result:
+    return saved.from_dict(Result, row, PARTS)
+
+
+def load_history() -> list[Result]:
+    """Saved tests, newest first."""
+    return saved.load(history_path(), HISTORY_VERSION, _from_dict)
+
+
+def save_history(results: Sequence[Result]) -> bool:
+    return saved.save(history_path(), HISTORY_VERSION, results[:MAX_ENTRIES], PARTS)
+
+
+def append_history(result: Result) -> list[Result]:
+    results = [result] + load_history()
+    save_history(results)
+    return results[:MAX_ENTRIES]
+
+
+def clear_history() -> None:
+    try:
+        history_path().unlink()
+    except OSError:
+        pass
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
