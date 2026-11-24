@@ -14,7 +14,7 @@ Intel Celeron 560
 
 Mobile GM965/GL960 Integrated Graphics
 integrada
-El uso y el consumo, con permisos.
+El uso, con permisos.
 
 ### Memoria
 
@@ -47,7 +47,7 @@ BIOS A03 · 2008-09-18
 
 > **Faltan 3 datos que este equipo sí tiene**
 > Detalle de los módulos de memoria
-> Uso y consumo de la gráfica
+> Uso de la gráfica
 > Salud de los discos
 
 ## CPU
@@ -281,8 +281,8 @@ i915 · Mesa 25.0.7 · integrada · principal
 - Consumo: (necesita permisos)
 
 > **Requiere permisos**
-> El uso y el consumo de la gráfica solo se leen con permisos de administrador.
-> Con permisos aparecen el uso de cada motor y, en las integradas, el consumo. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL salen sin pedir nada.
+> El uso de la gráfica solo se lee con permisos de administrador.
+> Con permisos aparece el uso de cada motor. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL salen sin pedir nada.
 
 > **Este equipo no lo expone**
 > Esta gráfica va dentro del procesador y no tiene sensor de temperatura propio.
@@ -638,7 +638,7 @@ Mobile GM965/GL960 Integrated Graphics: no tiene sensor de temperatura propio.
 - `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `cpu.clocks.driver` (este equipo no lo expone): Este procesador no tiene driver de frecuencia (cpufreq).
-- `gpus.0` (requiere permisos de administrador): El uso y el consumo de la gráfica solo se leen con permisos de administrador.
+- `gpus.0` (requiere permisos de administrador): El uso de la gráfica solo se lee con permisos de administrador.
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
 - `cpu.power` (este equipo no lo expone): Esta CPU no expone contadores de energía RAPL.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.

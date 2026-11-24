@@ -907,6 +907,8 @@
   "home.goto": "Ir a {seccion}",
   "home.gpu.also": "También: {tarjetas}.",
   "home.gpu.locked": "El uso y el consumo, con permisos.",
+  "home.gpu.locked.power": "El consumo, con permisos.",
+  "home.gpu.locked.usage": "El uso, con permisos.",
   "home.gpu.none": "Sin gráfica detectada",
   "home.gpu.ofmax": "de {max}",
   "home.loading": "Leyendo el equipo…",
@@ -1315,8 +1317,8 @@
   "prov.drm.inteldriver": "El sistema no da el uso de los motores de esta gráfica.",
   "prov.drm.inteldriver.detail": "El PMU {pmu} no publica eventos de ocupación (*-busy).",
   "prov.drm.inteldriver.hint": "Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL sí salen.",
-  "prov.drm.intelroot": "El uso y el consumo de la gráfica solo se leen con permisos de administrador.",
-  "prov.drm.intelroot.hint": "Con permisos aparecen el uso de cada motor y, en las integradas, el consumo. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL salen sin pedir nada.",
+  "prov.drm.intelroot": "El uso de la gráfica solo se lee con permisos de administrador.",
+  "prov.drm.intelroot.hint": "Con permisos aparece el uso de cada motor. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL salen sin pedir nada.",
   "prov.drm.intelunopened": "No se ha podido leer el uso de los motores de esta gráfica, ni con permisos.",
   "prov.drm.intelunopened.detail": "El PMU {pmu} publica eventos *-busy y el ayudante no abrió ninguno.",
   "prov.drm.intelunopened.hint": "El sistema lo publica, pero no se ha podido abrir y desde aquí no se sabe por qué. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL sí salen.",
@@ -1957,7 +1959,7 @@
   "what.cpu.voltage": "Voltaje del procesador",
   "what.disks.health": "Salud de los discos",
   "what.gpu.power": "el consumo de la gráfica",
-  "what.gpu.usage": "Uso y consumo de la gráfica",
+  "what.gpu.usage": "Uso de la gráfica",
   "what.memory.modules": "Detalle de los módulos de memoria",
   "what.memory.traffic": "Tráfico de la memoria"
 }

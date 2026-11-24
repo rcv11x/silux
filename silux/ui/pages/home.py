@@ -419,12 +419,21 @@ class HomePage(ScrollPage):
             piezas.append(_("gpu.clock.idle"))
             moldes.append((piezas[-1], *_relojes()))
         self.gpu.reservar(moldes)
-        # El uso y el consumo, si faltan por permisos, se dicen: sin esto la
-        # tarjeta de una integrada parecía no tener nada más que un reloj.
-        bloqueada = (_("home.gpu.locked")
-                     if gpu.busy_percent is None and not gpu.suspended
-                     and snapshot.permission_note(f"gpus.{indice}.usage")
-                     else "")
+        # What permissions would add is said, and only that: without it an
+        # integrated GPU's card seemed to have nothing but a clock, and with
+        # the power already shown it still said «usage and power».
+        usage_locked = (gpu.busy_percent is None and not gpu.suspended
+                        and snapshot.permission_note(f"gpus.{indice}.usage") is not None)
+        # An Intel integrated GPU's power is RAPL's PP1, which goes with the
+        # processor's permission (`providers/rapl.py`); where RAPL is readable
+        # without one, the power is already there.
+        power_locked = (gpu.power_w is None and not gpu.suspended
+                        and gpu.integrated and gpu.vendor == "Intel"
+                        and snapshot.permission_note("cpu.power") is not None)
+        bloqueada = {(True, True): _("home.gpu.locked"),
+                     (True, False): _("home.gpu.locked.usage"),
+                     (False, True): _("home.gpu.locked.power")}.get(
+                         (usage_locked, power_locked), "")
         # The card sums up the one that works; a hybrid laptop's other one,
         # asleep or without a driver, is still the machine's and is named.
         otras = [render.gpu_name(g) + (f" ({_('gpu.asleep.short')})" if g.suspended else "")

@@ -179,6 +179,9 @@ COUNTER_FILES = (
     "/sys/devices/*/gpu_busy_percent",
     "/sys/devices/*/hwmon/hwmon*/*_input",
     "/sys/devices/*/hwmon/hwmon*/*_average",
+    # RAPL's energy, where it's readable without permissions: with one
+    # reading, a dump said the processor's counter stood still.
+    "/sys/devices/virtual/powercap/*/energy_uj",
 )
 # What a counter file holds: printable ASCII, and not much of it.
 _COUNTER_TEXT = re.compile(r"[\x20-\x7e\t\n]{0,65536}")

@@ -217,7 +217,9 @@ class TestElCandadoEnLasPaginas(unittest.TestCase):
         from silux.i18n import _
 
         inicio = self._ventana(self.fotos[INTEL]).home_page
-        self.assertEqual(inicio.gpu.pie.text(), _("home.gpu.locked"))
+        # Only the usage: this dump's RAPL power isn't missing for want of
+        # permissions (tests/test_gpu.py, TestWhatPermissionsWouldAdd).
+        self.assertEqual(inicio.gpu.pie.text(), _("home.gpu.locked.usage"))
         inicio = self._ventana(self.fotos[AMD]).home_page
         self.assertEqual(inicio.gpu.pie.text(), "")
 

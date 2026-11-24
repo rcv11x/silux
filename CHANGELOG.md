@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Inicio y Gráficos: en una integrada de Intel, lo que falta por permisos
+  se dice tal cual. Donde el consumo ya se lee sin permisos (RAPL legible,
+  como en Fedora), la ficha dice «El uso, con permisos» y el aviso habla
+  solo del uso; «El uso y el consumo» queda para cuando faltan los dos.
 - Gráficos: una integrada ya no se llama como el equipo en el que va («HP
   EliteDesk 800 G1» en vez de «HD Graphics 4600»): el nombre que pci.ids da
   al subsistema solo cuenta si es el de la tarjeta. Sin pci.ids en el

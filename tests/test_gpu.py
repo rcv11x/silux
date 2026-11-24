@@ -596,14 +596,17 @@ class TestAvisoDeIntel(unittest.TestCase):
                 self.assertNotIn("temperatura", _(mensaje))
                 self.assertTrue(_(pista))
 
-    def test_solo_el_de_permisos_promete_uso_y_consumo(self):
-        # Los otros dos se enseñan cuando ya hay permisos: prometer ahí lo que
-        # ya está en pantalla sobra, y prometerlo cuando el kernel no lo da
-        # sería mentir.
+    def test_only_the_permissions_one_promises_the_usage(self):
+        # The other two show when permissions are there already. And none
+        # promises the power: an integrated GPU's is RAPL's, with RAPL's own
+        # note, and where RAPL reads without permissions it's on screen.
         from silux.providers.drm import INTEL_NOTICES
 
-        self.assertIn("consumo", _(INTEL_NOTICES["root"][0]))
-        self.assertNotIn("consumo", _(INTEL_NOTICES["driver"][0]))
+        self.assertIn("uso", _(INTEL_NOTICES["root"][0]))
+        for key, (message, hint, _detail) in INTEL_NOTICES.items():
+            with self.subTest(key=key):
+                self.assertNotIn("consumo", _(message))
+                self.assertNotIn("consumo", _(hint))
 
     def test_ninguno_manda_al_usuario_a_tocar_el_kernel(self):
         """Bajar perf_event_paranoid afloja el cerrojo de toda la máquina.
@@ -1986,3 +1989,56 @@ class TestWhatAGpuIsCalled(unittest.TestCase):
         self.assertIn("UHD Graphics 630", text)
         self.assertNotIn(_("sensor.dev.gpu").format(n=0), text)
 
+
+class TestWhatPermissionsWouldAdd(unittest.TestCase):
+    """Home's GPU card said «Usage and power, with permissions» with the
+    power already on it: an Intel integrated GPU's power is RAPL's, readable
+    without permissions on some distributions. It says what's missing."""
+
+    @classmethod
+    def setUpClass(cls):
+        import json
+        import shutil
+
+        from tests import qt
+        from tests.test_equipos import EQUIPOS, foto
+
+        qt.app()
+        tmp = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(tmp.cleanup)
+        dump = pathlib.Path(shutil.copytree(EQUIPOS / "i5-10400", f"{tmp.name}/i5-10400",
+                                            symlinks=True))
+        # The dump keeps one reading, so its RAPL stood still. Two of this
+        # very machine (24 November 2026), a second apart, readable without
+        # permissions on its Fedora: package, core, uncore (the UHD 630), DRAM.
+        rapl = "sys/devices/virtual/powercap/intel-rapl/intel-rapl:0"
+        readings = {f"{rapl}/energy_uj": (98193986965, 98197435808),
+                    f"{rapl}/intel-rapl:0:0/energy_uj": (87806020699, 87808796266),
+                    f"{rapl}/intel-rapl:0:1/energy_uj": (4763985606, 4764002147),
+                    f"{rapl}/intel-rapl:0:2/energy_uj": (7974488557, 7975234038)}
+        recorded = json.loads((dump / "grabado.json").read_text())
+        recorded["segunda_lectura"] = {}
+        for path, (first, second) in readings.items():
+            (dump / path).write_text(f"{first}\n")
+            recorded["segunda_lectura"]["/" + path] = f"{second}\n"
+        (dump / "grabado.json").write_text(json.dumps(recorded))
+        cls.snapshot = foto(dump)[0]
+
+    def _home_gpu_text(self, snapshot) -> str:
+        from tests import pantalla
+
+        with pantalla.Ventana(snapshot) as window:
+            return "\n".join(pantalla.textos_de(window.home_page.gpu))
+
+    def test_with_the_power_read_only_the_usage_is_missing(self):
+        self.assertIsNotNone(self.snapshot.gpus[0].power_w)
+        text = self._home_gpu_text(self.snapshot)
+        self.assertIn(_("home.gpu.locked.usage"), text)
+        self.assertNotIn(_("home.gpu.locked"), text)
+
+    def test_with_rapl_needing_root_both(self):
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        snapshot = shared_snapshot(EQUIPOS / "i5-1135g7")
+        self.assertIsNotNone(snapshot.permission_note("cpu.power"))
+        self.assertIn(_("home.gpu.locked"), self._home_gpu_text(snapshot))

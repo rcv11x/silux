@@ -50,7 +50,7 @@ TPM 2.0 · Arranque seguro
 
 > **Faltan 5 datos que este equipo sí tiene**
 > Detalle de los módulos de memoria
-> Uso y consumo de la gráfica
+> Uso de la gráfica
 > Salud de los discos
 > Consumo del procesador
 > Voltaje del procesador
@@ -268,8 +268,8 @@ i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Consumo: (necesita permisos)
 
 > **Requiere permisos**
-> El uso y el consumo de la gráfica solo se leen con permisos de administrador.
-> Con permisos aparecen el uso de cada motor y, en las integradas, el consumo. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL salen sin pedir nada.
+> El uso de la gráfica solo se lee con permisos de administrador.
+> Con permisos aparece el uso de cada motor. Las frecuencias, los monitores y lo que declaran Vulkan y OpenGL salen sin pedir nada.
 
 > **Este equipo no lo expone**
 > Esta gráfica va dentro del procesador y no tiene sensor de temperatura propio: se muestra la del paquete, que comparte con la CPU.
@@ -672,7 +672,7 @@ UHD Graphics 600: no tiene sensor de temperatura propio.
 - `gpus.packages.pnpids` (falta un paquete del sistema): Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre. Viene en el paquete hwdata.
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `spd` (este equipo no lo expone): El bus de la memoria está, pero el kernel no ha registrado ningún chip SPD en él.
-- `gpus.0` (requiere permisos de administrador): El uso y el consumo de la gráfica solo se leen con permisos de administrador.
+- `gpus.0` (requiere permisos de administrador): El uso de la gráfica solo se lee con permisos de administrador.
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
 - `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.

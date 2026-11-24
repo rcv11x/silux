@@ -907,6 +907,8 @@
   "home.goto": "Go to {seccion}",
   "home.gpu.also": "Also: {tarjetas}.",
   "home.gpu.locked": "Usage and power, with permissions.",
+  "home.gpu.locked.power": "Power, with permissions.",
+  "home.gpu.locked.usage": "Usage, with permissions.",
   "home.gpu.none": "No graphics card detected",
   "home.gpu.ofmax": "of {max}",
   "home.loading": "Reading the machine…",
@@ -1315,8 +1317,8 @@
   "prov.drm.inteldriver": "The system does not give this graphics card's engine usage.",
   "prov.drm.inteldriver.detail": "The {pmu} PMU publishes no busy events (*-busy).",
   "prov.drm.inteldriver.hint": "The clocks, the monitors and what Vulkan and OpenGL declare do show.",
-  "prov.drm.intelroot": "The graphics card's usage and power can only be read with administrator permissions.",
-  "prov.drm.intelroot.hint": "With permissions, each engine's usage and, on integrated cards, the power appear. The clocks, the monitors and what Vulkan and OpenGL declare show without asking for anything.",
+  "prov.drm.intelroot": "The graphics card's usage can only be read with administrator permissions.",
+  "prov.drm.intelroot.hint": "With permissions, each engine's usage appears. The clocks, the monitors and what Vulkan and OpenGL declare show without asking for anything.",
   "prov.drm.intelunopened": "This graphics card's engine usage could not be read, even with permissions.",
   "prov.drm.intelunopened.detail": "The {pmu} PMU publishes *-busy events and the helper opened none.",
   "prov.drm.intelunopened.hint": "The system publishes it, but it could not be opened and from here it is not known why. The clocks, the monitors and what Vulkan and OpenGL declare do show.",
@@ -1957,7 +1959,7 @@
   "what.cpu.voltage": "Processor voltage",
   "what.disks.health": "Disk health",
   "what.gpu.power": "the graphics card's power draw",
-  "what.gpu.usage": "Graphics usage and power",
+  "what.gpu.usage": "Graphics usage",
   "what.memory.modules": "Memory module details",
   "what.memory.traffic": "Memory traffic"
 }
