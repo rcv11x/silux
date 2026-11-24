@@ -435,6 +435,13 @@ def written_estimate(plan: Plan, bytes_per_second: float) -> int:
     return plan.bytes_ + int(laps * plan.lap_seconds * bytes_per_second)
 
 
+def writing_seconds(plan: Plan) -> float:
+    """For how long a run of `plan` writes, once the file is written."""
+    if not plan.write:
+        return 0.0
+    return len(plan.tests) * (plan.laps + 1) * plan.lap_seconds
+
+
 def seconds_estimate(plan: Plan) -> float:
     """How long a run of `plan` takes, without writing the file."""
     directions = 2 if plan.write else 1

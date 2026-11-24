@@ -22,11 +22,12 @@ from ...i18n import _
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
+from .disktest import DiskTestRun, DiskTestTab
 from .memtest import MemoryTestRun, MemoryTestTab
 from .performance import PerformancePage
 
 # Each tab's key, which `--tab` takes, and its name.
-TABS = (("cpu", "bench.tab.cpu"), ("memory", "bench.tab.memory"))
+TABS = (("cpu", "bench.tab.cpu"), ("memory", "bench.tab.memory"), ("disk", "bench.tab.disk"))
 
 
 class BenchmarksPage(QWidget):
@@ -34,13 +35,15 @@ class BenchmarksPage(QWidget):
     tab_changed = Signal(str)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None,
-                 memory_run: Optional[MemoryTestRun] = None):
-        """`memory_run`: the window's memory test, which outlives this page
-        when the window rebuilds it."""
+                 memory_run: Optional[MemoryTestRun] = None,
+                 disk_run: Optional[DiskTestRun] = None):
+        """`memory_run` and `disk_run`: the window's tests, which outlive
+        this page when the window rebuilds it."""
         super().__init__(parent)
         self.cpu_tab = PerformancePage(palette, prefs)
         self.memory_tab = MemoryTestTab(palette, prefs, run=memory_run)
-        self._tabs = {"cpu": self.cpu_tab, "memory": self.memory_tab}
+        self.disk_tab = DiskTestTab(palette, prefs, run=disk_run)
+        self._tabs = {"cpu": self.cpu_tab, "memory": self.memory_tab, "disk": self.disk_tab}
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -68,14 +71,20 @@ class BenchmarksPage(QWidget):
         self.buttons["cpu"].setChecked(True)
 
         # One test at a time: while one runs, the others can't start.
-        self.cpu_tab.running_changed.connect(
-            lambda running: self.memory_tab.set_blocked(
-                _("bench.tab.cpu") if running else None))
-        self.memory_tab.running_changed.connect(
-            lambda running: self.cpu_tab.set_blocked(
-                _("bench.tab.memory") if running else None))
-        if self.memory_tab.running:
-            self.cpu_tab.set_blocked(_("bench.tab.memory"))
+        for key, tab in self._tabs.items():
+            tab.running_changed.connect(
+                lambda running, key=key: self._block_the_rest(key if running else None))
+        running = self.running()
+        if running is not None:
+            self._block_the_rest(running)
+
+    def _block_the_rest(self, running: Optional[str]) -> None:
+        """Tell every other tab that the test of `running` is under way, or
+        that none is."""
+        names = dict(TABS)
+        for key, tab in self._tabs.items():
+            if key != running:
+                tab.set_blocked(_(names[running]) if running is not None else None)
 
     @property
     def tab(self) -> str:
