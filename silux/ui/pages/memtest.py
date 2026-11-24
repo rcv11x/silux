@@ -74,6 +74,8 @@ class CurveChart(QWidget):
         self._p = palette
         self._points: tuple = ()
         self._caches: tuple = ()
+        # Where each cache's name went at the last paint.
+        self.label_boxes: list = []
         self.setMinimumHeight(220)
 
     def set_curve(self, points, caches) -> None:
@@ -111,22 +113,6 @@ class CurveChart(QWidget):
             painter.drawText(QRectF(0, y - metrics.height() / 2, left - 6, metrics.height()),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                              render.nanoseconds(10 ** decade))
-        for name, size in self._caches:
-            position = math.log2(size)
-            if not x0 <= position <= x1:
-                continue
-            x = at(position, y0).x()
-            painter.setPen(QPen(muted, 1, Qt.PenStyle.DashLine))
-            painter.drawLine(QPointF(x, area.top()), QPointF(x, area.bottom()))
-            painter.setPen(muted)
-            label = f"{name} · {render.size(size)}"
-            # Where the curve isn't: it only rises, so above it on the left
-            # and under it once it has climbed past the middle.
-            nearest = min(range(len(sizes)), key=lambda i: abs(sizes[i] - position))
-            high = at(position, times[nearest]).y() < area.center().y()
-            baseline = area.bottom() - metrics.descent() - 2 if high else area.top() + metrics.ascent()
-            painter.drawText(QPointF(min(x + 4, area.right() - metrics.horizontalAdvance(label)),
-                                     baseline), label)
         painter.setPen(muted)
         edges = ((Qt.AlignmentFlag.AlignLeft, self._points[0].bytes_),
                  (Qt.AlignmentFlag.AlignRight, self._points[-1].bytes_))
@@ -152,6 +138,27 @@ class CurveChart(QWidget):
             painter.drawLine(QPointF(x, area.top()), QPointF(x, area.bottom()))
             painter.setPen(muted)
             painter.drawText(QPointF(left, area.bottom() + 4 + metrics.ascent()), text)
+        self.label_boxes = []
+        for name, size in self._caches:
+            position = math.log2(size)
+            if not x0 <= position <= x1:
+                continue
+            x = at(position, y0).x()
+            painter.setPen(QPen(muted, 1, Qt.PenStyle.DashLine))
+            painter.drawLine(QPointF(x, area.top()), QPointF(x, area.bottom()))
+            label = f"{name} · {render.size(size)}"
+            width = metrics.horizontalAdvance(label)
+            # Where the curve isn't: it only rises, so above it on the left
+            # and under it once it has climbed past the middle.
+            nearest = min(range(len(sizes)), key=lambda i: abs(sizes[i] - position))
+            high = at(position, times[nearest]).y() < area.center().y()
+            top = area.bottom() - metrics.height() - 2 if high else area.top() + 1
+            box = QRectF(min(x + 2, area.right() - width - 4), top, width + 4, metrics.height())
+            # Over the size marks' grid, not under it.
+            painter.fillRect(box, QColor(self._p.surface))
+            painter.setPen(muted)
+            painter.drawText(box, Qt.AlignmentFlag.AlignCenter, label)
+            self.label_boxes.append(box)
         painter.setPen(QPen(QColor(self._p.accent), 2))
         painter.drawPolyline(QPolygonF([at(s, t) for s, t in zip(sizes, times)]))
 

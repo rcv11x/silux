@@ -164,6 +164,36 @@ class TestEveryThread(TabCase):
         self.assertFalse(tab.threads_note.isVisibleTo(tab))
 
 
+class TestTheCurve(TabCase):
+    def test_no_grid_line_runs_through_a_cache_name(self):
+        """The size marks' lines crossed «L3 · 96 MiB» and the others."""
+        import dataclasses as dc
+
+        from PySide6.QtGui import QColor
+
+        from silux.ui import theme
+        from silux.ui.pages.memtest import CurveChart
+
+        # A grid colour nothing else on the chart uses.
+        palette = dc.replace(theme.palette_for(self.app, "dark"), line="#00ff00")
+        result = recorded()
+        for width in (1000, 700, 1400):
+            with self.subTest(width=width):
+                chart = CurveChart(palette)
+                self.addCleanup(chart.deleteLater)
+                chart.set_curve(result.points, result.caches)
+                chart.resize(width, 220)
+                image = chart.grab().toImage()
+                self.assertEqual(len(chart.label_boxes), len(result.caches))
+                for box in chart.label_boxes:
+                    inside = box.toRect().adjusted(1, 1, -1, -1)
+                    green = [(x, y) for x in range(inside.left(), inside.right() + 1)
+                             for y in range(inside.top(), inside.bottom() + 1)
+                             if QColor(image.pixel(x, y)).green() > 200
+                             and QColor(image.pixel(x, y)).red() < 60]
+                    self.assertEqual(green, [], box)
+
+
 class TestTheChannelsWaitForPermissions(TabCase):
     """Rule 5: what is missing for want of permissions has its padlock and the
     way to give them, and giving them shows on the same tab."""
