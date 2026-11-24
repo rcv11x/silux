@@ -216,6 +216,28 @@ class TestTheChannelsWaitForPermissions(TabCase):
         self.assertIsNotNone(memtest.load_history()[0].theoretical_bytes_per_second)
         self.assertEqual(len(measured), 1)
 
+    def test_every_test_of_this_boot_gets_its_share_not_only_the_one_in_view(self):
+        from tests.test_al_momento import con_permisos
+
+        booted = time.time() - self.without.system.uptime_seconds
+        earlier = dataclasses.replace(recorded(), timestamp=booted + 60)
+        later = dataclasses.replace(recorded(), timestamp=booted + 420)
+        before = dataclasses.replace(recorded(), timestamp=booted - 3600)
+        for result in (before, earlier, later):
+            memtest.append_history(result)
+        tab = self.tab()
+        tab.apply(self.without)
+        tab.apply(con_permisos(self.without))
+        filled = {r.timestamp: r.theoretical_bytes_per_second for r in memtest.load_history()}
+        self.assertIsNotNone(filled[later.timestamp])
+        self.assertIsNotNone(filled[earlier.timestamp])
+        self.assertIsNone(filled[before.timestamp])
+        from PySide6.QtWidgets import QLabel
+
+        shares = [label.text() for label in tab.history.findChildren(QLabel)
+                  if label.text().endswith(" %")]
+        self.assertEqual(len(shares), 2)
+
     def test_a_test_from_before_the_machine_booted_is_left_as_it_was(self):
         """Its modules may not be today's."""
         from tests.test_al_momento import con_permisos

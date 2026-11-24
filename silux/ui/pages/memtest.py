@@ -668,10 +668,12 @@ class MemoryTestTab(ScrollPage):
         self._channels_locked, self._helper_outdated = locked, outdated
         if self.result is None:
             return
-        # Permissions just given: the test of a moment ago gets its share.
+        # Permissions just given: this boot's tests get their share.
+        history = memtest.fill_history(self._memory, self._booted_at)
+        if history is not None:
+            self._paint_history(history)
         filled = memtest.with_memory(self.result, self._memory, self._booted_at)
         if filled is not self.result:
-            self._paint_history(memtest.replace_in_history(filled))
             self.show_result(filled)
             self.measured.emit(filled)
         elif changed:

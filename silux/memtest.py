@@ -583,9 +583,14 @@ def append_history(result: Result) -> list[Result]:
     return results[:MAX_ENTRIES]
 
 
-def replace_in_history(result: Result) -> list[Result]:
-    """Put `result` in place of the saved test taken at the same moment."""
-    results = [result if r.timestamp == result.timestamp else r for r in load_history()]
+def fill_history(memory: Memory, booted_at: Optional[float]) -> Optional[list[Result]]:
+    """Give every saved test of this boot what the memory could move
+    (`with_memory`). The history as it now stands, or None if nothing
+    changed."""
+    saved = load_history()
+    results = [with_memory(r, memory, booted_at) for r in saved]
+    if all(new is old for new, old in zip(results, saved)):
+        return None
     save_history(results)
     return results[:MAX_ENTRIES]
 
