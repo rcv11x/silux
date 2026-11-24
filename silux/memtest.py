@@ -639,6 +639,22 @@ def _saved_rows(data: Optional[dict]) -> list[dict]:
     return [row for row in tests if isinstance(row, dict)] if isinstance(tests, list) else []
 
 
+def _set_aside(path: pathlib.Path, data: Optional[dict]) -> None:
+    """Move a history written by another version out of the way, under a
+    name that says which, so that nothing is written over it. Raises
+    `OSError` when it can't be moved."""
+    version = None if data is None else data.get("version")
+    if (version == HISTORY_VERSION or isinstance(version, bool)
+            or not isinstance(version, int)):
+        return
+    aside = path.with_name(f"{path.name}.v{version}")
+    number = 0
+    while aside.exists():
+        number += 1
+        aside = path.with_name(f"{path.name}.v{version}.{number}")
+    path.rename(aside)
+
+
 def load_history() -> list[Result]:
     """Saved tests, newest first. A row that can't be read is left out
     without taking the rest with it."""
@@ -658,6 +674,7 @@ def save_history(results: Sequence[Result]) -> bool:
     times = collections.Counter(r.timestamp for r in results)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
+        _set_aside(path, data)
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(
             {"version": HISTORY_VERSION,

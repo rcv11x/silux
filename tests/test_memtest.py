@@ -356,6 +356,38 @@ class TestHistory(unittest.TestCase):
         self.assertNotIn("later", row["points"][0])
         self.assertEqual(row["points"][2]["later"], row["points"][2]["bytes_"])
 
+    def _other_version(self) -> str:
+        text = json.dumps({"version": 2, "tests": [{"of": "a later format"}], "more": 1})
+        memtest.history_path().parent.mkdir(parents=True, exist_ok=True)
+        memtest.history_path().write_text(text, encoding="utf-8")
+        self.addCleanup(lambda: [aside.unlink() for aside in
+                                 memtest.history_path().parent.glob("memory-tests.json.v*")])
+        return text
+
+    def test_a_file_of_another_version_is_set_aside_not_written_over(self):
+        path = memtest.history_path()
+        text = self._other_version()
+        self.assertEqual(memtest.load_history(), [])
+        self.assertEqual(path.read_text(encoding="utf-8"), text)
+        self.assertEqual(memtest.append_history(recorded()), [recorded()])
+        self.assertEqual(path.with_name("memory-tests.json.v2").read_text(encoding="utf-8"), text)
+        self.assertEqual(memtest.load_history(), [recorded()])
+
+        # A second one doesn't take the first one's place.
+        second = self._other_version().replace("more", "even more")
+        path.write_text(second, encoding="utf-8")
+        memtest.append_history(recorded())
+        self.assertEqual(path.with_name("memory-tests.json.v2").read_text(encoding="utf-8"), text)
+        self.assertEqual(path.with_name("memory-tests.json.v2.1").read_text(encoding="utf-8"),
+                         second)
+        self.assertEqual(memtest.load_history(), [recorded()])
+
+    def test_a_file_of_another_version_that_cant_be_moved_stays_as_it_is(self):
+        text = self._other_version()
+        with mock.patch.object(pathlib.Path, "rename", side_effect=OSError("read-only")):
+            self.assertFalse(memtest.save_history([recorded()]))
+        self.assertEqual(memtest.history_path().read_text(encoding="utf-8"), text)
+
     def test_a_rate_measured_inside_a_cache_isnt_the_memorys(self):
         row = json.loads(FIXTURE.read_text(encoding="utf-8"))
         row["theoretical_bytes_per_second"] = 51_200_000_000
