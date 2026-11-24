@@ -13,7 +13,7 @@ from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QLabel
 except ImportError:                                    # pragma: no cover
     QApplication = None
 
@@ -135,3 +135,39 @@ class TestLaEspecificacionEnCompacto(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestEachCoreTypeIsASection(unittest.TestCase):
+    """On a hybrid, «Performance cores» and «Efficient cores» head their
+    cards: they were a small grey line, read as loose text between cards."""
+
+    @classmethod
+    def setUpClass(cls):
+        from silux.settings import Preferences
+        from silux.ui import theme
+
+        cls.app = qt.app()
+        prefs = Preferences(font_scale="máximo").normalized()
+        theme.apply(cls.app, prefs.theme, prefs.density, prefs.font_scale)
+        cls.snapshot = shared_snapshot(EQUIPOS / "i7-12700kf")
+
+    def test_each_heading_is_a_section_title_on_one_line(self):
+        from silux.render import core_type_label
+        from silux.ui.pages.cpu import TypeSection
+
+        with pantalla.Ventana(self.snapshot) as ventana:
+            ventana.resize(760, 900)
+            ventana.select_section("CPU")
+            self.app.processEvents()
+            sections = ventana.cpu_page.findChildren(TypeSection)
+            self.assertEqual(len(sections), 2)
+            for section, cpu_type in zip(sections, self.snapshot.cpu.types):
+                heading = section.report_title_label
+                with self.subTest(type=cpu_type.key):
+                    self.assertEqual(heading.text(), core_type_label(cpu_type, True))
+                    self.assertEqual(heading.objectName(), "SectionTitle")
+                    self.assertTrue(heading.isVisible())
+                    self.assertLess(heading.height(), 1.5 * heading.fontMetrics().height())
+                    self.assertGreater(heading.font().pixelSize(), heading.parentWidget()
+                                       .findChildren(QLabel, "CardTitle")[0].font().pixelSize())

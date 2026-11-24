@@ -449,6 +449,9 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
 
     QLabel#Headline {{ color: {p.ink}; font-size: {m.headline_px}px; font-weight: 650; }}
     QLabel#Subhead  {{ color: {p.ink_dim}; font-size: {m.small_pt + 3}px; }}
+    /* The heading of a group of cards, such as each core type of a hybrid:
+       below the page's headline and above a card's title. */
+    QLabel#SectionTitle {{ color: {p.ink}; font-size: {m.headline_px - 5}px; font-weight: 650; }}
 
     /* Pastillas sin borde: el borde las hacía parecer botones. */
     QLabel#Badge {{

@@ -201,8 +201,6 @@ la memoria) no va: está propuesto en las notas
 * **Sin volcado, sin hacer todavía:**
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
-  - Informe · baja · los títulos de núcleos P/E y de la segunda gráfica no son
-    encabezados.
   - Modelo · baja · `dmi._firmware` guarda «BIOS heredada» y «UEFI (64
     bits)» en español: sale así en inglés y en `--json`. Cambiarlo es cambiar
     la API.

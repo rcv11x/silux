@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: en un procesador híbrido, «Núcleos P (rendimiento)» y «Núcleos E
+  (eficiencia)» son el título de su grupo de tarjetas, con una raya hasta el
+  borde; antes eran una línea gris y pequeña entre tarjetas. En el informe
+  corto son encabezados, como cada gráfica.
 - AppImage compatible: arranca en sistemas más antiguos. Pide glibc 2.30
   (Ubuntu 20.04, Debian 11 y posteriores) en vez de 2.35, que era más de lo
   que pide el normal.

@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ... import render
 from ...features import for_architecture
@@ -29,6 +29,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
+    Divider,
     InfoGrid,
     ModuleNotices,
     Notice,
@@ -102,10 +103,16 @@ class TypeSection(QWidget):
         self.report_title_label: Optional[QLabel] = None
         if title:
             heading = QLabel(title)
-            heading.setObjectName("Subhead")
-            heading.setWordWrap(True)
+            heading.setObjectName("SectionTitle")
             heading.setProperty("report_title", True)
-            layout.addWidget(heading)
+            # A rule from the heading to the edge sets the group apart from
+            # the cards above it.
+            row = QHBoxLayout()
+            row.setContentsMargins(0, m.section_gap, 0, 0)
+            row.setSpacing(m.grid_hspace)
+            row.addWidget(heading)
+            row.addWidget(Divider(), 1, Qt.AlignmentFlag.AlignVCenter)
+            layout.addLayout(row)
             self.report_title_label = heading
 
         processor_card = Card(_("cpu.card.processor"))

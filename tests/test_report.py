@@ -258,8 +258,8 @@ class TestCpuHibrida(unittest.TestCase):
 
     def test_cada_bloque_dice_de_qué_núcleos_habla(self):
         texto = report.build(self._hibrida())
-        self.assertIn("**Núcleos P (rendimiento)**", texto)
-        self.assertIn("**Núcleos E (eficiencia)**", texto)
+        self.assertIn("### Núcleos P (rendimiento)", texto)
+        self.assertIn("### Núcleos E (eficiencia)", texto)
 
     def test_y_cada_uno_conserva_su_propio_reparto(self):
         texto = report.build(self._hibrida())
@@ -275,7 +275,7 @@ class TestCpuHibrida(unittest.TestCase):
             texto = report.build(self._hibrida())
         finally:
             i18n.set_language(anterior)
-        self.assertIn("**Núcleos P (rendimiento)**", texto)
+        self.assertIn("### Núcleos P (rendimiento)", texto)
 
     def test_una_cpu_normal_sigue_titulando_con_su_marca(self):
         texto = report.build(_snapshot())

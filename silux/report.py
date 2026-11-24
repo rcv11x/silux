@@ -131,7 +131,7 @@ def _processor(snapshot: Snapshot) -> str:
     for cpu_type in cpu.types:
         clocks = cpu_type.clocks
         lines += [
-            f"**{render.core_type_label(cpu_type, cpu.hybrid, in_spanish)}**"
+            f"### {render.core_type_label(cpu_type, cpu.hybrid, in_spanish)}"
             if cpu.hybrid else f"**{cpu_type.brand or '?'}**",
             "",
             f"- Nombre en clave: {render.from_cpu_table(cpu_type.codename, in_spanish)}"
@@ -261,7 +261,7 @@ def _graphics(snapshot: Snapshot, anonymous: bool) -> str:
     lines = ["", "## Gráficos", ""]
     for gpu in snapshot.gpus:
         lines += [
-            f"**{render.gpu_name(gpu)}**",
+            f"### {render.gpu_name(gpu)}",
             "",
             f"- Fabricante: {gpu.vendor or '—'} · tarjeta de "
             f"{gpu.subsystem_name or '—'} · {gpu.codename or '—'}",
