@@ -152,6 +152,16 @@ class TestEnAcercaDe(unittest.TestCase):
             with self.subTest(quien=quien):
                 self.assertIn(quien, texto)
 
+    def test_every_source_with_a_notice_is_named(self):
+        # Each section of the notices, by the name the page gives it.
+        names = {"amd.com": "AMD"}
+        texto = " ".join(w.text() for w in self.pagina.findChildren(QLabel)
+                         if w.isVisibleTo(self.pagina))
+        notices = AVISOS.read_text(encoding="utf-8")
+        for heading in re.findall(r"^## (.+)$", notices, re.M):
+            with self.subTest(heading=heading):
+                self.assertIn(names.get(heading, heading), texto)
+
     def test_el_boton_enseña_los_avisos_enteros(self):
         self.pagina.notices_button.click()
         self.app.processEvents()

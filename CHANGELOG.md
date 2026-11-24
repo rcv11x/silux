@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Ajustes → Acerca de: entre los datos de terceros salen también
+  smartmontools y Mesa, de donde salen las unidades del SMART y el nombre de
+  las gráficas de Intel; sus avisos ya iban en el programa.
 - Cachés: en «Quién comparte qué», un bloque estrecho ya no se queda en
   blanco: lleva su tamaño corto («48K», «1.25M»), o una vez por cada tramo
   de bloques iguales («4 × 32K») si ni eso cabe, y al pasar el ratón cada
