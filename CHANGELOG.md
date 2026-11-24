@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- AppImage compatible: arranca en sistemas más antiguos. Pide glibc 2.30
+  (Ubuntu 20.04, Debian 11 y posteriores) en vez de 2.35, que era más de lo
+  que pide el normal.
 - AppImage: el archivo lleva el logo (`.DirIcon`, en PNG de 256 px), que es lo
   que enseñan los gestores de archivos con vista previa de AppImage.
 - Placa base: un chipset que la base de datos PCI del sistema no conoce ya no

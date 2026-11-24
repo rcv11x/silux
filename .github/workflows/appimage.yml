@@ -1,11 +1,11 @@
-# Construye los dos AppImages en una distribución antigua, que es lo que los
-# hace funcionar en máquinas que no son la del que compila.
+# Builds both AppImages on an old distribution, which is what makes them run
+# on machines other than the builder's.
 #
-# Un AppImage se lleva dentro los binarios del sistema donde se construyó, con
-# sus exigencias: la versión de glibc y el nivel de instrucciones del
-# procesador. Construido en una distribución moderna deja fuera a quien tenga
-# un sistema o un procesador más viejos, y el error que ven no dice de qué se
-# trata. Construido en Ubuntu 22.04 funciona en las dos.
+# An AppImage carries the binaries of the system it was built on, with their
+# demands: the glibc version and the processor's instruction level. Built on
+# a modern distribution it leaves out anyone with an older system or
+# processor, and the error they see doesn't say what it is about. The normal
+# one is built on Ubuntu 22.04 and the compat one on 20.04.
 #
 # Son dos paquetes y no uno porque Qt 6.10 pasó a compilarse con
 # `-march=x86-64-v2`, y no en rutas que se eligen mirando la CPU sino dentro de
@@ -47,7 +47,7 @@ permissions:
 
 jobs:
   # Cada paquete con el Python y el PySide6 que lleva dentro: el normal, 3.14
-  # y la última PySide6; el compat, el 3.10 de Ubuntu 22.04 y la 6.9. El 3.10
+  # y la última PySide6; el compat, 3.10 y la 6.9. El 3.10
   # es además el suelo del código, porque es lo que lleva el compat.
   #
   # Las dos parejas hacen falta. Con solo la de arriba se escapa lo que se
@@ -197,6 +197,21 @@ jobs:
           chmod +x dist/silux-x86_64-compat.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64-compat.AppImage --help
+
+      # The compat build is for old machines: its window, on the system its
+      # glibc floor comes from, with only what any desktop has installed.
+      # The image is the packager's COMPAT_BASE_IMAGE (tests/test_empaquetado.py).
+      - name: Arrancar el compatible en el sistema de su suelo
+        run: |
+          docker run --rm -v "$PWD/dist":/ai:ro -e APPIMAGE_EXTRACT_AND_RUN=1 \
+            -e QT_QPA_PLATFORM=offscreen -e DEBIAN_FRONTEND=noninteractive \
+            docker.io/library/ubuntu:20.04 sh -c "
+              apt-get update -qq > /dev/null
+              apt-get install -y -qq --no-install-recommends libgl1 libegl1 libdbus-1-3 \
+                libfontconfig1 libfreetype6 libx11-6 libx11-xcb1 libxcb1 fonts-dejavu-core > /dev/null
+              cp /ai/silux-x86_64-compat.AppImage /tmp/ && cd /tmp
+              ./silux-x86_64-compat.AppImage --screenshot /tmp/s.png --page Inicio > salida.txt 2>&1 || { cat salida.txt; exit 1; }
+              test -s /tmp/s.png || { echo '::error::el compatible no hizo la captura en su suelo'; exit 1; }"
 
       # The file's own icon: file managers read `.DirIcon` (KDE's kio-extras
       # thumbnailer, AppImageLauncher). Without it Dolphin showed a generic one.

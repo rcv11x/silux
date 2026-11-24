@@ -105,7 +105,7 @@ def motor_de_contenedores() -> str:
 
 def rango_de_pyside() -> str:
     """El del paquete que lleva el Python del suelo, preguntándoselo al
-    empaquetador: es el `--compat`, con el 3.10 de Ubuntu 22.04.
+    empaquetador: es el `--compat`, que lleva el 3.10.
 
     Repetirlo aquí sería tener dos sitios donde dice qué Qt se prueba, y el que
     nadie mira se queda atrás. Ya pasó con el paso del CI, que decía

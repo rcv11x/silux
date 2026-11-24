@@ -64,9 +64,9 @@ ejecuta.
 
 **El suelo es Python 3.10** y aquí se desarrolla en 3.14: que pase aquí no dice
 que pase en el mínimo, y lo que rompe el suelo no se ve leyendo el código. El
-AppImage normal lleva 3.14 (python-build-standalone) y PySide6 6.12; el
-compat, el 3.10 de Ubuntu 22.04 y PySide6 6.9. El CI pasa la suite con esas
-dos parejas. **El AppImage se construye siempre con `--container`**:
+AppImage normal lleva 3.14 y PySide6 6.12; el compat, 3.10 y PySide6 6.9,
+los dos Python de python-build-standalone. El CI pasa la suite con esas dos
+parejas. **El AppImage se construye siempre con `--container`**:
 sin él se lleva la glibc y el juego de instrucciones de quien lo compila. Por
 qué, los dos techos de PySide6 y las dos guardas del procesador:
 [docs/empaquetado.md](docs/empaquetado.md).

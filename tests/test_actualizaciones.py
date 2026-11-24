@@ -426,8 +426,8 @@ class TestLaConexionSegura(unittest.TestCase):
     Probado de punta a punta con el AppImage del CI y un GitHub falso
     (mitmproxy): el Python de dentro no traía `_ssl`, ninguna URL `https://`
     se podía abrir y la ventana decía «no hay conexión con GitHub». Y el
-    OpenSSL de dentro, el de Ubuntu 22.04, busca los certificados donde solo
-    los pone Debian.
+    OpenSSL de dentro busca los certificados en un solo sitio, que no todas
+    las familias usan.
     """
 
     def setUp(self):

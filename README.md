@@ -24,7 +24,7 @@ Cada [versión](https://github.com/rcv11x/silux/releases) trae dos AppImage. Los
 | `silux-x86_64.AppImage` | El normal: casi cualquier PC desde 2010. Intel Core i, Pentium y Celeron desde Nehalem; Atom desde 2013; AMD FX, Ryzen, y las A-series y E-series desde Trinity y Kabini (A4/A6/A8/A10-5xxx en adelante, E1/E2 desde 2013). |
 | `silux-x86_64-compat.AppImage` | Solo si el normal no arranca: Core 2, Atom anteriores a 2013, Athlon II, Phenom II, A-series Llano (A4/A6/A8-3xxx) y E/C-series Bobcat (E-350, E-450, E1-1200, E2-1800, C-60). Si no sabes cuál, prueba primero el normal: si no vale para tu procesador, te lo dice al abrirlo. |
 
-<sub>Para quien lo necesite: el normal pide glibc 2.34 o posterior (RHEL 9, Ubuntu 22.04, Debian 12 y posteriores) y un procesador x86-64-v2; el compat, glibc 2.35 o posterior y cualquier procesador de 64 bits.</sub>
+<sub>Para quien lo necesite: el normal pide glibc 2.34 o posterior (RHEL 9, Ubuntu 22.04, Debian 12 y posteriores) y un procesador x86-64-v2; el compat, glibc 2.30 o posterior (Ubuntu 20.04, Debian 11 y posteriores) y cualquier procesador de 64 bits.</sub>
 
 ```
 chmod +x silux-x86_64.AppImage

@@ -7,30 +7,39 @@ reparte y por qué, y cómo se comprueba.
 
 | | normal | `-compat` |
 |---|---|---|
-| Python | 3.14, de python-build-standalone | 3.10, el de Ubuntu 22.04 |
+| Python | 3.14, de python-build-standalone | 3.10, de python-build-standalone |
 | PySide6 | la última (6.12) | 6.9 (`<6.10`) |
 | Procesador | x86-64-v2: Intel desde Nehalem (2008), Atom desde Silvermont (2013), AMD desde Bulldozer (2011) y Jaguar (2013) | cualquier x86-64 |
-| glibc | 2.34: RHEL 9, Ubuntu 22.04, Debian 12 y posteriores | 2.35: Ubuntu 22.04, Debian 12 y posteriores |
-| Tamaño | 53 MB | 44 MB |
+| glibc | 2.34: RHEL 9, Ubuntu 22.04, Debian 12 y posteriores | 2.30: Ubuntu 20.04, Debian 11 y posteriores |
+| Tamaño | 53 MB | 43 MB |
 
 De los plugins de plataforma de Qt va todo menos el de VNC (`libqvnc.so`): es
 el único que pide QtNetwork, y con ella entraban Kerberos y `libresolv.so.2`,
 que es de glibc y tiene que ser la del sistema. Fuera, el normal baja de
 54,4 a 53,0 MB y el compat de 45,6 a 44,3.
 
-Los dos se construyen en un contenedor Ubuntu 22.04
-(`tools/build_appimage.py --container`, con `--compat` para el segundo).
-Sin contenedor salen con la glibc y el juego de instrucciones de quien los
-compila: en CachyOS, x86-64-v3 y la glibc del mes.
+Se construyen en un contenedor (`tools/build_appimage.py --container`, con
+`--compat` para el segundo): el normal en Ubuntu 22.04 y el compat en Ubuntu
+20.04. Sin contenedor salen con la glibc y el juego de instrucciones de quien
+los compila: en CachyOS, x86-64-v3 y la glibc del mes.
 
-La glibc la marca lo más exigente de lo que va dentro. En el normal son las
-ruedas de PySide6 (`manylinux_2_34`); el intérprete solo pide 2.17. En el
-compat es el propio intérprete: `hypot@GLIBC_2.35` del 3.10 de Ubuntu. Para
-bajar cualquiera de los dos hace falta otra base, no una opción.
+La glibc la marca lo más exigente de lo que va dentro; el intérprete, en los
+dos, solo pide 2.17. En el normal son las ruedas de PySide6
+(`manylinux_2_34`). En el compat, PySide6 6.9 pide 2.28 y lo que sube a 2.30
+son las bibliotecas de su base (glib, libsystemd, liblzma…). Hasta la
+prueba12 el compat llevaba el 3.10 del propio Ubuntu 22.04, que pide
+`hypot@GLIBC_2.35`, y las bibliotecas de esa base pedían 2.34: el paquete
+para equipos viejos pedía un sistema más nuevo que el normal. El CI abre la
+ventana del compat en Ubuntu 20.04 en cada construcción.
+
+Comprobado a mano el 24 de noviembre de 2026: la ventana abre en Ubuntu 20.04
+y Debian 11 (glibc 2.31), y su Python y su Qt corren en un Core 2 emulado
+(`qemu-x86_64-static -cpu Conroe`), donde el Qt 6.12 del normal se cae con
+«Instrucción ilegal».
 
 ## El suelo del código: Python 3.10
 
-`requires-python = ">=3.10"`, porque el compat lleva el 3.10 de Ubuntu 22.04
+`requires-python = ">=3.10"`, porque el compat lleva el 3.10
 y su PySide6 6.9 es de antes del 3.14. Se desarrolla en 3.14, y lo que rompe
 el suelo no se ve leyendo el código: `self.enterContext` es de 3.11 y se
 llevó once tests en el CI, y hasta 3.12 un traceback perdía el texto de la

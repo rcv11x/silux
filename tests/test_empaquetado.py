@@ -44,7 +44,7 @@ class TestElQtQueSeEmpaqueta(unittest.TestCase):
     es inmortal y no se nota; en 3.10 y 3.11 la cuenta llega a cero y el
     proceso muere con «Fatal Python error: none_dealloc» al pintar la
     primera gráfica. El normal lleva 3.14 y se lleva la última; el compat
-    lleva el 3.10 de Ubuntu 22.04 y no puede llevarla.
+    lleva el 3.10 y no puede llevarla.
 
     El CI pregunta el rango a `--pyside-range`, así que lo mismo alcanza a
     los tests de cada pareja y a la construcción.
@@ -269,6 +269,76 @@ class TestElCiConstruyeComoSeReparte(unittest.TestCase):
         for orden in self._construcciones():
             with self.subTest(orden=orden):
                 self.assertIn("--container", orden)
+
+
+class TestTheCompatAsksForNoNewerGlibc(unittest.TestCase):
+    """The build for old machines can't need a newer system than the normal
+    one. It carried Ubuntu 22.04's own Python 3.10, which needs glibc 2.35
+    where the normal one needs 2.34, and that image's libraries ask for 2.34
+    on their own: PySide6 6.9 alone asks for 2.28.
+    """
+
+    def _container_command(self, compat: bool) -> list[str]:
+        from unittest import mock
+
+        import tools.build_appimage as build
+
+        with mock.patch.object(build.shutil, "which", lambda _: "/usr/bin/podman"), \
+             mock.patch.object(build.subprocess, "run") as run:
+            run.return_value = mock.Mock(returncode=0)
+            build.construir_en_contenedor(build.IMAGEN_BASE, compat)
+        return run.call_args[0][0]
+
+    def _image_chosen(self, *options: str) -> str:
+        from unittest import mock
+
+        import tools.build_appimage as build
+
+        argv = ["build_appimage.py", "--container", *options]
+        with mock.patch.object(build.sys, "argv", argv), \
+             mock.patch.object(build, "construir_en_contenedor", return_value=0) as build_in:
+            build.main()
+        return build_in.call_args[0][0]
+
+    def test_both_builds_carry_python_build_standalone(self):
+        import tools.build_appimage as build
+
+        for compat in (False, True):
+            with self.subTest(compat=compat):
+                wanted = build.PYTHON_STANDALONE.format(version=build.PYTHON[compat])
+                self.assertIn(f"SILUX_PYTHON={wanted}", self._container_command(compat))
+
+    def test_the_recipe_never_uses_the_image_python(self):
+        import tools.build_appimage as build
+
+        self.assertNotIn("break-system-packages", build.RECETA)
+        self.assertIn('--python "$SILUX_PYTHON"', build.RECETA)
+
+    def test_the_compat_is_built_on_an_older_base(self):
+        import tools.build_appimage as build
+
+        def release(image: str) -> tuple[int, ...]:
+            return _version(image.rsplit(":", 1)[1])
+
+        normal, compat = self._image_chosen(), self._image_chosen("--compat")
+        self.assertEqual(normal, build.IMAGEN_BASE)
+        self.assertEqual(compat, build.COMPAT_BASE_IMAGE)
+        self.assertEqual(normal.rsplit(":", 1)[0], compat.rsplit(":", 1)[0])
+        self.assertLess(release(compat), release(normal))
+
+    def test_an_image_given_by_hand_is_kept(self):
+        self.assertEqual(self._image_chosen("debian:11", "--compat"), "debian:11")
+
+    def test_the_ci_opens_its_window_on_that_base(self):
+        import tools.build_appimage as build
+
+        workflow = (pathlib.Path(__file__).resolve().parent.parent
+                    / ".github" / "workflows" / "appimage.yml").read_text()
+        step = workflow.split("- name: Arrancar el compatible en el sistema de su suelo", 1)
+        self.assertEqual(len(step), 2, "the CI step is gone")
+        step = step[1].split("- name:", 1)[0]
+        self.assertIn(build.COMPAT_BASE_IMAGE, step)
+        self.assertIn("silux-x86_64-compat.AppImage --screenshot", step)
 
 
 class TestLasAccionesDelCiCorrenEnNode24(unittest.TestCase):

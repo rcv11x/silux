@@ -22,11 +22,10 @@ Lo que se hace para que quepa:
   Python, tkinter, idlelib y compañía suman bastante y no pintan nada aquí.
 - **`strip` a todo binario** y compresión zstd del resultado.
 
-El Python de dentro no es el mismo en los dos paquetes. El normal lleva el
-3.14 de python-build-standalone, que `uv` baja ya compilado: un binario con
-la biblioteca estándar en C y OpenSSL dentro, que solo pide glibc 2.17. El
-`--compat` lleva el 3.10 de Ubuntu 22.04, porque su PySide6 6.9 es de antes
-de que existiera el 3.14.
+Both builds carry a Python from python-build-standalone, which `uv`
+downloads already compiled: the standard library's C parts and OpenSSL
+linked in, asking only for glibc 2.17. The normal one carries 3.14; the
+`--compat` one 3.10, the code's floor, because its PySide6 6.9 predates 3.14.
 
 Lo que más pesa y no se puede quitar es ICU, la tabla de internacionalización
 de la que depende Qt: 38 MB en disco. Comprime a una fracción porque son datos
@@ -53,6 +52,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # funciona en las nuevas, pero no al revés; y sus paquetes van para x86-64
 # básico, no para las extensiones que solo tienen los procesadores recientes.
 IMAGEN_BASE = "docker.io/library/ubuntu:22.04"
+# The compat one's is older: the libraries it takes from its base set its
+# glibc floor, 2.30 with these, where PySide6 6.9 alone asks for 2.28. Those
+# of 22.04 ask for 2.34, as much as the normal build.
+COMPAT_BASE_IMAGE = "docker.io/library/ubuntu:20.04"
 
 # Se la pone `construir_en_contenedor` a la construcción de dentro, que si no
 # no tiene forma de saber dónde está. Sin ella el aviso final recomendaba
@@ -163,11 +166,11 @@ DYNLOAD_FUERA = (
 # de las dos llega al paquete.
 RANGO_PYSIDE = {False: "PySide6>=6.12", True: "PySide6>=6.6,<6.10"}
 
-# Qué Python va dentro de cada paquete. El del normal es una petición a `uv`
-# —la variante `x86_64` a secas, no la v2 ni la v3, para no exigirle al
-# procesador más que Qt—; el del `--compat` es el de la imagen base, el único
-# que hay en Ubuntu 22.04. El CI pasa la suite con estas dos parejas, y
-# `tests/test_empaquetado.py` compara su matriz con esta tabla.
+# Which Python goes in each build, asked of `uv`: the plain `x86_64` variant,
+# not v2 or v3, so the processor isn't asked for more than Qt asks. Never the
+# base image's own: Ubuntu 22.04's 3.10 needs glibc 2.35 (`hypot`), more than
+# the normal build. The CI runs the suite with these two pairs, and
+# `tests/test_empaquetado.py` compares its matrix with this table.
 PYTHON = {False: "3.14", True: "3.10"}
 PYTHON_STANDALONE = "cpython-{version}-linux-x86_64-gnu"
 
@@ -268,7 +271,7 @@ export QT_QPA_PLATFORM_PLUGIN_PATH="$AQUI/usr/lib/qt/plugins/platforms"
 # AppImage ejecutaba código ajeno sin decir nada. Se ve lanzándolo desde una
 # copia del repositorio, donde enseñaba la versión del árbol de trabajo en vez
 # de la suya. Python 3.11 trae PYTHONSAFEPATH para esto, pero el `--compat`
-# lleva el 3.10 de Ubuntu 22.04, así que se quita a mano antes de importar nada.
+# lleva el 3.10, así que se quita a mano antes de importar nada.
 ARRANQUE='import sys, runpy
 sys.path.pop(0)
 runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)'
@@ -312,7 +315,7 @@ def main() -> int:
                              "para x86-64 a secas, para procesadores "
                              "anteriores a 2008 (Intel) o 2011 (AMD)")
     parser.add_argument("--container", metavar="IMAGEN", nargs="?",
-                        const=IMAGEN_BASE,
+                        const=True,
                         help="construye dentro de un contenedor con una "
                              "distribución antigua, para que el resultado "
                              "funcione en procesadores y sistemas viejos")
@@ -340,7 +343,9 @@ def main() -> int:
     COMPAT = args.compat
 
     if args.container:
-        return construir_en_contenedor(args.container, args.compat)
+        imagen = args.container if isinstance(args.container, str) else (
+            COMPAT_BASE_IMAGE if args.compat else IMAGEN_BASE)
+        return construir_en_contenedor(imagen, args.compat)
 
     if APPDIR.exists():
         shutil.rmtree(APPDIR)
@@ -437,22 +442,15 @@ apt-get install -y -qq --no-install-recommends \
 # cuyo dueño quiere saber qué lleva dentro. 6.9 es la última serie que se
 # compila para x86-64 a secas.
 #
-# El normal no usa el Python de la imagen sino el de python-build-standalone,
-# que baja `uv`: ya compilado, con OpenSSL dentro y glibc 2.17 como suelo, así
-# que no sube el de la imagen. Lo de dentro del entorno virtual lo copia luego
-# `copiar_python`, que sigue el enlace hasta el intérprete de verdad.
-if [ -n "${SILUX_PYTHON:-}" ]; then
-    pip3 install --quiet "uv>=0.13,<0.14"
-    uv venv --quiet --managed-python --python "$SILUX_PYTHON" /opt/silux-python
-    uv pip install --quiet --python /opt/silux-python/bin/python "$PYSIDE"
-    PYTHON=/opt/silux-python/bin/python
-else
-    pip3 install --quiet --break-system-packages "$PYSIDE" 2>/dev/null || \
-        pip3 install --quiet "$PYSIDE"
-    PYTHON=python3
-fi
+# Neither build uses the image's Python but python-build-standalone's, which
+# `uv` downloads: already compiled, with OpenSSL inside and glibc 2.17 as its
+# floor, so it doesn't raise the image's. `copiar_python` then follows the
+# virtual environment's link to the real interpreter.
+pip3 install --quiet "uv>=0.13,<0.14"
+uv venv --quiet --managed-python --python "$SILUX_PYTHON" /opt/silux-python
+uv pip install --quiet --python /opt/silux-python/bin/python "$PYSIDE"
 cd /fuente
-"$PYTHON" tools/build_appimage.py "$@"
+/opt/silux-python/bin/python tools/build_appimage.py "$@"
 """
 
 
@@ -495,9 +493,7 @@ def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
         "-v", f"{ROOT}:/fuente:z",
         "-w", "/fuente",
         "-e", f"PYSIDE={RANGO_PYSIDE[compat]}",
-        # Vacío en el `--compat`, que usa el Python de la imagen.
-        "-e", "SILUX_PYTHON=" + ("" if compat else
-                                 PYTHON_STANDALONE.format(version=PYTHON[compat])),
+        "-e", "SILUX_PYTHON=" + PYTHON_STANDALONE.format(version=PYTHON[compat]),
         "-e", f"SILUX_BUILD={_marca_de_construccion()}",
         "-e", f"{EN_CONTENEDOR}=1",
         # Sin esto la salida sale desordenada y no se puede leer: dentro del

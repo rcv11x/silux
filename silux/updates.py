@@ -213,9 +213,9 @@ class _HttpsOnly(urllib.request.HTTPRedirectHandler):
 
 # Where each family of distributions keeps the certificates it trusts:
 # Debian, Ubuntu and Arch; Fedora and RHEL; openSUSE; and the rest. The
-# OpenSSL inside the AppImage is Ubuntu 22.04's and looks in `/usr/lib/ssl`,
-# which only Debian and its derivatives have: on Fedora or Arch it found
-# none and couldn't verify GitHub.
+# OpenSSL inside the AppImage looks only where it was built to look, which
+# not every family uses: with Ubuntu's, Fedora and Arch found none and
+# couldn't verify GitHub.
 CA_BUNDLES = (
     "/etc/ssl/certs/ca-certificates.crt",
     "/etc/pki/tls/certs/ca-bundle.crt",
