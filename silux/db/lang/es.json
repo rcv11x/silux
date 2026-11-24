@@ -438,6 +438,8 @@
   "cpu.limit.pl2": "Límite de pico (PL2)",
   "cpu.limit.tdp": "TDP",
   "cpu.limit.tdp.tip": "La potencia de diseño que declara el propio procesador. Con el turbo la pasa un rato, y es normal: no es un límite que lo apague.",
+  "cpu.limit.unlimited": "sin límite",
+  "cpu.limit.unlimited.tip": "El firmware deja este límite en lo máximo que cabe en el registro del procesador (4095 W), que es su forma de decir que no pone ninguno.",
   "cpu.limit.window": "{limite} · ventana de {ventana}",
   "cpu.limit.window.tip": "Cada límite se aplica a la media del consumo en su ventana. El procesador puede pasar de PL1, hasta PL2, mientras la media en la ventana de PL1 no lo supere: eso es lo que dura el turbo sostenido.",
   "cpu.load.threads": "{carga}  (de {n} hilos)",

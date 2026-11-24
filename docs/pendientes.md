@@ -217,10 +217,6 @@ la memoria) no va: está propuesto en las notas
   falso. Tiene que ser la máxima de las CPUs del tipo. El anexo guarda la
   `cpufreq` de una CPU por tipo: hace falta que guarde las de todas para
   probarlo con el volcado `i7-12700kf`.
-* `providers/rapl.py` · baja · un PL2 de 4 095 W (`constraint_1_power_limit_uw`
-  = 4095000000) es el máximo que cabe en el registro: el firmware dice así
-  «sin límite». Sale como «Límite de pico (PL2) 4095 W»; es un valor de
-  relleno, no un límite (volcado `i7-12700kf`).
 * `providers/privileged_memory.py` · media · antes de SMBIOS 3.2, la velocidad
   configurada de un módulo (tipo 17) se daba en MHz de reloj, no en MT/s: en
   una DDR3-1600 son 800. Un FX-8150 con una BIOS de 2013 salía «800 MT/s de

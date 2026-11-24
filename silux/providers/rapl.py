@@ -66,6 +66,15 @@ def _packages() -> list[pathlib.Path]:
 
 # With no limit declared at all, no single package draws this for a second.
 FALLBACK_CEILING_W = 1000.0
+# A power limit is 15 bits in eighths of a watt (Intel's SDM, MSR_PKG_POWER_
+# LIMIT), 4095.875 W at most. Firmware that sets no limit fills the field,
+# and the kernel reads 4095 or 4095.875 W.
+REGISTER_FULL_W = 4095.0
+
+
+def fills_the_register(watts: float) -> bool:
+    """Whether a limit is the register's filler for «no limit»."""
+    return watts >= REGISTER_FULL_W
 # Where dropped readings are reported: the report's diagnosis, on no page.
 DISCARDED_PATH = "report.power.discarded"
 
@@ -73,7 +82,9 @@ DISCARDED_PATH = "report.power.discarded"
 def package_ceiling_w() -> float:
     """The most a package can draw, from what RAPL declares: its PL4
     (`peak_power`) if declared, otherwise twice its highest limit (it exceeds
-    PL2 briefly, never by double), or FALLBACK_CEILING_W with none."""
+    PL2 briefly, never by double), or FALLBACK_CEILING_W with none. A limit
+    left open caps nothing: the package may draw far more than twice the
+    other one."""
     packages = _packages()
     if not packages:
         return FALLBACK_CEILING_W
@@ -82,9 +93,12 @@ def package_ceiling_w() -> float:
         micro = read_int(str(constraint).replace("_name", "_power_limit_uw"))
         if micro:
             limits[(read_text(str(constraint)) or "").lower()] = micro / 1e6
-    if "peak_power" in limits:
-        return limits["peak_power"]
-    return 2 * max(limits.values()) if limits else FALLBACK_CEILING_W
+    peak = limits.pop("peak_power", None)
+    if peak is not None and not fills_the_register(peak):
+        return peak
+    if not limits or any(fills_the_register(watts) for watts in limits.values()):
+        return FALLBACK_CEILING_W
+    return 2 * max(limits.values())
 
 
 class Discarded:
@@ -129,17 +143,21 @@ def _mmio_package() -> Optional[pathlib.Path]:
 
 def effective_limits(msr: dict, mmio: dict) -> dict:
     """Each limit as enforced: the lower of the MSR's and the MMIO's, with
-    the other one kept when they differ, to say where it comes from."""
+    the other one kept when they differ, to say where it comes from. A copy
+    left open gives way to one with watts; with none, the limit is open."""
     limits = dict(msr)
     for kind in ("long", "short"):
         a, b = msr.get(f"limit_{kind}_w"), mmio.get(f"limit_{kind}_w")
-        if b is None:
-            continue
-        if a is None or b < a:
+        if b is not None and (a is None or b < a):
             limits[f"limit_{kind}_w"] = b
             limits[f"window_{kind}_s"] = mmio.get(f"window_{kind}_s")
-        if a is not None and a != b:
+        if a is not None and b is not None and a != b:
             limits[f"limit_{kind}_other_w"] = max(a, b)
+        unlimited = f"limit_{kind}_unlimited"
+        if limits.get(f"limit_{kind}_w") is None and (msr.get(unlimited) or mmio.get(unlimited)):
+            limits[unlimited] = True
+        else:
+            limits.pop(unlimited, None)
     return limits
 
 
@@ -157,13 +175,16 @@ def _constraints(zone: pathlib.Path) -> list[tuple[str, str, str]]:
     return found
 
 
-def _read_limits(constraints: list[tuple[str, str, str]]) -> dict[str, Optional[float]]:
-    """PL1 and PL2 in watts, with each one's time window in seconds: the
-    fields of `Power`."""
-    limits: dict[str, Optional[float]] = {}
+def _read_limits(constraints: list[tuple[str, str, str]]) -> dict:
+    """PL1 and PL2 in watts, with each one's time window in seconds, or
+    marked open: the fields of `Power`."""
+    limits: dict = {}
     for kind, power_file, window_file in constraints:
         micro = read_int(power_file)
         if micro is None:
+            continue
+        if fills_the_register(micro / 1e6):
+            limits[f"limit_{kind}_unlimited"] = True
             continue
         window = read_int(window_file)
         limits[f"limit_{kind}_w"] = round(micro / 1e6, 1)
@@ -197,7 +218,8 @@ class PowerLimits(Provider):
             self._zones = (_constraints(_packages()[0]), _constraints(mmio) if mmio else [])
         msr, mmio = self._zones
         limits = effective_limits(_read_limits(msr), _read_limits(mmio))
-        if limits.get("limit_long_w") or limits.get("limit_short_w"):
+        if any(limits.get(field) for field in ("limit_long_w", "limit_short_w",
+                                               "limit_long_unlimited", "limit_short_unlimited")):
             draft.cpu_extra["power"] = Power(**limits)
 
 

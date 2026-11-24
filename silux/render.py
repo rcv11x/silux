@@ -636,10 +636,13 @@ def power_tooltip(power: Power) -> str:
     lines = [f'{_("power.package")} {watts(power.package_w)}']
     if breakdown := power_breakdown(power):
         lines.append(breakdown.replace(" · ", "\n"))
-    if power.limit_long_w:
-        lines.append(f'\n{_("power.pl1")} {limit_watts(power.limit_long_w)}')
-    if power.limit_short_w:
-        lines.append(f'{_("power.pl2")} {limit_watts(power.limit_short_w)}')
+    limits = [f'{_(key)} {power_limit(watts, None, unlimited)}'
+              for key, watts, unlimited in (
+                  ("power.pl1", power.limit_long_w, power.limit_long_unlimited),
+                  ("power.pl2", power.limit_short_w, power.limit_short_unlimited))
+              if watts or unlimited]
+    if limits:
+        lines.append("\n" + "\n".join(limits))
     return "\n".join(lines)
 
 
@@ -1489,8 +1492,12 @@ def thermal_throttle(throttles) -> str:
     return " · ".join(parts) or _("cpu.throttle.none")
 
 
-def power_limit(limit_w: Optional[float], window_s: Optional[float]) -> str:
-    """«65.0 W · ventana de 28.0 s», or the watts alone without a window."""
+def power_limit(limit_w: Optional[float], window_s: Optional[float],
+                unlimited: bool = False) -> str:
+    """«65.0 W · ventana de 28.0 s», the watts alone without a window, or
+    «sin límite» for one the firmware left open."""
+    if unlimited:
+        return _("cpu.limit.unlimited")
     if _none(window_s):
         return limit_watts(limit_w)
     return _("cpu.limit.window").format(limite=limit_watts(limit_w), ventana=time_window(window_s))

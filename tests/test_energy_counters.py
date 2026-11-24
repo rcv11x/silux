@@ -139,6 +139,12 @@ class TestTheImpossible(_Tree):
             (self.package / f"constraint_{n}_name").unlink()
         self.assertEqual(rapl.package_ceiling_w(), rapl.FALLBACK_CEILING_W)
 
+    def test_a_limit_left_open_caps_nothing(self):
+        # Twice PL1 would drop what an unlimited board really draws.
+        (self.package / "constraint_2_name").unlink()
+        (self.package / "constraint_1_power_limit_uw").write_text("4095000000\n")
+        self.assertEqual(rapl.package_ceiling_w(), rapl.FALLBACK_CEILING_W)
+
 
 class TestTheIntegratedGpusEnergy(_Tree):
     """Its watts come from the helper's energy-gpu, and it is part of the

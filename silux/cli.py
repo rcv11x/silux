@@ -121,10 +121,12 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         lines.append(_row(style, "Consumo", consumption))
         if breakdown := render.power_breakdown(power):
             lines.append(_row(style, "", style.dim(breakdown)))
-        if power.limit_long_w:
+        if power.limit_long_w or power.limit_long_unlimited:
+            def limit(watts, unlimited):
+                return render.power_limit(None, None, True) if unlimited else render.watts(watts)
             lines.append(_row(style, "Límites", style.dim(
-                f"{render.watts(power.limit_long_w)} sostenido · "
-                f"{render.watts(power.limit_short_w)} de pico")))
+                f"{limit(power.limit_long_w, power.limit_long_unlimited)} sostenido · "
+                f"{limit(power.limit_short_w, power.limit_short_unlimited)} de pico")))
         lines.append(_row(style, "Voltaje", render.volts(cpu_type.voltage_v)))
         lines.append("")
 

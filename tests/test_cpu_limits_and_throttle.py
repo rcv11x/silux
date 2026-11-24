@@ -125,3 +125,52 @@ class TestOnTheCpuPage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestALimitLeftOpen(unittest.TestCase):
+    """A RAPL limit of 4095 W is the most its register holds: the firmware's
+    way of setting none, not a limit of 4095 W."""
+
+    HYBRID = EQUIPOS / "i7-12700kf"
+
+    def test_the_dump_has_pl1_and_no_pl2(self):
+        power = shared_snapshot(self.HYBRID).cpu.power
+        self.assertEqual((power.limit_long_w, power.limit_long_unlimited), (125.0, False))
+        self.assertEqual((power.limit_short_w, power.window_short_s), (None, None))
+        self.assertTrue(power.limit_short_unlimited)
+
+    def test_any_limit_with_that_value(self):
+        for raw in ("4095000000\n", "4095875000\n"):
+            with self.subTest(raw=raw):
+                files = dict(LIMITS, **{RAPL + "constraint_0_power_limit_uw": raw})
+                power = _collect(PowerLimits(), files).cpu_extra["power"]
+                self.assertEqual((power.limit_long_w, power.limit_long_unlimited), (None, True))
+                self.assertEqual((power.limit_short_w, power.limit_short_unlimited), (115.0, False))
+
+    def test_a_copy_with_watts_is_the_one_enforced(self):
+        from silux.providers.rapl import effective_limits
+
+        mmio = {"limit_short_w": 64.0, "window_short_s": 0.002}
+        self.assertEqual(effective_limits({"limit_short_unlimited": True}, mmio), mmio)
+        self.assertEqual(effective_limits(mmio, {"limit_short_unlimited": True}), mmio)
+        self.assertEqual(effective_limits({"limit_short_unlimited": True}, {}),
+                         {"limit_short_unlimited": True})
+
+    def test_it_is_no_threshold_of_the_package_sensor(self):
+        from silux.providers.derived import DerivedSensors
+
+        draft = Draft()
+        draft.cpu_extra["power"] = dataclasses.replace(
+            shared_snapshot(self.HYBRID).cpu.power, package_w=95.0)
+        package = next(s for s in DerivedSensors._power(draft, "CPU") if s.key == "rapl/package_w")
+        self.assertEqual((package.high, package.critical), (125.0, None))
+
+    @unittest.skipIf(QApplication is None, "sin PySide6")
+    def test_said_on_the_cpu_page(self):
+        qt.app()
+        with pantalla.Ventana(shared_snapshot(self.HYBRID)) as window:
+            window.select_section("CPU")
+            text = "\n".join(pantalla.textos_de(window.stack.currentWidget()))
+        self.assertIn(_("cpu.limit.pl2"), text)
+        self.assertIn(_("cpu.limit.unlimited"), text)
+        self.assertNotIn("4095", text)

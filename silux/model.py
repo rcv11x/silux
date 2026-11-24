@@ -188,6 +188,10 @@ class Power:
     # differ: the processor enforces the lower one, the one above.
     limit_long_other_w: Optional[float] = None
     limit_short_other_w: Optional[float] = None
+    # The firmware left the limit at the most its register holds, its way of
+    # setting none: no watts, and nothing held back there.
+    limit_long_unlimited: bool = False
+    limit_short_unlimited: bool = False
     # The TDP the processor declares: fam15h_power publishes it as its
     # power «crit», which turbo runs above for a while. A figure, no alarm.
     tdp_w: Optional[float] = None

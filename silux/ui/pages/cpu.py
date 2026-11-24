@@ -559,19 +559,22 @@ class CpuPage(ScrollPage):
         cpu = snapshot.cpu
         potencia, estados = cpu.power, cpu.idle_states
         limites = (("cpu.limit.pl1", potencia.limit_long_w, potencia.window_long_s,
-                    potencia.limit_long_other_w),
+                    potencia.limit_long_other_w, potencia.limit_long_unlimited),
                    ("cpu.limit.pl2", potencia.limit_short_w, potencia.window_short_s,
-                    potencia.limit_short_other_w))
-        for clave, valor, ventana, otro in limites:
-            texto = render.power_limit(valor, ventana) if valor else render.DASH
+                    potencia.limit_short_other_w, potencia.limit_short_unlimited))
+        for clave, valor, ventana, otro, unlimited in limites:
+            shown = bool(valor) or unlimited
+            texto = render.power_limit(valor, ventana, unlimited) if shown else render.DASH
             pista = _("cpu.limit.window.tip") if ventana else ""
+            if unlimited:
+                pista = _("cpu.limit.unlimited.tip")
             if valor and otro:
                 # Two copies of the limit: the lower is enforced.
                 texto += " · " + _("cpu.limit.lowest").format(otro=render.limit_watts(otro))
                 pista = " ".join(p for p in (_("cpu.limit.lowest.tip"), pista) if p)
             self.limits.set(_(clave), texto, tooltip=pista or None)
-            self.limits.set_visible(_(clave), bool(valor))
-        hay_limites = any(valor for _clave, valor, _ventana, _otro in limites)
+            self.limits.set_visible(_(clave), shown)
+        hay_limites = any(valor or unlimited for _clave, valor, _ventana, _otro, unlimited in limites)
         self.limits.set(_("cpu.limit.tdp"),
                         render.limit_watts(potencia.tdp_w) if potencia.tdp_w else render.DASH,
                         tooltip=_("cpu.limit.tdp.tip"))

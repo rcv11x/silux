@@ -438,6 +438,8 @@
   "cpu.limit.pl2": "Peak limit (PL2)",
   "cpu.limit.tdp": "TDP",
   "cpu.limit.tdp.tip": "The design power the processor itself declares. With turbo it goes above it for a while, which is normal: it isn't a limit that shuts it down.",
+  "cpu.limit.unlimited": "no limit",
+  "cpu.limit.unlimited.tip": "The firmware leaves this limit at the most the processor's register holds (4095 W), which is its way of setting none.",
   "cpu.limit.window": "{limite} · {ventana} window",
   "cpu.limit.window.tip": "Each limit applies to the average power over its window. The processor can go above PL1, up to PL2, as long as the average over the PL1 window stays below it: that is how long a sustained boost lasts.",
   "cpu.load.threads": "{carga}  (of {n} threads)",

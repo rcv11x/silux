@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- CPU: un límite de potencia de 4095 W, lo máximo que cabe en el registro,
+  es la forma del firmware de no poner ninguno: sale como «sin límite»
+  (el PL2 de muchas placas de sobremesa), y ya no cuenta como umbral
+  crítico del consumo en Sensores.
 - CPU: en un procesador híbrido, «Núcleos P (rendimiento)» y «Núcleos E
   (eficiencia)» son el título de su grupo de tarjetas, con una raya hasta el
   borde; antes eran una línea gris y pequeña entre tarjetas. En el informe
