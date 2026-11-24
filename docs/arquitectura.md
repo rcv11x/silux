@@ -120,8 +120,8 @@ llena al volver.
 
 Lo que cuesta memoria de forma permanente va en otro proceso que muere al
 contestar: OpenGL, Vulkan, OpenCL y VA-API se preguntan en un hijo
-(`gpuapi.query()`), y la medida de la memoria corre en otro
-(`membench.py`).
+(`gpuapi.query()`), y la prueba de memoria corre en otro
+(`memtest.py`, que reserva un gigabyte y lo suelta al acabar).
 
 Lo que solo puede leer el administrador lo lee un ayudante mínimo que se
 lanza con `pkexec` y habla con el programa por un socket; cómo y por qué, en
@@ -211,7 +211,9 @@ silux/
 ├─ smart.py        el diagnóstico de los discos
 ├─ pciids.py       nombres de dispositivos PCI desde la base del sistema
 ├─ benchmark.py    prueba de CPU que dice en qué condiciones midió
-├─ membench.py     ancho de banda y latencia de la memoria, en otro proceso
+├─ membench.py     la medida sencilla de la memoria, sin el módulo nativo
+├─ memtest.py      la prueba de memoria: lanza el módulo nativo
+│                  (native/silux_bench, en Rust) en otro proceso y lee su curva
 ├─ history.py      historial de pruebas de este equipo
 ├─ updates.py      buscar una versión nueva y sustituir el AppImage
 ├─ score.py        la puntuación comparable entre equipos, y su escala
@@ -260,11 +262,13 @@ dentro del propio programa y no como algo que haya que compilar:
 
 - **`CPUID`**, en `silux/rawcpuid.py`: veinte bytes de código máquina escritos
   en una página anónima, marcada como ejecutable y llamada con `ctypes`.
-- **La latencia de la memoria**, en `silux/membench.py`: doce bytes que
-  persiguen punteros (cada lectura da la dirección de la siguiente), montados
-  con la misma `rawcpuid.executable_page`. Con lo que trae la biblioteca de
-  C no se llega: los accesos sueltos se solapan y la latencia se esconde
-  detrás del paralelismo.
+- **La latencia de la memoria**: la mide el módulo nativo en Rust
+  (`native/silux_bench/`, ver [prueba-de-memoria.md](prueba-de-memoria.md)).
+  Sin él, `silux/membench.py`: doce bytes que persiguen punteros (cada
+  lectura da la dirección de la siguiente), montados con la misma
+  `rawcpuid.executable_page`. Con lo que trae la biblioteca de C no se
+  llega: los accesos sueltos se solapan y la latencia se esconde detrás del
+  paralelismo.
 
 Los dos van comentados instrucción a instrucción, y ninguno necesita
 compilador, que es lo que permite que funcionen igual dentro de un AppImage.

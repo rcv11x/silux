@@ -316,16 +316,28 @@ la memoria) no va: está propuesto en las notas
     en Intel, y la hoja 2 en los viejos). `grabado.json` guarda solo las
     hojas que se leyeron, así que hay que volver a volcar los tres equipos.
 
-* `membench.py`, `ui/pages/memory.py` · media · con dos CCD de L3 distinta
-  (7950X3D) o núcleos P y E (Intel híbrido) salen dos niveles con el mismo
-  nombre («L3» de 16 y 48 MB): el proceso que mide no está fijado a ningún
-  núcleo, así que el bloque de 48 MB puede medirse en el CCD de 32 MB y dar
-  la RAM llamándola L3, y los resultados se guardan por nombre y el segundo
-  pisa al primero. Hace falta fijar el proceso a una CPU (la de la L3 mayor)
-  y medir los niveles de esa CPU. Sin un volcado de dos CCD delante.
-* `membench.py` · media · repetir el 5800X3D contra AIDA64 ahora que el
-  bloque tiene páginas grandes ([benchmark.md](benchmark.md)), y ver por qué
-  las primeras vueltas de la L3 salen ruidosas (20 ns frente a 12).
+* **La prueba de memoria nativa** (`memtest.py`, `native/silux_bench/`,
+  rama `memoria-nativa`; cómo mide, en
+  [prueba-de-memoria.md](prueba-de-memoria.md)). Antes de llevarla a
+  `master`:
+  - alta · validarla en un Intel de sobremesa, en un procesador con dos
+    clases de núcleo y en uno antiguo con el AppImage compatible. El
+    contador de ciclos de un híbrido está escrito sin probar.
+  - alta · el CI (`cargo fmt`, `clippy`, `cargo test`, y la suite con el
+    módulo y sin él) y el módulo dentro de los dos AppImage, con AVX2 solo
+    en las funciones que lo comprueban.
+  - media · mide en una sola CPU, la segunda del primer tipo de núcleo. Con
+    dos CCD de L3 distinta (7950X3D), núcleos P y E o varios nodos NUMA
+    falta medir uno de cada clase y decir cuál es cuál.
+  - baja · la barra lateral no marca Rendimiento mientras corre una prueba.
+  - baja · el historial no se puede renombrar ni borrar fila a fila, como
+    el del procesador.
+  - baja · la copia sin pasar por la caché de un hilo cambia un 10 % entre
+    SSE2 y AVX2 según la separación de los dos bloques.
+  - baja · compararla con AIDA64 en el mismo equipo.
+* `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
+  el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
+  distinto tamaño el segundo pisa al primero.
 * `providers/cpuid_x86.py` · baja · la máquina virtual se reconoce solo por
   CPUID (el bit «hypervisor» y la hoja 0x40000000). Un anfitrión que lo
   esconde (KVM con `kvm=off`, típico al pasar una gráfica) no se ve; el
