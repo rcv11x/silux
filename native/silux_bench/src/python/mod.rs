@@ -11,10 +11,12 @@ use std::sync::Arc;
 
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 use crate::common::error::{panic_message, Error, Result};
 use crate::common::{cancel, topology};
 
+mod disk;
 mod memory;
 
 pyo3::create_exception!(silux_bench, SiluxBenchError, PyException);
@@ -52,10 +54,54 @@ impl Control {
 
 fn to_python(error: &Error) -> PyErr {
     let args = (error.key(), error.to_string());
-    match error {
+    let raised = match error {
         Error::Cancelled => Cancelled::new_err(args),
         _ => SiluxBenchError::new_err(args),
+    };
+    Python::attach(|py| {
+        if let Ok(details) = details(py, error) {
+            // Without them the error still says what it is.
+            let _ = raised.value(py).setattr("details", details);
+        }
+    });
+    raised
+}
+
+/// The error's figures by name, for whoever shows it: the message is only
+/// for the report, and nobody should have to read numbers out of it.
+fn details<'py>(py: Python<'py>, error: &Error) -> PyResult<Bound<'py, PyDict>> {
+    let details = PyDict::new(py);
+    match error {
+        Error::BadSize(bytes) => details.set_item("bytes", bytes)?,
+        Error::BadSetting(name) => details.set_item("setting", name)?,
+        Error::NoMemory { bytes, errno } => {
+            details.set_item("bytes", bytes)?;
+            details.set_item("errno", errno)?;
+        }
+        Error::BadCpu { cpu, errno } => {
+            details.set_item("cpu", cpu)?;
+            details.set_item("errno", errno)?;
+        }
+        Error::NoThread { errno }
+        | Error::NoFolder { errno }
+        | Error::NoWrite { errno }
+        | Error::NoDirect { errno } => details.set_item("errno", errno)?,
+        Error::NoSpace { needed, free } => {
+            details.set_item("needed", needed)?;
+            details.set_item("free", free)?;
+        }
+        Error::Io { call, errno } => {
+            details.set_item("call", call)?;
+            details.set_item("errno", errno)?;
+        }
+        Error::NoSizes
+        | Error::Clock(_)
+        | Error::InMemory
+        | Error::Network
+        | Error::Cancelled
+        | Error::Internal(_) => {}
     }
+    Ok(details)
 }
 
 /// Run `work` without the GIL, with every panic caught on this side.
@@ -87,6 +133,8 @@ fn allowed_cpus() -> Vec<usize> {
 
 #[pymodule]
 mod silux_bench {
+    #[pymodule_export]
+    use super::disk::DiskFile;
     #[pymodule_export]
     use super::memory::{instruction_sets, latency_curve, memory_bandwidth};
     #[pymodule_export]

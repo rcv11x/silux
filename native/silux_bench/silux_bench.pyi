@@ -1,10 +1,15 @@
-"""Silux's native memory benchmark: latency by block size and bandwidth.
+"""Silux's native benchmarks: memory latency and bandwidth, and disk speed.
 Linux only."""
 
-from typing import Optional, TypedDict
+from os import PathLike
+from typing import Optional, TypedDict, Union
 
 class SiluxBenchError(Exception):
-    """`args` is `(key, message)`; the key is what code matches on."""
+    """`args` is `(key, message)`; the key is what code matches on, and
+    `details` holds the error's figures by name (`errno`, `needed`, `free`,
+    `call`, `bytes`…), those it has."""
+
+    details: dict[str, Union[int, str]]
 
 class Cancelled(SiluxBenchError): ...
 
@@ -77,3 +82,52 @@ def memory_bandwidth(
 ) -> Bandwidth: ...
 def instruction_sets() -> list[str]: ...
 def allowed_cpus() -> list[int]: ...
+
+class Lap(TypedDict):
+    engine: str
+    threads: int
+    bytes: int
+    requests: int
+    elapsed_ns: int
+    bytes_per_second: float
+    requests_per_second: float
+    latency_mean_ns: Optional[float]
+    latency_min_ns: Optional[int]
+    latency_max_ns: Optional[int]
+    latency_p50_ns: Optional[int]
+    latency_p99_ns: Optional[int]
+    latency_p999_ns: Optional[int]
+    # How much had moved in all, and how far into the lap: `(ns, bytes)`.
+    samples: list[tuple[int, int]]
+
+class DiskFile:
+    """The file a disk test reads and writes: made in `folder` without a
+    name, so that it is gone when this object is, whatever happens to the
+    process. Its contents are still to be written (`fill`)."""
+
+    def __init__(self, folder: Union[str, PathLike[str]], *, bytes: int) -> None: ...
+    def fill(self, *, seed: int = ..., control: Optional[Control] = None) -> None: ...
+    def lap(
+        self,
+        pattern: str,
+        direction: str,
+        *,
+        block: int,
+        depth: int,
+        seconds: float,
+        seed: int = 1,
+        control: Optional[Control] = None,
+    ) -> Lap: ...
+    def cached_bytes(self) -> int: ...
+    def fileno(self) -> int: ...
+    def close(self) -> None: ...
+    @property
+    def bytes(self) -> int: ...
+    @property
+    def creation(self) -> str: ...
+    @property
+    def no_cow(self) -> Optional[bool]: ...
+    @property
+    def filesystem(self) -> int: ...
+    @property
+    def align(self) -> tuple[int, int, bool]: ...

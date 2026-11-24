@@ -7,7 +7,7 @@
 
 use std::ffi::CString;
 use std::fs::File;
-use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 
@@ -381,6 +381,12 @@ impl Target {
         }
         let pages = resident.iter().filter(|page| **page & 1 == 1).count();
         Ok((pages * page) as u64)
+    }
+}
+
+impl AsRawFd for Target {
+    fn as_raw_fd(&self) -> RawFd {
+        self.file.as_raw_fd()
     }
 }
 
