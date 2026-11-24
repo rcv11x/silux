@@ -228,6 +228,26 @@ class TestHistory(unittest.TestCase):
         self.assertEqual(memtest.append_history(second), [second, first])
         self.assertEqual(memtest.load_history(), [second, first])
 
+    def test_the_report_carries_the_latest_whole(self):
+        from silux import report
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
+        self.assertNotIn("## Prueba de memoria", report.build(snapshot))
+        memtest.append_history(dataclasses.replace(
+            recorded(), theoretical_bytes_per_second=51_200_000_000, channels=2, speed_mts=3200))
+        text = report.build(snapshot)
+        for expected in ("## Prueba de memoria",
+                         "| L1 | 0.90 ns | 4.0 | 4.44 GHz | 16 KiB |",
+                         "| read | 1 | 43.9 | avx2 | 4.43 GHz |",
+                         "| copy (no temporal) | 16 | 38.5 | avx2 |",
+                         "RAM sobre 1 GiB · páginas grandes 100 % · frecuencia por cycles",
+                         "lectura al 86 % de 2 × 3200 MT/s × 8 B",
+                         "L3 de 96 MiB: la curva sube entre 64 MiB y 96 MiB",
+                         "| 1 GiB | 77.44 |"):
+            self.assertIn(expected, text)
+        self.assertEqual(text.count("| Bloque | ns |"), 1)
+
     def test_a_file_that_isnt_ours_reads_as_none(self):
         memtest.history_path().parent.mkdir(parents=True, exist_ok=True)
         for text in ("not json", "[]", '{"version": 99, "tests": []}',

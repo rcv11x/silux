@@ -56,6 +56,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
         _network(snapshot, anonymous),
         _sensors(snapshot),
         _benchmark(),
+        _memory_test(),
         _diagnosis(snapshot),
     ]
     return "\n".join(part for part in parts if part).strip() + "\n"
@@ -540,6 +541,67 @@ def _sensors(snapshot: Snapshot) -> str:
                 + (" (relleno del firmware, no es una medida)" if s.placeholder else "")
                 for s in sensors)
             lines.append(f"  - {in_spanish(name).lower()}: {values}")
+    return "\n".join(lines)
+
+
+def _memory_test() -> str:
+    """The latest memory test, whole: each level, each pass and the curve.
+
+    The curve goes here and not on the page: it is what lets a figure from
+    a machine not at hand be checked against its caches and its clock.
+    """
+    from . import memtest
+
+    result = next(iter(memtest.load_history()), None)
+    if result is None or not result.measured:
+        return ""
+    lines = ["\n## Prueba de memoria\n"]
+    if result.levels:
+        lines += ["| Nivel | Latencia | Ciclos | Frecuencia | Bloque |", "|---|---|---|---|---|"]
+        for level in result.levels:
+            cycles = render.core_cycles(level.nanoseconds, level.frequency_hz)
+            lines.append(
+                f"| {level.level} | {level.nanoseconds:.2f} ns | "
+                f"{render.DASH if cycles is None else f'{cycles:.1f}'} | "
+                f"{render.hz(level.frequency_hz)} | {render.size(level.bytes_)} |")
+    if result.rates:
+        lines += ["", "| Operación | Hilos | GB/s | Instrucciones | Frecuencia |",
+                  "|---|---|---|---|---|"]
+        for rate in result.rates:
+            name = rate.operation + (" (no temporal)" if rate.non_temporal else "")
+            lines.append(
+                f"| {name} | {rate.threads} | {rate.bytes_per_second / 1e9:.1f}"
+                f"{' (con ruido)' if rate.noisy else ''} | {rate.isa or render.DASH} | "
+                f"{render.hz(rate.frequency_hz)} |")
+    facts = [f"motor: {result.engine}"]
+    if result.cpu is not None:
+        facts.append(f"CPU {result.cpu}")
+    if result.ram_block:
+        facts.append(f"RAM sobre {render.size(result.ram_block)}"
+                     + (" (limitado por la memoria libre)" if result.ram_block_limited else ""))
+    if result.huge_fraction is not None:
+        facts.append(f"páginas grandes {result.huge_fraction * 100:.0f} %")
+    facts.append(f"frecuencia por {result.frequency_source or 'ninguna vía'}")
+    if result.governor:
+        facts.append(f"gobernador {result.governor}")
+    if result.energy_preference:
+        facts.append(f"EPP {result.energy_preference}")
+    share = memtest.share_of_theoretical(result)
+    if share is not None:
+        facts.append(f"lectura al {share:.0f} % de {result.channels} × {result.speed_mts} MT/s × 8 B")
+    for step in memtest.curve_steps(result.points, result.levels, result.caches):
+        facts.append(
+            f"{step.level} de {render.size(step.declared_bytes)}: la curva sube entre "
+            f"{render.size(step.flat_until)} y {render.size(step.rises_by)}"
+            + ("" if step.matches else " (no cuadra)"))
+    lines += ["", " · ".join(facts)]
+    if result.points:
+        lines += ["", "| Bloque | ns | MHz | Dispersión |", "|---|---|---|---|"]
+        for point in result.points:
+            mhz = render.DASH if not point.frequency_hz else f"{point.frequency_hz / 1e6:.0f}"
+            lines.append(
+                f"| {render.size(point.bytes_)} | {point.nanoseconds:.2f} | {mhz} | "
+                f"{point.spread * 100:.1f} %{' (con ruido)' if point.noisy else ''} |")
     return "\n".join(lines)
 
 
