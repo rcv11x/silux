@@ -32,7 +32,10 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     FoldingRow,
+    LockMark,
     Notice,
+    ProgressLine,
+    ReadableRoot,
     ResponsiveRow,
     ScrollPage,
     Table,
@@ -53,6 +56,9 @@ RATE_ROWS = (("read", False, "memtest.op.read"), ("write", False, "memtest.op.wr
 # Points measured this far below the fastest ran with the clock down, and
 # their nanoseconds read high for it.
 CLOCK_DROP = 0.97
+# A size mark under the curve every this many powers of two: 64 KiB, 1 MiB,
+# 16 MiB, 256 MiB.
+SIZE_MARK_EVERY = 4
 
 
 def when(timestamp: float) -> str:
@@ -121,10 +127,31 @@ class CurveChart(QWidget):
             baseline = area.bottom() - metrics.descent() - 2 if high else area.top() + metrics.ascent()
             painter.drawText(QPointF(min(x + 4, area.right() - metrics.horizontalAdvance(label)),
                                      baseline), label)
-        for edge, size in ((Qt.AlignmentFlag.AlignLeft, self._points[0].bytes_),
-                           (Qt.AlignmentFlag.AlignRight, self._points[-1].bytes_)):
+        painter.setPen(muted)
+        edges = ((Qt.AlignmentFlag.AlignLeft, self._points[0].bytes_),
+                 (Qt.AlignmentFlag.AlignRight, self._points[-1].bytes_))
+        taken = []
+        for edge, size in edges:
+            text = render.size(size)
+            width = metrics.horizontalAdvance(text)
+            left = area.left() if edge == Qt.AlignmentFlag.AlignLeft else area.right() - width
+            taken.append((left, left + width))
             painter.drawText(QRectF(area.left(), area.bottom() + 4, area.width(),
-                                    metrics.height()), edge, render.size(size))
+                                    metrics.height()), edge, text)
+        for size_log in range(math.ceil(x0), math.floor(x1) + 1):
+            if size_log % SIZE_MARK_EVERY:
+                continue
+            x = at(size_log, y0).x()
+            text = render.size(2 ** size_log)
+            width = metrics.horizontalAdvance(text)
+            left = x - width / 2
+            # Not over the sizes at either end.
+            if any(left < end + 8 and start - 8 < left + width for start, end in taken):
+                continue
+            painter.setPen(QPen(line, 1))
+            painter.drawLine(QPointF(x, area.top()), QPointF(x, area.bottom()))
+            painter.setPen(muted)
+            painter.drawText(QPointF(left, area.bottom() + 4 + metrics.ascent()), text)
         painter.setPen(QPen(QColor(self._p.accent), 2))
         painter.drawPolyline(QPolygonF([at(s, t) for s, t in zip(sizes, times)]))
 
@@ -160,6 +187,8 @@ class MemoryTestTab(ScrollPage):
     running_changed = Signal(bool)
     # A test just measured, for the pages that show part of it.
     measured = Signal(object)
+    # The padlock of what is read with permissions.
+    elevation_requested = Signal()
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -169,17 +198,19 @@ class MemoryTestTab(ScrollPage):
         self._stop = threading.Event()
         self._types: tuple = ()
         self._memory = memtest.Memory()
+        # Whether the channels are missing for want of permissions, and with
+        # the installed helper out of date.
+        self._channels_locked = False
+        self._helper_outdated = False
+        self._booted_at: Optional[float] = None
+        self._failure: Optional[Notice] = None
         self.result: Optional[memtest.Result] = None
-        m = theme.METRICS
 
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        root = QWidget()
-        root.setObjectName("Root")
+        root = ReadableRoot()
         self.setWidget(root)
-        layout = QVBoxLayout(root)
-        layout.setContentsMargins(m.page_margin, m.page_margin, m.page_margin, m.page_margin)
-        layout.setSpacing(m.section_gap)
+        layout = root.column
 
         layout.addWidget(self._build_header())
         self._notices = QVBoxLayout()
@@ -222,9 +253,7 @@ class MemoryTestTab(ScrollPage):
         buttons.add_widget(self.cancel_button)
         buttons.add_widget(self.blocked_note)
         buttons.add_stretch(1)
-        self.progress = QProgressBar()
-        self.progress.setRange(0, 100)
-        self.progress.setTextVisible(True)
+        self.progress = ProgressLine()
         self.progress.hide()
         for widget in (title, self.intro, buttons, self.progress):
             card.body.addWidget(widget)
@@ -260,7 +289,19 @@ class MemoryTestTab(ScrollPage):
         self.share = QLabel("")
         self.share.setObjectName("Muted")
         self.share.setWordWrap(True)
-        card.body.addWidget(self.share)
+        self.share_lock = LockMark(self._p.info, theme.METRICS.small_pt + 3)
+        self.share_lock.hacer_pulsable()
+        self.share_lock.clicked.connect(self.elevation_requested)
+        self.share_button = QPushButton("")
+        self.share_button.setObjectName("TextButton")
+        self.share_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.share_button.clicked.connect(self.elevation_requested)
+        share_row = QHBoxLayout()
+        share_row.setSpacing(6)
+        share_row.addWidget(self.share_lock, 0, Qt.AlignmentFlag.AlignTop)
+        share_row.addWidget(self.share, 1)
+        share_row.addWidget(self.share_button, 0, Qt.AlignmentFlag.AlignTop)
+        card.body.addLayout(share_row)
 
         self.detail_button = QPushButton(_("memtest.detail.show"))
         self.detail_button.setObjectName("GhostButton")
@@ -279,6 +320,10 @@ class MemoryTestTab(ScrollPage):
             [_("memtest.col.operation"), _("memtest.col.one"), _("memtest.col.all")],
             numeric=(False, True, True))
         inside.addWidget(self.rates_table)
+        self.threads_note = QLabel("")
+        self.threads_note.setObjectName("Muted")
+        self.threads_note.setWordWrap(True)
+        inside.addWidget(self.threads_note)
         self.detail.hide()
         card.body.addWidget(self.detail)
 
@@ -328,13 +373,7 @@ class MemoryTestTab(ScrollPage):
         if self.running or not self.run_button.isEnabled():
             return
         self._stop.clear()
-        self.run_button.setEnabled(False)
-        self.cancel_button.setEnabled(True)
-        self.cancel_button.show()
-        self.progress.setValue(0)
-        self.progress.setFormat(_("bench.state.preparing"))
-        self.progress.show()
-        clear_layout(self._notices)
+        self._show_running()
         plan, memory = self.plan(), self._memory
 
         def work() -> None:
@@ -346,14 +385,31 @@ class MemoryTestTab(ScrollPage):
         self._thread.start()
         self.running_changed.emit(True)
 
+    def _show_running(self) -> None:
+        self.run_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        self.cancel_button.show()
+        self.progress.begin(_("bench.state.preparing"))
+        self.progress.show()
+        # The last result stays in view, with its notices, until the new one
+        # arrives: only a failure of the run before goes.
+        self._drop_failure()
+
     def _cancel(self) -> None:
         self._stop.set()
         self.cancel_button.setEnabled(False)
-        self.progress.setFormat(_("bench.state.cancelling"))
+        self.progress.set_state(_("bench.state.cancelling"))
 
     def _on_progress(self, phase: str, done: float) -> None:
-        self.progress.setValue(int(done * 100))
-        self.progress.setFormat(f"{_(PHASES.get(phase, 'memtest.phase.latency'))}  ·  %p %")
+        if self._stop.is_set():
+            return
+        self.progress.set_state(_(PHASES.get(phase, "memtest.phase.latency")), done)
+
+    def _drop_failure(self) -> None:
+        if self._failure is not None:
+            self._failure.setParent(None)
+            self._failure.deleteLater()
+            self._failure = None
 
     def _on_finished(self, result: memtest.Result) -> None:
         self._thread = None
@@ -363,9 +419,9 @@ class MemoryTestTab(ScrollPage):
         self.running_changed.emit(False)
         if not result.measured:
             if result.reason != "cancelled":
-                self._notices.addWidget(Notice(
-                    _("memtest.notice.failed"),
-                    _(REASONS.get(result.reason, "memtest.reason.failed"))))
+                self._failure = Notice(_("memtest.notice.failed"),
+                                       _(REASONS.get(result.reason, "memtest.reason.failed")))
+                self._notices.insertWidget(0, self._failure)
             return
         self._paint_history(memtest.append_history(result))
         self.show_result(result)
@@ -376,6 +432,7 @@ class MemoryTestTab(ScrollPage):
     def show_result(self, result: memtest.Result) -> None:
         self.result = result
         clear_layout(self._notices)
+        self._failure = None
         frequencies = [p.frequency_hz for p in result.points if p.frequency_hz]
         parts = [when(result.timestamp)]
         if result.governor:
@@ -429,28 +486,14 @@ class MemoryTestTab(ScrollPage):
         self.verdict.setVisible(bool(text))
 
     def _paint_rates(self, result: memtest.Result) -> None:
-        best = [(key, result.rate(operation)) for operation, key in
-                (("read", "memtest.op.read"), ("write", "memtest.op.write"),
-                 ("copy", "memtest.op.copy"))]
-        self.rates.setText("  ·  ".join(
-            f"{_(key)} {render.bandwidth(rate.bytes_per_second, 1)}"
-            for key, rate in best if rate is not None))
-        self.rates.setVisible(bool(result.rates))
-
-        share = memtest.share_of_theoretical(result)
-        self.share_bar.setVisible(share is not None)
-        if share is not None:
-            self.share_bar.setValue(int(min(share, 100)))
-            self.share.setText(_("memtest.share").format(
-                pct=f"{share:.0f}", mts=result.speed_mts,
-                channels=render.counted("memtest.channels", result.channels or 0),
-                total=render.bandwidth(result.theoretical_bytes_per_second, 1)))
-            if share > 100:
-                self._notices.addWidget(Notice(_("memtest.notice.over"),
-                                               _("memtest.notice.over.body")))
-        else:
-            self.share.setText(_("memtest.share.unknown") if result.rates else "")
-        self.share.setVisible(bool(self.share.text()))
+        one_thread = [(key, result.rate(operation, 1)) for operation, key in
+                      (("read", "memtest.op.read"), ("write", "memtest.op.write"),
+                       ("copy", "memtest.op.copy"))]
+        rates = "  ·  ".join(f"{_(key)} {render.bandwidth(rate.bytes_per_second, 1)}"
+                             for key, rate in one_thread if rate is not None)
+        self.rates.setText(_("memtest.rates.one").format(rates=rates) if rates else "")
+        self.rates.setVisible(bool(rates))
+        self._paint_share(result)
 
         threads = max((r.threads for r in result.rates), default=1)
         rows = []
@@ -464,6 +507,43 @@ class MemoryTestTab(ScrollPage):
                          render.bandwidth(every.bytes_per_second, 1) if every else render.DASH))
         self.rates_table.set_rows(rows)
         self.rates_table.setVisible(bool(rows))
+
+        one, every = result.rate("read", 1), result.rate("read", threads) if threads > 1 else None
+        lower = one is not None and every is not None \
+            and every.bytes_per_second < one.bytes_per_second
+        self.threads_note.setText(_("memtest.threads.lower").format(
+            every=render.bandwidth(every.bytes_per_second, 1),
+            one=render.bandwidth(one.bytes_per_second, 1)) if lower else "")
+        self.threads_note.setVisible(lower)
+
+    def _paint_share(self, result: memtest.Result) -> None:
+        share = memtest.share_of_theoretical(result)
+        self.share_bar.setVisible(share is not None)
+        locked = False
+        if share is not None:
+            read = result.rate("read")
+            self.share_bar.setValue(int(min(share, 100)))
+            self.share.setText(_("memtest.share").format(
+                pct=f"{share:.0f}", mts=result.speed_mts,
+                rate=render.bandwidth(read.bytes_per_second, 1),
+                threads=render.counted("memtest.threads", read.threads),
+                channels=render.counted("memtest.channels", result.channels or 0),
+                total=render.bandwidth(result.theoretical_bytes_per_second, 1)))
+            if share > 100:
+                self._notices.addWidget(Notice(_("memtest.notice.over"),
+                                               _("memtest.notice.over.body")))
+        elif result.rates and self._channels_locked:
+            # Rule 5: missing for want of permissions, with its padlock and
+            # the way to give them.
+            locked = True
+            self.share.setText(_("memtest.share.locked"))
+            self.share_button.setText(_("perm.replace.button" if self._helper_outdated
+                                        else "perm.button.read"))
+        else:
+            self.share.setText(_("memtest.share.unknown") if result.rates else "")
+        self.share.setVisible(bool(self.share.text()))
+        self.share_lock.setVisible(locked)
+        self.share_button.setVisible(locked)
 
     def _method(self, result: memtest.Result) -> str:
         if result.engine == "simple":
@@ -518,11 +598,31 @@ class MemoryTestTab(ScrollPage):
 
     def apply(self, snapshot) -> None:
         """Nothing here follows the sampling: only which cores and which
-        memory the next test will be measured against."""
+        memory the next test will be measured against, and whether the
+        channels wait for permissions."""
         self._types = tuple(snapshot.cpu.types)
         parts = render.memory_theoretical_parts(snapshot.modules)
         self._memory = memtest.Memory(
             render.memory_theoretical_bandwidth(snapshot.modules), *(parts or (None, None)))
+        state = snapshot.privileged
+        # As Memory's card: without the modules, it's the permissions when
+        # there is a helper to ask and we aren't root already.
+        locked = not snapshot.modules and state.supported and not state.already_root
+        outdated = bool(state.outdated)
+        uptime = snapshot.system.uptime_seconds
+        self._booted_at = time.time() - uptime if uptime else None
+        changed = (locked, outdated) != (self._channels_locked, self._helper_outdated)
+        self._channels_locked, self._helper_outdated = locked, outdated
+        if self.result is None:
+            return
+        # Permissions just given: the test of a moment ago gets its share.
+        filled = memtest.with_memory(self.result, self._memory, self._booted_at)
+        if filled is not self.result:
+            self._paint_history(memtest.replace_in_history(filled))
+            self.show_result(filled)
+            self.measured.emit(filled)
+        elif changed:
+            self.show_result(self.result)
 
     def stop(self) -> None:
         self._stop.set()

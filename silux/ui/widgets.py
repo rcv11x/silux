@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLayout,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -2335,6 +2336,73 @@ class _CuerpoDeTabla(QWidget):
         if event.type() == QEvent.Type.LayoutRequest:
             self._colocar()
         return resultado
+
+
+class ReadableRoot(QWidget):
+    """A page's root that keeps its content to a readable width. On a wide
+    screen the cards stretched across it, four tiles of a number each took a
+    quarter of two thousand pixels and the tables stayed on the left: beyond
+    the cap the side margins grow and the column stays centred. The cap is in
+    characters of the interface font, so it follows the font size."""
+
+    CHARACTERS = 190
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName("Root")
+        m = theme.METRICS
+        self.column = QVBoxLayout(self)
+        self.column.setContentsMargins(m.page_margin, m.page_margin,
+                                       m.page_margin, m.page_margin)
+        self.column.setSpacing(m.section_gap)
+
+    def content_width(self) -> int:
+        return QFontMetrics(ui_font(theme.METRICS.base_pt)).averageCharWidth() * self.CHARACTERS
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        margin = theme.METRICS.page_margin
+        side = max(margin, (self.width() - self.content_width()) // 2)
+        if self.column.contentsMargins().left() != side:
+            self.column.setContentsMargins(side, margin, side, margin)
+        super().resizeEvent(event)
+
+
+class ProgressLine(QWidget):
+    """What a long task is doing and how far it has got: the words on a line
+    of their own, over a thin bar. Written on the bar, the text fell half on
+    the fill and half off it, and the percentage read badly at the edge."""
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        self.label = QLabel("")
+        self.label.setObjectName("Muted")
+        self.label.setWordWrap(True)
+        self.bar = QProgressBar()
+        self.bar.setRange(0, 100)
+        self.bar.setTextVisible(False)
+        self.bar.setFixedHeight(6)
+        layout.addWidget(self.label)
+        layout.addWidget(self.bar)
+
+    def begin(self, text: str) -> None:
+        """Back to the start, saying `text` until the first step arrives."""
+        self.bar.setValue(0)
+        self.label.setText(text)
+
+    def set_state(self, text: str, fraction: Optional[float] = None) -> None:
+        """`text`, and how far along as a fraction. Without one (cancelling)
+        the bar stays where it was."""
+        if fraction is not None:
+            percent = round(min(max(fraction, 0.0), 1.0) * 100)
+            self.bar.setValue(percent)
+            text = f"{text}  ·  {percent} %"
+        self.label.setText(text)
+
+    def value(self) -> int:
+        return self.bar.value()
 
 
 class ScrollPage(QScrollArea):

@@ -101,11 +101,12 @@ class TestWhatAResultShows(TabCase):
             self.assertIn(_(key).format(**values), tab.method.text())
 
     def test_the_three_rates_and_every_pass_in_the_table(self):
+        """The line says the three are one thread's."""
         tab = self.tab()
         tab.show_result(recorded())
-        self.assertEqual(tab.rates.text(), "  ·  ".join((
+        self.assertEqual(tab.rates.text(), _("memtest.rates.one").format(rates="  ·  ".join((
             f"{_('memtest.op.read')} 43.9 GB/s", f"{_('memtest.op.write')} 20.6 GB/s",
-            f"{_('memtest.op.copy')} 27.7 GB/s")))
+            f"{_('memtest.op.copy')} 27.7 GB/s"))))
         tab.detail_button.setChecked(True)
         self.assertTrue(tab.chart.isVisibleTo(tab))
         table = visible_texts(tab.rates_table)
@@ -118,7 +119,8 @@ class TestShareOfTheMaximum(TabCase):
         tab = self.tab()
         tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
         self.assertEqual(tab.share.text(), _("memtest.share").format(
-            pct="86", channels=_("memtest.channels").format(n=2), mts=3200, total="51.2 GB/s"))
+            pct="86", rate="43.9 GB/s", threads=_("memtest.threads.one").format(n=1),
+            channels=_("memtest.channels").format(n=2), mts=3200, total="51.2 GB/s"))
         self.assertEqual(tab.share_bar.value(), 85)
         self.assertTrue(tab.share_bar.isVisibleTo(tab))
 
@@ -142,6 +144,114 @@ class TestShareOfTheMaximum(TabCase):
         self.assertEqual(tab.share_bar.value(), 100)
         tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
         self.assertNotIn(_("memtest.notice.over"), visible_texts(tab))
+
+
+class TestEveryThread(TabCase):
+    def test_less_with_every_thread_than_with_one_is_explained_with_its_figures(self):
+        tab = self.tab()
+        tab.show_result(recorded())
+        tab.detail_button.setChecked(True)
+        self.assertIn(_("memtest.threads.lower").format(every="40.2 GB/s", one="43.9 GB/s"),
+                      visible_texts(tab))
+
+    def test_not_when_every_thread_moves_more(self):
+        result = recorded()
+        rates = tuple(dataclasses.replace(r, bytes_per_second=r.bytes_per_second * 2)
+                      if r.threads > 1 else r for r in result.rates)
+        tab = self.tab()
+        tab.show_result(dataclasses.replace(result, rates=rates))
+        tab.detail_button.setChecked(True)
+        self.assertFalse(tab.threads_note.isVisibleTo(tab))
+
+
+class TestTheChannelsWaitForPermissions(TabCase):
+    """Rule 5: what is missing for want of permissions has its padlock and the
+    way to give them, and giving them shows on the same tab."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.without = shared_snapshot(EQUIPOS / "5800x3d")
+
+    def test_without_permissions_the_share_has_its_padlock_and_its_button(self):
+        tab = self.tab()
+        tab.apply(self.without)
+        tab.show_result(recorded())
+        self.assertEqual(tab.share.text(), _("memtest.share.locked"))
+        self.assertTrue(tab.share_lock.isVisibleTo(tab))
+        self.assertTrue(tab.share_button.isVisibleTo(tab))
+        self.assertEqual(tab.share_button.text(), _("perm.button.read"))
+        asked = []
+        tab.elevation_requested.connect(lambda: asked.append(True))
+        tab.share_button.click()
+        tab.share_lock.clicked.emit()
+        self.assertEqual(asked, [True, True])
+
+    def test_as_root_there_is_nothing_to_give(self):
+        from silux.model import PrivilegedState
+
+        root = dataclasses.replace(self.without, privileged=PrivilegedState(
+            supported=True, already_root=True))
+        tab = self.tab()
+        tab.apply(root)
+        tab.show_result(recorded())
+        self.assertEqual(tab.share.text(), _("memtest.share.unknown"))
+        self.assertFalse(tab.share_lock.isVisibleTo(tab))
+        self.assertFalse(tab.share_button.isVisibleTo(tab))
+
+    def test_once_given_a_test_of_this_boot_gets_its_share_on_the_spot(self):
+        from tests.test_al_momento import con_permisos
+
+        just_now = dataclasses.replace(recorded(), timestamp=time.time() - 60)
+        memtest.append_history(just_now)
+        tab = self.tab()
+        tab.apply(self.without)
+        self.assertTrue(tab.share_lock.isVisibleTo(tab))
+        measured = []
+        tab.measured.connect(measured.append)
+        tab.apply(con_permisos(self.without))
+        self.assertFalse(tab.share_lock.isVisibleTo(tab))
+        self.assertTrue(tab.share_bar.isVisibleTo(tab))
+        self.assertIn("%", tab.share.text())
+        self.assertIsNotNone(memtest.load_history()[0].theoretical_bytes_per_second)
+        self.assertEqual(len(measured), 1)
+
+    def test_a_test_from_before_the_machine_booted_is_left_as_it_was(self):
+        """Its modules may not be today's."""
+        from tests.test_al_momento import con_permisos
+
+        booted = time.time() - self.without.system.uptime_seconds
+        before = dataclasses.replace(recorded(), timestamp=booted - 3600)
+        memtest.append_history(before)
+        tab = self.tab()
+        tab.apply(con_permisos(self.without))
+        self.assertEqual(tab.share.text(), _("memtest.share.unknown"))
+        self.assertIsNone(memtest.load_history()[0].theoretical_bytes_per_second)
+
+
+class TestWideScreens(TabCase):
+    def test_the_content_keeps_to_a_readable_width_and_stays_centred(self):
+        tab = self.tab()
+        tab.show_result(recorded())
+        tab.resize(2560, 1300)
+        for _turn in range(3):
+            self.app.processEvents()
+        root = tab.widget()
+        card = tab.result_card
+        self.assertLessEqual(card.width(), root.content_width())
+        left = card.mapTo(root, card.rect().topLeft()).x()
+        right = root.width() - left - card.width()
+        self.assertLessEqual(abs(left - right), 2)
+
+    def test_a_narrow_window_keeps_its_usual_margins(self):
+        from silux.ui import theme
+
+        tab = self.tab()
+        tab.show_result(recorded())
+        tab.resize(900, 700)
+        for _turn in range(3):
+            self.app.processEvents()
+        self.assertEqual(tab.widget().column.contentsMargins().left(), theme.METRICS.page_margin)
 
 
 class TestWhatWentOnWhileMeasuring(TabCase):
@@ -204,6 +314,26 @@ class TestRunningIt(TabCase):
         self.assertEqual(memtest.load_history(), results)
         self.assertTrue(tab.run_button.isEnabled())
         self.assertFalse(tab.progress.isVisibleTo(tab))
+
+    def test_the_last_result_stays_in_view_until_the_new_one(self):
+        """And a cancelled run leaves it there."""
+        memtest.append_history(recorded())
+        tab = self.tab()
+        with mock.patch.object(tab, "plan", self.short_plan):
+            tab.start()
+            self.assertTrue(tab.result_card.isVisibleTo(tab))
+            self.assertIn("77.4 ns", visible_texts(tab))
+            tab.cancel_button.click()
+            self.wait(tab)
+        self.assertTrue(tab.result_card.isVisibleTo(tab))
+        self.assertIn("77.4 ns", visible_texts(tab))
+
+    def test_the_progress_is_said_beside_the_bar_and_not_on_it(self):
+        tab = self.tab()
+        tab._on_progress("write", 0.55)
+        self.assertFalse(tab.progress.bar.isTextVisible())
+        self.assertEqual(tab.progress.label.text(), f"{_('memtest.phase.write')}  ·  55 %")
+        self.assertEqual(tab.progress.value(), 55)
 
     def test_cancelling_leaves_no_result_and_no_notice(self):
         tab = self.tab()

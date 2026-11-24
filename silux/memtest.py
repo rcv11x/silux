@@ -328,6 +328,17 @@ def share_of_theoretical(result: Result) -> Optional[float]:
     return round(read.bytes_per_second / result.theoretical_bytes_per_second * 100, 1)
 
 
+def with_memory(result: Result, memory: Memory, booted_at: Optional[float]) -> Result:
+    """`result` with what the memory could move, when it was measured without
+    knowing it and since the machine last booted: memory isn't changed with
+    the machine running, so today's modules are the ones it ran on. An older
+    result stays as it is."""
+    if (result.theoretical_bytes_per_second or not memory.theoretical_bytes_per_second
+            or booted_at is None or result.timestamp < booted_at):
+        return result
+    return dataclasses.replace(result, **dataclasses.asdict(memory))
+
+
 # -- running it --------------------------------------------------------------
 
 def native_module():
@@ -568,6 +579,13 @@ def save_history(results: Sequence[Result]) -> bool:
 
 def append_history(result: Result) -> list[Result]:
     results = [result] + load_history()
+    save_history(results)
+    return results[:MAX_ENTRIES]
+
+
+def replace_in_history(result: Result) -> list[Result]:
+    """Put `result` in place of the saved test taken at the same moment."""
+    results = [result if r.timestamp == result.timestamp else r for r in load_history()]
     save_history(results)
     return results[:MAX_ENTRIES]
 

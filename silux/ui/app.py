@@ -343,6 +343,7 @@ class MainWindow(QMainWindow):
         self.system_page = SystemPage(self._palette, self.prefs)
         self.benchmarks_page = BenchmarksPage(self._palette, self.prefs)
         self.benchmarks_page.memory_tab.measured.connect(self._on_memory_measured)
+        self.benchmarks_page.memory_tab.elevation_requested.connect(self._on_elevation_requested)
         self.memory_page.benchmark_requested.connect(self._open_memory_test)
         self.memory_page.set_last_test(self.benchmarks_page.memory_tab.result)
         self.settings_page = SettingsPage(self.prefs, self._palette)
