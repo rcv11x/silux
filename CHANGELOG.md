@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Almacenamiento: un lector de tarjetas sin tarjeta ya no sale como una
+  unidad «SSD · 0 B» por cada ranura. Al meter una tarjeta, aparece.
 - Gráficos: un ventilador que gira ya no sale «parado» porque su driver
   diga que lo mueve al 0 %: salen sus revoluciones («1696 RPM»).
 - Gráficos y Sensores: el voltaje de una Radeon en reposo, con el núcleo

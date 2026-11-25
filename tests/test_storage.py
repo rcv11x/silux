@@ -109,6 +109,54 @@ class TestTipos(BancoDeDiscos):
         self.assertEqual([d.name for d in discos], ["sda"])
 
 
+class TestAnEmptyCardReader(BancoDeDiscos):
+    """From a report: an i7-12700's card reader, one block device per slot
+    and no card in either, listed as two «SSD · 0 B» with padlocks on their
+    SMART."""
+
+    def _slot(self, name, sectors=0):
+        return self.disco(name, sectores=sectors, rotational="0", modelo="MassStorageClass",
+                          vendor="Generic", firmware="2961", removable="1", fisico="512",
+                          stat=" ".join(["0"] * 17))
+
+    def test_its_empty_slots_are_no_drives(self):
+        self.disco("nvme0n1", modelo="Samsung SSD 970 EVO Plus 1TB")
+        self._slot("sda")
+        self._slot("sdb")
+        self.assertEqual([d.name for d in self.recolectar().freeze().disks], ["nvme0n1"])
+
+    def test_with_a_card_in_it_there_is_one(self):
+        self._slot("sda", sectors=62333952)
+        disks = self.recolectar().freeze().disks
+        self.assertEqual([(d.name, d.size_bytes) for d in disks], [("sda", 62333952 * 512)])
+
+    def test_a_fixed_drive_reading_0_stays(self):
+        """Only what can hold a medium has none: a fixed drive giving 0 is
+        another problem, and hiding it would hide it."""
+        self.disco("sda", sectores=0)
+        self.assertEqual([d.name for d in self.recolectar().freeze().disks], ["sda"])
+
+
+class TestAnEmptyCardReaderInADump(unittest.TestCase):
+
+    def test_not_on_its_storage_page(self):
+        from tests import pantalla
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+        from tests.test_interface_language import visible_texts
+
+        # The T480s's SD reader, empty: sdb, removable and of size 0.
+        snapshot = shared_snapshot(EQUIPOS / "i5-8350u")
+        self.assertEqual([d.name for d in snapshot.disks], ["sda"])
+        qt.app()
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Almacenamiento")
+            page = window.stack.currentWidget()
+            rows = [[cell.full_text() for cell in cells] for cells in page.disks._cells]
+            texts = visible_texts(page)
+        self.assertEqual([row[:2] for row in rows], [["sda", "Netac SSD 240GB"]])
+        self.assertFalse([t for t in texts if "SD/MMC" in t or t == "sdb"])
+
+
 class TestParticiones(BancoDeDiscos):
     def setUp(self):
         super().setUp()

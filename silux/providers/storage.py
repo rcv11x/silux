@@ -92,7 +92,7 @@ class Disks(Provider):
 
         draft.capabilities.add("storage")
         mounts = _mounts()
-        draft.disks = [self._read(name, mounts) for name in names]
+        draft.disks = [self._read(name, mounts) for name in names if not _no_medium(name)]
         self._diagnosis(draft)
 
     def _diagnosis(self, draft: Draft) -> None:
@@ -425,6 +425,14 @@ def _transport(base: pathlib.Path, name: str) -> Optional[str]:
 # says so. QEMU's say they spin (rotational 1) unless told otherwise, and
 # with discard on they admit TRIM: it read «HDD» and «disco SMR».
 _VIRTUAL_MODELS = re.compile(r"^(QEMU |VBOX |VMware|Virtual (disk|HD)|Msft Virtual)", re.I)
+
+
+def _no_medium(name: str) -> bool:
+    """A removable device with nothing in it: a card reader's empty slot
+    (the kernel lists one per slot) or a drive without its disk. It is no
+    drive until something goes in, and then its size is no longer 0."""
+    base = sysroot.path(SYS_BLOCK) / name
+    return read_int(str(base / "removable")) == 1 and not read_int(str(base / "size"))
 
 
 def is_virtual(name: str, model: Optional[str], vendor: Optional[str]) -> bool:
