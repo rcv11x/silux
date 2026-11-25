@@ -537,6 +537,17 @@ class TestWhereTheFileLay(unittest.TestCase):
                                                         extents))
         self.assertIsNone(disktest.placement_of(plan, None))
 
+    def test_why_it_can_t_be_known_is_the_first_thing_in_the_way(self):
+        for filesystem, layers, disks, why in (
+                ("ext4", (), ("sda",), None), ("xfs", (), ("sda",), None),
+                ("btrfs", (), ("sda",), "filesystem"), ("exfat", (), ("sdb",), "filesystem"),
+                (None, (), ("sda",), "filesystem"), ("ext4", ("crypt",), ("sda",), "crypt"),
+                ("ext4", ("crypt", "lvm"), ("sda",), "crypt"), ("xfs", ("lvm",), ("sda",), "lvm"),
+                ("ext4", ("raid",), ("sda", "sdb"), "raid"), ("ext4", ("loop",), (), "loop"),
+                ("ext4", (), ("sda", "sdb"), "several_disks")):
+            with self.subTest(filesystem=filesystem, layers=layers, disks=disks):
+                self.assertEqual(disktest.unplaceable(filesystem, layers, disks), why)
+
     def test_a_partition_starts_where_lsblk_says(self):
         """On this machine's disks, if it has a partition."""
         found = sorted(pathlib.Path("/sys/class/block").glob("*/partition"))

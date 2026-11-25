@@ -529,17 +529,37 @@ class TestWhereTheFileLay(TabCase):
         self.assertIn(_("disktest.note.placement").format(first="61", last="63"), text)
         self.assertNotIn(_("disktest.note.placement_unknown"), text)
 
-    def test_where_it_couldn_t_be_known_it_says_so(self):
-        text = self.on_the_hard_disk()
-        self.assertIn(_("disktest.note.placement_unknown"), text)
+    def test_where_it_couldn_t_be_known_it_says_why(self):
+        for changes, body in (
+                ({}, "disktest.unplaced.unsaid"),
+                (dict(layers=("crypt",)), "disktest.unplaced.crypt"),
+                (dict(layers=("lvm",)), "disktest.unplaced.lvm"),
+                (dict(layers=("raid",)), "disktest.unplaced.raid"),
+                (dict(filesystem="btrfs"), "disktest.unplaced.filesystem")):
+            with self.subTest(**changes):
+                text = self.on_the_hard_disk(**changes)
+                self.assertIn(_("disktest.note.placement_unknown"), text)
+                self.assertIn(_(body).format(filesystem="btrfs"), text)
+                # The rest are other disks' causes, and the platter's speed
+                # is said once, above.
+                for other in ("unsaid", "crypt", "lvm", "raid", "filesystem"):
+                    if not body.endswith("." + other):
+                        self.assertNotIn(_("disktest.unplaced." + other)
+                                         .format(filesystem="btrfs"), text)
+                self.assertEqual(text.count("doble"), 1)
 
 
 class TestNoPlatterNoPlace(TabCase):
     def test_a_solid_state_disk_says_nothing_of_it(self):
-        disktest.save_history([recorded("sn850x-btrfs")])
-        text = visible_texts(self.tab())
-        self.assertIn("6 592", text)
-        self.assertNotIn(_("disktest.note.placement_unknown"), text)
+        """Not even where its file lay, which ext4 tells on any disk."""
+        for placement in (None, (0.1, 0.2)):
+            with self.subTest(placement=placement):
+                disktest.save_history([dataclasses.replace(recorded("sn850x-btrfs"),
+                                                           placement=placement)])
+                text = visible_texts(self.tab())
+                self.assertIn("6 592", text)
+                self.assertNotIn(_("disktest.note.placement_unknown"), text)
+                self.assertNotIn(_("disktest.note.placement").split("{")[0], text)
 
 
 def disktest_page():

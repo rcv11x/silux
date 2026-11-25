@@ -538,12 +538,26 @@ def _sectors(path: str) -> Optional[int]:
         return None
 
 
+def unplaceable(filesystem: Optional[str], layers: Sequence[str],
+                disks: Sequence[str]) -> Optional[str]:
+    """Why where a file lies on its disk can't be known, as a key: its file
+    system ("filesystem"), the first layer between it and the disk ("crypt",
+    "lvm", "raid", "mapped" or "loop"), or "several_disks". None if nothing
+    stands in the way, as with ext4, XFS or f2fs straight on a partition or
+    on the whole disk, where FIEMAP's offsets are the disk's."""
+    if filesystem not in PLACEABLE:
+        return "filesystem"
+    if layers:
+        return layers[0]
+    if len(disks) != 1:
+        return "several_disks"
+    return None
+
+
 def placement_of(plan: Plan, extents: Optional[Sequence[Sequence[int]]]) -> Optional[tuple[float, float]]:
-    """Where the file lay on its disk: only on ext4, XFS or f2fs straight
-    on a partition, or on the whole disk, where FIEMAP's offsets are the
-    disk's."""
-    if (not extents or plan.filesystem not in PLACEABLE or plan.layers
-            or len(plan.disks) != 1 or not plan.device):
+    """Where the file lay on its disk, where that can be known."""
+    if (not extents or not plan.device
+            or unplaceable(plan.filesystem, plan.layers, plan.disks) is not None):
         return None
     disk = plan.disks[0]
     size = _sectors(f"{SYS_BLOCK}/{disk}/size")

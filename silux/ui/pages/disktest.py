@@ -115,8 +115,22 @@ NOTES = {
     "gone_mount": ("disktest.note.gone_mount", "disktest.note.gone_mount.body"),
     "rotational": ("disktest.note.rotational", "disktest.note.rotational.body"),
     "placement": ("disktest.note.placement", "disktest.note.placement.body"),
-    "placement_unknown": ("disktest.note.placement_unknown",
-                          "disktest.note.placement_unknown.body"),
+    "placement_unknown.filesystem": ("disktest.note.placement_unknown",
+                                     "disktest.unplaced.filesystem"),
+    "placement_unknown.crypt": ("disktest.note.placement_unknown",
+                                "disktest.unplaced.crypt"),
+    "placement_unknown.lvm": ("disktest.note.placement_unknown",
+                              "disktest.unplaced.lvm"),
+    "placement_unknown.raid": ("disktest.note.placement_unknown",
+                               "disktest.unplaced.raid"),
+    "placement_unknown.mapped": ("disktest.note.placement_unknown",
+                                 "disktest.unplaced.mapped"),
+    "placement_unknown.loop": ("disktest.note.placement_unknown",
+                               "disktest.unplaced.loop"),
+    "placement_unknown.several_disks": ("disktest.note.placement_unknown",
+                                        "disktest.unplaced.several_disks"),
+    "placement_unknown.unsaid": ("disktest.note.placement_unknown",
+                                 "disktest.unplaced.unsaid"),
     "removable": ("disktest.note.removable", "disktest.note.removable.body"),
     "encrypted": ("disktest.note.encrypted", "disktest.note.encrypted.body"),
     "several_disks": ("disktest.note.several_disks", "disktest.note.several_disks.body"),
@@ -1152,12 +1166,15 @@ class DiskTestTab(ScrollPage):
             if warning in RESULT_NOTES:
                 self._result_notes.addWidget(self._note(warning))
         # On platters, where the file lay says how much of the figure is
-        # the disk and how much the spot.
-        if result.placement is not None:
-            first, last = render.disk_span(*result.placement)
-            self._result_notes.addWidget(self._note("placement", first=first, last=last))
-        elif same_disk and disk.kind == "HDD":
-            self._result_notes.addWidget(self._note("placement_unknown"))
+        # the disk and how much the spot; elsewhere it says nothing.
+        if same_disk and disk.kind == "HDD":
+            if result.placement is not None:
+                first, last = render.disk_span(*result.placement)
+                self._result_notes.addWidget(self._note("placement", first=first, last=last))
+            else:
+                why = disktest.unplaceable(result.filesystem, result.layers, result.disks)
+                self._result_notes.addWidget(self._note(
+                    f"placement_unknown.{why or 'unsaid'}", filesystem=result.filesystem or ""))
         varied = [m for m in result.measures if m.noisy]
         if varied:
             self._result_notes.addWidget(self._note("varied", tests=", ".join(
