@@ -496,6 +496,53 @@ class TestTheChannelsWaitForPermissions(TabCase):
         self.assertIsNone(memtest.load_history()[0].theoretical_bytes_per_second)
 
 
+class TestTitlesOverTheirFigures(TabCase):
+    """Without the memory's maximum there are no bars, and each operation's
+    title sat where its bar would start, far from its figure."""
+
+    def text_edges(self, label, grid) -> tuple[int, int]:
+        """Where the label's text starts and ends, in the grid."""
+        from PySide6.QtCore import Qt
+
+        width = label.fontMetrics().horizontalAdvance(label.text())
+        inside = label.contentsRect()
+        left = (inside.right() - width + 1 if label.alignment() & Qt.AlignmentFlag.AlignRight
+                else inside.left())
+        start = label.mapTo(grid, inside.topLeft()).x() + (left - inside.left())
+        return start, start + width
+
+    def test_without_bars_each_title_ends_over_its_figure(self):
+        from silux.ui.pages.memtest import GRID_COLUMNS
+
+        tab = self.tab()
+        tab.show_result(recorded())
+        tab.resize(1690, 1100)
+        for _turn in range(3):
+            self.app.processEvents()
+        grid = tab.grid
+        for head, (operation, _key, _colour) in zip(grid.heads, GRID_COLUMNS):
+            with self.subTest(operation=operation):
+                _bar, figure, _under = grid.cells["RAM", operation]
+                end = figure.mapTo(grid, figure.rect().topRight()).x()
+                self.assertLessEqual(abs(self.text_edges(head, grid)[1] - end), 2)
+
+    def test_with_bars_each_title_starts_over_its_bar(self):
+        from silux.ui.pages.memtest import GRID_COLUMNS
+
+        tab = self.tab()
+        tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
+        tab.resize(1690, 1100)
+        for _turn in range(3):
+            self.app.processEvents()
+        grid = tab.grid
+        for head, (operation, _key, _colour) in zip(grid.heads, GRID_COLUMNS):
+            with self.subTest(operation=operation):
+                bar, _figure, _under = grid.cells["RAM", operation]
+                self.assertTrue(bar.isVisibleTo(grid))
+                start = bar.mapTo(grid, bar.rect().topLeft()).x()
+                self.assertLessEqual(abs(self.text_edges(head, grid)[0] - start), 2)
+
+
 class TestWideScreens(TabCase):
     def test_the_content_keeps_to_a_readable_width_and_stays_centred(self):
         tab = self.tab()

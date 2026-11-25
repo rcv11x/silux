@@ -190,10 +190,15 @@ class LevelGrid(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setHorizontalSpacing(GRID_GAP)
         layout.setVerticalSpacing(2)
+        # Each operation's title: over its bar, or over its figure where
+        # there are no bars (`_show_bars`).
+        self.heads: list[QLabel] = []
         for index, (_operation, key, _colour) in enumerate(GRID_COLUMNS):
             first = 1 + PER_OPERATION * index
-            layout.addWidget(self._head(key), 0, first, 1, PER_OPERATION)
+            head = self._head(key)
+            layout.addWidget(head, 0, first, 1, PER_OPERATION)
             layout.setColumnStretch(first, 1)
+            self.heads.append(head)
         latency = self._head("memtest.col.latency")
         latency.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout.addWidget(latency, 0, LATENCY_COLUMN)
@@ -265,6 +270,10 @@ class LevelGrid(QWidget):
     def _show_bars(self) -> None:
         for (level, _operation), (bar, _figure, _under) in self.cells.items():
             bar.setVisible(self._barred and level in self._bars)
+        side = (Qt.AlignmentFlag.AlignLeft if self._barred and self._bars
+                else Qt.AlignmentFlag.AlignRight)
+        for head in self.heads:
+            head.setAlignment(side | Qt.AlignmentFlag.AlignVCenter)
 
     @staticmethod
     def _head(key: str) -> QLabel:
