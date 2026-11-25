@@ -124,6 +124,9 @@ class TestLaEspecificacionEnCompacto(unittest.TestCase):
         etiqueta = ElidingLabel("una especificación larguísima que no cabe ni en dos líneas "
                                 "de una columna estrecha por mucho que se parta")
         self.addCleanup(etiqueta.deleteLater)
+        # Shown without a parent it is a window: closed, it leaves none for
+        # the tests after it in this process.
+        self.addCleanup(etiqueta.close)
         etiqueta.permitir_lineas(2)
         etiqueta.resize(120, 60)
         etiqueta.show()

@@ -17,17 +17,24 @@ except ImportError:                                    # pragma: no cover
     QApplication = None
 
 
-def loose(kind: str) -> list:
-    """The windows of their own of that kind on screen."""
+def on_screen() -> list:
+    """The windows of their own on screen now: what other tests left in this
+    process is not what a test here let go."""
     QApplication.processEvents()
-    return [w for w in QApplication.topLevelWidgets()
-            if w.isVisible() and w.metaObject().className() == kind]
+    return [w for w in QApplication.topLevelWidgets() if w.isVisible()]
+
+
+def loose(kind: str, before: list) -> list:
+    """The windows of their own of that kind on screen that weren't `before`."""
+    return [w for w in on_screen()
+            if w.metaObject().className() == kind and w not in before]
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestLetGo(unittest.TestCase):
     def setUp(self):
         app()
+        self.before = on_screen()
         self.window = QWidget()
         self.addCleanup(self.window.close)
         self.layout = QVBoxLayout(self.window)
@@ -40,7 +47,7 @@ class TestLetGo(unittest.TestCase):
         for _turn in range(3):
             self.layout.addWidget(QLabel("added"))
             clear_layout(self.layout)
-        self.assertEqual([w.text() for w in loose("QLabel")], [])
+        self.assertEqual([w.text() for w in loose("QLabel", self.before)], [])
 
     def test_a_table_whose_rows_change_twice_leaves_no_cell_on_screen(self):
         from silux.ui.widgets import Table
@@ -50,7 +57,7 @@ class TestLetGo(unittest.TestCase):
         QApplication.processEvents()
         table.set_rows([("1", "2")])
         table.set_rows([("1", "2"), ("3", "4")])
-        self.assertEqual(loose("ElidingLabel"), [])
+        self.assertEqual(loose("ElidingLabel", self.before), [])
 
 
 class TestTheDiskTabsNotes(unittest.TestCase):
@@ -63,6 +70,7 @@ class TestTheDiskTabsNotes(unittest.TestCase):
             def runTest(self):
                 pass
 
+        before = on_screen()
         Case.setUpClass()
         case = Case()
         case.setUp()
@@ -70,4 +78,4 @@ class TestTheDiskTabsNotes(unittest.TestCase):
         tab = case.tab()
         tab._describe()
         tab._describe()
-        self.assertEqual(loose("Notice"), [])
+        self.assertEqual(loose("Notice", before), [])
