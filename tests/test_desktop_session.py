@@ -39,6 +39,16 @@ class TestTheFallbacks(unittest.TestCase):
                          "wayland")
         self.assertIsNone(session_type({}))
 
+    def test_a_tty_with_a_display(self):
+        # From a report: Debian 13's Cinnamon, with the session «tty» while
+        # Silux ran on display :0.
+        self.assertEqual(session_type({"XDG_SESSION_TYPE": "tty", "DISPLAY": ":0",
+                                       "WAYLAND_DISPLAY": None}), "x11")
+        self.assertEqual(session_type({"XDG_SESSION_TYPE": "tty", "DISPLAY": ":0",
+                                       "WAYLAND_DISPLAY": "wayland-0"}), "wayland")
+        # Without one, it is a console (our QEMU dump).
+        self.assertEqual(session_type({"XDG_SESSION_TYPE": "tty"}), "tty")
+
 
 class TestOnTheSystemPage(unittest.TestCase):
 

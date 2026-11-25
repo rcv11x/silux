@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Sistema: una sesión gráfica arrancada desde la consola ya no sale como
+  «tty»: sale la de la pantalla en la que corre Silux, X11 o Wayland.
 - Sistema: el escritorio sale por su nombre, «Cinnamon» y «GNOME», no
   «X-Cinnamon» ni «ubuntu:GNOME», como lo escribe la variable del sistema.
 - Almacenamiento: un lector de tarjetas sin tarjeta ya no sale como una

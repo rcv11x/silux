@@ -100,14 +100,19 @@ def _xdg_desktop(value: str) -> str:
 
 
 def session_type(environment: dict) -> Optional[str]:
-    """x11 or wayland: XDG's variable, and else the display this runs on."""
-    if value := (environment.get("XDG_SESSION_TYPE") or "").strip():
+    """x11 or wayland: XDG's variable, and else the display this runs on.
+
+    «tty» with a display is the console's session the graphical one was
+    started from (startx, some display managers): the display says it.
+    """
+    value = (environment.get("XDG_SESSION_TYPE") or "").strip()
+    if value and value != "tty":
         return value
     if environment.get("WAYLAND_DISPLAY"):
         return "wayland"
     if environment.get("DISPLAY"):
         return "x11"
-    return None
+    return value or None
 
 
 class SystemIdentity(Provider):
