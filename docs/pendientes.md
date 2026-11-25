@@ -323,10 +323,9 @@ la memoria) no va: está propuesto en las notas
   - alta · validarla en un procesador con dos clases de núcleo y en uno
     antiguo con el AppImage compatible. El contador de ciclos de un híbrido
     está escrito sin probar.
-  - alta · el camino AVX-512 no ha corrido nunca en una pieza de verdad:
-    hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
-  - alta · ver en GitHub el CI nuevo (Rust, la suite con el módulo y sin
-    él, y el módulo de cada AppImage); en local, los dos AppImage pasan.
+  - alta · el camino AVX-512 solo ha corrido en la máquina del CI, que lo
+    tiene: no se cae y da cifras, pero no se ha comparado con una
+    referencia. Hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
   - media · en un Core i5-10400, la copia de un hilo sale un 8 a 12 % por
     debajo de las referencias, y un 25 a 30 % la que no pasa por la caché.
   - media · decir qué programa cambia el turbo o el gobernador según la
