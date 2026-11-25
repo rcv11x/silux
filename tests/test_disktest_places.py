@@ -63,6 +63,16 @@ class TestWhereFollowsTheMounts(TabCase):
         self.assertEqual([tab.place_box.itemText(i) for i in range(tab.place_box.count())],
                          [fresh.place_box.itemText(i) for i in range(fresh.place_box.count())])
 
+    def test_a_card_taken_out_while_chosen_has_gone_not_unmounted(self):
+        # The reader's slot stays in /sys/block, with nothing in it.
+        tab = self.on_the_pen()
+        self.unmount()
+        (self.block / "size").write_text("0\n")
+        tab.apply(self.sample())
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.gone_disk"), text)
+        self.assertNotIn(_("disktest.note.gone_mount"), text)
+
     def test_a_disk_unplugged_while_chosen_says_so_and_is_no_longer_chosen(self):
         tab = self.on_the_pen()
         self.unplug()
@@ -198,3 +208,10 @@ class TestAnErrorOnADiskThatWent(TabCase):
         self.assertEqual(disktest._result({"reason": "cancelled"}, plan, 0.0).reason,
                          "cancelled")
         self.assertIsNone(disktest._result({}, plan, 0.0).reason)
+
+    def test_a_card_taken_out_of_its_reader_has_gone_too(self):
+        # The reader's slot stays in /sys/block, removable and with nothing in it.
+        plan = disktest.make_plan(PEN)
+        answer = {"reason": "io", "detail": "pread failed (errno 5)"}
+        (self.root / "sys" / "block" / "sdb" / "size").write_text("0\n")
+        self.assertEqual(disktest._result(answer, plan, 0.0).reason, "disconnected")

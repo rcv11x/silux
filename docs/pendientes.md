@@ -232,10 +232,6 @@ la memoria) no va: está propuesto en las notas
   - Sensores · baja · el chip `thinkpad` da 0 °C en varias sondas (volcados
     `i5-1135g7` e `i5-8350u`) y no se marcan como relleno:
     `hwmon._is_filler` solo mira los Super I/O y las gráficas.
-  - Disco · media · al juntar con la prueba de disco: una ranura del lector
-    que pierde la tarjeta deja de ser unidad pero sigue en `/sys/block`, así
-    que «Dónde» diría «Esa carpeta ya no está montada» y no «Ese disco ya no
-    está conectado».
   - Gráficos · media · en una RX 9060 XT la ficha de la frecuencia dice
     «memoria 1 MHz» y Relojes «Memoria: 96 MHz». La primera es
     `memory_clock_average` de `gpu_metrics` (la media de `average_uclk`, con

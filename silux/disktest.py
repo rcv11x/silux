@@ -663,8 +663,12 @@ def run(plan: Plan, on_progress: Optional[Callable[[dict], None]] = None,
 
 
 def _disconnected(disks: Sequence[str]) -> bool:
-    """Whether any of the disks has gone from the system."""
-    return any(not os.path.exists(sysroot.path(f"{SYS_BLOCK}/{disk}")) for disk in disks)
+    """Whether any of the disks has gone from the system: unplugged, or a
+    card taken out of its reader, whose slot stays with nothing in it."""
+    from .providers import storage
+
+    return any(not os.path.exists(sysroot.path(f"{SYS_BLOCK}/{disk}")) or storage._no_medium(disk)
+               for disk in disks)
 
 
 def _result(answer: dict, plan: Plan, started: float) -> Result:
