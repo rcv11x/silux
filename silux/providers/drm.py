@@ -156,6 +156,15 @@ def _intel_commercial_name(name: Optional[str], vendor_id: int, device_id: int) 
     return re.sub(r"\s+Controller$", "", name.strip())
 
 
+def _intel_codename_only(gpu: dict, vendor_id: int) -> bool:
+    """Whether an older pci.ids gave an Intel GPU only its codename:
+    «AlderLake-S GT1», where newer files write «Alder Lake-S GT1 [UHD
+    Graphics 770]». Every Intel GPU's marketing name says «Graphics»."""
+    name = gpu.get("name") or ""
+    return (vendor_id == INTEL and not gpu.get("codename") and bool(name)
+            and "graphics" not in name.lower() and "/" not in name)
+
+
 # Words that say nothing of which GPU it is.
 _GENERIC_WORDS = frozenset(("graphics", "controller", "integrated", "series", "mobile",
                             "and", "with", "the"))
@@ -418,6 +427,8 @@ class DrmGpus(Provider):
             brand, model = found_one
             gpu["vendor"] = gpu["vendor"] or brand
             gpu["codename"], gpu["name"] = _split_name(model)
+        if _intel_codename_only(gpu, vendor_id):
+            gpu["codename"], gpu["name"] = gpu["name"], None
         gpu["name"] = _intel_commercial_name(gpu.get("name"), vendor_id, device_id)
 
         if subsystem and (found_one := names.get(subsystem[0])):

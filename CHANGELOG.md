@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: con una base de dispositivos PCI antigua, la integrada de Intel
+  salía con su nombre en clave («AlderLake-S GT1»). Ahora sale con su
+  nombre comercial («UHD Graphics 770»), y el nombre en clave va en su fila.
 - Gráficos: en un portátil con dos gráficas, Silux ya no mantiene
   despierta la NVIDIA. Mientras nada más la usa, deja de preguntarle y el
   driver la apaga como con Silux cerrado; la página dice que no se le
