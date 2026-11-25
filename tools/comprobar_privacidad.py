@@ -41,6 +41,10 @@ from silux.privacidad import _edid_serials, _read  # noqa: E402
 
 _CORREO = privacidad.EMAIL
 _CORREOS_PERMITIDOS = privacidad.ALLOWED_EMAILS
+# Addresses that are part of someone else's copyright line, which their
+# licence asks to be kept as it is: only in the notices, nowhere else. In
+# two pieces, so that this file doesn't carry one itself.
+_CORREOS_DE_AVISOS = {"silux/db/THIRD_PARTY_NOTICES.md": ("quininer@" + "live.com",)}
 
 # Lo que el anonimizado pone en lugar de lo de cada uno: parece de verdad a
 # propósito, y por eso se nombra. Cualquier otra IPv4 privada es de alguien.
@@ -111,7 +115,7 @@ def _ipv6_con_identificador(texto: str) -> bool:
     return sum(1 for g in identificador if int(g, 16)) >= 2
 
 
-def _en_el_texto(texto: str) -> list[tuple[int, str]]:
+def _en_el_texto(texto: str, de_aviso: tuple[str, ...] = ()) -> list[tuple[int, str]]:
     """Lo que no es de documentación, venga de la máquina que venga.
 
     Cada hallazgo es (línea, qué es), sin el dato: esto se imprime en el
@@ -140,7 +144,7 @@ def _en_el_texto(texto: str) -> list[tuple[int, str]]:
             if _ipv6_con_identificador(m.group()):
                 hallazgos.append((linea(m.start()), "una dirección IPv6 con identificador"))
     for m in _CORREO.finditer(texto):
-        if not _CORREOS_PERMITIDOS.search(m.group()):
+        if not _CORREOS_PERMITIDOS.search(m.group()) and m.group() not in de_aviso:
             hallazgos.append((linea(m.start()), "un correo"))
     for patron, que_es in _SECRETOS:
         for m in patron.finditer(texto):
@@ -255,7 +259,8 @@ def revisar(rutas: list[pathlib.Path], propios: dict[str, str],
         for dato, que_es in propios.items():
             if (posicion := texto.find(dato)) >= 0:
                 hallazgos.append(f"{relativa}:{texto.count(chr(10), 0, posicion) + 1}: {que_es}")
-        hallazgos += [f"{relativa}:{n}: {q}" for n, q in _en_el_texto(texto)]
+        hallazgos += [f"{relativa}:{n}: {q}" for n, q in
+                      _en_el_texto(texto, _CORREOS_DE_AVISOS.get(str(relativa), ()))]
     return hallazgos
 
 

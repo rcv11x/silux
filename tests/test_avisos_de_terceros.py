@@ -97,7 +97,10 @@ class TestElArchivo(unittest.TestCase):
             with self.subTest(crate=crate):
                 self.assertRegex(section, rf"(?<![\w-]){re.escape(crate)}(?![\w-])")
         self.assertIn("Permission is hereby granted, free of charge", section)
-        self.assertIn("Copyright (c) 2019 quininer@live.com", section)
+        # Each crate that is linked in, with its own copyright line.
+        for holder in ("Copyright (c) 2019 quininer", "PyO3 Project and Contributors",
+                       "Copyright (c) 2014 Alex Crichton", "The Rust Project Developers"):
+            self.assertIn(holder, section)
 
     def test_libcpuid_con_el_aviso_entero(self):
         texto = _avisos()

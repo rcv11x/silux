@@ -175,6 +175,17 @@ class TestMiraSiempreElRepositorio(unittest.TestCase):
 
 class TestElRepositorioEstaLimpio(unittest.TestCase):
 
+    def test_an_address_in_a_copyright_line_is_let_through_only_in_the_notices(self):
+        checker = _comprobador()
+        line = "Copyright (c) 2019 quininer@" + "live.com\n"
+        self.assertEqual([q for _n, q in checker._en_el_texto(line)], ["un correo"])
+        allowed = checker._CORREOS_DE_AVISOS["silux/db/THIRD_PARTY_NOTICES.md"]
+        self.assertEqual(checker._en_el_texto(line, allowed), [])
+        # Another address in the same file is still found.
+        other = "someone@" + "somewhere.org\n"
+        self.assertEqual([q for _n, q in checker._en_el_texto(line + other, allowed)],
+                         ["un correo"])
+
     def test_nada_que_no_sea_de_documentacion(self):
         """La parte que no depende de quien ejecuta: la vigila el CI."""
         modulo = _comprobador()

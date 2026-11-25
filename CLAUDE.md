@@ -376,7 +376,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2154 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2155 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -519,6 +519,9 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
 - [docs/prueba-de-memoria.md](docs/prueba-de-memoria.md): cómo mide la prueba
   de memoria, cómo repetirla con multichase, lmbench y STREAM y sus tablas
   de validación.
+- [docs/prueba-de-disco.md](docs/prueba-de-disco.md): cómo mide la prueba de
+  disco, cómo repetirla con fio, en qué se diferencia de CrystalDiskMark y
+  KDiskMark y sus tablas de validación.
 - [docs/motores-de-graficas.md](docs/motores-de-graficas.md): qué motor de
   cada gráfica se puede medir y de dónde sale en cada driver.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,
