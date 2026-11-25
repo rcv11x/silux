@@ -352,6 +352,11 @@ impl Target {
         Ok(())
     }
 
+    /// Where the file lies on the device under its file system.
+    pub fn extents(&self) -> Result<Vec<super::extents::Extent>> {
+        super::extents::extents(self.file.as_raw_fd())
+    }
+
     /// How much of the file the kernel holds in its page cache. Read and
     /// written past it, none: anything else means a request went through
     /// memory, and its time isn't the disk's.

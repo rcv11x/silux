@@ -131,6 +131,18 @@ impl DiskFile {
         guarded(py, move || target.cached_bytes())
     }
 
+    /// Where the file lies on the device under its file system: a list of
+    /// (offset in the file, offset on the device, length, the kernel's
+    /// flags), in bytes, as `FS_IOC_FIEMAP` gives them.
+    fn extents(&self, py: Python<'_>) -> PyResult<Vec<(u64, u64, u64, u32)>> {
+        let target = self.target()?;
+        let found = guarded(py, move || target.extents())?;
+        Ok(found
+            .iter()
+            .map(|e| (e.logical, e.physical, e.length, e.flags))
+            .collect())
+    }
+
     /// The file's descriptor, to ask the system about it (`os.fstat`) and
     /// for another program to open the same file while this one holds it,
     /// as `/proc/PID/fd/N`. Not to read or write through.

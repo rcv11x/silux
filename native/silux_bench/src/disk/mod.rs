@@ -2,6 +2,7 @@
 //! writes past the page cache.
 
 pub mod buffers;
+pub mod extents;
 pub mod histogram;
 pub mod job;
 pub mod run;

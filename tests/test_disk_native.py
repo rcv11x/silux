@@ -55,6 +55,26 @@ class TestDiskFile(unittest.TestCase):
         self.addCleanup(file.close)
         return file
 
+    def test_where_the_file_lies_is_what_filefrag_says(self):
+        import re
+        import subprocess
+
+        file = self.file()
+        file.fill()
+        try:
+            ours = file.extents()
+        except silux_bench.SiluxBenchError as error:
+            self.skipTest(f"no FIEMAP here: {error.args[1]}")
+        if shutil.which("filefrag") is None:
+            self.skipTest("filefrag isn't installed")
+        told = subprocess.run(["filefrag", "-v", "-b512", f"/proc/{os.getpid()}/fd/{file.fileno()}"],
+                              capture_output=True, text=True, check=True).stdout
+        theirs = [(int(logical) * 512, int(physical) * 512, int(length) * 512)
+                  for logical, physical, length in re.findall(
+                      r"^\s*\d+:\s+(\d+)\.\.\s*\d+:\s+(\d+)\.\.\s*\d+:\s+(\d+):", told, re.M)]
+        self.assertEqual([extent[:3] for extent in ours], theirs, told)
+        self.assertEqual(sum(length for _l, _p, length, _f in ours), 8 * MIB)
+
     def test_the_file_says_what_it_is_and_isnt_in_its_folder(self):
         file = self.file()
         self.assertEqual(file.bytes, 8 * MIB)
