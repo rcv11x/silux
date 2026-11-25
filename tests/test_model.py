@@ -64,6 +64,10 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # Whether nothing was read from a card: `suspended` or
         # `left_to_sleep`, both already in the JSON.
         ("Gpu", "resting"),
+        # Whether a voltage is a GPU core's rail («vddgfx»), which reads a few
+        # millivolts at rest: `device_kind`, `kind` and `chip_label`, all
+        # already in the JSON.
+        ("Sensor", "gpu_core_rail"),
     }
 
     def test_ninguna_propiedad_se_queda_fuera(self):
