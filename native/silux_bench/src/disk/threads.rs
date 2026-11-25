@@ -25,7 +25,7 @@ use crate::common::timer::now_ns;
 use crate::disk::buffers::{check_read, Buffer};
 use crate::disk::histogram::Histogram;
 use crate::disk::job::{Direction, Job, Pattern};
-use crate::disk::run::{Lap, Sample, SAMPLE_NS};
+use crate::disk::run::{next_sample, Lap, Sample, SAMPLE_NS};
 use crate::disk::target::Target;
 
 /// How long the timing thread sleeps at most between two looks at whether
@@ -208,7 +208,7 @@ fn watch(shared: &Shared<'_>, began_ns: u64, deadline_ns: u64, control: &Control
                 at_ns: now - began_ns,
                 bytes: shared.moved(),
             });
-            next_ns += SAMPLE_NS;
+            next_ns = next_sample(next_ns, now);
             continue;
         }
         let until = next_ns.min(deadline_ns) - now;

@@ -6,6 +6,13 @@ use crate::disk::histogram::Histogram;
 /// How often a lap notes how much has moved so far.
 pub const SAMPLE_NS: u64 = 250_000_000;
 
+/// The next time a sample is due after one taken at `now`: the first mark of
+/// the quarter seconds still ahead. Late, adding one quarter took a second
+/// sample at once, and a stretch of no time made a speed of nothing.
+pub fn next_sample(due_ns: u64, now_ns: u64) -> u64 {
+    due_ns + SAMPLE_NS * ((now_ns.saturating_sub(due_ns)) / SAMPLE_NS + 1)
+}
+
 /// How much had moved in all, this long into the lap.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sample {
@@ -63,5 +70,18 @@ mod tests {
         assert_eq!(lap.requests_per_second(), 2560.0);
         lap.elapsed_ns = 0;
         assert_eq!(lap.bytes_per_second(), 0.0);
+    }
+
+    #[test]
+    fn a_late_sample_skips_the_marks_already_past() {
+        // On time, the next quarter.
+        assert_eq!(next_sample(250, 250), 250 + SAMPLE_NS);
+        // A quarter and a half late: the mark after now, not the one behind.
+        let due = SAMPLE_NS;
+        let now = due + SAMPLE_NS + SAMPLE_NS / 2;
+        let next = next_sample(due, now);
+        assert!(next > now);
+        assert!(next - now <= SAMPLE_NS);
+        assert_eq!((next - due) % SAMPLE_NS, 0);
     }
 }

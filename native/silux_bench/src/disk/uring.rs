@@ -19,7 +19,7 @@ use crate::common::timer::now_ns;
 use crate::disk::buffers::{check_read, Buffer};
 use crate::disk::histogram::Histogram;
 use crate::disk::job::{Direction, Job, Pattern};
-use crate::disk::run::{Lap, Sample, SAMPLE_NS};
+use crate::disk::run::{next_sample, Lap, Sample, SAMPLE_NS};
 use crate::disk::target::Target;
 
 /// One of the requests the queue holds: its memory, and what it is doing.
@@ -191,7 +191,7 @@ pub fn run(target: &Target, job: &Job, control: &Control) -> Result<Lap> {
                 at_ns: now - began_ns,
                 bytes: lap.bytes,
             });
-            next_sample_ns += SAMPLE_NS;
+            next_sample_ns = next_sample(next_sample_ns, now);
         }
     }
 
