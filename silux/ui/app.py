@@ -346,6 +346,8 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "_memory_run"):
             self._memory_run = MemoryTestRun(self)
             self._disk_run = DiskTestRun(self)
+            # Once: the run outlives the pages a rebuild makes anew.
+            self._disk_run.finished.connect(self._on_disk_measured)
         self.benchmarks_page = BenchmarksPage(self._palette, self.prefs,
                                               memory_run=self._memory_run,
                                               disk_run=self._disk_run)
@@ -353,6 +355,8 @@ class MainWindow(QMainWindow):
         self.benchmarks_page.memory_tab.elevation_requested.connect(self._on_elevation_requested)
         self.memory_page.benchmark_requested.connect(self._open_memory_test)
         self.memory_page.set_last_test(self.benchmarks_page.memory_tab.result)
+        self.storage_page.disk_test_requested.connect(self._open_disk_test)
+        self.storage_page.set_disk_tests(self.benchmarks_page.disk_tab.history)
         self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
@@ -1413,6 +1417,20 @@ class MainWindow(QMainWindow):
         Memory its small card, without leaving and coming back."""
         self.caches_page.set_latencies({l.level: l.nanoseconds for l in result.levels})
         self.memory_page.set_last_test(result)
+
+    def _on_disk_measured(self, _result, history) -> None:
+        """A disk test just finished: Storage says it under its disk."""
+        if history is not None:
+            self.storage_page.set_disk_tests(history)
+
+    def _open_disk_test(self, disk: str) -> None:
+        """Performance on its Disk tab, with that disk chosen. Starts nothing."""
+        self.benchmarks_page.select_tab("disk")
+        self.benchmarks_page.disk_tab.choose_disk(disk)
+        self.stack.setCurrentWidget(self.benchmarks_page)
+        row = next((i for i, (key, _on) in enumerate(SECTIONS) if key == "nav.benchmark"), None)
+        if row is not None:
+            self.nav.setCurrentRow(row)
 
     def _open_memory_test(self) -> None:
         """Performance on its Memory tab. Starts nothing."""

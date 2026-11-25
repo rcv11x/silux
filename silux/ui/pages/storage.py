@@ -11,10 +11,11 @@ disco, y la pregunta «dónde está montado /home» no se hace por disco.
 
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ... import render, thermal
 from ...i18n import _
@@ -40,6 +41,7 @@ from ..widgets import (
     clear_layout,
     dismiss_buttons,
     paint_level,
+    unbroken,
 )
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
@@ -88,6 +90,8 @@ class StoragePage(ScrollPage):
     explain_requested = Signal()
     permission_snoozed = Signal()
     permission_dismissed = Signal()
+    # A disk's last test asked to be opened in Performance: its name.
+    disk_test_requested = Signal(str)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -101,6 +105,10 @@ class StoragePage(ScrollPage):
         self._pies: dict = {}
         self._smart: dict = {}
         self._smart_signature: dict = {}
+        # Each disk's line of its last disk test, and the tests to say.
+        self._tests: dict = {}
+        self._disk_tests: tuple = ()
+        self._models: dict = {}
         self._prefs = prefs
         m = theme.METRICS
 
@@ -514,6 +522,7 @@ class StoragePage(ScrollPage):
                 card.body.addWidget(completo)
                 self._smart[disco.name] = completo
                 self._smart_signature[disco.name] = ()
+                card.body.addWidget(self._last_test_line(disco.name))
                 fila.add(card)
                 self._grids[disco.name] = grid
                 self._bars[disco.name] = barra
@@ -521,6 +530,57 @@ class StoragePage(ScrollPage):
 
         for disco in discos:
             self._fill(disco)
+        self._paint_disk_tests(discos)
+
+    def _last_test_line(self, name: str) -> QWidget:
+        """A disk's last disk test, in short, and the way to its tab."""
+        line = QWidget()
+        row = QHBoxLayout(line)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        summary = QLabel("")
+        summary.setObjectName("Muted")
+        summary.setWordWrap(True)
+        summary.setFont(ui_font(theme.METRICS.small_pt))
+        link = QPushButton(_("memory.lasttest.open"))
+        link.setObjectName("TextButton")
+        link.setCursor(Qt.CursorShape.PointingHandCursor)
+        link.clicked.connect(lambda: self.disk_test_requested.emit(name))
+        row.addWidget(summary, 1)
+        row.addWidget(link, 0, Qt.AlignmentFlag.AlignTop)
+        line.hide()
+        self._tests[name] = (line, summary)
+        return line
+
+    def set_disk_tests(self, results) -> None:
+        """The disk tests saved, newest first: each disk says its last."""
+        self._disk_tests = tuple(results or ())
+        self._paint_disk_tests()
+
+    def _paint_disk_tests(self, discos=None) -> None:
+        from ... import disktest
+
+        models = {d.name: d.model for d in (discos or ())} or self._models
+        self._models = models
+        for name, (line, summary) in self._tests.items():
+            # By its name and, when the test kept it, its model: a disk can
+            # come up as another sdX after a reboot.
+            last = next((r for r in self._disk_tests if r.disks == (name,)
+                         and (r.model is None or r.model == models.get(name))), None)
+            line.setVisible(last is not None)
+            if last is None:
+                continue
+            figures = []
+            for direction, key in (("read", "storage.lasttest.read"),
+                                   ("write", "storage.lasttest.write")):
+                measure = last.measure(disktest.PROFILES["standard"][0].name, direction)
+                middle = measure.median if measure is not None else None
+                if middle is not None:
+                    figures.append(_(key).format(
+                        rate=unbroken(render.disk_rate(middle.bytes_per_second))))
+            summary.setText(_("storage.lasttest").format(
+                figures=" · ".join(figures) or render.DASH,
+                when=time.strftime("%d/%m/%Y %H:%M", time.localtime(last.timestamp))))
 
     def _fill(self, disco: Disk) -> None:
         d = render.DASH

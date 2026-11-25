@@ -1123,6 +1123,11 @@ def rate_figure(bytes_per_second: Optional[float], unit: float) -> str:
     return thousands(round(value)) if value >= 100 else f"{value:.1f}"
 
 
+def disk_rate(bytes_per_second: Optional[float]) -> str:
+    """«6 592 MB/s»: a disk test's figure, in the unit its table uses."""
+    return DASH if _none(bytes_per_second) else f"{rate_figure(bytes_per_second, 1e6)} MB/s"
+
+
 def core_cycles(nanoseconds: Optional[float], frequency_hz: Optional[float]) -> Optional[float]:
     """How many of the core's cycles a latency is. A cache answers in
     cycles, so this is the figure that doesn't move with the clock."""

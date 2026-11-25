@@ -628,6 +628,21 @@ class DiskTestTab(ScrollPage):
         self._describe()
         self._show_for_place()
 
+    @property
+    def history(self) -> tuple:
+        return tuple(self._history)
+
+    def choose_disk(self, disk: str) -> None:
+        """The first place offered on that disk, if any."""
+        for index in range(self.place_box.count()):
+            folder = self.place_box.itemData(index)
+            place = disktest.where(folder) if folder else None
+            if place is not None and disk in place.disks:
+                self.place_box.setCurrentIndex(index)
+                self._describe()
+                self._show_for_place()
+                return
+
     def choose(self, folder: str) -> None:
         """Measure in `folder`, as if it had been picked in the dialog."""
         self._chosen = folder
