@@ -393,7 +393,7 @@ Una NVIDIA no tiene reloj de SoC ni perfil de rendimiento, y NVML no da la frecu
 - Límite de potencia: 115 W
 - Ventilador: parado
 
-En una GeForce, NVML no publica el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes; el uso del video está en «Ahora mismo».
+NVML no publica el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes de esta tarjeta; el uso del video está en «Ahora mismo».
 
 #### Bibliotecas gráficas
 
@@ -407,7 +407,7 @@ En una GeForce, NVML no publica el punto caliente, la temperatura de la memoria,
 
 | SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
-| DP-3 | LG LG ULTRAGEAR | 1920 × 1080 | 48–180 Hz | 23.8" | HDR10 (PQ) · BT.2020 RGB | semana 4 de 2024 |
+| DP-3 | LG ULTRAGEAR | 1920 × 1080 | 48–180 Hz | 23.8" | HDR10 (PQ) · BT.2020 RGB | semana 4 de 2024 |
 
 3 salidas libres: DP-1, DP-2, HDMI-A-1
 
@@ -719,3 +719,8 @@ SENSORES · 29 en 5 dispositivos
 - `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
 - `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
+
+**Consumo de las gráficas: lo que contestó cada vía**
+
+- GeForce RTX 4060 (0000:01:00.0)
+  - runtime_status: active

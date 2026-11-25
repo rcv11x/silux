@@ -33,7 +33,7 @@ from ..model import (
     short_brand,
 )
 from ..system_env import system_environment
-from .base import Draft, Provider, is_virtual_machine, mean, read_int, read_text
+from .base import Draft, Provider, frozen_gpu, is_virtual_machine, mean, read_int, read_text
 from .dmi import PORTABLE_CHASSIS
 
 HWMON = pathlib.Path("/sys/class/hwmon")
@@ -98,6 +98,25 @@ _VCORE_LABEL = re.compile(r"(vcore|cpu\s*v(core|oltage)|vid)", re.IGNORECASE)
 # second zone beside its 27.8 with the processor at 49).
 ACPI_ZONES_CHIP = "acpitz"
 FILLER_VALUES = frozenset((10.0, 16.8, 27.8, 29.8))
+
+
+def _is_filler(sensor: Sensor) -> Optional[bool]:
+    """Whether a temperature is a number nobody measured; None for chips
+    that give no such number.
+
+    A Super I/O gives zero or below for an input the board never wired (an
+    AUXTIN at −1 °C, the PCH readings the firmware never passes on at 0), and
+    a GPU's driver gives 0 for a sensor the card lacks. Nothing inside a
+    running computer is at or below freezing.
+    """
+    if sensor.kind is not SensorKind.TEMPERATURE:
+        return None
+    if sensor.chip == ACPI_ZONES_CHIP:
+        return sensor.value in FILLER_VALUES
+    if SUPERIO_CHIPS.match(sensor.chip) or GPU_CHIP.match(sensor.chip):
+        return sensor.value <= 0
+    return None
+
 
 # The CPU's chips, by preference: the first ones measure the die.
 CPU_CHIPS = ("coretemp", "k10temp", "zenpower", "cpu_thermal", "k8temp", "acpitz")
@@ -417,10 +436,10 @@ class HwmonSensors(Provider):
                                if draft.types else None)
         board_name = draft.board.display_name or _("board.unnamed")
         # The GPUs are already listed when this runs: the order of the
-        # providers in `collector.py` guarantees it.
-        gpu_names = {gpu["pci_slot"]: (gpu.get("name")
-                                       or _("sensor.dev.gpu").format(
-                                           n=gpu["index"]))
+        # providers in `collector.py` guarantees it. Named as every page names
+        # them.
+        from ..render import gpu_name
+        gpu_names = {gpu["pci_slot"]: gpu_name(frozen_gpu(gpu))
                      for gpu in draft.gpus if gpu.get("pci_slot")}
 
         sensors = self._without_fillers(self._read_hwmon(cpu_name, board_name, gpu_names))
@@ -528,21 +547,20 @@ class HwmonSensors(Provider):
     # -- reading ------------------------------------------------------------
 
     def _without_fillers(self, found_sensors: Iterator[Sensor]) -> list[Sensor]:
-        """Mark the ACPI zones giving the firmware's fixed number.
+        """Mark the temperatures nobody measured (`_is_filler`).
 
-        On a laptop those zones really measure and can pass through 27.8 °C
-        like any other value: one seen at another number is not marked again,
-        so it is remembered between samples.
+        On a laptop the ACPI zones really measure and can pass through
+        27.8 °C like any other value: one seen at another number is not
+        marked again, so it is remembered between samples.
         """
         out = []
         for sensor in found_sensors:
-            if (sensor.chip == ACPI_ZONES_CHIP
-                    and sensor.kind is SensorKind.TEMPERATURE):
-                if sensor.value not in FILLER_VALUES:
-                    self._live_zones.add(sensor.key)
-                elif sensor.key not in self._live_zones:
-                    sensor = dataclasses.replace(sensor, placeholder=True, low=None,
-                                                 high=None, critical=None)
+            filler = _is_filler(sensor)
+            if filler is False:
+                self._live_zones.add(sensor.key)
+            elif filler and sensor.key not in self._live_zones:
+                sensor = dataclasses.replace(sensor, placeholder=True, low=None,
+                                             high=None, critical=None)
             out.append(sensor)
         return out
 

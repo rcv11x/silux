@@ -135,6 +135,42 @@ class TestChipset(unittest.TestCase):
         self.assertIsNone(dmi._CHIPSET_MODEL.search("Ethernet Controller"))
 
 
+class TestTheModelLast(unittest.TestCase):
+    """From a report: an older pci.ids calls an i7-12700's H670 bridge
+    (8086:7a85) «LPC Controller/eSPI Controller (H670)», and the chipset went
+    unrecognised, with a foot saying pci.ids gave only its codename."""
+
+    BRIDGE = ("Intel Corporation", "LPC Controller/eSPI Controller (H670)")
+
+    def test_it_is_found(self):
+        self.assertEqual(dmi.chipset(self.BRIDGE, "H670 Steel Legend"), "Intel H670")
+        # A laptop's PCH named by its codename still has no model (an
+        # i5-12450H's, from our dumps).
+        self.assertIsNone(dmi.chipset(("Intel Corporation", "Alder Lake PCH eSPI Controller"),
+                                      None))
+
+    def test_on_the_board_page(self):
+        import dataclasses
+
+        from silux.i18n import _
+        from tests import pantalla, qt
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        qt.app()
+        photo = shared_snapshot(EQUIPOS / "i5-10400")
+        photo = dataclasses.replace(photo, board=dataclasses.replace(
+            photo.board, chipset=dmi.chipset(self.BRIDGE, "H670 Steel Legend"),
+            chipset_full=self.BRIDGE[1]))
+        with pantalla.Ventana(photo) as window:
+            window.select_section("Placa base")
+            for _turn in range(4):
+                qt.app().processEvents()
+            page = window.board_page
+            self.assertEqual(page.chipset._values[_("board.field.chipset")].full_text(),
+                             "Intel H670")
+            self.assertNotIn(_("board.na.chipset.codename"), page.chipset_pie.text())
+
+
 class TestElChipsetDeUnaPlacaAmd(unittest.TestCase):
     """En AM4 y AM5 el puente LPC del bus 0 está dentro del procesador y se
     llama igual en todas las placas: «FCH LPC Bridge». El chipset de verdad

@@ -6,7 +6,10 @@ asking NVML and matching by PCI address, the only identifier both publish.
 
 It replaces nothing: what came from sysfs (a card with nouveau) stays, and
 NVML only fills gaps. The session opens once and stays open; the collector
-closes it on exit, the same way it closes the helper.
+closes it on exit, the same way it closes the helper. On a card the driver
+switches off when idle, an open session keeps it on: there it is closed as
+soon as nothing else uses the card (docs/nvml.md, «Que Silux no la mantenga
+despierta»).
 """
 
 from __future__ import annotations
@@ -14,16 +17,25 @@ from __future__ import annotations
 import dataclasses
 import glob
 import os
+import time
 from typing import Optional
 
 from .. import nvml, sysroot
 from ..i18n import _
 from ..model import GpuClocks, GpuMemory, Need, PcieLink
-from .base import Draft, Provider, is_suspended, read_text
+from .base import Draft, Provider, read_text
 from .dmi import PORTABLE_CHASSIS
+from .drm import say_asleep
 
 # Each PCIe generation's speed, to translate the number NVML gives.
 SPEEDS_GTS = {1: 2.5, 2: 5.0, 3: 8.0, 4: 16.0, 5: 32.0, 6: 64.0}
+
+# How long NVML stays closed once nothing else uses a card that can sleep.
+# The driver switches it off after two of its idle checks in a row, 5 s
+# apart, and 200 ms more (GC6_PRECONDITION_CHECK_TIME in dynamic-power.c).
+LET_IT_SLEEP_S = 15.0
+
+SUSPENDED = ("suspended", "suspending")
 
 
 class NvidiaGpus(Provider):
@@ -35,19 +47,75 @@ class NvidiaGpus(Provider):
     def __init__(self) -> None:
         # Called `client` on purpose: the collector closes by that name.
         self.client = nvml.Nvml()
+        # The cards seen suspended since NVML last read them: the first
+        # reading after waking can be impossible (docs/nvml.md).
+        self._slept: set[str] = set()
+        # Each NVIDIA's runtime PM state at this sample, by slot.
+        self._states: dict[str, Optional[str]] = {}
+        # Whether the driver switches each card off when idle, once known.
+        self._can_sleep: dict[str, bool] = {}
+        # When NVML was closed so a card could fall asleep.
+        self._let_go_at: Optional[float] = None
+        self._clock = time.monotonic
 
     def available(self) -> bool:
         # With a dump, what was recorded answers: open or not, and which cards
         # it gave (`sysroot.recorded`). Never this machine's NVML.
         if sysroot.active():
             return bool(sysroot.recorded("nvml", "abierta", self.client.open))
-        if sleeping_nvidias():
+        self._states = runtime_states()
+        for slot, state in self._states.items():
+            if state in SUSPENDED:
+                self._slept.add(slot)
+                self._can_sleep[slot] = True
+            elif slot not in self._can_sleep:
+                known = driver_lets_it_sleep(slot)
+                if known is not None:
+                    self._can_sleep[slot] = known
+        if self._leaving_them_alone():
             # NVML talks to every card at once: opening it, or asking with it
-            # open, wakes the one that sleeps. It is closed while one is
-            # suspended and opened again when it wakes.
+            # open, wakes the one that sleeps and keeps it awake. Closed, the
+            # cards are still said to rest (`_how_they_rest`).
             self.client.close()
-            return False
+            return bool(self._states)
         return bool(sysroot.recorded("nvml", "abierta", self.client.open))
+
+    def _leaving_them_alone(self) -> bool:
+        """Whether NVML stays closed this sample: a card sleeps, or one that
+        can was let go of moments ago and has time to fall asleep."""
+        if any(state in SUSPENDED for state in self._states.values()):
+            return True
+        return (self._let_go_at is not None
+                and self._clock() - self._let_go_at < LET_IT_SLEEP_S)
+
+    def _how_they_rest(self, draft: Draft) -> None:
+        """Asleep or left alone, what each card is, without asking it."""
+        leaving = self._leaving_them_alone()
+        for index, gpu in enumerate(draft.gpus):
+            slot = gpu.get("pci_slot")
+            if slot not in self._states:
+                continue
+            state = self._states[slot]
+            gpu["runtime_status"] = state
+            if state in SUSPENDED:
+                # Without a DRM node no other provider says it sleeps.
+                if not gpu.get("suspended"):
+                    gpu["suspended"] = True
+                    say_asleep(draft, index)
+            elif gpu.get("suspended") and not gpu.get("drm_node"):
+                # Read asleep at the static pass and awake now: `GpuState`
+                # does this for the cards with a DRM node.
+                gpu["suspended"] = False
+                draft.static_stale = True
+            elif leaving and self._can_sleep.get(slot):
+                gpu["left_to_sleep"] = True
+                _say_left_to_sleep(draft, index)
+
+    def _let_go_if_unused(self, cards: list[nvml.NvidiaGpu]) -> None:
+        """Close NVML when a card that can sleep is not working."""
+        if any(self._can_sleep.get(card.pci_slot) and not _working(card) for card in cards):
+            self.client.close()
+            self._let_go_at = self._clock()
 
     def _cards(self) -> list[nvml.NvidiaGpu]:
         """What NVML answers, recorded for the dumps: as dictionaries and
@@ -55,13 +123,18 @@ class NvidiaGpus(Provider):
         def ask():
             return [dict(dataclasses.asdict(t), serial=None) for t in self.client.devices()]
         raw_cards = sysroot.recorded("nvml", "tarjetas", ask) or ()
-        return [nvml.NvidiaGpu(**dict(c, throttle_reasons=tuple(c.get("throttle_reasons") or ())))
+        return [nvml.NvidiaGpu(**dict(
+                    c, throttle_reasons=tuple(c.get("throttle_reasons") or ()),
+                    power_answers=tuple(tuple(a) for a in c.get("power_answers") or ())))
                 for c in raw_cards]
 
     def unavailable_reason(self):
         return None       # without an NVIDIA nothing is missing
 
     def collect(self, draft: Draft) -> None:
+        live = not sysroot.active()
+        if live:
+            self._how_they_rest(draft)
         cards = self._cards()
         if not cards:
             return
@@ -91,35 +164,102 @@ class NvidiaGpus(Provider):
                                and ("NVIDIA" in n.message
                                     or (n.path in answered and n.key == "prov.drm.nodrm")))]
 
-        # A dash with no reason breaks rule 5: say the driver did not give it,
-        # and what NVML answered goes in the report.
         for card in cards:
             for index, gpu in enumerate(draft.gpus):
-                if gpu.get("pci_slot") == card.pci_slot and gpu.get("power_w") is None:
-                    draft.note(f"gpus.{index}.power_w", Need.HARDWARE,
-                               _("prov.nvml.nopower"), what=_("what.gpu.power"),
-                               detail=card.power_error or "", key="nvml.nopower")
+                if gpu.get("pci_slot") != card.pci_slot:
+                    continue
+                gpu["runtime_status"] = read_text(f"{PCI}/{card.pci_slot}/power/runtime_status")
+                if gpu.get("power_w") is None:
+                    _say_why_no_power(draft, index, card, woke=card.pci_slot in self._slept)
+        self._slept -= {card.pci_slot for card in cards}
+        if live:
+            self._let_go_if_unused(cards)
+
+
+def _working(card: nvml.NvidiaGpu) -> bool:
+    """Whether the card does work that reading it does not stop it sleeping:
+    a compute process (the driver keeps the card on while one runs), or an
+    engine busy over the last reading. That is what the driver itself
+    checks before switching a card off: whether its engines are idle.
+
+    Not the graphics processes: on a hybrid laptop the display server is
+    one, with a few MiB, on a card the driver switches off all the same.
+    Nor its memory: what counts as used at idle changes with the driver.
+    """
+    return bool(card.compute_processes) or any(
+        (card.busy_percent, card.memory_busy_percent,
+         card.encode_busy_percent, card.decode_busy_percent))
+
+
+def _say_left_to_sleep(draft: Draft, index: int) -> None:
+    """Card N is awake and left alone, said instead of a missing driver."""
+    path = f"gpus.{index}"
+    draft.notes = [n for n in draft.notes
+                   if not (n.path == path and n.need is Need.DRIVER)]
+    draft.note(path, Need.HARDWARE, _("prov.nvml.lefttosleep"),
+               _("prov.nvml.lefttosleep.hint"), key="nvml.lefttosleep",
+               title=_("prov.nvml.lefttosleep.title"))
+
+
+def _say_why_no_power(draft: Draft, index: int, card: nvml.NvidiaGpu, woke: bool) -> None:
+    """A dash with no reason breaks rule 5: say the driver did not give it,
+    that what it gave was impossible, or that what it gives is its own
+    estimate. What NVML answered to each way goes in the report.
+
+    `woke`: the card was seen suspended since it was last read, the probable
+    cause of an impossible reading."""
+    path = f"gpus.{index}.power_w"
+    if card.power_discarded_w is not None:
+        ceiling = dict(card.power_answers).get("ceiling", "")
+        draft.note(path, Need.HARDWARE, _("prov.nvml.discarded"),
+                   _("prov.nvml.discarded.woke") if woke else "",
+                   detail=f"{card.power_discarded_w} W from {card.power_discarded_source}, "
+                          f"over the ceiling of {ceiling}"
+                          + ("; suspended before this reading" if woke else ""),
+                   key="nvml.discarded")
+    elif card.power_estimate_w is not None:
+        draft.note(path, Need.HARDWARE, _("prov.nvml.estimate"),
+                   detail=card.power_error or "", key="nvml.estimate")
+    else:
+        draft.note(path, Need.HARDWARE, _("prov.nvml.nopower"), what=_("what.gpu.power"),
+                   detail=card.power_error or "", key="nvml.nopower")
 
 
 PCI = "/sys/bus/pci/devices"
+PROC_NVIDIA = "/proc/driver/nvidia/gpus"
 
 
-def sleeping_nvidias() -> list[str]:
-    """The NVIDIA cards the kernel has suspended (D3).
+def runtime_states() -> dict[str, Optional[str]]:
+    """Each NVIDIA graphics card on the bus, by slot, and its runtime PM state.
 
     Read from the bus, not from what DRM listed: with the proprietary driver
     and no `nvidia-drm.modeset` there is no DRM node, and the card sleeps all
-    the same. A typical Optimus laptop with RTD3 keeps it so when idle.
+    the same. `power/runtime_status` is the PM core's and wakes nothing.
     """
-    sleeping = []
+    states = {}
     for path in sorted(glob.glob(os.path.join(sysroot.path(PCI), "*"))):
         if (read_text(f"{path}/vendor") or "").lower() != "0x10de":
             continue
         if not (read_text(f"{path}/class") or "").startswith("0x03"):
             continue
-        if is_suspended(path):
-            sleeping.append(os.path.basename(path))
-    return sleeping
+        states[os.path.basename(path)] = read_text(f"{path}/power/runtime_status")
+    return states
+
+
+def driver_lets_it_sleep(slot: str) -> Optional[bool]:
+    """Whether NVIDIA's driver switches this card off when idle (runtime D3).
+
+    Its procfs `power` file says so without a power reference
+    (`nv_procfs_read_power`), so reading it wakes nothing; `information`,
+    beside it, takes one and wakes the card. None while the driver has not
+    set the card up («?»), or without the file.
+    """
+    for line in (read_text(f"{PROC_NVIDIA}/{slot}/power") or "").splitlines():
+        name, _sep, value = line.partition(":")
+        if name.strip() == "Runtime D3 status":
+            value = value.strip()
+            return None if value == "?" else value.startswith("Enabled")
+    return None
 
 
 # CUDA cores per multiprocessor, by generation. The codename's first two
@@ -168,6 +308,10 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
         "decode_busy_percent": card.decode_busy_percent,
         "temp_c": card.temp_c,
         "power_w": card.power_w,
+        "power_source": card.power_source,
+        "power_estimate_w": card.power_estimate_w,
+        "power_estimate_window_s": card.power_estimate_window_s,
+        "power_estimate_samples": card.power_estimate_samples,
         "power_cap_w": card.power_cap_w,
         "power_cap_default_w": card.power_cap_default_w,
         "power_cap_min_w": card.power_cap_min_w,
@@ -180,6 +324,8 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
             gpu[field] = value
     if card.throttle_reasons and not gpu.get("throttle_reasons"):
         gpu["throttle_reasons"] = card.throttle_reasons
+    if card.power_answers:
+        gpu["power_answers"] = card.power_answers
 
     memory: GpuMemory = gpu.get("memory") or GpuMemory()
     gpu["memory"] = dataclasses.replace(

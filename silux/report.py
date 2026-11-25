@@ -786,6 +786,8 @@ def _diagnosis(snapshot: Snapshot, translate=in_spanish) -> str:
     else:
         lines.append(t("report.diag.nothing"))
 
+    lines += _gpu_power_answers(snapshot, t)
+
     if snapshot.failures:
         lines += ["", f"**{t('report.diag.failures')}**", ""]
         for failure in snapshot.failures:
@@ -794,6 +796,24 @@ def _diagnosis(snapshot: Snapshot, translate=in_spanish) -> str:
             lines += [f"- `{failure.where}`{times}: {failure.error}", "",
                        "```text", failure.trace, "```", ""]
     return "\n".join(lines)
+
+
+def _gpu_power_answers(snapshot: Snapshot, t) -> list[str]:
+    """What each of NVML's ways of reading the power answered, with the card's
+    runtime PM state: what had to be asked for by hand to tell a sensor from
+    an estimate, or a sleeping card from a broken reading."""
+    cards = [g for g in snapshot.gpus if g.power_answers or g.runtime_status]
+    if not cards:
+        return []
+    lines = ["", f"**{t('report.diag.gpupower')}**", ""]
+    for gpu in cards:
+        lines.append(f"- {render.gpu_name(gpu)} ({gpu.pci_slot or render.DASH})")
+        if gpu.runtime_status:
+            lines.append(f"  - runtime_status: {gpu.runtime_status}")
+        if gpu.power_source:
+            lines.append(f"  - {t('report.diag.gpupower.source')}: {gpu.power_source}")
+        lines += [f"  - {way}: {answer}" for way, answer in gpu.power_answers]
+    return lines
 
 
 def _provenance(translate=in_spanish) -> str:

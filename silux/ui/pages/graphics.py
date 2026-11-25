@@ -115,7 +115,9 @@ CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.silmax", "gpu.
 # está: es la de la ficha de arriba. Tampoco el consumo ni su límite, que
 # van en «Ahora mismo» con su barra: repetidos aquí eran la misma cifra dos
 # veces en la misma pantalla.
-SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.powercap",
+# The driver's power estimate has its row here: it is not the power, and goes
+# in no tile, bar or chart.
+SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.powercap", "gpu.sensor.powerestimate",
                  "gpu.sensor.hotspot", "gpu.sensor.memtemp",
                  "gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
                  "gpu.sensor.fan",
@@ -159,7 +161,7 @@ NA_VIRTUAL = {
     "sensors": ((*SENSOR_FIELDS, "gpu.tile.power"), "gpu.na.virtual.sensors"),
 }
 
-# What NVML does not publish on a GeForce, or NVIDIA does not have (a SoC
+# What NVML does not publish for the card, or NVIDIA does not have (a SoC
 # clock, AMD's performance profile, rasterizer and shader engine counts,
 # which come from amdgpu's ioctl). A tester's RTX 4060 read about twenty
 # dashes; said at each card's foot, its driver is to blame and not the card.
@@ -760,13 +762,15 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.memtemp"), render.temperature(gpu.memory_temp_c, fahrenheit))
         s(_("gpu.sensor.powercap"), render.gpu_factory_power_limit(gpu),
           tooltip=render.gpu_power_limit_tip(gpu))
+        s(_("gpu.sensor.powerestimate"), render.gpu_power_estimate(gpu),
+          tooltip=_("gpu.tip.powerestimate"))
         s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent),
           tooltip=_("gpu.tip.fan.zerorpm") if gpu.fan_rpm == 0 and not gpu.integrated else "")
         s(_("gpu.sensor.vrgfx"), render.temperature(gpu.vr_gfx_c, fahrenheit),
           tooltip=_("gpu.tip.vr"))
         s(_("gpu.sensor.vrsoc"), render.temperature(gpu.vr_soc_c, fahrenheit))
         s(_("gpu.sensor.vrmem"), render.temperature(gpu.vr_memory_c, fahrenheit))
-        s(_("gpu.sensor.voltage"), render.volts(gpu.voltage_v))
+        s(_("gpu.sensor.voltage"), render.gpu_voltage(gpu.voltage_v))
         s(_("gpu.sensor.vsoc"), render.volts(gpu.voltage_soc_v))
         s(_("gpu.sensor.vmem"), render.volts(gpu.voltage_memory_v))
         candado = getattr(self, "_candado", None)
@@ -846,6 +850,9 @@ class GpuSection(QWidget):
         # Only cards whose driver publishes a factory limit have one to show.
         if gpu.power_cap_default_w is None and gpu.power_cap_max_w is None:
             escondidos["sensors"].add("gpu.sensor.powercap")
+        # Only where the driver estimates what it does not measure.
+        if gpu.power_estimate_w is None:
+            escondidos["sensors"].add("gpu.sensor.powerestimate")
         if render.unique_id(gpu.unique_id) is None:
             escondidos["card"].add("gpu.field.uuid")
 
@@ -866,12 +873,12 @@ class GpuSection(QWidget):
         # or emulated, the rule below doesn't run.
         escondidos["card"].update(c for c in ONLY_SOME
                                   if grid_of(grupos[0][1], c).is_blank(_(c)))
-        if gpu.suspended:
-            # Asleep, what only an awake card says isn't asked: its rows go,
-            # and the notice says why, once.
+        if gpu.resting:
+            # Asleep or left alone, what only a card that is read says isn't
+            # asked: its rows go, and the notice says why, once.
             for nombre, grids, campos, _pie in grupos:
                 escondidos[nombre].update(c for c in campos if grid_of(grids, c).is_blank(_(c)))
-        if not (gpu.suspended or gpu.virtual):
+        if not (gpu.resting or gpu.virtual):
             for nombre, grids, campos, _pie in grupos:
                 mudos = [c for c in campos if c not in escondidos[nombre]
                          and grid_of(grids, c).is_blank(_(c))]
@@ -905,7 +912,7 @@ class GpuSection(QWidget):
         # ficha grande con un guion para siempre era el hueco más visible de
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
-        asleep = gpu.suspended
+        asleep = gpu.resting
         self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual or asleep)
                                        and gpu.temp_c is None and gpu.package_temp_c is None))
         # nouveau gives no usage, clock or power, and the notice above the

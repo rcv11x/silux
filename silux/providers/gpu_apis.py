@@ -86,6 +86,8 @@ class GpuApis(Provider):
 
         draft.capabilities.add("gpu-apis")
         primary = _primary_index(draft.gpus)
+        processors = frozenset(" ".join((entry.get("brand") or "").split())
+                               for entry in draft.types.values())
 
         for index, gpu in enumerate(draft.gpus):
             gpu["codecs"] = _codecs_of(gpu, vaapi)
@@ -101,7 +103,7 @@ class GpuApis(Provider):
                     driver=_driver_version(device),
                     implementation=implementation.group(1).lower() if implementation else None,
                 ))
-                _refine_name(gpu, device["name"])
+                _refine_name(gpu, device["name"], processors)
                 _vulkan_memory(gpu, device)
 
             # OpenGL and OpenCL do not publish the PCI node, but say who
@@ -308,15 +310,23 @@ def _vulkan_of(gpu: dict, devices: list[dict]) -> Optional[dict]:
     return None
 
 
-def _refine_name(gpu: dict, name: Optional[str]) -> None:
-    """Replace a name that fits several models with the driver's."""
+def _refine_name(gpu: dict, name: Optional[str],
+                 processors: frozenset[str] = frozenset()) -> None:
+    """Replace a name that fits several models with the driver's.
+
+    Not with the processor's: RADV calls an integrated GPU whose marketing
+    name libdrm does not know by its processor's brand.
+    """
     if not name:
         return
     current = gpu.get("name")
     # A slash in the name is pci.ids's mark for «one of these».
     if current and "/" not in current:
         return
-    gpu["name"] = _DRIVER_SUFFIX.sub("", name).strip() or current
+    refined = _DRIVER_SUFFIX.sub("", name).strip()
+    if " ".join(refined.split()) in processors:
+        return
+    gpu["name"] = refined or current
 
 
 def _version_only(text: str) -> Optional[str]:

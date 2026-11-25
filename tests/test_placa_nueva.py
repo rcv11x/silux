@@ -15,7 +15,7 @@ from silux.i18n import _
 from silux.model import PciDevice, PcieLink, Platform
 from silux.privileged import smbios
 from tests import pantalla, qt
-from tests.test_equipos import EQUIPOS, foto
+from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 from tests.test_smbios import _end, _structure
 
 try:
@@ -221,6 +221,33 @@ class TestEnLaPagina(unittest.TestCase):
             self.assertFalse(pagina.pci_card.isVisible())
             visibles = [n for n, e in pagina.platform._values.items() if e.isVisible()]
             self.assertEqual(visibles, [_("board.plat.iommu")])
+
+
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestWhatSharesAnApusDevice(unittest.TestCase):
+    """On an APU the processor's USB and sound hang from the integrated GPU's
+    PCI device, as other functions. From reports (an Athlon 3000G, a Ryzen 9
+    7900): they read «on the graphics card», which a processor isn't."""
+
+    def _rows(self, dump):
+        app = qt.app()
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / dump)) as window:
+            window.select_section("Placa base")
+            for _time in range(4):
+                app.processEvents()
+            return {row[1]: row for row in ([c.full_text() for c in cells]
+                                            for cells in window.board_page.pci._cells)}
+
+    def test_they_are_in_the_processor(self):
+        rows = self._rows("athlon-3000g")
+        for name in ("Raven2 USB 3.1", "Ryzen HD Audio Controller",
+                     "Raven/Raven2/Fenghuang HDMI/DP Audio Controller"):
+            with self.subTest(name):
+                self.assertEqual(rows[name][2], _("board.pci.oncpu"))
+
+    def test_a_cards_sound_is_still_the_cards(self):
+        rows = self._rows("5800x3d")
+        self.assertEqual(rows["Navi 48 HDMI/DP Audio Controller"][2], _("board.pci.ongpu"))
 
 
 if __name__ == "__main__":

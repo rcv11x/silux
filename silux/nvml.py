@@ -18,12 +18,16 @@ import ctypes
 from dataclasses import dataclass
 from typing import Optional
 
+from .model import PLAUSIBLE
+
 LIBRARIES = ("libnvidia-ml.so.1", "libnvidia-ml.so")
 
 NVML_SUCCESS = 0
+NVML_ERROR_INSUFFICIENT_SIZE = 7
 # nvmlReturn_t, as nvml.h names them: what the report says NVML answered.
 NVML_ERRORS = {1: "UNINITIALIZED", 2: "INVALID_ARGUMENT", 3: "NOT_SUPPORTED",
-               4: "NO_PERMISSION", 6: "NOT_FOUND", 9: "DRIVER_NOT_LOADED", 10: "TIMEOUT",
+               4: "NO_PERMISSION", 6: "NOT_FOUND", 7: "INSUFFICIENT_SIZE",
+               9: "DRIVER_NOT_LOADED", 10: "TIMEOUT",
                13: "FUNCTION_NOT_FOUND", 15: "GPU_IS_LOST", 17: "OPERATING_SYSTEM",
                18: "LIB_RM_VERSION_MISMATCH", 21: "NO_DATA", 25: "ARGUMENT_VERSION_MISMATCH",
                26: "DEPRECATED", 999: "UNKNOWN"}
@@ -85,6 +89,24 @@ MEMBER_BY_TYPE = {0: "dVal", 1: "uiVal", 2: "ulVal", 3: "ullVal", 4: "sllVal",
                     5: "siVal", 6: "usVal"}
 
 
+# nvmlSamplingType_t: the board's power, which the driver's power monitor
+# samples into a ring buffer (nvidia-smi's «Power Samples»). On a card with
+# no power sensor those samples are the driver's estimate, not a measurement.
+TOTAL_POWER_SAMPLES = 0
+
+
+class _Sample(ctypes.Structure):
+    """nvmlSample_t: the CPU timestamp in microseconds, and the value."""
+    _fields_ = [("timeStamp", ctypes.c_ulonglong), ("sampleValue", _Value)]
+
+
+# A power reading above this many times the highest limit the card declares
+# is impossible: a card at full load sits on its limit and passes it by a
+# little (an RTX 3060's maximum is its factory 170 W), and the impossible
+# ones seen are 4 to 16 times over.
+IMPOSSIBLE_OVER_LIMIT = 1.5
+
+
 class _Temperature(ctypes.Structure):
     """nvmlTemperature_v1_t, for nvmlDeviceGetTemperatureV (R570 and newer)."""
     _fields_ = [("version", ctypes.c_uint), ("sensorType", ctypes.c_uint),
@@ -141,6 +163,20 @@ class NvidiaGpu:
     power_source: Optional[str] = None
     # Without power: what NVML answered to each way of asking, for the report.
     power_error: Optional[str] = None
+    # The driver's estimate where it measures none: the mean of its power
+    # samples since the previous reading. Never `power_w` (docs/nvml.md).
+    power_estimate_w: Optional[float] = None
+    power_estimate_window_s: Optional[float] = None
+    power_estimate_samples: Optional[int] = None
+    # A reading thrown away as impossible (`power_ceiling_w`), and its way.
+    power_discarded_w: Optional[float] = None
+    power_discarded_source: Optional[str] = None
+    # (way, answer) for each way of reading the power, the energy counter
+    # included: only for the report.
+    power_answers: tuple[tuple[str, str], ...] = ()
+    # Compute processes running on the card. Only to decide whether Silux
+    # keeps reading it; never shown.
+    compute_processes: Optional[int] = None
     power_cap_w: Optional[float] = None
     power_cap_default_w: Optional[float] = None
     power_cap_min_w: Optional[float] = None
@@ -170,6 +206,9 @@ class Nvml:
     def __init__(self) -> None:
         self._lib: Optional[ctypes.CDLL] = None
         self._active = False
+        # The newest power sample already averaged, per card: each estimate
+        # covers only what the driver sampled since the previous reading.
+        self._last_power_sample: dict[int, int] = {}
 
     # -- lifecycle ----------------------------------------------------------
 
@@ -198,6 +237,11 @@ class Nvml:
                 shutdown()
         self._active = False
         self._lib = None
+        self._last_power_sample.clear()
+
+    @property
+    def is_open(self) -> bool:
+        return self._active
 
     # -- queries ------------------------------------------------------------
 
@@ -325,24 +369,136 @@ class Nvml:
                 reasons.append(f"field {field.fieldId}: value type {field.valueType}")
         return values
 
-    def _power(self, handle) -> tuple[Optional[float], Optional[str], Optional[str]]:
-        """Watts and the call that gave them: nvmlDeviceGetPowerUsage, else
-        the power fields, which are nvidia-smi's power.draw, .average and
-        .instant. Without any, what NVML answered to each.
+    def _power(self, handle, index: int, highest_limit_w: Optional[float]) -> dict:
+        """The power, the way that gave it, and what every way answered.
 
-        Not the power samples buffer, nor a limit: where those three are N/A
-        the driver isn't giving the card's power, and another figure it
-        publishes would be shown as if it were.
+        nvmlDeviceGetPowerUsage, else the power fields, which are nvidia-smi's
+        power.draw, .average and .instant: the same measurement by three doors.
+        A reading over the ceiling (`power_ceiling_w`) is thrown away and the
+        next door is not tried: the card answered, with something impossible.
+
+        The samples buffer is asked too. Where no door gives the power it is
+        the driver's estimate and goes in its own field; where one does, it
+        only goes to the report. The energy counter only goes to the report.
         """
         reasons: list[str] = []
+        answers: list[tuple[str, str]] = []
+        result: dict = {"power_w": None, "power_source": None, "power_error": None}
+        ceiling_w = power_ceiling_w(highest_limit_w)
+
         milliwatts = self._integer("nvmlDeviceGetPowerUsage", handle, reasons=reasons)
+        answers.append(("nvmlDeviceGetPowerUsage", _answer(milliwatts, reasons)))
+        source = "nvmlDeviceGetPowerUsage" if milliwatts is not None else None
+        if milliwatts is None:
+            fields = self._fields(handle, FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT,
+                                  reasons=reasons)
+            for field in (FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT):
+                answers.append((f"field {field}", _answer(fields.get(field), reasons,
+                                                          f"field {field}")))
+                if source is None and field in fields:
+                    milliwatts, source = fields[field], f"field {field}"
+        else:
+            answers += [(f"field {f}", "not asked")
+                        for f in (FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT)]
+
+        estimate = self._power_samples(handle, index, ceiling_w, answers)
+        energy_reasons: list[str] = []
+        energy = self._integer("nvmlDeviceGetTotalEnergyConsumption", handle,
+                               kind=ctypes.c_ulonglong, reasons=energy_reasons)
+        answers.append(("nvmlDeviceGetTotalEnergyConsumption",
+                        f"{energy} mJ" if energy is not None
+                        else _answer(None, energy_reasons)))
+        answers.append(("ceiling", f"{ceiling_w:.1f} W, {IMPOSSIBLE_OVER_LIMIT} x "
+                                   f"{highest_limit_w:.1f} W" if highest_limit_w
+                        else f"{ceiling_w:.0f} W, no declared limit"))
+        result["power_answers"] = tuple(answers)
+
         if milliwatts is not None:
-            return round(milliwatts / 1000, 1), "nvmlDeviceGetPowerUsage", None
-        fields = self._fields(handle, FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT, reasons=reasons)
-        for field in (FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT):
-            if field in fields:
-                return round(fields[field] / 1000, 1), f"field {field}", None
-        return None, None, "; ".join(reasons) or None
+            watts = milliwatts / 1000
+            if watts > ceiling_w:
+                result.update(power_discarded_w=round(watts, 2), power_discarded_source=source)
+            else:
+                result.update(power_w=round(watts, 1), power_source=source)
+            return result
+        result["power_error"] = "; ".join(reasons) or None
+        if estimate is not None:
+            result.update(estimate)
+        return result
+
+    def _power_samples(self, handle, index: int, ceiling_w: float,
+                       answers: list) -> Optional[dict]:
+        """The mean of the power samples taken since the previous reading.
+
+        The first reading has nothing to start from and takes what the buffer
+        holds, a few seconds' worth. Samples over `ceiling_w` are left out.
+        """
+        name = "nvmlDeviceGetSamples"
+        function = self._symbol(name)
+        if function is None:
+            answers.append((name, "not in the library"))
+            return None
+        previous = self._last_power_sample.get(index)
+        since = ctypes.c_ulonglong(previous or 0)
+        kind, value_type, count = (ctypes.c_uint(TOTAL_POWER_SAMPLES), ctypes.c_uint(),
+                                   ctypes.c_uint())
+        samples = None
+        try:
+            # A first call without a buffer says how many there are.
+            code = function(handle, kind, since, ctypes.byref(value_type),
+                            ctypes.byref(count), None)
+            if code == NVML_SUCCESS and count.value:
+                samples = (_Sample * count.value)()
+                code = function(handle, kind, since, ctypes.byref(value_type),
+                                ctypes.byref(count), samples)
+        except (ctypes.ArgumentError, OSError) as exc:
+            answers.append((name, str(exc)))
+            return None
+        if code != NVML_SUCCESS:
+            answers.append((name, nvml_error(code)))
+            return None
+        member = MEMBER_BY_TYPE.get(value_type.value)
+        taken = list(samples)[:count.value] if samples is not None else []
+        if not taken or member is None:
+            answers.append((name, f"{len(taken)} samples, value type {value_type.value}"))
+            return None
+        self._last_power_sample[index] = max(sample.timeStamp for sample in taken)
+        start = previous if previous is not None else min(s.timeStamp for s in taken)
+        window_s = (self._last_power_sample[index] - start) / 1_000_000
+        watts = [float(getattr(s.sampleValue, member)) / 1000 for s in taken]
+        kept = [w for w in watts if w <= ceiling_w]
+        answer = (f"{len(watts)} samples over {window_s:.2f} s, "
+                  f"{min(watts):.2f}-{max(watts):.2f} W, mean {sum(watts) / len(watts):.2f} W")
+        if len(kept) < len(watts):
+            answer += f", {len(watts) - len(kept)} over the ceiling left out"
+        answers.append((name, answer))
+        if not kept:
+            return {"power_discarded_w": round(max(watts), 2),
+                    "power_discarded_source": name}
+        return {"power_estimate_w": round(sum(kept) / len(kept), 1),
+                "power_estimate_window_s": round(window_s, 2),
+                "power_estimate_samples": len(kept)}
+
+    def _compute_processes(self, handle) -> Optional[int]:
+        """How many compute processes run on the card.
+
+        Asked with an empty list: NVML then answers success when there are
+        none, or INSUFFICIENT_SIZE with how many there are. No structure is
+        read, so its version does not matter. Graphics processes are not
+        asked: a hybrid laptop's display server is one, idle on the card.
+        """
+        function = self._symbol("nvmlDeviceGetComputeRunningProcesses_v3",
+                                "nvmlDeviceGetComputeRunningProcesses_v2",
+                                "nvmlDeviceGetComputeRunningProcesses")
+        if function is None:
+            return None
+        count = ctypes.c_uint(0)
+        try:
+            code = function(handle, ctypes.byref(count), None)
+        except (ctypes.ArgumentError, OSError):
+            return None
+        if code in (NVML_SUCCESS, NVML_ERROR_INSUFFICIENT_SIZE):
+            return count.value
+        return None
 
     def _limits(self, handle) -> dict[str, Optional[float]]:
         """The factory power limit and the range the card accepts, in watts."""
@@ -400,7 +556,10 @@ class Nvml:
         watts = lambda *args: (lambda v: round(v / 1000, 1) if v is not None else None)(
             self._integer(*args))
 
-        power, power_source, power_error = self._power(handle)
+        limits = self._limits(handle)
+        enforced = watts("nvmlDeviceGetEnforcedPowerLimit", handle)
+        declared = [w for w in (enforced, *limits.values()) if w]
+        power = self._power(handle, index, max(declared) if declared else None)
         # Renamed in R535 with the same bits; the old name is deprecated.
         flags = self._integer("nvmlDeviceGetCurrentClocksEventReasons", handle,
                                 kind=ctypes.c_ulonglong)
@@ -429,11 +588,10 @@ class Nvml:
             encode_busy_percent=self._utilization("nvmlDeviceGetEncoderUtilization", handle),
             decode_busy_percent=self._utilization("nvmlDeviceGetDecoderUtilization", handle),
             temp_c=self._temperature(handle),
-            power_w=power,
-            power_source=power_source,
-            power_error=power_error,
-            power_cap_w=watts("nvmlDeviceGetEnforcedPowerLimit", handle),
-            **self._limits(handle),
+            **power,
+            compute_processes=self._compute_processes(handle),
+            power_cap_w=enforced,
+            **limits,
             fan_percent=(lambda v: float(v) if v is not None else None)(
                 self._integer("nvmlDeviceGetFanSpeed", handle)),
             core_hz=mhz("nvmlDeviceGetClockInfo", handle, ctypes.c_uint(CLOCK_GRAPHICS)),
@@ -448,6 +606,24 @@ class Nvml:
             throttled=None if flags is None else bool(reasons),
             throttle_reasons=reasons,
         )
+
+
+def power_ceiling_w(highest_limit_w: Optional[float]) -> float:
+    """Above this a power reading is impossible: `IMPOSSIBLE_OVER_LIMIT` times
+    the highest limit the card declares, or the general ceiling without one."""
+    return IMPOSSIBLE_OVER_LIMIT * highest_limit_w if highest_limit_w else PLAUSIBLE["W"][1]
+
+
+def _answer(value, reasons: list[str], prefix: str = "") -> str:
+    """What one way answered: its milliwatts, or the reason it gave none."""
+    if value is not None:
+        return f"{value:.0f} mW"
+    # A field's own reason, or the one of the call that asks for all of them.
+    for reason in reversed(reasons):
+        name, _sep, why = reason.partition(": ")
+        if not prefix or name in (prefix, "nvmlDeviceGetFieldValues"):
+            return why
+    return "no answer"
 
 
 def _slot(bus_id: str) -> Optional[str]:

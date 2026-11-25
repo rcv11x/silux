@@ -32,7 +32,7 @@ RTX = nvml.NvidiaGpu(pci_slot="0000:01:00.0", name="GeForce RTX 3060",
 
 class TestNvmlSeGraba(unittest.TestCase):
     def proveedor(self, cliente):
-        p = nvidia.NvidiaGpus.__new__(nvidia.NvidiaGpus)
+        p = nvidia.NvidiaGpus()
         p.client = cliente
         return p
 
@@ -40,7 +40,7 @@ class TestNvmlSeGraba(unittest.TestCase):
         sysroot.start_recording()
         try:
             vivo = self.proveedor(mock.Mock(open=lambda: True, devices=lambda: [RTX]))
-            with mock.patch.object(nvidia, "sleeping_nvidias", return_value=[]):
+            with mock.patch.object(nvidia, "runtime_states", return_value={}):
                 self.assertTrue(vivo.available())
             vivo.collect(Draft())
         finally:

@@ -12,6 +12,60 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: la OpenCL de ROCm (o la de Intel) sale por su nombre, «AMD
+  Accelerated Parallel Processing», sin la versión de Mesa pegada: su
+  driver no es de Mesa.
+- Gráficos: un monitor cuyo modelo ya lleva la marca no la repite: «LG HDR
+  4K» y «HP 27wm», no «LG LG HDR 4K» ni «Hewlett Packard HP 27wm».
+- Placa base: con una base de dispositivos PCI antigua, que escribe el
+  modelo al final («LPC Controller/eSPI Controller (H670)»), el chipset de
+  Intel se reconoce: «Intel H670».
+- Placa base: en un procesador de AMD con gráfica integrada, sus USB y su
+  sonido salen «en el procesador», no «en la gráfica».
+- Sistema: una sesión gráfica arrancada desde la consola ya no sale como
+  «tty»: sale la de la pantalla en la que corre Silux, X11 o Wayland.
+- Sistema: el escritorio sale por su nombre, «Cinnamon» y «GNOME», no
+  «X-Cinnamon» ni «ubuntu:GNOME», como lo escribe la variable del sistema.
+- Almacenamiento: un lector de tarjetas sin tarjeta ya no sale como una
+  unidad «SSD · 0 B» por cada ranura. Al meter una tarjeta, aparece.
+- Gráficos: un ventilador que gira ya no sale «parado» porque su driver
+  diga que lo mueve al 0 %: salen sus revoluciones («1696 RPM»).
+- Gráficos y Sensores: el voltaje de una Radeon en reposo, con el núcleo
+  apagado, dice «en reposo» como su reloj, no «0.006 V».
+- Sensores: las temperaturas de la placa que nadie mide (las entradas sin
+  sonda de un chip nct67xx, a 0 °C o −1 °C) y el 0 °C de una gráfica en un
+  sensor que no tiene salen en gris, al final, sin límites ni avisos, y el
+  pie dice que no son una medida.
+- Gráficos: una Radeon cuyo driver da 0 °C en lo que no mide (la memoria y
+  los reguladores de una RX 5500 XT) ya no enseña esos 0.0 °C: las filas se
+  esconden y el pie dice que su driver no los publica.
+- Gráficos: una integrada de AMD que nadie nombra (una base de dispositivos
+  PCI antigua y un procesador cuya marca no dice su Radeon) ya no se titula
+  con el nombre en clave del procesador («Raphael»): sale como «AMD, gráfica
+  integrada», con el nombre en clave en su fila.
+- Gráficos: con una base de dispositivos PCI antigua, la integrada de Intel
+  salía con su nombre en clave («AlderLake-S GT1»). Ahora sale con su
+  nombre comercial («UHD Graphics 770»), y el nombre en clave va en su fila.
+- Gráficos: en un portátil con dos gráficas, Silux ya no mantiene
+  despierta la NVIDIA. Mientras nada más la usa, deja de preguntarle y el
+  driver la apaga como con Silux cerrado; la página dice que no se le
+  pregunta y, cuando se apaga, que está dormida. Mientras trabaja (un
+  juego, un video, CUDA), se lee como siempre; el servidor gráfico, que
+  suele salir en ella con unos pocos MiB, no cuenta. Una NVIDIA de
+  sobremesa no cambia.
+- Gráficos: una NVIDIA sin sensor de consumo, como la RTX 4060 de
+  sobremesa, enseña el consumo que calcula su driver con ese nombre y en su
+  propia fila: «Consumo estimado: 53 W · media de las muestras del driver,
+  últimos 2.4 s». No sale en Sensores, en Inicio ni en las gráficas, y el
+  pie avisa de que en reposo puede marcar más de lo que gasta.
+- Gráficos: una lectura imposible del consumo de una NVIDIA, como los 588 W
+  de una portátil recién despertada, se descarta y se dice por qué.
+- Gráficos: el pie de los sensores de una NVIDIA ya no dice «En una
+  GeForce» en una tarjeta profesional.
+- Gráficos: una tarjeta apagada por el sistema dice «Dormida (apagada para
+  ahorrar)», no «En reposo», que se leía como despierta y sin trabajo.
+- Informe: de cada NVIDIA, lo que contestó cada forma de leer el consumo y
+  si el sistema la tenía apagada.
 - Gráficos: si el consumo de una integrada de Intel no se puede leer (sale
   del contador RAPL del procesador), su página dice por qué en vez de un
   guion a secas. Dentro de un contenedor, el aviso de RAPL culpa al

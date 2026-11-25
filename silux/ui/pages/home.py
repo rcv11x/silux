@@ -376,9 +376,9 @@ class HomePage(ScrollPage):
 
         piezas, moldes = [], []
         fahrenheit = self._prefs.fahrenheit
-        if gpu.suspended:
-            # Solo si duermen todas: la que trabaja es la despierta.
-            piezas.append(_("gpu.asleep.short"))
+        if gpu.resting:
+            # Only when all rest: the one that works is the one awake.
+            piezas.append(render.gpu_rest(gpu))
             moldes.append((piezas[-1],))
         elif gpu.busy_percent is not None:
             piezas.append(render.percent(gpu.busy_percent))
@@ -422,12 +422,12 @@ class HomePage(ScrollPage):
         # What permissions would add is said, and only that: without it an
         # integrated GPU's card seemed to have nothing but a clock, and with
         # the power already shown it still said «usage and power».
-        usage_locked = (gpu.busy_percent is None and not gpu.suspended
+        usage_locked = (gpu.busy_percent is None and not gpu.resting
                         and snapshot.permission_note(f"gpus.{indice}.usage") is not None)
         # An Intel integrated GPU's power is RAPL's PP1, which goes with the
         # processor's permission (`providers/rapl.py`); where RAPL is readable
         # without one, the power is already there.
-        power_locked = (gpu.power_w is None and not gpu.suspended
+        power_locked = (gpu.power_w is None and not gpu.resting
                         and gpu.integrated and gpu.vendor == "Intel"
                         and snapshot.permission_note("cpu.power") is not None)
         bloqueada = {(True, True): _("home.gpu.locked"),
@@ -436,7 +436,7 @@ class HomePage(ScrollPage):
                          (usage_locked, power_locked), "")
         # The card sums up the one that works; a hybrid laptop's other one,
         # asleep or without a driver, is still the machine's and is named.
-        otras = [render.gpu_name(g) + (f" ({_('gpu.asleep.short')})" if g.suspended else "")
+        otras = [render.gpu_name(g) + (f" ({render.gpu_rest(g)})" if g.resting else "")
                  for i, g in enumerate(snapshot.gpus) if i != indice]
         tambien = _("home.gpu.also").format(tarjetas=" · ".join(otras)) if otras else ""
         pie = " ".join(p for p in (tambien, bloqueada) if p)

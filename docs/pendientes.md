@@ -138,18 +138,16 @@ la memoria) no va: está propuesto en las notas
     `nvidia-smi` y salen sin consumo. La tarjeta no tiene sensor: los 53 W
     del búfer de muestras son la estimación del driver, que en reposo marca
     unos 40 W de más ([nvml.md](nvml.md#las-tarjetas-sin-sensor-de-consumo)).
-    Por hacer: enseñarla con su nombre («Consumo estimado», en su campo, no
-    en `power_w`), descartar las lecturas imposibles de una portátil recién
-    despertada (588 W en una tarjeta de 95) y llevar al informe lo que
-    contesta cada vía, el búfer y el contador de energía incluidos. El
-    estado P (`GetPerformanceState`) no se graba.
+    Sale como «Consumo estimado». Los volcados no graban el búfer: hacen
+    falta informes nuevos de las dos para tener el caso entero en la suite.
+    El estado P (`GetPerformanceState`) no se graba.
   - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos
     campos: sirve para probar el ayudante de la prueba11 con el IMC, además
     del Lenovo LOQ con DDR5.
 * **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
   `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
   con Mint en sesión live es el mismo equipo y no se vuelca):
-  - Gráficos · baja · con una tarjeta en reposo no se pregunta a OpenGL,
+  - Gráficos · baja · con una tarjeta dormida no se pregunta a OpenGL,
     Vulkan ni OpenCL hasta que despierte, y la integrada se queda sin su
     versión del driver mientras tanto. OpenGL abre solo la gráfica de la
     pantalla: medir si `glxinfo` o EGL despiertan a la dormida
@@ -202,7 +200,23 @@ la memoria) no va: está propuesto en las notas
     Abierto desde su entrada de menú sale con nombre. Arreglo posible: al
     arrancar en un `app-@…`, pedir a systemd (por D-Bus, sin permisos) un
     *scope* `app-silux@…` para el propio proceso, como hace Plasma.
+* **De la RTX A1000 de portátil** (sin volcado; driver 580.178.04):
+  - Gráficos · alta · con Silux abierto la tarjeta no se dormía. Ahora se
+    cierra NVML cuando nada más la usa ([nvml.md](nvml.md#que-silux-no-la-mantenga-despierta)),
+    pero que fuera la sesión abierta sale del código, no de la tarjeta:
+    falta verlo en ella.
+  - Gráficos · media · si algo la mantiene despierta sin hacerla trabajar
+    (otro programa con NVML abierta, una pantalla externa con el escritorio
+    quieto), se lee cada unos 16 s y entre medias sale «sin preguntarle».
+  - Gráficos · baja · mientras reposa, la tarjeta pierde lo que solo da NVML
+    (su nombre comercial, su memoria): no se guarda de la última lectura.
+  - Gráficos · baja · NVML es una sesión para todas las NVIDIA: con una que
+    se puede dormir y otra que no, la segunda también deja de leerse
+    mientras se espera.
 * **Sin volcado, sin hacer todavía:**
+  - Gráficos · media · los 36 W de una GTX 1050 Ti en reposo pueden ser
+    también la estimación del búfer de muestras: falta un informe suyo que
+    diga qué contestó cada vía.
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
   - Modelo · baja · `dmi._firmware` guarda «BIOS heredada» y «UEFI (64
@@ -210,6 +224,34 @@ la memoria) no va: está propuesto en las notas
     la API.
   - VM · baja · el historial de Rendimiento de la VM tenía una prueba «15 s ·
     — · — · —»: preguntar si la canceló.
+* **Visto al arreglar los informes de la prueba11 y la prueba12** (sin
+  volcado):
+  - Almacenamiento · media · con una tarjeta metida, un lector por USB que
+    marca `rotational` a 0 sale «SSD», no «Flash»: `storage._kind` solo mira
+    `removable` cuando `rotational` es 1. Los lectores vacíos ya no salen.
+  - Sensores · baja · el chip `thinkpad` da 0 °C en varias sondas (volcados
+    `i5-1135g7` e `i5-8350u`) y no se marcan como relleno:
+    `hwmon._is_filler` solo mira los Super I/O y las gráficas.
+  - Disco · media · al juntar con la prueba de disco: una ranura del lector
+    que pierde la tarjeta deja de ser unidad pero sigue en `/sys/block`, así
+    que «Dónde» diría «Esa carpeta ya no está montada» y no «Ese disco ya no
+    está conectado».
+  - Gráficos · media · en una RX 9060 XT la ficha de la frecuencia dice
+    «memoria 1 MHz» y Relojes «Memoria: 96 MHz». La primera es
+    `memory_clock_average` de `gpu_metrics` (la media de `average_uclk`, con
+    la memoria en autorrefresco casi todo el tiempo), guardada en
+    `GpuClocks.memory_effective_hz` como si fuera la efectiva; la segunda, el
+    escalón de `pp_dpm_mclk`. Tienen que decir lo mismo, y la media llevar su
+    nombre (va con «Memoria (efectiva)» en Sensores).
+  - Gráficos · baja · en un i7-12700 salen seguidos dos avisos con el mismo
+    título, «Este equipo no lo expone» (la temperatura y el consumo de la
+    integrada): juntarlos o darles títulos distintos. Y la ficha del consumo
+    lleva el candado de «con permisos» mientras el aviso dice que el contador
+    de energía no avanza: no pueden contradecirse.
+  - Placa base · baja · en un Ryzen 9 7900 los USB 3 del procesador salen
+    «en el procesador» (comparten dispositivo con la integrada) y su USB 2
+    «en la placa»: cuelga de otro puente interno del procesador (`00:08.x`).
+    Decidirlo pide mirar de qué puente cuelga cada dispositivo.
 
 ## Datos que se leen mal o no se leen
 
@@ -564,6 +606,23 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
 ## Propuestas sin aplicar
 
+* **Una revisión de limpieza del código** (después de la prueba13).
+  Objetivo: código profesional, fácil de mantener y de leer, sin parches
+  sueltos. Primero solo el mapa, sin cambiar nada: todas las excepciones por
+  hardware (filtros, nombres, casos especiales), con dónde está cada una, qué
+  equipo la provocó y cuáles se pueden juntar en una regla o pasar a una
+  tabla de `silux/db/`; el código repetido; las funciones demasiado largas;
+  los nombres poco claros o en español. Luego, con el OK del autor, se limpia
+  por partes.
+* **La ficha del chip de la gráfica** (idea, después de la prueba13), como la
+  de TechPowerUp. Sin tabla se puede calcular: las unidades de sombreado a
+  partir de las CU, los TFLOPS en FP32 con el reloj máximo, y las tasas de
+  píxeles y de texturas con los ROP y las TMU. Necesita una tabla propia por
+  chip en `silux/db/`: la arquitectura, la generación, el proceso en nm, la
+  fundición, los transistores, el tamaño del die y la fecha de salida. La
+  tabla se hace con fuentes públicas (las especificaciones de AMD, Intel y
+  NVIDIA, Mesa, el kernel, Wikipedia), nunca copiando la base de datos de
+  TechPowerUp.
 * **La presión del sistema (PSI) para «¿Qué frena tu equipo?»** (idea, sin
   escribir). `/proc/pressure/{cpu,memory,io}` dicen qué parte del tiempo hubo
   tareas esperando CPU, memoria o disco: `some` y `full`, medias de 10, 60 y

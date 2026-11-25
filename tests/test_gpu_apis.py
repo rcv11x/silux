@@ -374,3 +374,56 @@ class TestMemoriaPorVulkan(unittest.TestCase):
         self.assertEqual(memoria.kind, "GDDR6")
         self.assertEqual(memoria.bus_bits, 256)
         self.assertEqual(memoria.total_bytes, 17_163_091_968)
+
+
+class TestAnOpenClThatIsNotMesas(unittest.TestCase):
+    """From a report: an RX 9060 XT with ROCm's OpenCL next to Mesa's
+    Vulkan and OpenGL. Its driver read «AMD Accelerated Parallel Processing
+    (Mesa 26.3.1)», Mesa's version on a driver that isn't Mesa."""
+
+    VULKAN = {"name": "AMD Radeon RX 9060 XT (RADV GFX1200)", "api_version": "1.4.363",
+              "instance_version": "1.4.350", "driver_version": 109064193,
+              "vendor_id": 0x1002, "device_id": 0x7590, "kind": "dedicada",
+              "device_memory_bytes": 17095983104}
+    OPENGL = {"version": "4.6 (Compatibility Profile) Mesa 26.3.1", "glsl": "4.60",
+              "renderer": "AMD Radeon RX 9060 XT (radeonsi, gfx1200, ACO, DRM 3.64, "
+                          "7.3.5-ogc2.1.fc45.x86_64)",
+              "vendor": "AMD", "egl_version": "1.5", "egl_vendor": "Mesa Project"}
+    ROCM = {"platform": "AMD Accelerated Parallel Processing",
+            "platform_version": "OpenCL 2.1 AMD-APP (3581.0)", "name": "gfx1200",
+            "vendor": "Advanced Micro Devices, Inc.", "version": "OpenCL 2.0",
+            "driver_version": "3581.0 (HSA1.1,LC)", "compute_units": 16,
+            "max_clock_mhz": 2620, "global_memory_bytes": 17095983104}
+
+    def _snapshot(self):
+        draft = _recolectar(
+            [{"vendor_id": 0x1002, "device_id": 0x7590, "vendor": "AMD", "driver": "amdgpu",
+              "primary": True}],
+            vulkan=[self.VULKAN], opengl=self.OPENGL, opencl=[self.ROCM])
+        return draft.freeze()
+
+    def test_it_goes_by_its_name(self):
+        from silux import render
+
+        gpu = self._snapshot().gpus[0]
+        self.assertEqual(gpu.userspace_driver, "Mesa")
+        opencl = next(a for a in gpu.apis if a.name == "OpenCL")
+        self.assertEqual(opencl.implementation, "AMD Accelerated Parallel Processing")
+        self.assertEqual(render.api_driver(opencl, gpu), "AMD Accelerated Parallel Processing")
+        vulkan = next(a for a in gpu.apis if a.name == "Vulkan")
+        self.assertEqual(render.api_driver(vulkan, gpu), "radv (Mesa 26.3.1)")
+
+    def test_on_the_graphics_page(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+        from tests import qt
+
+        app = qt.app()
+        page = GraphicsPage(theme.palette_for(app, "dark"), Preferences().normalized())
+        self.addCleanup(page.deleteLater)
+        page.apply(self._snapshot())
+        rows = {cells[0].full_text(): cells[2].full_text()
+                for cells in page._sections[0].apis._cells}
+        self.assertEqual(rows["OpenCL"], "AMD Accelerated Parallel Processing")
+        self.assertEqual(rows["Vulkan"], "radv (Mesa 26.3.1)")

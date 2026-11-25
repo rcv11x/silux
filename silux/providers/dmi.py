@@ -60,6 +60,10 @@ CHIPSET_CLASSES = (CLASS_ISA_BRIDGE,)
 _CHIPSET_MODEL = re.compile(
     r"\b([A-Z]{1,3}\d{2,4}[A-Z]*)\b(?=.*(chipset|lpc|espi|isa))", re.IGNORECASE
 )
+# Older pci.ids files put it last: «LPC Controller/eSPI Controller (H670)».
+_CHIPSET_MODEL_LAST = re.compile(
+    r"(?:chipset|lpc|espi|isa).*\(([A-Z]{1,3}\d{2,4}[A-Z]*)\)\s*$", re.IGNORECASE
+)
 
 
 # «500 Series Chipset Family On-Package eSPI Controller»: a family.
@@ -94,7 +98,7 @@ def chipset(bridge: Optional[tuple[str, str]], board: Optional[str]) -> Optional
     if bridge is None:
         return None
     vendor, name = bridge
-    match = _CHIPSET_MODEL.search(name)
+    match = _CHIPSET_MODEL.search(name) or _CHIPSET_MODEL_LAST.search(name)
     model = match.group(1) if match else None
     if model is None and (family := _CHIPSET_FAMILY.search(name)):
         # A laptop's PCH names its family, not a model: «500 Series».

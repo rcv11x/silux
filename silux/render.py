@@ -208,6 +208,19 @@ def gpu_clock(value: Optional[float]) -> str:
     return hz(value)
 
 
+# No working GPU core runs below this: a few millivolts is its rail switched
+# off while the engine sleeps (amdgpu's GFXOFF).
+GPU_RAIL_OFF_V = 0.1
+
+
+def gpu_voltage(value: Optional[float]) -> str:
+    """A GPU core's voltage, or that it is at rest: its rail switched off is
+    not a voltage of the engine."""
+    if value is not None and value < GPU_RAIL_OFF_V:
+        return _("gpu.clock.idle")
+    return volts(value)
+
+
 def hz(value: Optional[float], decimals: int | None = None) -> str:
     if _none(value):
         return DASH
@@ -842,19 +855,19 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     only the percentage. Putting «—» with «(0.0 %)» looked as if one datum
     were missing and another extra, when both say it's stopped.
     """
-    stopped = (rpm_value == 0) or (percent_value == 0)
     if _none(rpm_value) and _none(percent_value):
         return DASH
     # Its revolutions say it, whatever the PWM duty asks: «0 %» next to
-    # a fan spinning down read as a broken reading.
+    # a fan spinning down read as a broken reading, and a fan spinning
+    # with its duty read as 0 is not stopped.
     if rpm_value == 0:
         return _("fan.stopped.rpm")
-    if stopped:
+    if _none(rpm_value) and percent_value == 0:
         return _("fan.stopped")
     parts = []
     if not _none(rpm_value):
         parts.append(f"{int(rpm_value)} RPM")
-    if not _none(percent_value):
+    if not _none(percent_value) and not (parts and percent_value == 0):
         parts.append(f"({percent(percent_value)})" if parts else percent(percent_value))
     return "   ".join(parts)
 
@@ -1013,6 +1026,20 @@ _CHIP_ADDRESS = re.compile(r"(?:_[0-9a-f]{6,}|_\d+_[0-9a-f]+:\d+)$")
 def chip_name(chip: str) -> str:
     """A sensor chip's name without the address the kernel appends."""
     return _CHIP_ADDRESS.sub("", chip)
+
+
+def placeholder_note(chip: str, readings, fahrenheit: bool = False) -> str:
+    """Why a chip's fixed readings (`Sensor.placeholder`) are no measurement:
+    an ACPI zone the firmware wired to no sensor, or an input with nothing
+    connected («a steady 0.0 °C or -1.0 °C»)."""
+    from .providers.hwmon import ACPI_ZONES_CHIP
+
+    if chip == ACPI_ZONES_CHIP:
+        shown = ", ".join(temperature(v, fahrenheit) for v in sorted(readings))
+        return _("sensors.placeholder").format(chip=chip_name(chip), valor=shown)
+    shown = enumeration([temperature(v, fahrenheit) for v in sorted(readings, reverse=True)],
+                        last="list.or")
+    return _("sensors.placeholder.input").format(chip=chip_name(chip), valor=shown)
 
 
 # How each bus is written. The kernel gives them in lower case, and putting
@@ -1716,6 +1743,15 @@ def limit_watts(value: Optional[float]) -> str:
     return f"{figure(value, 0 if whole else 1)} W"
 
 
+def gpu_power_estimate(gpu) -> str:
+    """«53 W · mean of the driver's samples, last 2.4 s»: the figure an
+    NVIDIA's driver calculates where it measures no power, said to be that."""
+    if _none(gpu.power_estimate_w):
+        return DASH
+    return " · ".join((watts(gpu.power_estimate_w), _("gpu.power.estimate.detail").format(
+        window=seconds(gpu.power_estimate_window_s))))
+
+
 def gpu_factory_power_limit(gpu) -> str:
     """«340 W · de fábrica 330 W»: the cap in force and the factory one.
     The range the driver accepts goes in the tooltip: in the row it was cut."""
@@ -1773,8 +1809,12 @@ def gpu_driver_version(gpu) -> Optional[str]:
 
 
 def api_driver(api, gpu) -> Optional[str]:
-    """A library's driver: «radv (Mesa 26.2.6)», «rusticl (Mesa 26.2.6)»."""
+    """A library's driver: «radv (Mesa 26.2.6)», «rusticl (Mesa 26.2.6)»,
+    or another maker's by its name, «AMD Accelerated Parallel Processing»:
+    Mesa's version is not its."""
     if api.implementation and gpu.userspace_driver and gpu.driver_version:
+        if not api.by_mesa:
+            return api.implementation
         return f"{api.implementation} ({gpu.userspace_driver} {gpu.driver_version})"
     return api.driver
 
@@ -2236,9 +2276,9 @@ def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
     - NVIDIA has NVENC and NVDEC apart, and NVML measures them apart: two
       bars.
 
-    A sleeping card has no bars: nothing was read from it.
+    A resting card has no bars: nothing was read from it.
     """
-    if getattr(gpu, "suspended", False):
+    if getattr(gpu, "resting", False):
         return []
     if gpu.engines:
         by_type: dict[str, list] = {}
@@ -2271,7 +2311,7 @@ def engine_gaps(gpu) -> list[str]:
     foot, so it doesn't disappear silently. What's there and held by a
     permission isn't this: it carries a padlock (`engine_levels` with None).
     """
-    if getattr(gpu, "suspended", False):
+    if getattr(gpu, "resting", False):
         return []
     if gpu.driver == "xe":
         # xe does publish its engines' usage, with a PMU silux doesn't read
@@ -2284,6 +2324,16 @@ def engine_gaps(gpu) -> list[str]:
     return [key for key in expected if key not in measured]
 
 
+def gpu_rest(gpu) -> str:
+    """Why nothing was read from a card, in a word: asleep, or left alone
+    while nothing uses it so that it can fall asleep. "" when it was read."""
+    if getattr(gpu, "suspended", False):
+        return _("gpu.asleep.short")
+    if getattr(gpu, "left_to_sleep", False):
+        return _("gpu.lefttosleep.short")
+    return ""
+
+
 def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
     """What's said of a suspended card, or "" if it's awake.
 
@@ -2291,6 +2341,8 @@ def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
     and when, if it was seen awake: a temperature without its time would
     read as the current one.
     """
+    if getattr(gpu, "left_to_sleep", False):
+        return _("gpu.lefttosleep")
     if not getattr(gpu, "suspended", False):
         return ""
     text = _("gpu.asleep")
@@ -2375,9 +2427,10 @@ def monitor_name(monitor: Optional[Edid]) -> str:
     if monitor is None:
         return DASH
     # The brand, not the legal name: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
-    # FO27Q2» ate up the outputs table's width.
-    parts = [p for p in (maker(monitor.manufacturer), monitor.model) if p]
-    return " ".join(parts) if parts else (monitor.manufacturer_id or DASH)
+    # FO27Q2» ate up the outputs table's width. And once: many models start
+    # with it («LG HDR 4K», «ASUS VA24E»).
+    return (with_maker(monitor.manufacturer, monitor.model)
+            or maker(monitor.manufacturer) or monitor.manufacturer_id or DASH)
 
 
 def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:

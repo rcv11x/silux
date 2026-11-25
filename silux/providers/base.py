@@ -38,6 +38,12 @@ from ..model import (
 )
 
 
+def frozen_gpu(raw: dict[str, Any]) -> Gpu:
+    """A GPU's draft as the snapshot will hold it. What isn't a field of the
+    model (`_is_apu`) stays behind."""
+    return Gpu(**{k: v for k, v in raw.items() if k in Gpu.__dataclass_fields__})
+
+
 @dataclass
 class Draft:
     """Mutable state during one collection. It never leaves the collector."""
@@ -167,10 +173,7 @@ class Draft:
             sound_cards=tuple(self.sound_cards),
             cameras=tuple(self.cameras),
             bluetooth=tuple(self.bluetooth),
-            gpus=tuple(
-                Gpu(**{k: v for k, v in raw.items() if k in Gpu.__dataclass_fields__})
-                for raw in self.gpus
-            ),
+            gpus=tuple(frozen_gpu(raw) for raw in self.gpus),
             privileged=self.privileged,
             sensors=tuple(self.sensors),
             driver_hints=tuple(self.driver_hints),

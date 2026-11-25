@@ -65,6 +65,17 @@ class TestTheNvidiaPage(unittest.TestCase):
         self.assertIn(_("gpu.na.nvidia.sensors"), seccion.sensors_pie.text())
         self.assertIn(_("gpu.na.nvidia.memory"), seccion.memory_pie.text())
 
+    def test_the_foot_does_not_assume_the_cards_family(self):
+        # A professional RTX A1000 read «On a GeForce» at the foot of its sensors.
+        from silux import i18n
+        self.addCleanup(i18n.set_language, i18n.current())
+        for language in ("es", "en"):
+            i18n.set_language(language)
+            foot = self._section().sensors_pie.text()
+            with self.subTest(language=language):
+                self.assertIn("NVML", foot)
+                self.assertNotIn("GeForce", foot)
+
     def test_what_it_does_publish_stays(self):
         seccion = self._section()
         for grid, clave in ((seccion.card, "gpu.field.compute"), (seccion.memory, "gpu.vram.bus"),

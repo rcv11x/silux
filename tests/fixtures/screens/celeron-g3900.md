@@ -1,7 +1,7 @@
 ## Inicio
 
 ASUS H110M-D
-Linux Mint 22.3 · Linux 6.8.0-111-generic · X-Cinnamon · x11 · encendido 15 min
+Linux Mint 22.3 · Linux 6.8.0-111-generic · Cinnamon · x11 · encendido 15 min
 silux-pc
 
 ### Procesador
@@ -523,7 +523,7 @@ Este equipo no tiene adaptador Bluetooth.
 
 Linux Mint 22.3
 silux-pc · encendido 15 min
-Linux 6.8.0-111-generic · X-Cinnamon · x11
+Linux 6.8.0-111-generic · Cinnamon · x11
 
 ### Sistema operativo
 
@@ -540,7 +540,7 @@ Esta distribución no declara variante.
 - Arquitectura: x86_64
 - Compilación: #111-Ubuntu SMP PREEMPT_DYNAMIC Sat Apr 11 23:16:02 UTC 2026 · gcc 13.3.0
 - Init: systemd
-- Escritorio: X-Cinnamon
+- Escritorio: Cinnamon
 - Sesión: x11
 - Shell: bash
 - Gráficos: Mesa 25.2.8

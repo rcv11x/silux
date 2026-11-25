@@ -24,6 +24,9 @@ va al informe.
 | Ventilador | `nvmlDeviceGetFanSpeed` | 270 | las dedicadas con ventilador propio | SYM, DQ |
 | Consumo | `nvmlDeviceGetPowerUsage` | 270 | Fermi o posterior, con gestión de energía | SYM, DQ |
 | | si no, los campos 185 y 186 con `nvmlDeviceGetFieldValues` | campos R535 (la función, R384) | 185: Ampere o posterior, menos GA100; 186: todas | H, CL |
+| Consumo estimado | `nvmlDeviceGetSamples` con `NVML_TOTAL_POWER_SAMPLES`; se enseña solo si ninguna de las de arriba contesta | R340 | Kepler o posterior | SYM, H |
+| Procesos de cómputo (solo para dejarla dormir) | `nvmlDeviceGetComputeRunningProcesses_v3`; si no, `_v2` o sin versión | R510; 450.66; 285 | no comprobado | SYM |
+| Energía gastada (solo al informe) | `nvmlDeviceGetTotalEnergyConsumption` | R384 | Volta o posterior | SYM, H |
 | Límite de potencia actual | `nvmlDeviceGetEnforcedPowerLimit` | R331 | Kepler o posterior | SYM, CL, DQ |
 | Límite de fábrica y rango | `nvmlDeviceGetPowerManagementDefaultLimit`, `nvmlDeviceGetPowerManagementLimitConstraints` | R304 | Kepler o posterior | SYM, CL, DQ |
 | Relojes actuales y máximos | `nvmlDeviceGetClockInfo`, `nvmlDeviceGetMaxClockInfo` | 270; R285 (el de video, R361) | Fermi o posterior | SYM, CL, DQ |
@@ -31,10 +34,11 @@ va al informe.
 | Motivos de recorte | `nvmlDeviceGetCurrentClocksEventReasons`; si no, `nvmlDeviceGetCurrentClocksThrottleReasons` | R535; R304 | todas las que NVML admite del todo | SYM, H, CL, DQ |
 
 El consumo es lo que `nvidia-smi` da como `power.draw`, `power.draw.average`
-y `power.draw.instant`. Si las tres contestan que no, hoy la tarjeta sale sin
-consumo, con lo que contestó cada una en el informe. Qué más publica el
-driver, qué vale cada cifra y qué falta por hacer está abajo, en
-«El consumo, a fondo».
+y `power.draw.instant`. Si las tres contestan que no y el búfer de muestras
+sí, la tarjeta sale con el consumo estimado del driver, en su propio campo y
+nunca como el consumo. Lo que contestó cada vía, el búfer y la energía
+incluidos, va al informe. Qué vale cada cifra está abajo, en «El consumo, a
+fondo».
 
 La temperatura y los motivos de recorte se piden primero con la función
 nueva: las antiguas están obsoletas desde CUDA 13.0 (R580) y se quitan en
@@ -87,6 +91,22 @@ el driver 595 y otra con el 620, son esa cifra.
 De ahí la regla: **una cifra que solo sale del búfer es una estimación del
 driver, no una medida**. Se puede enseñar con ese nombre; no es «el consumo».
 
+Así la enseña Silux:
+
+- En la página de la gráfica, una fila propia: «Consumo estimado: 53 W ·
+  media de las muestras del driver, últimos 2.4 s». La ventana es la de las
+  muestras nuevas desde la lectura anterior; en la primera, todo el búfer.
+- Al pie, que el driver no mide el consumo de esa tarjeta: lo calcula, y en
+  reposo puede marcar más de lo que gasta.
+- En `--json`, `power_estimate_w`, `power_estimate_window_s` y
+  `power_estimate_samples`. `power_w` se queda vacío.
+- Ni en Sensores, ni en Inicio, ni en la ficha del consumo, ni en ninguna
+  gráfica: no la toman por el consumo ni el máximo ni la media.
+
+En una tarjeta con sensor el búfer también se pregunta, pero solo va al
+informe. `power_source` dice qué vía dio `power_w`. No es lo que NVML llama
+«power source» (`nvmlDeviceGetPowerSource`, corriente o batería).
+
 ### Por generación
 
 Lo que dice la cabecera y lo que se ha visto. Donde pone «sin datos», no se
@@ -118,11 +138,16 @@ Es lo que la cabecera promete para una tarjeta con sensor. Lo visto:
 
 En un portátil con Turing o posterior, el driver apaga la gráfica cuando no
 se usa (Runtime D3; solo ahí: en sobremesa y en las anteriores no lo activa).
-Preguntarle entonces tiene dos efectos:
+Preguntarle entonces tiene tres efectos:
 
 - **La despierta.** Toda llamada de control al driver pide la tarjeta
-  encendida, salvo las marcadas como que no la tocan. Por eso Silux cierra
-  NVML mientras una NVIDIA está suspendida (`sleeping_nvidias`).
+  encendida, salvo las marcadas como que no la tocan.
+- **La mantiene despierta mientras NVML siga abierta.** Abrir NVML abre el
+  nodo de la tarjeta. La primera apertura toma una referencia que no se
+  suelta hasta el último cierre (`nv_start_device` y `nv_stop_device`, en
+  `nv.c`), y `os_ref_dynamic_power` la cuenta en los dos modos de RTD3. Sin
+  ninguna, el driver aún necesita dos comprobaciones seguidas sin uso, cada
+  5 s, para apagarla (`GC6_PRECONDITION_CHECK_TIME`, en `dynamic-power.c`).
 - **La primera lectura puede ser imposible.** Hay tres casos publicados, con
   las ramas 550 y 570: 588 y 593 W en una tarjeta de 145 W como mucho, 749 W
   en una de 45 y 752 W en una de 80. En los tres la tarjeta dormía o acababa
@@ -134,11 +159,77 @@ Una lectura de 588,21 W seguida de 1,28 W unos segundos después, en una RTX
 tarjeta. La misma cifra, 588,21 W, sale en el caso publicado de otra tarjeta
 con el mismo driver.
 
+Por eso Silux descarta toda lectura por encima de 1,5 veces el mayor límite
+que declara la tarjeta (el vigente, el de fábrica o el máximo), venga de la
+vía que venga. No pasa a la vía siguiente: esa muestra sale sin consumo, con
+una nota, y el informe dice la cifra, la vía y el techo. Si la tarjeta
+estaba suspendida desde la lectura anterior, la nota lo da como causa
+probable. El margen hace falta: una tarjeta a tope va pegada a su límite y
+lo pasa por poco (una RTX 3060 tiene el máximo igual al de fábrica, 170 W).
+Las imposibles vistas van de 4 a 16 veces el máximo. Sin ningún límite
+declarado queda el techo general de 5000 W, y el informe lo dice. Del búfer
+de muestras se apartan las que pasan el techo.
+
 Los módulos abiertos enseñan de dónde puede salir una cifra vieja: el driver
 copia la potencia cada 250 ms a una página de memoria compartida, con su
 marca de tiempo, para que NVML la lea de ahí. Con la tarjeta dormida nadie
 la actualiza. Que el 588 salga de ahí es una suposición: la biblioteca que
 lo lee no es abierta.
+
+### Que Silux no la mantenga despierta
+
+En una RTX A1000 de portátil con el 580.178.04, con Silux abierto
+`runtime_status` seguía en `active`; al cerrarlo pasaba a `suspended` en
+menos de 10 s. Silux cerraba NVML solo cuando la tarjeta ya dormía, y con la
+sesión abierta no llegaba a dormirse.
+
+Con una NVIDIA que el driver puede apagar, Silux hace esto:
+
+- En cada muestra lee `power/runtime_status`, que no la despierta.
+  Suspendida, no llama a NVML y la tarjeta sale dormida.
+- Despierta, la lee. Si no está trabajando, cierra la sesión
+  (`nvmlShutdown`) y no vuelve a preguntarle en 15 s, lo que tarda el
+  driver en apagarla. Mientras tanto sale «sin preguntarle».
+- Si a los 15 s sigue despierta, algo más la mantiene así, y se lee otra vez.
+- Mientras trabaja (un juego, un video, un programa de CUDA), la sesión
+  sigue abierta y se lee en cada muestra.
+
+Que el driver la puede apagar lo dice `/proc/driver/nvidia/gpus/<ranura>/power`
+(«Runtime D3 status: Enabled»), que se lee sin tomar referencia
+(`nv_procfs_read_power`). El `information` de al lado sí la toma, y no se
+lee. Una tarjeta vista suspendida también cuenta. Una NVIDIA de sobremesa, o
+una portátil sin RTD3, sigue como siempre: la sesión abierta y una lectura
+por muestra.
+
+Trabajar es tener algún motor ocupado en la última lectura (el gráfico, el
+controlador de memoria, NVENC o NVDEC) o un proceso de cómputo en ella. Es
+lo mismo que mira el driver antes de apagarla: si sus motores están
+parados. Con un proceso de CUDA no la apaga, así que leerla no cambia nada.
+
+Lo que no cuenta, y por qué:
+
+- **Los procesos gráficos.** En un portátil híbrido, Xorg, o el compositor
+  de Wayland, sale como proceso gráfico de la NVIDIA con 4 MiB aunque no la
+  use, y en modo fino el driver la apaga igual. Excluirlos por su nombre
+  pide una lista que no se acaba (Xorg, Xwayland, gnome-shell, kwin, sway,
+  Hyprland…), y gamescope es un compositor que lleva juegos dentro.
+- **La memoria por encima de la de base.** Lo que se da como usado en
+  reposo cambia con el driver y con la tarjeta, y un umbral fijo acertaría
+  en unas y no en otras.
+
+Cuando se equivoca, se equivoca hacia la batería: un programa que usa la
+tarjeta y en una lectura no la ocupa pierde 15 s de datos y se vuelve a
+leer. Al revés, la tarjeta se quedaría despierta, que es el fallo que esto
+arregla.
+
+Los procesos de cómputo se cuentan con `nvmlDeviceGetComputeRunningProcesses`
+con la lista vacía: contesta cuántos hay sin leer ninguna estructura. Solo
+deciden; no se enseñan.
+
+OpenGL, Vulkan y OpenCL se preguntan al arrancar, en otro proceso que muere
+al contestar. Para enumerar las tarjetas abren todas, así que preguntarles
+con una dormida la despertaría. Si hay alguna dormida, Silux no les
+pregunta hasta que despierte.
 
 ### Con root y sin root
 
@@ -223,6 +314,14 @@ driver de Vulkan de Mesa, encima de nouveau: no añade ningún sensor.
   de NVIDIA: la 580 es la última para Maxwell, Pascal y Volta.
 
 ## Lo que no se ha confirmado
+
+- Que la sesión abierta de NVML sea lo que mantenía despierta la RTX A1000
+  sale del código de los módulos abiertos, no de una prueba. Y no cuadra
+  del todo: el manual dice que en modo fino se apaga aunque haya programas
+  con la tarjeta abierta, y no se ha encontrado dónde se suelta entonces esa
+  referencia.
+- Que OpenGL, Vulkan y OpenCL despierten la tarjeta al enumerarla: sus
+  bibliotecas no son abiertas. Silux no depende de ello.
 
 - Lo de la RTX 4060 sin sensor y las reseñas que la midieron se ha leído en
   citas y resúmenes: las páginas de NVIDIA y de TechPowerUp no se dejaron

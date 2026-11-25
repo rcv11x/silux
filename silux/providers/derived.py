@@ -16,7 +16,7 @@ from typing import Optional
 
 from ..i18n import _
 from ..model import DeviceKind, Gpu, Need, Sensor, SensorKind, short_brand, thread_name
-from .base import Draft, Provider
+from .base import Draft, Provider, frozen_gpu
 
 # Rounded to one decimal, 0.845 V becomes 0.8 and says nothing: each kind
 # has its own precision.
@@ -138,10 +138,12 @@ class DerivedSensors(Provider):
         temperatures come from the driver and its ioctl, and are just as
         worth tracking.
         """
+        from ..render import gpu_name
+
         sensors: list[Sensor] = []
         for gpu in draft.gpus:
-            device = gpu.get("name") or _("sensor.dev.gpu").format(
-                n=gpu.get("index", 0))
+            # As every page names it.
+            device = gpu_name(frozen_gpu(gpu))
             # The same key hwmon gives the card's chip: its PCI slot.
             device_key = (f"gpu:{gpu['pci_slot']}" if gpu.get("pci_slot")
                              else f"gpu-index:{gpu.get('index', 0)}")

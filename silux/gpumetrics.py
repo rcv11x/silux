@@ -195,9 +195,12 @@ def parse(raw: bytes) -> Optional[Metrics]:
         125 degrees, so 4410 can't be degrees and 44 can't be centidegrees:
         the two cases are told apart without ambiguity and without relying on
         the version.
+
+        Zero is no reading: the firmware writes it for the sensors the card
+        doesn't have (the memory and the regulators on some Navi 14).
         """
         value = field(name)
-        if value is None:
+        if not value:
             return None
         if value > 200:                  # no GPU reaches 200 degrees
             return round(value / 100, 1)

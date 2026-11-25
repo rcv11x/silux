@@ -204,9 +204,9 @@ Es una placa suelta: el firmware no describe un equipo de marca.
 | SATA | A320 Chipset SATA Controller [AHCI mode] | en la placa |  | ahci |
 | SATA | FCH SATA Controller [AHCI mode] | en la placa |  | ahci |
 | USB | A320 USB 3.1 XHCI Host Controller | en la placa |  | xhci_hcd |
-| USB | Raven2 USB 3.1 | en la gráfica |  | xhci_hcd |
-| Sonido | Raven/Raven2/Fenghuang HDMI/DP Audio Controller | en la gráfica |  | snd_hda_intel |
-| Sonido | Ryzen HD Audio Controller | en la gráfica |  | snd_hda_intel |
+| USB | Raven2 USB 3.1 | en el procesador |  | xhci_hcd |
+| Sonido | Raven/Raven2/Fenghuang HDMI/DP Audio Controller | en el procesador |  | snd_hda_intel |
+| Sonido | Ryzen HD Audio Controller | en el procesador |  | snd_hda_intel |
 
 El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmware y sale al dar permisos.
 

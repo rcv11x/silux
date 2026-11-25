@@ -20,6 +20,10 @@ from . import thermal
 from .edid import Edid, VideoMode  # noqa: F401  (re-exported by the model)
 from .spd import SpdInfo, Timings  # noqa: F401  (re-exported by the model)
 
+# A field's metadata for what only the report writes: what the driver
+# answered to each call, not data for other programs (`to_jsonable`).
+REPORT_ONLY = {"report_only": True}
+
 
 class Need(str, Enum):
     """Why a datum is missing. What the interface shows the user."""
@@ -949,6 +953,8 @@ VENDOR_ALIASES: dict[str, str] = {
     "lg electronics": "LG",
     "american megatrends": "AMI",
     "hewlett-packard": "HP",
+    # As pnp.ids names it, in its monitors' EDID.
+    "hewlett packard": "HP",
     "lenovo": "Lenovo",
     "positivo informatica": "Positivo",
     "dell inc.": "Dell",
@@ -1324,6 +1330,12 @@ class GpuClocks:
     overdrive: Optional[bool] = None
 
 
+# The OpenCL platforms that are Mesa's. Another (ROCm's «AMD Accelerated
+# Parallel Processing», «NVIDIA CUDA», Intel's compute runtime) is a driver
+# of its own, and Mesa's version is not its.
+MESA_OPENCL = ("rusticl", "Clover")
+
+
 @dataclass(frozen=True, slots=True)
 class GpuApi:
     """A graphics API and how far it goes on this machine."""
@@ -1332,8 +1344,18 @@ class GpuApi:
     version: Optional[str] = None
     device: Optional[str] = None    # what the card calls itself there
     driver: Optional[str] = None
-    implementation: Optional[str] = None  # radv, radeonsi, rusticl…
+    # Mesa's driver (radv, radeonsi, rusticl…), or OpenCL's platform.
+    implementation: Optional[str] = None
     extra: Optional[str] = None     # GLSL, compute units…
+
+    @property
+    def by_mesa(self) -> bool:
+        """Whether Mesa's driver answers. Vulkan's and OpenGL's
+        implementation is only read from Mesa's names; an OpenCL platform
+        may be another maker's."""
+        if self.name == "OpenCL":
+            return self.implementation in MESA_OPENCL
+        return self.implementation is not None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1458,6 +1480,11 @@ class Gpu:
     suspended: bool = False
     last_awake_s: Optional[float] = None
     last_temp_c: Optional[float] = None
+    # Awake and left alone on purpose: nothing else uses it, and an open NVML
+    # session would keep it from sleeping (docs/nvml.md). Nothing is read.
+    left_to_sleep: bool = False
+    # The kernel's runtime PM state when it was read.
+    runtime_status: Optional[str] = field(default=None, metadata=REPORT_ONLY)
 
     memory: GpuMemory = field(default_factory=GpuMemory)
     link: PcieLink = field(default_factory=PcieLink)
@@ -1503,6 +1530,18 @@ class Gpu:
     power_cap_default_w: Optional[float] = None
     power_cap_min_w: Optional[float] = None
     power_cap_max_w: Optional[float] = None
+    # Which of NVML's ways gave `power_w` (docs/nvml.md). Not «AC or battery»,
+    # which is what NVML calls its power source.
+    power_source: Optional[str] = None
+    # The driver's estimate, on a card it measures no power on: the mean of
+    # its power samples over the window. Never `power_w`, and never in
+    # Sensors, Home or a chart.
+    power_estimate_w: Optional[float] = None
+    power_estimate_window_s: Optional[float] = None
+    power_estimate_samples: Optional[int] = None
+    # (way, answer) for each way NVML has of reading the power, the energy
+    # counter included.
+    power_answers: tuple[tuple[str, str], ...] = field(default=(), metadata=REPORT_ONLY)
     fan_rpm: Optional[int] = None
     fan_percent: Optional[float] = None
     # A laptop's dedicated card: its fans are the machine's, in its embedded
@@ -1535,8 +1574,17 @@ class Gpu:
 
     @property
     def display_name(self) -> Optional[str]:
-        """Its name; `render.gpu_name` says it when there is none."""
-        return self.name or self.codename
+        """Its name; `render.gpu_name` says it when there is none.
+
+        A card without one goes by its chip's codename. An integrated GPU
+        does not: its codename is the processor's («Raphael»).
+        """
+        return self.name or (None if self.integrated else self.codename)
+
+    @property
+    def resting(self) -> bool:
+        """Nothing was asked of it: suspended, or left alone to fall asleep."""
+        return self.suspended or self.left_to_sleep
 
     @property
     def temp_level(self) -> str:
@@ -2082,11 +2130,11 @@ class Sensor:
     # what reaches each input was decided by the board's designer, and the
     # kernel doesn't know. Said in the window instead of making up a name.
     unnamed: bool = False
-    # True when what's read isn't a measurement but the fixed number the
-    # firmware returns for a thermal zone wired to no sensor: 16.8 or 27.8 °C
-    # stuck in many desktop boards' `acpitz`. The machine publishes it, so
-    # it's shown; but it says what it is, carries no thresholds and doesn't
-    # count as any part's temperature.
+    # True when what's read isn't a measurement but a fixed number nobody
+    # measured: 16.8 or 27.8 °C stuck in many desktop boards' `acpitz`, or 0 °C
+    # on a Super I/O input with no probe. The machine publishes it, so it's
+    # shown; but it says what it is, carries no thresholds and doesn't count
+    # as any part's temperature.
     placeholder: bool = False
     # The chip this reading repeats, or None. A Gigabyte board's WMI
     # interface publishes the same probes as its Super I/O: the same chip
@@ -2127,6 +2175,13 @@ class Sensor:
         """Whether its value can be one of its kind: a raw counter is not."""
         unit = SENSOR_UNITS.get(self.kind)
         return unit is None or plausible(self.value, unit)
+
+    @property
+    def gpu_core_rail(self) -> bool:
+        """Whether it is a GPU core's voltage (amdgpu's «vddgfx»), which reads
+        a few millivolts with the core switched off at rest."""
+        return (self.device_kind == DeviceKind.GPU and self.kind is SensorKind.VOLTAGE
+                and (self.chip_label or "").lower() == "vddgfx")
 
     @property
     def group(self) -> str:
@@ -2327,7 +2382,7 @@ class Snapshot:
         if not self.gpus:
             return None
         awake = [i for i, g in enumerate(self.gpus)
-                 if not g.suspended and (g.driver or g.drm_node)]
+                 if not g.resting and (g.driver or g.drm_node)]
         for i in awake:
             if self.gpus[i].integrated is False:
                 return i
@@ -2359,11 +2414,14 @@ def to_jsonable(obj: Any) -> Any:
 
     Written by hand instead of using `dataclasses.asdict` because the
     computed properties (multipliers, totals) must be included and the sets
-    sorted so the output is stable between runs.
+    sorted so the output is stable between runs. What is only for the report
+    (`REPORT_ONLY`) is left out.
     """
     if is_dataclass(obj) and not isinstance(obj, type):
         out: dict[str, Any] = {}
         for f in fields(obj):
+            if f.metadata.get("report_only"):
+                continue
             out[f.name] = to_jsonable(getattr(obj, f.name))
         for extra in _COMPUTED.get(type(obj).__name__, ()):
             out[extra] = to_jsonable(getattr(obj, extra))

@@ -156,6 +156,15 @@ def _intel_commercial_name(name: Optional[str], vendor_id: int, device_id: int) 
     return re.sub(r"\s+Controller$", "", name.strip())
 
 
+def _intel_codename_only(gpu: dict, vendor_id: int) -> bool:
+    """Whether an older pci.ids gave an Intel GPU only its codename:
+    «AlderLake-S GT1», where newer files write «Alder Lake-S GT1 [UHD
+    Graphics 770]». Every Intel GPU's marketing name says «Graphics»."""
+    name = gpu.get("name") or ""
+    return (vendor_id == INTEL and not gpu.get("codename") and bool(name)
+            and "graphics" not in name.lower() and "/" not in name)
+
+
 # Words that say nothing of which GPU it is.
 _GENERIC_WORDS = frozenset(("graphics", "controller", "integrated", "series", "mobile",
                             "and", "with", "the"))
@@ -256,6 +265,7 @@ class DrmGpus(Provider):
                 gpu["memory"] = _total_memory(device)
                 self._ask_the_driver(gpu, device)
             gpu["integrated"] = _is_integrated(gpu)
+            _apu_codename_apart(gpu)
             if gpu["driver"] in VIRTUAL_DRIVERS:
                 gpu["virtual"] = True
 
@@ -418,6 +428,8 @@ class DrmGpus(Provider):
             brand, model = found_one
             gpu["vendor"] = gpu["vendor"] or brand
             gpu["codename"], gpu["name"] = _split_name(model)
+        if _intel_codename_only(gpu, vendor_id):
+            gpu["codename"], gpu["name"] = gpu["name"], None
         gpu["name"] = _intel_commercial_name(gpu.get("name"), vendor_id, device_id)
 
         if subsystem and (found_one := names.get(subsystem[0])):
@@ -444,6 +456,17 @@ class DrmGpus(Provider):
                 and (integrated := _cpu_igpu(draft))):
             gpu["codename"] = gpu.get("codename") or gpu.get("name")
             gpu["name"] = integrated
+
+
+def _apu_codename_apart(gpu: dict) -> None:
+    """An AMD integrated GPU nobody names: pci.ids gives only its codename
+    («Raphael», without brackets) and the processor's brand names no
+    Radeon. The codename goes in its own field, and the GPU stays unnamed
+    rather than titled by it."""
+    name = gpu.get("name") or ""
+    if (gpu.get("vendor") == "AMD" and gpu.get("integrated") and not gpu.get("codename")
+            and name and "radeon" not in name.lower()):
+        gpu["codename"], gpu["name"] = name, None
 
 
 def _is_integrated(gpu: dict) -> Optional[bool]:
@@ -475,6 +498,22 @@ def _is_integrated(gpu: dict) -> Optional[bool]:
         return False
 
     return None
+
+
+def say_asleep(draft: Draft, index: int) -> None:
+    """Card N sleeps, said once, instead of what said a driver was missing.
+
+    Read awake at the static pass, its driver's notice could say a driver was
+    missing (NVIDIA's, before NVML answers). Asleep, NVML is closed on
+    purpose: what is missing is that it sleeps.
+    """
+    path = f"gpus.{index}"
+    draft.notes = [n for n in draft.notes
+                   if not (n.path == path and n.need is Need.DRIVER)]
+    if not any(n.path == path and n.need is Need.HARDWARE for n in draft.notes):
+        draft.note(path, Need.HARDWARE,
+                   _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
+                   key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
 
 
 class GpuState(Provider):
@@ -569,16 +608,7 @@ class GpuState(Provider):
                 continue
             if is_suspended(device):
                 self._asleep(gpu, node)
-                # Read awake at the static pass, its driver's notice said a
-                # driver was missing (NVIDIA's, before NVML answers). Asleep,
-                # NVML is closed on purpose: what is missing is that it sleeps.
-                path = f"gpus.{index}"
-                draft.notes = [n for n in draft.notes
-                               if not (n.path == path and n.need is Need.DRIVER)]
-                if not any(n.path == path and n.need is Need.HARDWARE for n in draft.notes):
-                    draft.note(path, Need.HARDWARE,
-                               _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
-                           key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
+                say_asleep(draft, index)
                 continue
             if gpu.get("suspended"):
                 # The static data was read with it asleep and half the card is missing.
@@ -1278,7 +1308,9 @@ def _sensors(gpu: dict, device: pathlib.Path) -> None:
         return
 
     temperatures = _labelled(hwmon, "temp")
-    milli = lambda v: round(v / 1000, 1) if v is not None else None
+    # A GPU never reads 0 °C: amdgpu gives 0 for a sensor the card lacks
+    # (the memory's on some Navi 14).
+    milli = lambda v: round(v / 1000, 1) if v is not None and v > 0 else None
     # «edge» on amdgpu; «pkg» on xe, the GPU package's (xe_hwmon.c labels the
     # package channel so, and «vram» the memory's).
     gpu["temp_c"] = milli(_first(temperatures.get("edge"), temperatures.get("pkg")))
