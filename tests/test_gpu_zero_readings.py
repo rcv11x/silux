@@ -2,7 +2,8 @@
 
 From a report: an RX 5500 XT (Navi 14) whose firmware table and hwmon give
 0 for the memory's temperature and the three regulators'. The Graphics page
-read «Memory chips: 0.0 °C» and three regulators at 0.0 °C.
+read «Memory chips: 0.0 °C» and three regulators at 0.0 °C. At rest its core's
+rail is switched off and reads 6 mV, which the page showed as «0.006 V».
 """
 
 import unittest
@@ -118,6 +119,75 @@ class TestTheRx5500xt(BancoDrm):
         foot = section.sensors_pie.text()
         self.assertIn(_("gpu.na.piece.memtemp"), foot)
         self.assertIn(_("gpu.na.piece.vrs"), foot)
+
+    def test_its_switched_off_rail_is_at_rest(self):
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.graphics import GraphicsPage
+
+        app = qt.app()
+        page = GraphicsPage(theme.palette_for(app, "dark"), Preferences().normalized())
+        self.addCleanup(page.deleteLater)
+        snapshot = self._collect().freeze()
+        # The reading stays as the driver gave it; only how it is said changes.
+        self.assertEqual(snapshot.gpus[0].voltage_v, 0.006)
+        page.apply(snapshot)
+        self.assertEqual(
+            page._sections[0].sensors.value_label(_("gpu.sensor.voltage")).full_text(),
+            _("gpu.clock.idle"))
+
+
+class TestTheCoreVoltage(unittest.TestCase):
+
+    def test_a_working_core_shows_its_voltage(self):
+        from silux import render
+
+        # An RX 9070 XT and an RX 550 at rest, from our dumps.
+        self.assertEqual(render.gpu_voltage(0.693), "0.693 V")
+        self.assertEqual(render.gpu_voltage(0.781), "0.781 V")
+        self.assertEqual(render.gpu_voltage(None), render.DASH)
+
+
+class TestOnTheSensorsPage(unittest.TestCase):
+    """Sensors read «Core · 0.006 V» while Graphics said at rest."""
+
+    def _row(self, millivolts: str) -> str:
+        import os
+        import pathlib
+        import tempfile
+
+        from silux import sysroot
+        from silux.providers.hwmon import HwmonSensors
+        from silux.settings import Preferences
+        from silux.tracking import Tracker
+        from silux.ui import theme
+        from silux.ui.pages.monitor import MonitorPage
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        folder = pathlib.Path(tmp.name) / "sys/class/hwmon/hwmon3"
+        for name, value in {**RX_5500_XT_HWMON, "in0_input": millivolts}.items():
+            _write(folder / name, value)
+        draft = Draft()
+        with mock.patch.dict(os.environ, {"SILUX_SYSROOT": tmp.name}):
+            sysroot.forget()
+            self.addCleanup(sysroot.forget)
+            HwmonSensors().collect(draft)
+        app = qt.app()
+        page = MonitorPage(theme.palette_for(app, "dark"), Preferences().normalized(),
+                           Tracker())
+        self.addCleanup(page.deleteLater)
+        page.apply(draft.freeze())
+        return page.tree._rows["amdgpu/in0"].text(1)
+
+    def test_its_switched_off_rail_is_at_rest(self):
+        from silux.i18n import _
+
+        self.assertEqual(self._row("6"), _("gpu.clock.idle"))
+
+    def test_a_working_one_shows_its_voltage(self):
+        self.assertEqual(self._row("781").strip(), "0.781 V")
 
 
 if __name__ == "__main__":

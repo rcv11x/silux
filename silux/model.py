@@ -2153,6 +2153,13 @@ class Sensor:
         return unit is None or plausible(self.value, unit)
 
     @property
+    def gpu_core_rail(self) -> bool:
+        """Whether it is a GPU core's voltage (amdgpu's «vddgfx»), which reads
+        a few millivolts with the core switched off at rest."""
+        return (self.device_kind == DeviceKind.GPU and self.kind is SensorKind.VOLTAGE
+                and (self.chip_label or "").lower() == "vddgfx")
+
+    @property
     def group(self) -> str:
         """The device the tree hangs it from: its key, or its name without one."""
         return self.device_key or self.device

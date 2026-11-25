@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos y Sensores: el voltaje de una Radeon en reposo, con el núcleo
+  apagado, dice «en reposo» como su reloj, no «0.006 V».
 - Sensores: las temperaturas de la placa que nadie mide (las entradas sin
   sonda de un chip nct67xx, a 0 °C o −1 °C) y el 0 °C de una gráfica en un
   sensor que no tiene salen en gris, al final, sin límites ni avisos, y el

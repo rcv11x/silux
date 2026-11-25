@@ -770,7 +770,7 @@ class GpuSection(QWidget):
           tooltip=_("gpu.tip.vr"))
         s(_("gpu.sensor.vrsoc"), render.temperature(gpu.vr_soc_c, fahrenheit))
         s(_("gpu.sensor.vrmem"), render.temperature(gpu.vr_memory_c, fahrenheit))
-        s(_("gpu.sensor.voltage"), render.volts(gpu.voltage_v))
+        s(_("gpu.sensor.voltage"), render.gpu_voltage(gpu.voltage_v))
         s(_("gpu.sensor.vsoc"), render.volts(gpu.voltage_soc_v))
         s(_("gpu.sensor.vmem"), render.volts(gpu.voltage_memory_v))
         candado = getattr(self, "_candado", None)

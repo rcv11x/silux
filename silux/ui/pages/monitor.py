@@ -409,6 +409,9 @@ class MonitorPage(ScrollPage):
         digits = DECIMALS.get(sensor.kind, 1)
         value, unit = self._converted(sensor)
         current = f"{value:.{digits}f} {unit}".strip() if sensor.plausible else render.DASH
+        if sensor.gpu_core_rail:
+            # Said as on Graphics: switched off at rest is not a voltage.
+            current = render.gpu_voltage(sensor.value)
 
         extremes = self._tracker.get(sensor.key)
         if extremes is None:
