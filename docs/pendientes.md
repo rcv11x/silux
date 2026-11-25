@@ -214,6 +214,9 @@ la memoria) no va: está propuesto en las notas
     se puede dormir y otra que no, la segunda también deja de leerse
     mientras se espera.
 * **Sin volcado, sin hacer todavía:**
+  - Gráficos · media · los 36 W de una GTX 1050 Ti en reposo pueden ser
+    también la estimación del búfer de muestras: falta un informe suyo que
+    diga qué contestó cada vía.
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).
   - Modelo · baja · `dmi._firmware` guarda «BIOS heredada» y «UEFI (64

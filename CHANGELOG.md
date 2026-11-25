@@ -12,6 +12,22 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: en un portátil con dos gráficas, Silux ya no mantiene
+  despierta la NVIDIA. Mientras nada más la usa, deja de preguntarle y el
+  driver la apaga como con Silux cerrado; la página dice que no se le
+  pregunta y, cuando se apaga, que está en reposo. Con un juego o una
+  pantalla en ella, se lee como siempre. Una NVIDIA de sobremesa no cambia.
+- Gráficos: una NVIDIA sin sensor de consumo, como la RTX 4060 de
+  sobremesa, enseña el consumo que calcula su driver con ese nombre y en su
+  propia fila: «Consumo estimado: 53 W · media de las muestras del driver,
+  últimos 2.4 s». No sale en Sensores, en Inicio ni en las gráficas, y el
+  pie avisa de que en reposo puede marcar más de lo que gasta.
+- Gráficos: una lectura imposible del consumo de una NVIDIA, como los 588 W
+  de una portátil recién despertada, se descarta y se dice por qué.
+- Gráficos: el pie de los sensores de una NVIDIA ya no dice «En una
+  GeForce» en una tarjeta profesional.
+- Informe: de cada NVIDIA, lo que contestó cada forma de leer el consumo y
+  si el sistema la tenía apagada.
 - Gráficos: si el consumo de una integrada de Intel no se puede leer (sale
   del contador RAPL del procesador), su página dice por qué en vez de un
   guion a secas. Dentro de un contenedor, el aviso de RAPL culpa al
