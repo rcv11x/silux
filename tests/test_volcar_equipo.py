@@ -64,6 +64,14 @@ class TestPiezasSinNumeroDeSerie(unittest.TestCase):
         self.assertNotIn("3530", limpio.split()[10:20])
         self.assertEqual(limpio.split()[27:47], palabras[27:47])
 
+    def test_an_identify_dumped_again_has_no_serial_to_look_for(self):
+        """Its serial words already at zero read as NULs, and were looked
+        for, and «found», in every EDID and EEPROM."""
+        dumped = (EQUIPOS / "i5-10400" / "sys/devices/pci0000:00/0000:00:17.0/ata3/link3"
+                  / "dev3.0/ata_device/dev3.0/id").read_text()
+        _clean, serial = volcar._identify_without_serial(dumped)
+        self.assertEqual(serial, "")
+
     def test_edid_con_la_suma_de_control_al_dia(self):
         bloque = bytearray(128)
         bloque[:8] = b"\x00\xff\xff\xff\xff\xff\xff\x00"

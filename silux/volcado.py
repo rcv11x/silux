@@ -746,8 +746,10 @@ def _identify_without_serial(text: str) -> tuple[str, str]:
         words = [int(p, 16) for p in text.split()]
     except ValueError:
         return re.sub(r"[0-9a-fA-F]", "0", text), ""
+    # Words already at zero (a dump dumped again) are no serial: as NULs,
+    # «found» in every EDID and EEPROM, they were taken out of them.
     serial = b"".join(words[i].to_bytes(2, "big") for i in range(10, 20)
-                     if i < len(words)).decode("ascii", "replace").strip()
+                     if i < len(words)).decode("ascii", "replace").strip(" \x00")
     for i in IDENTIFY_SERIAL:
         if i < len(words):
             words[i] = 0
