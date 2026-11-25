@@ -616,7 +616,8 @@ class CpuPage(ScrollPage):
             # Apartados desde aquí o desde Inicio. Lo que falta sigue dicho en
             # su sitio, con el candado, y en el enlace de la barra de estado.
             notes = tuple(n for n in notes if n.need is not Need.ROOT)
-        signature = tuple((n.path, n.need, n.helper_outdated) for n in notes)
+        signature = tuple((n.path, n.need, n.title, n.message, n.hint, n.helper_outdated)
+                          for n in notes)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature

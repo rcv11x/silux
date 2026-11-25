@@ -251,7 +251,7 @@ class SystemPage(ScrollPage):
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         notes = snapshot.notes_for("system")
-        signature = tuple((n.path, n.need, n.message) for n in notes)
+        signature = tuple((n.path, n.need, n.title, n.message, n.hint) for n in notes)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature
