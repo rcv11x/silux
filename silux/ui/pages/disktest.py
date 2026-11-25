@@ -136,8 +136,8 @@ NOTES = {
 DIRECTIONS = {"read": "disktest.dir.read", "write": "disktest.dir.write"}
 COLUMNS = {"read": "disktest.col.read", "write": "disktest.col.write"}
 ENGINES = {"uring": "disktest.engine.uring", "threads": "disktest.engine.threads"}
-PROFILE_NAMES = {"standard": "disktest.profile.standard"}
-PROFILE_TIPS = {"standard": "disktest.profile.standard.tip"}
+PROFILE_NAMES = {"standard": "disktest.profile.standard", "real": "disktest.profile.real"}
+PROFILE_TIPS = {"standard": "disktest.profile.standard.tip", "real": "disktest.profile.real.tip"}
 FACT_NAMES = {"single": "disktest.fact.single", "link": "disktest.fact.link",
               "heat": "disktest.fact.heat"}
 SEQUENTIAL, SINGLE = "SEQ1M Q8T1", "RND4K Q1T1"
@@ -821,8 +821,8 @@ class DiskTestTab(ScrollPage):
             if slow is not None:
                 self._notices.addWidget(slow)
         last = next((r for r in self._history if r.disks == plan.disks and r.bytes_ == plan.bytes_
-                     and r.laps == plan.laps and any(m.direction == "write" for m in r.measures)),
-                    None)
+                     and r.laps == plan.laps and r.profile == plan.profile
+                     and any(m.direction == "write" for m in r.measures)), None)
         values = dict(size=render.file_size(plan.bytes_), folder=render.home_path(plan.folder),
                       writing=render.duration(disktest.writing_seconds(plan)),
                       total=render.duration(disktest.seconds_estimate(plan)))
@@ -1174,15 +1174,15 @@ class DiskTestTab(ScrollPage):
                                result.profile), []).append(result)
         fahrenheit = self._prefs.fahrenheit
         for (disk, engine, profile), results in groups.items():
+            sequential = disktest.headline_test(profile)
             found = {name: next((m for r in results for m in r.measures
                                  if name in (m.name, m.stands_for)), None)
-                     for name in (SEQUENTIAL, SINGLE)}
+                     for name in (sequential, SINGLE)}
             ran = {name: m.name if m else name for name, m in found.items()}
-            tests = {name: m.test if m else next(t for t in disktest.PROFILES["standard"]
-                                                 if t.name == name)
-                     for name, m in found.items()}
+            known = {t.name: t for tests in disktest.PROFILES.values() for t in tests}
+            tests = {name: m.test if m else known[name] for name, m in found.items()}
             writes = any(m.direction == "write" for r in results for m in r.measures)
-            columns = [(SEQUENTIAL, "read")] + ([(SEQUENTIAL, "write")] if writes else []) \
+            columns = [(sequential, "read")] + ([(sequential, "write")] if writes else []) \
                 + [(SINGLE, "read")]
             # Each test in words, as the table above names it, with its code
             # on hovering: «Sequential, read».

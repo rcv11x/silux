@@ -71,8 +71,6 @@ LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
 # These go through the page cache without an error where they can't read or
 # write directly, so the cache check after each test is what tells.
 SILENT_FALLBACK = frozenset({"vfat", "msdos", "exfat", "ntfs3"})
-# The test that tells how fast a disk writes the file.
-FILL_TEST = "SEQ1M Q8T1"
 # Where FIEMAP's offsets are on the device under the file system. btrfs's
 # are in its own address space, not the disk's.
 PLACEABLE = frozenset({"ext4", "xfs", "f2fs"})
@@ -114,7 +112,15 @@ class Test:
 PROFILES = {
     "standard": (Test("sequential", MIB, 8), Test("sequential", MIB, 1),
                  Test("random", 4 * KIB, 32), Test("random", 4 * KIB, 1)),
+    # What almost every program asks of a disk: one request at a time.
+    "real": (Test("sequential", MIB, 1), Test("random", 4 * KIB, 1)),
 }
+
+
+def headline_test(profile: str) -> str:
+    """The sequential test a profile's result is told by: its first."""
+    return next((test.name for test in PROFILES.get(profile, ()) if test.pattern == "sequential"),
+                PROFILES["standard"][0].name)
 
 
 @dataclass(frozen=True)
@@ -475,7 +481,7 @@ def fill_estimate(plan: Plan, history: Sequence[Result], model: Optional[str],
     for result in history:
         if result.disks != plan.disks or result.model != model:
             continue
-        measure = result.measure(FILL_TEST, "write")
+        measure = result.measure(headline_test(result.profile), "write")
         rate = measure.median.bytes_per_second if measure and measure.median else None
         if rate:
             return plan.bytes_ / rate, "last"

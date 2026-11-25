@@ -25,6 +25,10 @@ Q es cuántas peticiones se mantienen en cola y T cuántos hilos las hacen.
 Cada una se mide en lectura y, si se pide, en escritura. Las cifras van en
 MB/s de un millón de bytes.
 
+Son el perfil **Estándar**. El perfil **Uso real** hace solo las dos de una
+en una, que es lo que pide casi cualquier programa, y tarda la mitad. El
+historial agrupa cada perfil aparte: sus cifras no se comparan entre sí.
+
 - **El archivo.** Un archivo temporal de 1 GiB en la carpeta que se elija,
   nunca el dispositivo. **No tiene nombre**: se crea con `O_TMPFILE` (o con
   un nombre que se le quita antes de escribir el primer byte, donde el

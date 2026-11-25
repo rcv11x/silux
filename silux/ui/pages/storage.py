@@ -559,6 +559,7 @@ class StoragePage(ScrollPage):
 
     def _paint_disk_tests(self, discos=None) -> None:
         from ... import disktest
+        from .disktest import PROFILE_NAMES
 
         models = {d.name: d.model for d in (discos or ())} or self._models
         self._models = models
@@ -573,13 +574,16 @@ class StoragePage(ScrollPage):
             figures = []
             for direction, key in (("read", "storage.lasttest.read"),
                                    ("write", "storage.lasttest.write")):
-                measure = last.measure(disktest.PROFILES["standard"][0].name, direction)
+                measure = last.measure(disktest.headline_test(last.profile), direction)
                 middle = measure.median if measure is not None else None
                 if middle is not None:
                     figures.append(_(key).format(
                         rate=unbroken(render.disk_rate(middle.bytes_per_second))))
-            summary.setText(_("storage.lasttest").format(
-                figures=" · ".join(figures) or render.DASH,
+            # Another profile's figures aren't the standard's: it is named.
+            summary.setText(_("storage.lasttest" if last.profile == "standard"
+                              else "storage.lasttest.profile").format(
+                figures=" · ".join(figures) or render.DASH, profile=_(PROFILE_NAMES.get(
+                    last.profile, "disktest.profile.standard")).lower(),
                 when=time.strftime("%d/%m/%Y %H:%M", time.localtime(last.timestamp))))
 
     def _fill(self, disco: Disk) -> None:
