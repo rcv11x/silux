@@ -43,6 +43,39 @@ class TestTheirWords(unittest.TestCase):
                         self.assertNotIn(program, tip)
 
 
+class TestTheirTips(TabCase):
+    def test_a_tip_opens_beside_the_list_and_covers_no_option(self):
+        from PySide6.QtCore import QEvent, QRect, Qt
+        from PySide6.QtGui import QHelpEvent
+        from PySide6.QtWidgets import QApplication
+
+        from silux.ui.widgets import TipsBeside
+
+        tab = self.tab()
+        box = tab.profile_box
+        box.showPopup()
+        self.addCleanup(box.hidePopup)
+        for _turn in range(5):
+            self.app.processEvents()
+        view = box.view()
+        popup = view.window()
+        self.assertTrue(popup.isVisible())
+        shown = QRect(popup.mapToGlobal(popup.rect().topLeft()), popup.size())
+        for row in range(box.count()):
+            with self.subTest(row=row):
+                rect = view.visualRect(box.model().index(row, 0))
+                inside = rect.center()
+                QApplication.sendEvent(view.viewport(), QHelpEvent(
+                    QEvent.Type.ToolTip, inside, view.viewport().mapToGlobal(inside)))
+                self.app.processEvents()
+                label = TipsBeside.tip_label()
+                self.assertIsNotNone(label)
+                self.assertEqual(label.text(), box.itemData(row, Qt.ItemDataRole.ToolTipRole))
+                self.assertFalse(label.frameGeometry().intersects(shown),
+                                 (label.frameGeometry(), shown))
+                self.assertEqual(label.y(), view.viewport().mapToGlobal(rect.topLeft()).y())
+
+
 class TestTheProfiles(unittest.TestCase):
     def test_real_use_is_one_request_at_a_time(self):
         self.assertEqual([t.name for t in disktest.PROFILES["real"]], list(REAL))

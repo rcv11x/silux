@@ -19,7 +19,18 @@ import time
 from collections import deque
 from typing import Iterable, NamedTuple, Optional, Sequence
 
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import (
+    QEvent,
+    QObject,
+    QPoint,
+    QPointF,
+    QRect,
+    QRectF,
+    QSize,
+    Qt,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -32,6 +43,7 @@ from PySide6.QtGui import (
     QPen,
 )
 from PySide6.QtWidgets import (
+    QApplication,
     QBoxLayout,
     QComboBox,
     QFrame,
@@ -2425,6 +2437,54 @@ def unbroken(figure: str) -> str:
     label won't split: at a space, or after the slash, it left «GB/» on one
     line and «s» on the next."""
     return figure.replace(" ", "\u00a0").replace("/", "/\u2060")
+
+
+class TipsBeside(QObject):
+    """The tip of each option of an open combo box, beside its list and not
+    over it: by the mouse, it covered the options below. To the right if
+    the screen has room, else to the left, at the height of its option."""
+
+    GAP = 6
+
+    def __init__(self, combo: QComboBox):
+        super().__init__(combo)
+        self._combo = combo
+        combo.view().viewport().installEventFilter(self)
+
+    def eventFilter(self, _watched, event) -> bool:  # noqa: N802
+        if event.type() != QEvent.Type.ToolTip:
+            return False
+        view = self._combo.view()
+        index = view.indexAt(event.pos())
+        tip = index.data(Qt.ItemDataRole.ToolTipRole) if index.isValid() else None
+        if not tip:
+            QToolTip.hideText()
+            return True
+        QToolTip.showText(event.globalPos(), tip, view.viewport())
+        label = self.tip_label()
+        if label is not None:
+            label.move(self.place(label.size(), view.visualRect(index)))
+        return True
+
+    @staticmethod
+    def tip_label() -> Optional[QWidget]:
+        """The tip Qt shows, if one is."""
+        return next((w for w in QApplication.topLevelWidgets()
+                     if w.metaObject().className() == "QTipLabel" and w.isVisible()), None)
+
+    def place(self, size: QSize, row: QRect) -> QPoint:
+        """Where a tip of `size` goes for the option at `row`, in the view."""
+        view = self._combo.view()
+        popup = view.window()
+        top = view.viewport().mapToGlobal(row.topLeft()).y()
+        left = popup.mapToGlobal(QPoint(0, 0)).x()
+        right = left + popup.width()
+        screen = (popup.screen() or QApplication.primaryScreen()).availableGeometry()
+        x = right + self.GAP
+        if x + size.width() > screen.right() and left - self.GAP - size.width() >= screen.left():
+            x = left - self.GAP - size.width()
+        y = max(screen.top(), min(top, screen.bottom() - size.height()))
+        return QPoint(x, y)
 
 
 class ElidingComboBox(QComboBox):

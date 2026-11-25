@@ -49,6 +49,7 @@ from ..widgets import (
     ResponsiveRow,
     ScrollPage,
     Table,
+    TipsBeside,
     clear_layout,
     let_go,
     paint_level,
@@ -508,6 +509,7 @@ class DiskTestTab(ScrollPage):
             self.profile_box.addItem(_(PROFILE_NAMES[profile]), profile)
             self.profile_box.setItemData(self.profile_box.count() - 1,
                                          _(PROFILE_TIPS[profile]), Qt.ItemDataRole.ToolTipRole)
+        TipsBeside(self.profile_box)
         self.profile_box.activated.connect(self._describe)
         self.size_box = QComboBox()
         for size in FILE_SIZES:
