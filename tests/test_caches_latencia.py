@@ -52,7 +52,7 @@ class TestLaLatenciaEnSuNivel(unittest.TestCase):
                 self.app.processEvents()
             self.assertEqual(pagina.table._headers[-1], _("caches.col.latency"))
             ultimas = {fila[0]: fila[-1] for fila in self._filas(pagina)}
-            self.assertEqual(ultimas, {"L1 datos": "0.9 ns", "L1 instr.": "", "L2": "2.7 ns",
+            self.assertEqual(ultimas, {"L1 datos": "0.90 ns", "L1 instr.": "", "L2": "2.72 ns",
                                        "L3": "11.3 ns", _("caches.row.ram"): "77.4 ns"})
             self.assertTrue(pagina.latency_note.isVisible())
             self.assertTrue(pagina.table.isVisible())

@@ -1249,9 +1249,19 @@ def spd_time(picoseconds: Optional[int]) -> str:
 
 
 def nanoseconds(value: Optional[float]) -> str:
-    """«0.9 ns». One decimal: any processor's L1 is around there, and with
-    no decimals all the fast caches would come out the same."""
-    return DASH if _none(value) else f"{float(value):.1f} ns"
+    """«0.96 ns», «9.24 ns», «64.9 ns», «123 ns»: three figures from one
+    nanosecond up, two decimals below. Every L1 is around one nanosecond,
+    and with a single decimal 0.96 and 1.04 both read «1.0»."""
+    if _none(value):
+        return DASH
+    value = float(value)
+    decimals = 2 if value < 10 else 1 if value < 100 else 0
+    return f"{value:.{decimals}f} ns"
+
+
+def nanoseconds_mark(value: float) -> str:
+    """A mark on a scale of nanoseconds: «0.1 ns», «1 ns», «100 ns»."""
+    return f"{float(value):g} ns"
 
 
 def memory_theoretical_bandwidth(modules) -> Optional[int]:

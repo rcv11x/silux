@@ -92,7 +92,7 @@ class CurveChart(QWidget):
         y0, y1 = math.floor(min(times)), math.ceil(max(times))
         if x1 <= x0 or y1 <= y0:
             return
-        left = 10 + max(metrics.horizontalAdvance(render.nanoseconds(10 ** decade))
+        left = 10 + max(metrics.horizontalAdvance(render.nanoseconds_mark(10 ** decade))
                         for decade in range(y0, y1 + 1))
         bottom = metrics.height() + 8
         area = QRectF(left, 8, self.width() - left - 12, self.height() - bottom - 8)
@@ -109,7 +109,7 @@ class CurveChart(QWidget):
             painter.setPen(muted)
             painter.drawText(QRectF(0, y - metrics.height() / 2, left - 6, metrics.height()),
                              Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                             render.nanoseconds(10 ** decade))
+                             render.nanoseconds_mark(10 ** decade))
         painter.setPen(muted)
         edges = ((Qt.AlignmentFlag.AlignLeft, self._points[0].bytes_),
                  (Qt.AlignmentFlag.AlignRight, self._points[-1].bytes_))

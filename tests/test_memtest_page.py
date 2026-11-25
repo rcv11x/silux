@@ -76,10 +76,19 @@ class TestWhatAResultShows(TabCase):
         tab = self.tab()
         tab.show_result(recorded())
         seen = visible_texts(tab)
-        for expected in ("0.9 ns", "2.7 ns", "11.3 ns", "77.4 ns",
+        for expected in ("0.90 ns", "2.72 ns", "11.3 ns", "77.4 ns",
                          _("memtest.tile.cycles").format(n="4.0", freq="4.44 GHz"),
                          "performance", _("memtest.conditions.at").format(freq="4.44 GHz")):
             self.assertIn(expected, seen)
+
+    def test_a_latency_keeps_three_figures(self):
+        """With one decimal, an i5-10400's 0.96 ns L1 read «1.0»."""
+        tab = self.tab()
+        tab.show_result(recorded("i5-10400"))
+        seen = visible_texts(tab)
+        for expected in ("0.96 ns", "2.82 ns", "9.09 ns", "64.2 ns"):
+            self.assertIn(expected, seen)
+        self.assertNotIn("1.0 ns", seen)
 
     def test_the_curve_is_said_to_match_the_caches_it_was_read_against(self):
         tab = self.tab()
