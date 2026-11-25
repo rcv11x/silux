@@ -77,9 +77,26 @@ def desktop(environment: dict) -> Optional[str]:
     Without logind (runit, sysvinit) the first is often missing."""
     for key in ("XDG_CURRENT_DESKTOP", "DESKTOP_SESSION", "GDMSESSION"):
         if value := (environment.get(key) or "").strip():
+            if key == "XDG_CURRENT_DESKTOP":
+                return _xdg_desktop(value)
             # A display manager may give the session file's path.
             return os.path.basename(value)
     return None
+
+
+def _xdg_desktop(value: str) -> str:
+    """The desktop in XDG's variable: «ubuntu:GNOME» is GNOME, «X-Cinnamon»
+    Cinnamon.
+
+    The variable is a list, most specific first, and a name not registered
+    with freedesktop.org starts with «X-». Distributions put their own tag
+    first in lower case (ubuntu, pop, zorin), which is no desktop, while a
+    desktop's name has capitals: «Budgie:GNOME» is Budgie.
+    """
+    names = [re.sub(r"^X-", "", part.strip()) for part in value.split(":") if part.strip()]
+    if not names:
+        return value
+    return next((name for name in names if not name.islower()), names[0])
 
 
 def session_type(environment: dict) -> Optional[str]:

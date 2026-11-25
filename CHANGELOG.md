@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Sistema: el escritorio sale por su nombre, «Cinnamon» y «GNOME», no
+  «X-Cinnamon» ni «ubuntu:GNOME», como lo escribe la variable del sistema.
 - Almacenamiento: un lector de tarjetas sin tarjeta ya no sale como una
   unidad «SSD · 0 B» por cada ranura. Al meter una tarjeta, aparece.
 - Gráficos: un ventilador que gira ya no sale «parado» porque su driver
