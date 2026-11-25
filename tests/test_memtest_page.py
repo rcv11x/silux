@@ -119,18 +119,19 @@ class TestWhatAResultShows(TabCase):
         """Each cell with every thread, large, and the same kind with one
         under it; the fastest kind, and named when it skips the cache."""
         tab = self.tab()
-        result = recorded()
+        result = dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS)
         tab.show_result(result)
+        tab.resize(1400, 900)
+        for _turn in range(3):
+            self.app.processEvents()
         one = render.counted("memtest.threads", 1).replace(" ", "\u00a0")
         for operation, every, single in (("read", "40.2", "43.9"), ("write", "25.4", "25.4"),
                                          ("copy", "38.5", "40.1")):
             with self.subTest(operation=operation):
                 bar, figure, under = tab.grid.cells["RAM", operation]
                 self.assertEqual(figure.text(), every)
-                self.assertTrue(under.text().startswith(f"{one}\u00a0{single}"), under.text())
+                self.assertEqual(under.text(), f"{one}\u00a0{single}")
                 self.assertTrue(bar.isVisibleTo(tab))
-        _bar, _figure, under = tab.grid.cells["RAM", "copy"]
-        self.assertTrue(under.text().endswith(_("memtest.grid.nt").replace(" ", "\u00a0")))
         _bar, figure, _under = tab.grid.cells["L1", "read"]
         self.assertFalse(figure.isVisibleTo(tab))
         tab.detail_button.setChecked(True)
@@ -149,7 +150,7 @@ class TestDesignA(TabCase):
 
     def test_each_bandwidth_column_has_its_own_colour(self):
         tab = self.tab()
-        tab.show_result(recorded())
+        tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
         tab.resize(1400, 900)
         for _turn in range(3):
             self.app.processEvents()
@@ -159,6 +160,68 @@ class TestDesignA(TabCase):
             image = bar.grab().toImage()
             colours.append(image.pixelColor(4, image.height() // 2).name())
         self.assertEqual(len(set(colours)), 3, colours)
+
+    def test_the_columns_colours_tell_apart_on_both_themes(self):
+        """In the light theme the copy barely showed, and in the dark one
+        writing and copying were two browns."""
+        from PySide6.QtGui import QColor
+
+        from silux.ui import theme
+        from silux.ui.pages.memtest import GRID_COLUMNS
+
+        def luminance(colour: QColor) -> float:
+            def channel(value: float) -> float:
+                return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+            return (0.2126 * channel(colour.redF()) + 0.7152 * channel(colour.greenF())
+                    + 0.0722 * channel(colour.blueF()))
+
+        for palette in (theme.LIGHT, theme.DARK):
+            colours = [QColor(getattr(palette, name)) for _op, _key, name in GRID_COLUMNS]
+            surface = luminance(QColor(palette.surface))
+            for colour in colours:
+                light, dark = sorted((luminance(colour), surface), reverse=True)
+                self.assertGreaterEqual((light + 0.05) / (dark + 0.05), 4.5, colour.name())
+                for warning in (palette.warn, palette.crit, palette.info):
+                    self.assertNotEqual(colour.name().lower(), warning.lower())
+            hues = sorted(colour.hslHue() for colour in colours)
+            gaps = [b - a for a, b in zip(hues, hues[1:])] + [360 - hues[-1] + hues[0]]
+            self.assertGreaterEqual(min(gaps), 60, hues)
+
+    def test_the_bars_are_drawn_against_the_memory_s_maximum(self):
+        """The read was 72 % of the maximum and its bar under half full."""
+        result = recorded("i5-10400-window")
+        tab = self.tab()
+        tab.show_result(result)
+        bar = tab.grid.cells["RAM", "read"][0]
+        read = result.rate("read", 12)
+        self.assertAlmostEqual(bar.fraction,
+                               read.bytes_per_second / result.theoretical_bytes_per_second)
+        self.assertIn(_("memtest.grid.bars").format(total="42.7 GB/s"), tab.grid.unit.text())
+
+    def test_without_the_maximum_there_are_no_bars_and_it_says_so(self):
+        tab = self.tab()
+        tab.show_result(recorded())
+        for operation in ("read", "write", "copy"):
+            bar, figure, _under = tab.grid.cells["RAM", operation]
+            self.assertFalse(bar.isVisibleTo(tab))
+            self.assertTrue(figure.isVisibleTo(tab))
+        self.assertIn(_("memtest.grid.nobars"), tab.grid.unit.text())
+
+    def test_a_figure_that_skipped_the_cache_says_so_beside_it(self):
+        """«sin caché» read as the one-thread figure's."""
+        tab = self.tab()
+        tab.show_result(recorded())
+        for operation, skipped in (("read", False), ("write", True), ("copy", True)):
+            with self.subTest(operation=operation):
+                kind = tab.grid.kinds["RAM", operation]
+                figure = tab.grid.cells["RAM", operation][1]
+                self.assertEqual(kind.isVisibleTo(tab), skipped)
+                if skipped:
+                    self.assertEqual(kind.text(), _("memtest.grid.nt"))
+                    left = kind.mapTo(tab, kind.rect().topLeft())
+                    right = figure.mapTo(tab, figure.rect().topLeft())
+                    self.assertEqual(left.y(), right.y())
+                    self.assertLess(left.x(), right.x())
 
     def test_the_history_says_whose_read_it_shows(self):
         """It showed every thread's read under «Read» while the line above
@@ -172,12 +235,28 @@ class TestDesignA(TabCase):
 
     def test_a_narrow_window_shows_the_history_whole(self):
         """It was cut at the right, behind a scroll bar."""
+        from silux.ui import theme
+
         memtest.append_history(recorded("i5-10400-window"))
         tab = self.tab()
-        tab.resize(520, 900)
-        for _turn in range(3):
+        tab.resize(theme.METRICS.min_window_w, 900)
+        # A title that breaks takes one more pass of the layout.
+        for _turn in range(4):
             self.app.processEvents()
         self.assertEqual(tab.history.horizontalScrollBar().maximum(), 0)
+
+    def test_it_fits_the_narrowest_window(self):
+        """With «non-temporal» beside the large figures the grid outgrew it."""
+        from silux.ui import theme
+
+        narrowest = theme.METRICS.min_window_w
+        tab = self.tab()
+        tab.show_result(recorded("i5-10400-window"))
+        tab.resize(narrowest, 900)
+        for _turn in range(4):
+            self.app.processEvents()
+        self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+        self.assertLessEqual(tab.widget().minimumSizeHint().width(), narrowest)
 
     def test_the_processor_is_named_over_the_result(self):
         tab = self.tab()

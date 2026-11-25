@@ -52,6 +52,10 @@ class Palette:
     crit: str
     info: str
     disabled: str
+    # The second and third series of a chart beside the accent, apart from
+    # the status colours: a bar in amber or red reads as a warning.
+    series_b: str = "#6A47C8"
+    series_c: str = "#0E8077"
 
     def q(self, name: str, alpha: float = 1.0) -> QColor:
         color = QColor(getattr(self, name))
@@ -84,7 +88,7 @@ LIGHT = Palette(
     ink="#1B2028", ink_dim="#3A4250", muted="#667080",
     accent="#C2570C", accent_soft="#D46A1C", accent_wash="#FBEBDD",
     ok="#2A6E52", warn="#8A6408", crit="#93362E", info="#245F9E",
-    disabled="#A7AEBA",
+    disabled="#A7AEBA", series_b="#6A47C8", series_c="#0E8077",
 )
 
 DARK = Palette(
@@ -93,7 +97,7 @@ DARK = Palette(
     ink="#E8EBF0", ink_dim="#C2C8D2", muted="#8792A2",
     accent="#F2994A", accent_soft="#F7B77D", accent_wash="#2B2017",
     ok="#6FBF9A", warn="#D6AF4E", crit="#E0857D", info="#7FB2E5",
-    disabled="#525C6A",
+    disabled="#525C6A", series_b="#B49CFF", series_c="#47C1B6",
 )
 
 

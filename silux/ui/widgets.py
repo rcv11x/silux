@@ -2425,14 +2425,18 @@ class RateBar(QWidget):
 
     NARROWEST = 40
 
-    def __init__(self, palette: Palette, scale: tuple[float, int], tone: float = 1.0,
-                 height: int = 10, parent: Optional[QWidget] = None):
+    def __init__(self, palette: Palette, scale: Optional[tuple[float, int]] = None,
+                 tone: float = 1.0, height: int = 10, parent: Optional[QWidget] = None,
+                 colour: str = "accent"):
         """`scale`: what an empty bar stands for, in bytes per second, and how
-        many powers of ten a full one is above it. `tone`: how much of the
-        accent it is drawn with, to tell columns apart."""
+        many powers of ten a full one is above it; without one, the bar is
+        given its fraction (`set_fraction`). `colour` and `tone`: the
+        palette's colour it is drawn with, and how much of it, to tell
+        columns apart."""
         super().__init__(parent)
         self._p = palette
-        self._from, self._decades = scale
+        self._from, self._decades = scale or (1.0, 1)
+        self._colour = colour
         self._tone = tone
         self._fraction: Optional[float] = None
         self._live = False
@@ -2450,7 +2454,13 @@ class RateBar(QWidget):
         fraction = None
         if bytes_per_second:
             decades = math.log10(max(bytes_per_second, self._from) / self._from)
-            fraction = min(max(decades / self._decades, 0.0), 1.0)
+            fraction = decades / self._decades
+        self.set_fraction(fraction, live)
+
+    def set_fraction(self, fraction: Optional[float], live: bool = False) -> None:
+        """How full, from 0 to 1, on a scale of the caller's."""
+        if fraction is not None:
+            fraction = min(max(fraction, 0.0), 1.0)
         if (fraction, live) != (self._fraction, self._live):
             self._fraction, self._live = fraction, live
             self.update()
@@ -2465,7 +2475,7 @@ class RateBar(QWidget):
         painter.setBrush(self._p.q("line_soft"))
         painter.drawRoundedRect(box, self._round, self._round)
         if self._fraction:
-            colour = self._p.q("muted") if self._live else self._p.q("accent", self._tone)
+            colour = self._p.q("muted") if self._live else self._p.q(self._colour, self._tone)
             painter.setBrush(colour)
             painter.drawRoundedRect(QRectF(0, 1, self.width() * self._fraction,
                                            self.height() - 2), self._round, self._round)

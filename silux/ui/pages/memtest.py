@@ -48,12 +48,16 @@ from ..widgets import (
 
 # The grid's rows, the RAM first: it's what the test is mostly run for.
 GRID_LEVELS = ("RAM", "L1", "L2", "L3")
-# Its bandwidth columns, each in its own tone of the accent: the status
-# colours would make a bar look like a warning.
-GRID_COLUMNS = (("read", "memtest.op.read", 1.0), ("write", "memtest.op.write", 0.7),
-                ("copy", "memtest.op.copy", 0.45))
-# The bars' scale: from 1 GB/s to 10 000, where the L1 of a fast core gets.
-GRID_SCALE = (1e9, 4)
+# Its bandwidth columns, each with its colour: the accent and the chart's
+# two others, never the status colours, which would make a bar a warning.
+GRID_COLUMNS = (("read", "memtest.op.read", "accent"), ("write", "memtest.op.write", "series_b"),
+                ("copy", "memtest.op.copy", "series_c"))
+# Each operation takes a bar, the word that says it skipped the cache, and
+# its figure; the latency comes after them.
+PER_OPERATION = 3
+LATENCY_COLUMN = 1 + PER_OPERATION * len(GRID_COLUMNS)
+# The air between its columns, and with no room for the bars.
+GRID_GAP, NARROW_GRID_GAP = 12, 6
 GB = 1e9
 NBSP = "\u00a0"
 # What each step of a test is called while it runs; the one with every
@@ -183,16 +187,23 @@ class LevelGrid(QWidget):
         self._p = palette
         layout = QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(12)
+        layout.setHorizontalSpacing(GRID_GAP)
         layout.setVerticalSpacing(2)
-        for index, (_operation, key, _tone) in enumerate(GRID_COLUMNS):
-            layout.addWidget(self._head(key), 0, 1 + 2 * index, 1, 2)
-            layout.setColumnStretch(1 + 2 * index, 1)
+        for index, (_operation, key, _colour) in enumerate(GRID_COLUMNS):
+            first = 1 + PER_OPERATION * index
+            layout.addWidget(self._head(key), 0, first, 1, PER_OPERATION)
+            layout.setColumnStretch(first, 1)
         latency = self._head("memtest.col.latency")
         latency.setAlignment(Qt.AlignmentFlag.AlignRight)
-        layout.addWidget(latency, 0, 7)
+        layout.addWidget(latency, 0, LATENCY_COLUMN)
         self.names: dict[str, tuple[QLabel, QLabel]] = {}
+        # Each operation's bar, figure and line under it, and the word that
+        # says the figure skipped the cache, beside it.
         self.cells: dict[tuple[str, str], tuple[RateBar, QLabel, QLabel]] = {}
+        self.kinds: dict[tuple[str, str], QLabel] = {}
+        # Whether there is room for the bars, and which levels have them.
+        self._barred = True
+        self._bars: set[str] = set()
         self.latencies: dict[str, tuple[QLabel, QLabel]] = {}
         self.rows: dict[str, list[QWidget]] = {}
         for line, level in enumerate(GRID_LEVELS):
@@ -207,18 +218,23 @@ class LevelGrid(QWidget):
             layout.addWidget(block, top, 0, 2, 1, Qt.AlignmentFlag.AlignTop)
             self.names[level] = (name, size)
             widgets: list[QWidget] = [block]
-            for index, (operation, _key, tone) in enumerate(GRID_COLUMNS):
-                bar = RateBar(palette, GRID_SCALE, tone=tone, height=18)
+            for index, (operation, _key, colour) in enumerate(GRID_COLUMNS):
+                first = 1 + PER_OPERATION * index
+                bar = RateBar(palette, colour=colour, height=18)
+                kind = self._small()
+                kind.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 figure = self._big()
                 under = self._small()
-                layout.addWidget(bar, top, 1 + 2 * index)
-                layout.addWidget(figure, top, 2 + 2 * index)
-                layout.addWidget(under, top + 1, 1 + 2 * index, 1, 2)
+                layout.addWidget(bar, top, first)
+                layout.addWidget(kind, top, first + 1)
+                layout.addWidget(figure, top, first + 2)
+                layout.addWidget(under, top + 1, first, 1, PER_OPERATION)
                 self.cells[level, operation] = (bar, figure, under)
-                widgets += [bar, figure, under]
+                self.kinds[level, operation] = kind
+                widgets += [bar, kind, figure, under]
             nanoseconds, cycles = self._big(), self._small()
-            layout.addWidget(nanoseconds, top, 7)
-            layout.addWidget(cycles, top + 1, 7)
+            layout.addWidget(nanoseconds, top, LATENCY_COLUMN)
+            layout.addWidget(cycles, top + 1, LATENCY_COLUMN)
             self.latencies[level] = (nanoseconds, cycles)
             widgets += [nanoseconds, cycles]
             layout.setRowMinimumHeight(top + 2, 8)
@@ -227,7 +243,27 @@ class LevelGrid(QWidget):
         self.unit.setObjectName("Muted")
         self.unit.setFont(ui_font(theme.METRICS.small_pt))
         self.unit.setWordWrap(True)
-        layout.addWidget(self.unit, 1 + 3 * len(GRID_LEVELS), 0, 1, 8)
+        layout.addWidget(self.unit, 1 + 3 * len(GRID_LEVELS), 0, 1, LATENCY_COLUMN + 1)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._fit_bars()
+
+    def _fit_bars(self) -> None:
+        """Bars too narrow to be drawn leave the layout, and the air around
+        them with them: in a narrow window the figures need it."""
+        layout = self.layout()
+        spare = self.width() - self.minimumSizeHint().width()
+        room = spare >= RateBar.NARROWEST * len(GRID_COLUMNS) if self._barred else \
+            spare >= (RateBar.NARROWEST + layout.horizontalSpacing()) * len(GRID_COLUMNS)
+        if room != self._barred:
+            self._barred = room
+            layout.setHorizontalSpacing(GRID_GAP if room else NARROW_GRID_GAP)
+            self._show_bars()
+
+    def _show_bars(self) -> None:
+        for (level, _operation), (bar, _figure, _under) in self.cells.items():
+            bar.setVisible(self._barred and level in self._bars)
 
     @staticmethod
     def _head(key: str) -> QLabel:
@@ -244,6 +280,7 @@ class LevelGrid(QWidget):
         size = QLabel("")
         size.setObjectName("Muted")
         size.setFont(ui_font(theme.METRICS.small_pt - 1))
+        size.setWordWrap(True)
         return name, size
 
     @staticmethod
@@ -270,10 +307,13 @@ class LevelGrid(QWidget):
     def set_result(self, result: memtest.Result) -> None:
         threads = max((r.threads for r in result.rates), default=1)
         sizes = dict(result.caches)
+        # The bars against what the memory could move, as the share of the
+        # maximum says: without it, none.
+        most = result.theoretical_bytes_per_second
         for level in GRID_LEVELS:
             found = result.level(level)
             figures = {operation: self._fastest(result, level, operation, threads)
-                       for operation, _key, _tone in GRID_COLUMNS}
+                       for operation, _key, _colour in GRID_COLUMNS}
             shown = found is not None or any(every for every, _one in figures.values())
             for widget in self.rows[level]:
                 widget.setVisible(shown)
@@ -285,31 +325,41 @@ class LevelGrid(QWidget):
                              if result.ram_block else "")
             else:
                 size.setText(render.size(sizes[level]) if level in sizes else "")
-            for operation, _key, _tone in GRID_COLUMNS:
+            for operation, _key, _colour in GRID_COLUMNS:
                 bar, figure, under = self.cells[level, operation]
+                kind = self.kinds[level, operation]
                 every, one = figures[operation]
-                for widget in (bar, figure, under):
+                for widget in (figure, under):
                     widget.setVisible(every is not None)
+                if every is not None and most:
+                    self._bars.add(level)
+                else:
+                    self._bars.discard(level)
+                kind.setVisible(every is not None and every.non_temporal)
                 if every is None:
                     continue
-                bar.set_rate(every.bytes_per_second)
+                bar.set_fraction(every.bytes_per_second / most if most else None)
                 figure.setText(render.rate_figure(every.bytes_per_second, GB))
-                parts = [] if threads == 1 or one is None else [
-                    f"{render.counted('memtest.threads', 1)} {render.rate_figure(one.bytes_per_second, GB)}"]
-                if every.non_temporal:
-                    parts.append(_("memtest.grid.nt"))
-                # A narrow window breaks the line between the parts, not
-                # inside one.
-                under.setText(" · ".join(part.replace(" ", NBSP) for part in parts))
+                # Beside the large figure, which is the one that skipped the
+                # cache; the one-thread figure under it is of the same kind.
+                # In a narrow window its two words go one over the other.
+                kind.setText(_("memtest.grid.nt"))
+                under.setText("" if threads == 1 or one is None else
+                              f"{render.counted('memtest.threads', 1)} "
+                              f"{render.rate_figure(one.bytes_per_second, GB)}".replace(" ", NBSP))
             nanoseconds, cycles = self.latencies[level]
             nanoseconds.setText(render.nanoseconds(found.nanoseconds) if found else "")
             count = render.core_cycles(found.nanoseconds, found.frequency_hz) if found else None
             cycles.setText("" if count is None else _("memtest.grid.cycles").format(n=f"{count:.1f}"))
         unit = [_("memtest.grid.unit" if threads > 1 else "memtest.grid.unit.single").format(
             threads=render.counted("memtest.threads", threads))]
+        if result.rates:
+            unit.append(_("memtest.grid.bars").format(total=render.bandwidth(most, 1)) if most
+                        else _("memtest.grid.nobars"))
         if any(result.level(level) for level in ("L1", "L2", "L3")):
             unit.append(_("memtest.grid.caches"))
         self.unit.setText(" ".join(unit))
+        self._show_bars()
 
     @staticmethod
     def _fastest(result: memtest.Result, level: str, operation: str, threads: int):
