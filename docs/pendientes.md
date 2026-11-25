@@ -371,6 +371,10 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
+* `ui/app.py` · media · al abrir Silux en un sobremesa se ve un momento la
+  sección Batería en el menú y luego desaparece: está desde el principio y
+  `_ajustar_bateria` la esconde con la primera lectura. Tiene que no salir
+  hasta saber que hay batería (y `seccion_que_falta` cuenta con lo de ahora).
 * `ui/pages/storage.py` · baja · con Silux abierto como root, «Vida
   restante» de un pendrive se enseña y se esconde entre dos fotos iguales
   (`test_nada_se_mueve` como root, en el contenedor de
