@@ -360,6 +360,17 @@ la memoria) no va: está propuesto en las notas
   - media · dónde cae el archivo en un disco de platos solo se ha probado
     en btrfs (que no lo dice) y contra `filefrag`; falta un disco de platos
     con ext4 o XFS. Los volcados no guardan dónde empieza cada partición.
+  - media · la RND4K Q32 de escritura por io_uring en btrfs sale de un 12 a
+    un 15 % por debajo de fio io_uring (306–314 frente a 356–358 MB/s en un
+    SN850X, en las dos rondas y en los dos órdenes). fio con lotes
+    (`--iodepth_batch_submit=32`) da lo mismo que Silux (311), así que lo que
+    btrfs castiga es mandar las 32 peticiones juntas, no el motor. En ext4
+    (970 EVO Plus) los lotes no cambian nada. Para comprobarlo: fio con y
+    sin lotes en una imagen btrfs sobre el 970 y en una ext4 sobre el
+    SN850X, para separar el sistema de archivos del disco; contar durante la
+    vuelta los hilos `iou-wrk-*` del proceso (si btrfs rechaza la escritura
+    sin bloquear, io_uring la pasa a sus hilos); y Silux mandando de 1, 4 y
+    8 en 8 en btrfs, para ver dónde se recupera.
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
   el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
   distinto tamaño el segundo pisa al primero.
