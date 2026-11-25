@@ -166,8 +166,7 @@ class TestDesignA(TabCase):
         memtest.append_history(recorded())
         tab = self.tab()
         seen = visible_texts(tab.history_card)
-        self.assertIn(render.counted("memtest.col.read.threads", 16).upper().replace(" ", "\n", 1),
-                      seen)
+        self.assertIn(render.counted("memtest.col.read.threads", 16).upper(), seen)
         self.assertIn("40.2 GB/s", seen)
         self.assertNotIn("43.9 GB/s", seen)
 

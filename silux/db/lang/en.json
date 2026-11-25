@@ -1100,7 +1100,7 @@
   "memtest.col.read.all": "Read, all threads",
   "memtest.col.read.threads": "Read, {n} threads",
   "memtest.col.read.threads.one": "Read, {n} thread",
-  "memtest.col.share": "Of the maximum",
+  "memtest.col.share": "% of max",
   "memtest.conditions.at": "at {freq}",
   "memtest.detail.hide": "▾ Hide the curve",
   "memtest.detail.show": "▸ The whole curve and every measurement",

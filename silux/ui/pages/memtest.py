@@ -562,7 +562,6 @@ class MemoryTestTab(ScrollPage):
             [_("memtest.col.date"), _("memtest.col.ram"), _("memtest.col.read.all"),
              _("memtest.col.share"), _("memtest.col.frequency")],
             numeric=(False, True, True, True, True))
-        self.history.set_header(3, _("memtest.col.share"), two_lines=True)
         card.body.addWidget(self.history)
         self.clear_button = QPushButton(_("bench.button.clear"))
         self.clear_button.clicked.connect(self._clear_history)
@@ -800,7 +799,7 @@ class MemoryTestTab(ScrollPage):
         # one thread's.
         threads = max((r.threads for result in results[:1] for r in result.rates), default=0)
         self.history.set_header(2, render.counted("memtest.col.read.threads", threads)
-                                if threads else _("memtest.col.read.all"), two_lines=True)
+                                if threads else _("memtest.col.read.all"))
         rows = []
         for result in results:
             threads = max((r.threads for r in result.rates), default=1)
