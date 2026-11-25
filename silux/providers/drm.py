@@ -477,6 +477,22 @@ def _is_integrated(gpu: dict) -> Optional[bool]:
     return None
 
 
+def say_asleep(draft: Draft, index: int) -> None:
+    """Card N sleeps, said once, instead of what said a driver was missing.
+
+    Read awake at the static pass, its driver's notice could say a driver was
+    missing (NVIDIA's, before NVML answers). Asleep, NVML is closed on
+    purpose: what is missing is that it sleeps.
+    """
+    path = f"gpus.{index}"
+    draft.notes = [n for n in draft.notes
+                   if not (n.path == path and n.need is Need.DRIVER)]
+    if not any(n.path == path and n.need is Need.HARDWARE for n in draft.notes):
+        draft.note(path, Need.HARDWARE,
+                   _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
+                   key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
+
+
 class GpuState(Provider):
     """What changes: usage, used VRAM, clocks and its own sensors."""
 
@@ -569,16 +585,7 @@ class GpuState(Provider):
                 continue
             if is_suspended(device):
                 self._asleep(gpu, node)
-                # Read awake at the static pass, its driver's notice said a
-                # driver was missing (NVIDIA's, before NVML answers). Asleep,
-                # NVML is closed on purpose: what is missing is that it sleeps.
-                path = f"gpus.{index}"
-                draft.notes = [n for n in draft.notes
-                               if not (n.path == path and n.need is Need.DRIVER)]
-                if not any(n.path == path and n.need is Need.HARDWARE for n in draft.notes):
-                    draft.note(path, Need.HARDWARE,
-                               _("prov.drm.asleep"), _("prov.drm.asleep.hint"),
-                           key="prov.drm.asleep", title=_("prov.drm.asleep.title"))
+                say_asleep(draft, index)
                 continue
             if gpu.get("suspended"):
                 # The static data was read with it asleep and half the card is missing.
