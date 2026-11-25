@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Placa base: con una base de dispositivos PCI antigua, que escribe el
+  modelo al final («LPC Controller/eSPI Controller (H670)»), el chipset de
+  Intel se reconoce: «Intel H670».
 - Placa base: en un procesador de AMD con gráfica integrada, sus USB y su
   sonido salen «en el procesador», no «en la gráfica».
 - Sistema: una sesión gráfica arrancada desde la consola ya no sale como
