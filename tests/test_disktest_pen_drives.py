@@ -208,6 +208,25 @@ class TestASlowPenDrive(TabCase):
         self.assertIn(total, tab.about.text())
         self.assertIn(render.disk_rate(10_000_000).replace(" ", " "), text)
 
+    def test_its_slowest_figures_are_not_said_as_nothing(self):
+        """A cheap pen drive writes 4K at random at tens of kB/s."""
+        self.assertEqual(render.rate_figure(24_000, 1e6), "0.024")
+        self.assertEqual(render.rate_figure(920_000, 1e6), "0.920")
+        self.assertEqual(render.rate_figure(1_000_000, 1e6), "1.0")
+        self.assertEqual(render.rate_figure(63_300_000, 1e6), "63.3")
+        last = recorded("sn850x-btrfs")
+        slow = tuple(dataclasses.replace(measure, laps=tuple(
+            dataclasses.replace(lap, bytes_per_second=24_000) for lap in measure.laps))
+            if measure.pattern == "random" and measure.direction == "write" else measure
+            for measure in last.measures)
+        disktest.save_history([dataclasses.replace(
+            last, disks=("sdb",), model="DataTraveler 3.0", measures=slow)])
+        tab = self.tab()
+        self.pen(tab)
+        text = visible_texts(tab)
+        self.assertIn("0.024", text)
+        self.assertNotIn("\n0.0\n", text)
+
     def test_another_pen_drive_that_came_up_under_its_name_isnt_it(self):
         """sdb is whatever was plugged in first: its last result is only its
         own if the model is the same."""

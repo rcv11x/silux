@@ -1123,12 +1123,16 @@ def bandwidth(value: Optional[int], decimals: int = 0) -> str:
 
 def rate_figure(bytes_per_second: Optional[float], unit: float) -> str:
     """A rate in a table whose unit is said once, at its foot: «6 592»,
-    «63.3». `unit` is the bytes per second one of them is (1e6 for MB/s,
-    1e9 for GB/s). From a hundred up, whole: a decimal there is noise."""
+    «63.3», «0.024». `unit` is the bytes per second one of them is (1e6 for
+    MB/s, 1e9 for GB/s). From a hundred up, whole: a decimal there is noise.
+    Below one, three decimals, as CrystalDiskMark: a pen drive's random
+    writes are tens of kB/s, and one decimal said 0."""
     if _none(bytes_per_second):
         return DASH
     value = float(bytes_per_second) / unit
-    return thousands(round(value)) if value >= 100 else f"{value:.1f}"
+    if value >= 100:
+        return thousands(round(value))
+    return f"{value:.1f}" if value >= 1 else f"{value:.3f}"
 
 
 def disk_rate(bytes_per_second: Optional[float]) -> str:
