@@ -39,6 +39,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
+    ElidingComboBox,
     Fact,
     FoldingRow,
     Notice,
@@ -496,7 +497,7 @@ class DiskTestTab(ScrollPage):
         intro.setObjectName("Subhead")
         intro.setWordWrap(True)
 
-        self.place_box = QComboBox()
+        self.place_box = ElidingComboBox()
         self.place_box.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.place_box.setMinimumContentsLength(18)

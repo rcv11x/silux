@@ -364,6 +364,28 @@ class TestWhatAResultShows(TabCase):
             self.assertNotIn("62.9", text.split(_("memtest.card.history"))[-1])
         self.assertIn(hottest, at(900))
 
+    def test_a_narrow_window_cuts_the_place_with_an_ellipsis(self):
+        """It was cut halfway through a word: «457 GB fre»."""
+        tab = self.tab()
+        box = tab.place_box
+        for width, whole in ((1400, True), (480, False)):
+            tab.resize(width, 900)
+            for _turn in range(5):
+                self.app.processEvents()
+            shown = box.shown_text()
+            if whole:
+                self.assertEqual(shown, box.currentText())
+                continue
+            self.assertTrue(shown.endswith("…"), shown)
+            self.assertTrue(box.currentText().startswith(shown[:-1]))
+            from PySide6.QtWidgets import QStyle, QStyleOptionComboBox
+
+            option = QStyleOptionComboBox()
+            box.initStyleOption(option)
+            room = box.style().subControlRect(QStyle.ComplexControl.CC_ComboBox, option,
+                                              QStyle.SubControl.SC_ComboBoxEditField, box)
+            self.assertLessEqual(box.fontMetrics().horizontalAdvance(shown), room.width())
+
     def test_the_axis_says_the_same_figures_or_none(self):
         """Reading only, «10 000» met «100 000»; and each screenshot showed
         the figures it had room for."""

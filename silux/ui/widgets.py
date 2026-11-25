@@ -33,6 +33,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QBoxLayout,
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -42,6 +43,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QStyle,
+    QStyleOptionComboBox,
+    QStylePainter,
     QToolTip,
     QVBoxLayout,
     QWidget,
@@ -2413,6 +2417,28 @@ def unbroken(figure: str) -> str:
     label won't split: at a space, or after the slash, it left «GB/» on one
     line and «s» on the next."""
     return figure.replace(" ", "\u00a0").replace("/", "/\u2060")
+
+
+class ElidingComboBox(QComboBox):
+    """A combo box whose choice, where it doesn't fit, ends in «…» instead
+    of being cut halfway through a word. Open, the list shows each whole."""
+
+    def shown_text(self) -> str:
+        """The choice as it is drawn: whole, or cut to the room it has."""
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        room = self.style().subControlRect(QStyle.ComplexControl.CC_ComboBox, option,
+                                           QStyle.SubControl.SC_ComboBoxEditField, self)
+        return self.fontMetrics().elidedText(self.currentText(), Qt.TextElideMode.ElideRight,
+                                             max(0, room.width()))
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        painter = QStylePainter(self)
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        option.currentText = self.shown_text()
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, option)
+        painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option)
 
 
 class RateBar(QWidget):
