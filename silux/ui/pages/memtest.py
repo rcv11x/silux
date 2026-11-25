@@ -518,11 +518,12 @@ class MemoryTestTab(ScrollPage):
         self.blocked_note = QLabel("")
         self.blocked_note.setObjectName("Muted")
         self.blocked_note.hide()
+        # On the right, as in the Disk tab.
         buttons = FoldingRow()
-        buttons.add_widget(self.run_button)
-        buttons.add_widget(self.cancel_button)
         buttons.add_widget(self.blocked_note)
         buttons.add_stretch(1)
+        buttons.add_widget(self.run_button)
+        buttons.add_widget(self.cancel_button)
         self.progress = ProgressLine()
         self.progress.hide()
         for widget in (title, self.intro, buttons, self.progress):
