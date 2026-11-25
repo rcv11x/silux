@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: una integrada de AMD que nadie nombra (una base de dispositivos
+  PCI antigua y un procesador cuya marca no dice su Radeon) ya no se titula
+  con el nombre en clave del procesador («Raphael»): sale como «AMD, gráfica
+  integrada», con el nombre en clave en su fila.
 - Gráficos: con una base de dispositivos PCI antigua, la integrada de Intel
   salía con su nombre en clave («AlderLake-S GT1»). Ahora sale con su
   nombre comercial («UHD Graphics 770»), y el nombre en clave va en su fila.

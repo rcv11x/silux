@@ -323,6 +323,10 @@ class BoardPage(ScrollPage):
             else:
                 donde = _("board.pci.onboard")
             nombre = d.name or render.pci_unnamed(d) or render.DASH
+            if d.kind == "gpu" and d.slot in graficas:
+                # As on Graphics: an integrated GPU nobody names isn't
+                # titled by its pci.ids codename here either.
+                nombre = render.gpu_name(graficas[d.slot])
             if d.kind in ("ethernet", "wifi") and d.name:
                 nombre = render.with_maker(d.vendor, d.name)
             fila = [_(PCI_KINDS[d.kind]), nombre,

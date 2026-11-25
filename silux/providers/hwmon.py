@@ -33,7 +33,7 @@ from ..model import (
     short_brand,
 )
 from ..system_env import system_environment
-from .base import Draft, Provider, is_virtual_machine, mean, read_int, read_text
+from .base import Draft, Provider, frozen_gpu, is_virtual_machine, mean, read_int, read_text
 from .dmi import PORTABLE_CHASSIS
 
 HWMON = pathlib.Path("/sys/class/hwmon")
@@ -417,10 +417,10 @@ class HwmonSensors(Provider):
                                if draft.types else None)
         board_name = draft.board.display_name or _("board.unnamed")
         # The GPUs are already listed when this runs: the order of the
-        # providers in `collector.py` guarantees it.
-        gpu_names = {gpu["pci_slot"]: (gpu.get("name")
-                                       or _("sensor.dev.gpu").format(
-                                           n=gpu["index"]))
+        # providers in `collector.py` guarantees it. Named as every page names
+        # them.
+        from ..render import gpu_name
+        gpu_names = {gpu["pci_slot"]: gpu_name(frozen_gpu(gpu))
                      for gpu in draft.gpus if gpu.get("pci_slot")}
 
         sensors = self._without_fillers(self._read_hwmon(cpu_name, board_name, gpu_names))

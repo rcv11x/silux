@@ -265,6 +265,7 @@ class DrmGpus(Provider):
                 gpu["memory"] = _total_memory(device)
                 self._ask_the_driver(gpu, device)
             gpu["integrated"] = _is_integrated(gpu)
+            _apu_codename_apart(gpu)
             if gpu["driver"] in VIRTUAL_DRIVERS:
                 gpu["virtual"] = True
 
@@ -455,6 +456,17 @@ class DrmGpus(Provider):
                 and (integrated := _cpu_igpu(draft))):
             gpu["codename"] = gpu.get("codename") or gpu.get("name")
             gpu["name"] = integrated
+
+
+def _apu_codename_apart(gpu: dict) -> None:
+    """An AMD integrated GPU nobody names: pci.ids gives only its codename
+    («Raphael», without brackets) and the processor's brand names no
+    Radeon. The codename goes in its own field, and the GPU stays unnamed
+    rather than titled by it."""
+    name = gpu.get("name") or ""
+    if (gpu.get("vendor") == "AMD" and gpu.get("integrated") and not gpu.get("codename")
+            and name and "radeon" not in name.lower()):
+        gpu["codename"], gpu["name"] = name, None
 
 
 def _is_integrated(gpu: dict) -> Optional[bool]:

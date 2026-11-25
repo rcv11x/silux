@@ -1556,8 +1556,12 @@ class Gpu:
 
     @property
     def display_name(self) -> Optional[str]:
-        """Its name; `render.gpu_name` says it when there is none."""
-        return self.name or self.codename
+        """Its name; `render.gpu_name` says it when there is none.
+
+        A card without one goes by its chip's codename. An integrated GPU
+        does not: its codename is the processor's («Raphael»).
+        """
+        return self.name or (None if self.integrated else self.codename)
 
     @property
     def resting(self) -> bool:
