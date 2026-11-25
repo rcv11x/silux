@@ -320,14 +320,36 @@ la memoria) no va: está propuesto en las notas
   rama `memoria-nativa`; cómo mide, en
   [prueba-de-memoria.md](prueba-de-memoria.md)). Antes de llevarla a
   `master`:
-  - alta · validarla en un Intel de sobremesa, en un procesador con dos
-    clases de núcleo y en uno antiguo con el AppImage compatible. El
-    contador de ciclos de un híbrido está escrito sin probar.
+  - alta · validarla en un procesador con dos clases de núcleo y en uno
+    antiguo con el AppImage compatible. El contador de ciclos de un híbrido
+    está escrito sin probar. (El Intel de sobremesa, un i5-10400, ya está:
+    tablas en [prueba-de-memoria.md](prueba-de-memoria.md).)
+  - media · en el i5-10400 la copia de un hilo sale por debajo de las
+    referencias: un 8 a un 12 % la normal (`bw_mem cp`, MLC) y un 30 % la
+    que no pasa por la caché (STREAM, que es el `memcpy` de la glibc). En el
+    5800X3D cuadraban. Ver qué hace distinto la glibc (cuatro páginas a la
+    vez, prefetch) antes de enseñar la copia por niveles.
+  - media · el aviso «La frecuencia cambió durante la prueba» sale en todas
+    las del i5-10400 con el turbo fijo: los puntos van de 4,05 a 4,27 GHz y
+    avisa desde un 3 % (`CLOCK_DROP`). Y solo mira los puntos de la curva,
+    no el ancho de banda de un hilo, que corre en la misma CPU: con
+    auto-cpufreq, una prueba hizo la curva a 4,2 GHz y el ancho de banda a
+    2,89 sin avisar de ello.
   - alta · el camino AVX-512 no ha corrido nunca en una pieza de verdad:
     hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
   - alta · el CI (`cargo fmt`, `clippy`, `cargo test`, y la suite con el
     módulo y sin él) y el módulo dentro de los dos AppImage, con AVX2 solo
     en las funciones que lo comprueban.
+  - media · un programa que cambia el turbo o el gobernador según la carga
+    (auto-cpufreq, TLP, power-profiles-daemon, tuned, thermald…) mueve la
+    frecuencia a mitad de la prueba: en un i5-10400, auto-cpufreq empezó una
+    curva a 2,89 GHz y la acabó a 4,2. Vale también para la del disco y la
+    del procesador. Detectarlo sin root (servicio activo, proceso en marcha)
+    y decirlo con su nombre en dos sitios: antes de empezar, en una línea
+    («auto-cpufreq está activo: puede cambiar el turbo durante la prueba»),
+    y en el resultado junto a «La frecuencia cambió durante la prueba», como
+    causa probable. Solo que está y lo que hace, sin pedir que se desactive.
+    Con su test.
   - media · mide en una sola CPU, la segunda del primer tipo de núcleo. Con
     dos CCD de L3 distinta (7950X3D), núcleos P y E o varios nodos NUMA
     falta medir uno de cada clase y decir cuál es cuál.
