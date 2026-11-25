@@ -21,7 +21,7 @@ from ...settings import Preferences
 from .. import theme
 from ..cachemap import CacheMap
 from ..theme import Palette, ui_font
-from ..widgets import Card, ChipRow, ResponsiveRow, ScrollPage, Table
+from ..widgets import Card, ChipRow, ResponsiveRow, ScrollPage, Table, let_go
 
 
 def cache_axis(snapshot: Snapshot) -> list[int]:
@@ -166,8 +166,7 @@ class CachesPage(ScrollPage):
         if con_antes != con_ahora:
             nueva = self._tabla(con_ahora)
             self._detail.body.replaceWidget(self.table, nueva)
-            self.table.setParent(None)
-            self.table.deleteLater()
+            let_go(self.table)
             self.table = nueva
         self.latency_note.setVisible(con_ahora)
         self._signature = ()

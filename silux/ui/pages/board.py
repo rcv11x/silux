@@ -30,6 +30,7 @@ from ..widgets import (
     ScrollPage,
     Table,
     clear_layout,
+    let_go,
     tone_for,
 )
 
@@ -290,8 +291,7 @@ class BoardPage(ScrollPage):
             cabeceras = PCI_HEADERS + (("board.pci.slot",) if con_ranura else ())
             nueva = Table([_(h) for h in cabeceras], cede=(1,))
             self.pci_card.body.replaceWidget(self.pci, nueva)
-            self.pci.setParent(None)
-            self.pci.deleteLater()
+            let_go(self.pci)
             self.pci = nueva
         # El sonido que comparte tarjeta con una gráfica (misma dirección,
         # otra función) es su salida HDMI: no está «en la placa».

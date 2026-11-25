@@ -40,6 +40,7 @@ from ..widgets import (
     boton_de_permiso_permanente,
     clear_layout,
     dismiss_buttons,
+    let_go,
     paint_level,
     unbroken,
 )
@@ -721,8 +722,7 @@ class StoragePage(ScrollPage):
                 nueva.add(nombre)
                 nueva.set(nombre, valor)
             pliegue.body.replaceWidget(vieja, nueva)
-            vieja.setParent(None)
-            vieja.deleteLater()
+            let_go(vieja)
         else:
             for nombre, valor in filas:
                 vieja.set(nombre, valor)

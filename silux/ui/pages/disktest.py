@@ -50,6 +50,7 @@ from ..widgets import (
     ScrollPage,
     Table,
     clear_layout,
+    let_go,
     paint_level,
     unbroken,
     value_font,
@@ -832,8 +833,7 @@ class DiskTestTab(ScrollPage):
             widget = self._notices.itemAt(index).widget()
             if widget is not None and widget is not self._failure:
                 self._notices.takeAt(index)
-                widget.setParent(None)
-                widget.deleteLater()
+                let_go(widget)
         plan = self.plan()
         if plan is None:
             self.about.setText(_("disktest.about.nowhere"))
@@ -971,8 +971,7 @@ class DiskTestTab(ScrollPage):
 
     def _drop_failure(self) -> None:
         if self._failure is not None:
-            self._failure.setParent(None)
-            self._failure.deleteLater()
+            let_go(self._failure)
             self._failure = None
         self._gone = None
 

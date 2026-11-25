@@ -2289,13 +2289,21 @@ def boton_de_permiso_permanente() -> QPushButton:
     return boton
 
 
+def let_go(widget: QWidget) -> None:
+    """Take a widget out of its window for good. Hidden first: one added a
+    moment ago to a window on screen has its showing queued, and without a
+    parent it came up as a window of its own."""
+    widget.hide()
+    widget.setParent(None)
+    widget.deleteLater()
+
+
 def clear_layout(layout) -> None:
     """Vacía un layout, borrando también los sublayouts que contenga."""
     while layout.count():
         item = layout.takeAt(0)
         if (widget := item.widget()) is not None:
-            widget.setParent(None)
-            widget.deleteLater()
+            let_go(widget)
         elif (child := item.layout()) is not None:
             clear_layout(child)
             child.deleteLater()
@@ -2749,8 +2757,7 @@ class Table(QScrollArea):
         while self._grid.count() > len(self._headers):
             item = self._grid.takeAt(self._grid.count() - 1)
             if (widget := item.widget()) is not None:
-                widget.setParent(None)
-                widget.deleteLater()
+                let_go(widget)
         self._cells.clear()
         # Los candados iban en la rejilla y se han ido con ella.
         self._candados.clear()

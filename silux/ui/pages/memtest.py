@@ -42,6 +42,7 @@ from ..widgets import (
     ScrollPage,
     Table,
     clear_layout,
+    let_go,
     unbroken,
     value_font,
 )
@@ -676,8 +677,7 @@ class MemoryTestTab(ScrollPage):
 
     def _drop_failure(self) -> None:
         if self._failure is not None:
-            self._failure.setParent(None)
-            self._failure.deleteLater()
+            let_go(self._failure)
             self._failure = None
 
     def _on_finished(self, result: memtest.Result, history) -> None:
