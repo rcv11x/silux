@@ -719,3 +719,8 @@ SENSORES · 29 en 5 dispositivos
 - `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
 - `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
+
+**Consumo de las gráficas: lo que contestó cada vía**
+
+- GeForce RTX 4060 (0000:01:00.0)
+  - runtime_status: active

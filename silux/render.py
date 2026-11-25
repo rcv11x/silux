@@ -1587,6 +1587,15 @@ def limit_watts(value: Optional[float]) -> str:
     return f"{figure(value, 0 if whole else 1)} W"
 
 
+def gpu_power_estimate(gpu) -> str:
+    """«53 W · mean of the driver's samples, last 2.4 s»: the figure an
+    NVIDIA's driver calculates where it measures no power, said to be that."""
+    if _none(gpu.power_estimate_w):
+        return DASH
+    return " · ".join((watts(gpu.power_estimate_w), _("gpu.power.estimate.detail").format(
+        window=seconds(gpu.power_estimate_window_s))))
+
+
 def gpu_factory_power_limit(gpu) -> str:
     """«340 W · de fábrica 330 W»: the cap in force and the factory one.
     The range the driver accepts goes in the tooltip: in the row it was cut."""

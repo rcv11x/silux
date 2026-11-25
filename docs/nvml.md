@@ -24,6 +24,8 @@ va al informe.
 | Ventilador | `nvmlDeviceGetFanSpeed` | 270 | las dedicadas con ventilador propio | SYM, DQ |
 | Consumo | `nvmlDeviceGetPowerUsage` | 270 | Fermi o posterior, con gestión de energía | SYM, DQ |
 | | si no, los campos 185 y 186 con `nvmlDeviceGetFieldValues` | campos R535 (la función, R384) | 185: Ampere o posterior, menos GA100; 186: todas | H, CL |
+| Consumo estimado | `nvmlDeviceGetSamples` con `NVML_TOTAL_POWER_SAMPLES`; se enseña solo si ninguna de las de arriba contesta | R340 | Kepler o posterior | SYM, H |
+| Energía gastada (solo al informe) | `nvmlDeviceGetTotalEnergyConsumption` | R384 | Volta o posterior | SYM, H |
 | Límite de potencia actual | `nvmlDeviceGetEnforcedPowerLimit` | R331 | Kepler o posterior | SYM, CL, DQ |
 | Límite de fábrica y rango | `nvmlDeviceGetPowerManagementDefaultLimit`, `nvmlDeviceGetPowerManagementLimitConstraints` | R304 | Kepler o posterior | SYM, CL, DQ |
 | Relojes actuales y máximos | `nvmlDeviceGetClockInfo`, `nvmlDeviceGetMaxClockInfo` | 270; R285 (el de video, R361) | Fermi o posterior | SYM, CL, DQ |
@@ -31,10 +33,11 @@ va al informe.
 | Motivos de recorte | `nvmlDeviceGetCurrentClocksEventReasons`; si no, `nvmlDeviceGetCurrentClocksThrottleReasons` | R535; R304 | todas las que NVML admite del todo | SYM, H, CL, DQ |
 
 El consumo es lo que `nvidia-smi` da como `power.draw`, `power.draw.average`
-y `power.draw.instant`. Si las tres contestan que no, hoy la tarjeta sale sin
-consumo, con lo que contestó cada una en el informe. Qué más publica el
-driver, qué vale cada cifra y qué falta por hacer está abajo, en
-«El consumo, a fondo».
+y `power.draw.instant`. Si las tres contestan que no y el búfer de muestras
+sí, la tarjeta sale con el consumo estimado del driver, en su propio campo y
+nunca como el consumo. Lo que contestó cada vía, el búfer y la energía
+incluidos, va al informe. Qué vale cada cifra está abajo, en «El consumo, a
+fondo».
 
 La temperatura y los motivos de recorte se piden primero con la función
 nueva: las antiguas están obsoletas desde CUDA 13.0 (R580) y se quitan en
@@ -86,6 +89,22 @@ el driver 595 y otra con el 620, son esa cifra.
 
 De ahí la regla: **una cifra que solo sale del búfer es una estimación del
 driver, no una medida**. Se puede enseñar con ese nombre; no es «el consumo».
+
+Así la enseña Silux:
+
+- En la página de la gráfica, una fila propia: «Consumo estimado: 53 W ·
+  media de las muestras del driver, últimos 2.4 s». La ventana es la de las
+  muestras nuevas desde la lectura anterior; en la primera, todo el búfer.
+- Al pie, que el driver no mide el consumo de esa tarjeta: lo calcula, y en
+  reposo puede marcar más de lo que gasta.
+- En `--json`, `power_estimate_w`, `power_estimate_window_s` y
+  `power_estimate_samples`. `power_w` se queda vacío.
+- Ni en Sensores, ni en Inicio, ni en la ficha del consumo, ni en ninguna
+  gráfica: no la toman por el consumo ni el máximo ni la media.
+
+En una tarjeta con sensor el búfer también se pregunta, pero solo va al
+informe. `power_source` dice qué vía dio `power_w`. No es lo que NVML llama
+«power source» (`nvmlDeviceGetPowerSource`, corriente o batería).
 
 ### Por generación
 

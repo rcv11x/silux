@@ -138,11 +138,11 @@ la memoria) no va: está propuesto en las notas
     `nvidia-smi` y salen sin consumo. La tarjeta no tiene sensor: los 53 W
     del búfer de muestras son la estimación del driver, que en reposo marca
     unos 40 W de más ([nvml.md](nvml.md#las-tarjetas-sin-sensor-de-consumo)).
-    Por hacer: enseñarla con su nombre («Consumo estimado», en su campo, no
-    en `power_w`), descartar las lecturas imposibles de una portátil recién
-    despertada (588 W en una tarjeta de 95) y llevar al informe lo que
-    contesta cada vía, el búfer y el contador de energía incluidos. El
-    estado P (`GetPerformanceState`) no se graba.
+    Sale como «Consumo estimado». Por hacer: descartar las lecturas
+    imposibles de una portátil recién despertada (588 W en una tarjeta de
+    95). Los volcados no graban el búfer: hacen falta informes nuevos de las
+    dos para tener el caso entero en la suite. El estado P
+    (`GetPerformanceState`) no se graba.
   - Memoria · baja · el HP tiene `uncore_imc_free_running` con eventos de dos
     campos: sirve para probar el ayudante de la prueba11 con el IMC, además
     del Lenovo LOQ con DDR5.

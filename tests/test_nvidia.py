@@ -265,7 +265,7 @@ class _NoPowerButSamples(_OldDriver, _NvmlWithSamples):
 
 class TestNoPowerFromItsSamples(unittest.TestCase):
     """The driver doesn't give the card's power: none, whatever else it
-    publishes."""
+    publishes. Its samples are its estimate, in a field of their own."""
 
     def test_none_with_what_each_call_answered(self):
         lib = _NoPowerButSamples()
@@ -278,7 +278,7 @@ class TestNoPowerFromItsSamples(unittest.TestCase):
                          "nvmlDeviceGetPowerUsage: NVML_ERROR_NOT_SUPPORTED (3); "
                          "field 185: NVML_ERROR_NOT_SUPPORTED (3); "
                          "field 186: NVML_ERROR_NOT_SUPPORTED (3)")
-        self.assertEqual(lib.since, [], "the samples buffer was asked")
+        self.assertEqual(tarjeta.power_estimate_w, 53.1)
 
 
 class TestAnOldDriver(unittest.TestCase):
@@ -372,7 +372,8 @@ class TestThePowerOfANewDriver(unittest.TestCase):
     def _leer(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
-        return sesion._power(nvml.ctypes.c_void_p(1))
+        power = sesion._power(nvml.ctypes.c_void_p(1), 0)
+        return power["power_w"], power["power_source"], power["power_error"]
 
     def _potencia(self, lib):
         return self._leer(lib)[0]

@@ -115,7 +115,9 @@ CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.silmax", "gpu.
 # está: es la de la ficha de arriba. Tampoco el consumo ni su límite, que
 # van en «Ahora mismo» con su barra: repetidos aquí eran la misma cifra dos
 # veces en la misma pantalla.
-SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.powercap",
+# The driver's power estimate has its row here: it is not the power, and goes
+# in no tile, bar or chart.
+SENSOR_FIELDS = ("gpu.sensor.state", "gpu.sensor.powercap", "gpu.sensor.powerestimate",
                  "gpu.sensor.hotspot", "gpu.sensor.memtemp",
                  "gpu.sensor.vrgfx", "gpu.sensor.vrsoc", "gpu.sensor.vrmem",
                  "gpu.sensor.fan",
@@ -760,6 +762,8 @@ class GpuSection(QWidget):
         s(_("gpu.sensor.memtemp"), render.temperature(gpu.memory_temp_c, fahrenheit))
         s(_("gpu.sensor.powercap"), render.gpu_factory_power_limit(gpu),
           tooltip=render.gpu_power_limit_tip(gpu))
+        s(_("gpu.sensor.powerestimate"), render.gpu_power_estimate(gpu),
+          tooltip=_("gpu.tip.powerestimate"))
         s(_("gpu.sensor.fan"), render.fan(gpu.fan_rpm, gpu.fan_percent),
           tooltip=_("gpu.tip.fan.zerorpm") if gpu.fan_rpm == 0 and not gpu.integrated else "")
         s(_("gpu.sensor.vrgfx"), render.temperature(gpu.vr_gfx_c, fahrenheit),
@@ -846,6 +850,9 @@ class GpuSection(QWidget):
         # Only cards whose driver publishes a factory limit have one to show.
         if gpu.power_cap_default_w is None and gpu.power_cap_max_w is None:
             escondidos["sensors"].add("gpu.sensor.powercap")
+        # Only where the driver estimates what it does not measure.
+        if gpu.power_estimate_w is None:
+            escondidos["sensors"].add("gpu.sensor.powerestimate")
         if render.unique_id(gpu.unique_id) is None:
             escondidos["card"].add("gpu.field.uuid")
 

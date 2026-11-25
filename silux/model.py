@@ -20,6 +20,10 @@ from . import thermal
 from .edid import Edid, VideoMode  # noqa: F401  (re-exported by the model)
 from .spd import SpdInfo, Timings  # noqa: F401  (re-exported by the model)
 
+# A field's metadata for what only the report writes: what the driver
+# answered to each call, not data for other programs (`to_jsonable`).
+REPORT_ONLY = {"report_only": True}
+
 
 class Need(str, Enum):
     """Why a datum is missing. What the interface shows the user."""
@@ -1458,6 +1462,8 @@ class Gpu:
     suspended: bool = False
     last_awake_s: Optional[float] = None
     last_temp_c: Optional[float] = None
+    # The kernel's runtime PM state when it was read.
+    runtime_status: Optional[str] = field(default=None, metadata=REPORT_ONLY)
 
     memory: GpuMemory = field(default_factory=GpuMemory)
     link: PcieLink = field(default_factory=PcieLink)
@@ -1503,6 +1509,18 @@ class Gpu:
     power_cap_default_w: Optional[float] = None
     power_cap_min_w: Optional[float] = None
     power_cap_max_w: Optional[float] = None
+    # Which of NVML's ways gave `power_w` (docs/nvml.md). Not «AC or battery»,
+    # which is what NVML calls its power source.
+    power_source: Optional[str] = None
+    # The driver's estimate, on a card it measures no power on: the mean of
+    # its power samples over the window. Never `power_w`, and never in
+    # Sensors, Home or a chart.
+    power_estimate_w: Optional[float] = None
+    power_estimate_window_s: Optional[float] = None
+    power_estimate_samples: Optional[int] = None
+    # (way, answer) for each way NVML has of reading the power, the energy
+    # counter included.
+    power_answers: tuple[tuple[str, str], ...] = field(default=(), metadata=REPORT_ONLY)
     fan_rpm: Optional[int] = None
     fan_percent: Optional[float] = None
     # A laptop's dedicated card: its fans are the machine's, in its embedded
@@ -2353,11 +2371,14 @@ def to_jsonable(obj: Any) -> Any:
 
     Written by hand instead of using `dataclasses.asdict` because the
     computed properties (multipliers, totals) must be included and the sets
-    sorted so the output is stable between runs.
+    sorted so the output is stable between runs. What is only for the report
+    (`REPORT_ONLY`) is left out.
     """
     if is_dataclass(obj) and not isinstance(obj, type):
         out: dict[str, Any] = {}
         for f in fields(obj):
+            if f.metadata.get("report_only"):
+                continue
             out[f.name] = to_jsonable(getattr(obj, f.name))
         for extra in _COMPUTED.get(type(obj).__name__, ()):
             out[extra] = to_jsonable(getattr(obj, extra))

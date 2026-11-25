@@ -55,7 +55,9 @@ class NvidiaGpus(Provider):
         def ask():
             return [dict(dataclasses.asdict(t), serial=None) for t in self.client.devices()]
         raw_cards = sysroot.recorded("nvml", "tarjetas", ask) or ()
-        return [nvml.NvidiaGpu(**dict(c, throttle_reasons=tuple(c.get("throttle_reasons") or ())))
+        return [nvml.NvidiaGpu(**dict(
+                    c, throttle_reasons=tuple(c.get("throttle_reasons") or ()),
+                    power_answers=tuple(tuple(a) for a in c.get("power_answers") or ())))
                 for c in raw_cards]
 
     def unavailable_reason(self):
@@ -91,14 +93,26 @@ class NvidiaGpus(Provider):
                                and ("NVIDIA" in n.message
                                     or (n.path in answered and n.key == "prov.drm.nodrm")))]
 
-        # A dash with no reason breaks rule 5: say the driver did not give it,
-        # and what NVML answered goes in the report.
         for card in cards:
             for index, gpu in enumerate(draft.gpus):
-                if gpu.get("pci_slot") == card.pci_slot and gpu.get("power_w") is None:
-                    draft.note(f"gpus.{index}.power_w", Need.HARDWARE,
-                               _("prov.nvml.nopower"), what=_("what.gpu.power"),
-                               detail=card.power_error or "", key="nvml.nopower")
+                if gpu.get("pci_slot") != card.pci_slot:
+                    continue
+                gpu["runtime_status"] = read_text(f"{PCI}/{card.pci_slot}/power/runtime_status")
+                if gpu.get("power_w") is None:
+                    _say_why_no_power(draft, index, card)
+
+
+def _say_why_no_power(draft: Draft, index: int, card: nvml.NvidiaGpu) -> None:
+    """A dash with no reason breaks rule 5: say the driver did not give it,
+    or that what it gives is its own estimate. What NVML answered to each way
+    goes in the report."""
+    path = f"gpus.{index}.power_w"
+    if card.power_estimate_w is not None:
+        draft.note(path, Need.HARDWARE, _("prov.nvml.estimate"),
+                   detail=card.power_error or "", key="nvml.estimate")
+    else:
+        draft.note(path, Need.HARDWARE, _("prov.nvml.nopower"), what=_("what.gpu.power"),
+                   detail=card.power_error or "", key="nvml.nopower")
 
 
 PCI = "/sys/bus/pci/devices"
@@ -168,6 +182,10 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
         "decode_busy_percent": card.decode_busy_percent,
         "temp_c": card.temp_c,
         "power_w": card.power_w,
+        "power_source": card.power_source,
+        "power_estimate_w": card.power_estimate_w,
+        "power_estimate_window_s": card.power_estimate_window_s,
+        "power_estimate_samples": card.power_estimate_samples,
         "power_cap_w": card.power_cap_w,
         "power_cap_default_w": card.power_cap_default_w,
         "power_cap_min_w": card.power_cap_min_w,
@@ -180,6 +198,8 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
             gpu[field] = value
     if card.throttle_reasons and not gpu.get("throttle_reasons"):
         gpu["throttle_reasons"] = card.throttle_reasons
+    if card.power_answers:
+        gpu["power_answers"] = card.power_answers
 
     memory: GpuMemory = gpu.get("memory") or GpuMemory()
     gpu["memory"] = dataclasses.replace(
