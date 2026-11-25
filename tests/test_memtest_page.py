@@ -73,6 +73,13 @@ class TestWhatAResultShows(TabCase):
         self.assertFalse(tab.result_card.isVisibleTo(tab))
         self.assertFalse(tab.history_card.isVisibleTo(tab))
         self.assertTrue(tab.run_button.isEnabled())
+        # The main button, on the right, as the Disk tab's.
+        self.assertEqual(tab.run_button.objectName(), "Primary")
+        tab.resize(1200, 700)
+        for _turn in range(3):
+            self.app.processEvents()
+        row = tab.run_button.parentWidget()
+        self.assertLessEqual(row.width() - tab.run_button.geometry().right(), 2)
 
     def test_each_level_with_its_cycles_and_the_clock_it_ran_at(self):
         tab = self.tab()
@@ -494,6 +501,53 @@ class TestTheChannelsWaitForPermissions(TabCase):
         self.assertIsNone(memtest.load_history()[0].theoretical_bytes_per_second)
 
 
+class TestTitlesOverTheirFigures(TabCase):
+    """Without the memory's maximum there are no bars, and each operation's
+    title sat where its bar would start, far from its figure."""
+
+    def text_edges(self, label, grid) -> tuple[int, int]:
+        """Where the label's text starts and ends, in the grid."""
+        from PySide6.QtCore import Qt
+
+        width = label.fontMetrics().horizontalAdvance(label.text())
+        inside = label.contentsRect()
+        left = (inside.right() - width + 1 if label.alignment() & Qt.AlignmentFlag.AlignRight
+                else inside.left())
+        start = label.mapTo(grid, inside.topLeft()).x() + (left - inside.left())
+        return start, start + width
+
+    def test_without_bars_each_title_ends_over_its_figure(self):
+        from silux.ui.pages.memtest import GRID_COLUMNS
+
+        tab = self.tab()
+        tab.show_result(recorded())
+        tab.resize(1690, 1100)
+        for _turn in range(3):
+            self.app.processEvents()
+        grid = tab.grid
+        for head, (operation, _key, _colour) in zip(grid.heads, GRID_COLUMNS):
+            with self.subTest(operation=operation):
+                _bar, figure, _under = grid.cells["RAM", operation]
+                end = figure.mapTo(grid, figure.rect().topRight()).x()
+                self.assertLessEqual(abs(self.text_edges(head, grid)[1] - end), 2)
+
+    def test_with_bars_each_title_starts_over_its_bar(self):
+        from silux.ui.pages.memtest import GRID_COLUMNS
+
+        tab = self.tab()
+        tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
+        tab.resize(1690, 1100)
+        for _turn in range(3):
+            self.app.processEvents()
+        grid = tab.grid
+        for head, (operation, _key, _colour) in zip(grid.heads, GRID_COLUMNS):
+            with self.subTest(operation=operation):
+                bar, _figure, _under = grid.cells["RAM", operation]
+                self.assertTrue(bar.isVisibleTo(grid))
+                start = bar.mapTo(grid, bar.rect().topLeft()).x()
+                self.assertLessEqual(abs(self.text_edges(head, grid)[0] - start), 2)
+
+
 class TestWideScreens(TabCase):
     def test_the_content_keeps_to_a_readable_width_and_stays_centred(self):
         tab = self.tab()
@@ -713,6 +767,20 @@ class TestOneTestAtATime(TabCase):
         self.assertFalse(page.cpu_tab.quick_button.isEnabled())
         page.memory_tab.running_changed.emit(False)
         self.assertTrue(page.cpu_tab.run_button.isEnabled())
+        # And the third: while the disk test runs, neither of the others.
+        page.disk_tab.running_changed.emit(True)
+        self.assertFalse(page.cpu_tab.run_button.isEnabled())
+        self.assertFalse(page.memory_tab.run_button.isEnabled())
+        self.assertEqual(page.memory_tab.blocked_note.text(),
+                         _("bench.tabs.busy").format(test=_("bench.tab.disk")))
+        page.disk_tab.running_changed.emit(False)
+        self.assertTrue(page.cpu_tab.run_button.isEnabled())
+        self.assertTrue(page.memory_tab.run_button.isEnabled())
+        page.memory_tab.running_changed.emit(True)
+        self.assertEqual(page.disk_tab.blocked_note.text(),
+                         _("bench.tabs.busy").format(test=_("bench.tab.memory")))
+        self.assertFalse(page.disk_tab.run_button.isEnabled())
+        page.memory_tab.running_changed.emit(False)
 
     def test_the_tabs_that_exist_and_no_other(self):
         from silux.settings import Preferences
@@ -722,11 +790,13 @@ class TestOneTestAtATime(TabCase):
         page = BenchmarksPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
         self.addCleanup(page.deleteLater)
         self.assertEqual([b.text() for b in page.buttons.values()],
-                         [_("bench.tab.cpu"), _("bench.tab.memory")])
+                         [_("bench.tab.cpu"), _("bench.tab.memory"), _("bench.tab.disk")])
         self.assertEqual(page.tab, "cpu")
         self.assertTrue(page.select_tab("memory"))
         self.assertIs(page.stack.currentWidget(), page.memory_tab)
-        self.assertFalse(page.select_tab("disk"))
+        self.assertTrue(page.select_tab("disk"))
+        self.assertIs(page.stack.currentWidget(), page.disk_tab)
+        self.assertFalse(page.select_tab("network"))
 
 
 class TestTheRestOfTheWindow(unittest.TestCase):

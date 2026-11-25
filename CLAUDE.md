@@ -45,19 +45,20 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
 python3 tools/probar_actualizador.py VIEJO NUEVO  # el actualizador contra un GitHub falso
-uv pip install ./native/silux_bench    # el módulo nativo de la prueba de memoria (pide Rust)
+uv pip install ./native/silux_bench    # el módulo nativo de las pruebas de memoria y de disco (pide Rust)
 (cd native/silux_bench && cargo test --release && cargo clippy --all-targets --features python -- -D warnings)
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
-QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo (-n 4 si corre algo más)
+QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"  # la suite, en paralelo: -n 4 como mucho
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin instalar nada
 ```
 
-En paralelo tardan unos seis minutos con seis núcleos: la suite los llena,
-y el tiempo es su trabajo total, no el del test más largo. **`-n auto` cuando la suite es lo único pesado que corre** (sin
-agentes en paralelo, sin un contenedor, sin otra suite a la vez); **`-n 4` si
-hay algo más corriendo**: cada proceso carga Qt, y varias suites a la vez
-llenan la memoria. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+En paralelo, el tiempo es el trabajo total de la suite, no el del test más
+largo. **Una sola suite a la vez, y con `-n 4`
+como mucho**, aunque sea lo único que corre: cada proceso carga Qt, y con
+dos suites a la vez el equipo de la oficina (16 GB) se quedó congelado.
+Nada de agentes en paralelo ni de un contenedor con la suite mientras
+tanto. Las dos pasadas son las del CI: tres tests comparan dos medidas de
 rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
 terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
@@ -278,6 +279,11 @@ silux/
 ├─ membench.py     la medida sencilla de la memoria, sin el módulo nativo
 ├─ memtest.py      la prueba de memoria: lanza el módulo nativo en otro
 │                  proceso y lee su curva (niveles, escalones, % del máximo)
+├─ disktest.py     la prueba de disco: qué hay debajo de una carpeta, y
+│                  las pruebas, sus vueltas y sus pausas, en otro proceso
+├─ childrun.py     lanzar una prueba en un proceso hijo y leer lo que dice
+├─ saved.py        el historial de una prueba, que no pierde lo que guardó
+│                  una versión más nueva ni pisa un archivo que no entiende
 ├─ history.py      historial de pruebas de este equipo
 ├─ updates.py      lo único que sale a la red, y solo si se pide: la versión
 │                  nueva y la sustitución comprobada del AppImage
@@ -371,7 +377,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2020 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2155 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -545,6 +551,9 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
 - [docs/prueba-de-memoria.md](docs/prueba-de-memoria.md): cómo mide la prueba
   de memoria, cómo repetirla con multichase, lmbench y STREAM y sus tablas
   de validación.
+- [docs/prueba-de-disco.md](docs/prueba-de-disco.md): cómo mide la prueba de
+  disco, cómo repetirla con fio, en qué se diferencia de CrystalDiskMark y
+  KDiskMark y sus tablas de validación.
 - [docs/motores-de-graficas.md](docs/motores-de-graficas.md): qué motor de
   cada gráfica se puede medir y de dónde sale en cada driver.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,

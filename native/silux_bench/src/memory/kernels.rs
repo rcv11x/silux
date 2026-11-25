@@ -15,7 +15,7 @@
 //! Each function carries its instruction set in its name (`read_avx2`): the
 //! AppImage builder's instruction-set check recognises dispatched code by it.
 
-use crate::error::{Error, Result};
+use crate::common::error::{Error, Result};
 
 /// Bytes per trip round every loop: a whole number of vectors of every width.
 pub const STEP: usize = 256;
@@ -451,7 +451,7 @@ mod x86 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory::{Block, Pages};
+    use crate::memory::block::{Block, Pages};
 
     const LEN: usize = 64 * 1024;
 

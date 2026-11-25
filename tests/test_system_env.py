@@ -19,7 +19,7 @@ from silux import system_env
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Silux's own children run the AppImage's Python and need its environment.
-OWN_PYTHON = {"silux/gpuapi.py", "silux/membench.py", "silux/memtest.py", "silux/annex.py"}
+OWN_PYTHON = {"silux/gpuapi.py", "silux/membench.py", "silux/childrun.py", "silux/annex.py"}
 # The helper runs as root under pkexec, which cleans the environment, and
 # gives modprobe a fixed one of its own (`MODPROBE_ENV`).
 OWN_ENVIRONMENT = {"silux/privileged/helper.py"}

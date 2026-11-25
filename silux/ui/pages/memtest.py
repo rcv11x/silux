@@ -42,6 +42,7 @@ from ..widgets import (
     ScrollPage,
     Table,
     clear_layout,
+    let_go,
     unbroken,
     value_font,
 )
@@ -189,10 +190,15 @@ class LevelGrid(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setHorizontalSpacing(GRID_GAP)
         layout.setVerticalSpacing(2)
+        # Each operation's title: over its bar, or over its figure where
+        # there are no bars (`_show_bars`).
+        self.heads: list[QLabel] = []
         for index, (_operation, key, _colour) in enumerate(GRID_COLUMNS):
             first = 1 + PER_OPERATION * index
-            layout.addWidget(self._head(key), 0, first, 1, PER_OPERATION)
+            head = self._head(key)
+            layout.addWidget(head, 0, first, 1, PER_OPERATION)
             layout.setColumnStretch(first, 1)
+            self.heads.append(head)
         latency = self._head("memtest.col.latency")
         latency.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout.addWidget(latency, 0, LATENCY_COLUMN)
@@ -264,6 +270,10 @@ class LevelGrid(QWidget):
     def _show_bars(self) -> None:
         for (level, _operation), (bar, _figure, _under) in self.cells.items():
             bar.setVisible(self._barred and level in self._bars)
+        side = (Qt.AlignmentFlag.AlignLeft if self._barred and self._bars
+                else Qt.AlignmentFlag.AlignRight)
+        for head in self.heads:
+            head.setAlignment(side | Qt.AlignmentFlag.AlignVCenter)
 
     @staticmethod
     def _head(key: str) -> QLabel:
@@ -499,6 +509,7 @@ class MemoryTestTab(ScrollPage):
         self.intro.setObjectName("Subhead")
         self.intro.setWordWrap(True)
         self.run_button = QPushButton(_("memtest.button.run"))
+        self.run_button.setObjectName("Primary")
         self.run_button.clicked.connect(self.start)
         self.cancel_button = QPushButton(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
@@ -507,11 +518,12 @@ class MemoryTestTab(ScrollPage):
         self.blocked_note = QLabel("")
         self.blocked_note.setObjectName("Muted")
         self.blocked_note.hide()
+        # On the right, as in the Disk tab.
         buttons = FoldingRow()
-        buttons.add_widget(self.run_button)
-        buttons.add_widget(self.cancel_button)
         buttons.add_widget(self.blocked_note)
         buttons.add_stretch(1)
+        buttons.add_widget(self.run_button)
+        buttons.add_widget(self.cancel_button)
         self.progress = ProgressLine()
         self.progress.hide()
         for widget in (title, self.intro, buttons, self.progress):
@@ -676,8 +688,7 @@ class MemoryTestTab(ScrollPage):
 
     def _drop_failure(self) -> None:
         if self._failure is not None:
-            self._failure.setParent(None)
-            self._failure.deleteLater()
+            let_go(self._failure)
             self._failure = None
 
     def _on_finished(self, result: memtest.Result, history) -> None:

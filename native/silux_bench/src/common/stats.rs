@@ -28,9 +28,9 @@ pub const RETRIES: usize = 2;
 /// three. Keeps the attempt with the least spread, and says how many retries
 /// it took; a result still noisy after them is for the caller to flag.
 pub fn steadiest<T>(
-    mut measure: impl FnMut() -> crate::error::Result<T>,
+    mut measure: impl FnMut() -> crate::common::error::Result<T>,
     spread: impl Fn(&T) -> f64,
-) -> crate::error::Result<(T, usize)> {
+) -> crate::common::error::Result<(T, usize)> {
     let mut best = measure()?;
     let mut retries = 0;
     while spread(&best) > NOISY_SPREAD && retries < RETRIES {
@@ -151,12 +151,12 @@ mod tests {
                 if std::mem::take(&mut first) {
                     Ok(0.5)
                 } else {
-                    Err(crate::error::Error::Cancelled)
+                    Err(crate::common::error::Error::Cancelled)
                 }
             },
             |s: &f64| *s,
         );
-        assert_eq!(result, Err(crate::error::Error::Cancelled));
+        assert_eq!(result, Err(crate::common::error::Error::Cancelled));
     }
 
     #[test]

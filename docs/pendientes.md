@@ -335,6 +335,10 @@ la memoria) no va: está propuesto en las notas
   - media · mide en una sola CPU, la segunda del primer tipo de núcleo. Con
     dos CCD de L3 distinta (7950X3D), núcleos P y E o varios nodos NUMA
     falta medir uno de cada clase y decir cuál es cuál.
+  - media · en inglés la pestaña no cabe en la ventana más estrecha: pide
+    483 px de 480 (521 con «non-temporal» en la rejilla, que no se parte
+    como «no cache»). En español cabe. `test_it_fits_the_narrowest_window`
+    solo lo mira en español: cuando quepa, que lo mire en los dos.
   - baja · la barra lateral no marca Rendimiento mientras corre una prueba.
   - baja · el historial no se puede renombrar ni borrar fila a fila, como
     el del procesador.
@@ -348,6 +352,38 @@ la memoria) no va: está propuesto en las notas
     siempre, 41–42 algunas veces) sin causa aislada; la mediana de tres
     bloques no lo arregló. Detalle en
     [prueba-de-memoria.md](prueba-de-memoria.md).
+* **La prueba de disco** (`disktest.py`, `ui/pages/disktest.py`; cómo mide, en
+  [prueba-de-disco.md](prueba-de-disco.md)):
+  - alta · probar con un pendrive de verdad en FAT32, exFAT y NTFS: que el
+    tope de FAT32 y la parada por la caché salen donde deben. Están escritos
+    leyendo el código del kernel y probados con un sustituto.
+  - alta · desconectar un USB de verdad a mitad de la prueba: tiene que
+    salir «el disco se desconectó» y nada más. Probado con el volcado.
+  - media · en FAT32, reservar el archivo ya escribe ceros: se escribe dos
+    veces (el kernel cuenta 64 MiB más que Silux con un archivo de 64 MiB).
+    Mientras reserva, la barra avanza con lo que el kernel cuenta escrito
+    en el disco y dice «Reservando el espacio del archivo»; antes se quedaba
+    parada en «preparando…» (40 s en un pendrive USB 2.0). Probado con el
+    constructor del archivo bloqueado y el contador subiendo; falta verlo en
+    un pendrive de verdad.
+  - media · el tiempo de escribir el archivo en un pendrive se estima con lo
+    que escribió la última vez, y en uno recién usado se queda corto: el
+    mismo pendrive tardó 83,5 s en vez de unos 31 justo después de una tanda
+    con escritura (0,7 GB), 2,7 veces más lento.
+  - media · dónde cae el archivo en un disco de platos solo se ha probado
+    en btrfs (que no lo dice) y contra `filefrag`; falta un disco de platos
+    con ext4 o XFS. Los volcados no guardan dónde empieza cada partición.
+  - media · la RND4K Q32 de escritura por io_uring en btrfs sale de un 12 a
+    un 15 % por debajo de fio io_uring (306–314 frente a 356–358 MB/s en un
+    SN850X, en las dos rondas y en los dos órdenes). fio con lotes
+    (`--iodepth_batch_submit=32`) da lo mismo que Silux (311), así que lo que
+    btrfs castiga es mandar las 32 peticiones juntas, no el motor. En ext4
+    (970 EVO Plus) los lotes no cambian nada. Para comprobarlo: fio con y
+    sin lotes en una imagen btrfs sobre el 970 y en una ext4 sobre el
+    SN850X, para separar el sistema de archivos del disco; contar durante la
+    vuelta los hilos `iou-wrk-*` del proceso (si btrfs rechaza la escritura
+    sin bloquear, io_uring la pasa a sus hilos); y Silux mandando de 1, 4 y
+    8 en 8 en btrfs, para ver dónde se recupera.
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
   el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
   distinto tamaño el segundo pisa al primero.
@@ -359,6 +395,10 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
+* `ui/app.py` · media · al abrir Silux en un sobremesa se ve un momento la
+  sección Batería en el menú y luego desaparece: está desde el principio y
+  `_ajustar_bateria` la esconde con la primera lectura. Tiene que no salir
+  hasta saber que hay batería (y `seccion_que_falta` cuenta con lo de ahora).
 * `ui/pages/storage.py` · baja · con Silux abierto como root, «Vida
   restante» de un pendrive se enseña y se esconde entre dos fotos iguales
   (`test_nada_se_mueve` como root, en el contenedor de

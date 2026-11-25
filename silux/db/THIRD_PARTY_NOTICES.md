@@ -186,6 +186,55 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
+## PyO3
+
+<https://github.com/PyO3/pyo3>, y las demás crates de Rust con que se compila
+el módulo nativo de las pruebas de memoria y de disco (`native/silux_bench`).
+Todas se reparten bajo «MIT OR Apache-2.0» (unicode-ident, además, bajo
+Unicode-3.0, y target-lexicon bajo Apache-2.0 con la excepción de LLVM); aquí
+se toman bajo la MIT, cuyo aviso va debajo.
+
+Entran en el binario, que va en cada AppImage:
+
+| Crate | De dónde | Copyright |
+|---|---|---|
+| pyo3, pyo3-ffi | <https://github.com/pyo3/pyo3> | Copyright (c) 2023-present PyO3 Project and Contributors. https://github.com/PyO3 |
+| io-uring | <https://github.com/tokio-rs/io-uring> | Copyright (c) 2019 quininer@live.com |
+| libc | <https://github.com/rust-lang/libc> | Copyright (c) The Rust Project Developers |
+| bitflags | <https://github.com/bitflags/bitflags> | Copyright (c) 2014 The Rust Project Developers |
+| cfg-if | <https://github.com/rust-lang/cfg-if> | Copyright (c) 2014 Alex Crichton |
+| once_cell | <https://github.com/matklad/once_cell> | Su licencia no lleva línea de copyright |
+
+Solo se usan al compilar, y su código no va en el binario: pyo3-macros,
+pyo3-macros-backend, pyo3-build-config, heck, proc-macro2, quote, syn,
+unicode-ident, portable-atomic y target-lexicon.
+
+```
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+```
+
 # Solo en el repositorio
 
 Lo que sigue no va en el programa ni en ninguno de sus paquetes: lo usan los

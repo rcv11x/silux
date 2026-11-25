@@ -19,7 +19,18 @@ import time
 from collections import deque
 from typing import Iterable, NamedTuple, Optional, Sequence
 
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import (
+    QEvent,
+    QObject,
+    QPoint,
+    QPointF,
+    QRect,
+    QRectF,
+    QSize,
+    Qt,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -32,7 +43,9 @@ from PySide6.QtGui import (
     QPen,
 )
 from PySide6.QtWidgets import (
+    QApplication,
     QBoxLayout,
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -42,6 +55,9 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QStyle,
+    QStyleOptionComboBox,
+    QStylePainter,
     QToolTip,
     QVBoxLayout,
     QWidget,
@@ -325,6 +341,16 @@ class FoldingRow(QWidget):
                 for piece in self._pieces():
                     piece.setAlignment(Qt.AlignmentFlag.AlignLeft)
             self.updateGeometry()
+
+
+def same_height(*widgets: QWidget) -> None:
+    """Give a row's controls the height of the tallest: a list, a button
+    and the rest, each its own, left the row ragged."""
+    for widget in widgets:
+        widget.ensurePolished()
+    tallest = max(widget.sizeHint().height() for widget in widgets)
+    for widget in widgets:
+        widget.setFixedHeight(tallest)
 
 
 def balanced_columns(count: int, fits: int) -> int:
@@ -2285,13 +2311,21 @@ def boton_de_permiso_permanente() -> QPushButton:
     return boton
 
 
+def let_go(widget: QWidget) -> None:
+    """Take a widget out of its window for good. Hidden first: one added a
+    moment ago to a window on screen has its showing queued, and without a
+    parent it came up as a window of its own."""
+    widget.hide()
+    widget.setParent(None)
+    widget.deleteLater()
+
+
 def clear_layout(layout) -> None:
     """Vacía un layout, borrando también los sublayouts que contenga."""
     while layout.count():
         item = layout.takeAt(0)
         if (widget := item.widget()) is not None:
-            widget.setParent(None)
-            widget.deleteLater()
+            let_go(widget)
         elif (child := item.layout()) is not None:
             clear_layout(child)
             child.deleteLater()
@@ -2343,9 +2377,14 @@ class ReadableRoot(QWidget):
     screen the cards stretched across it, four tiles of a number each took a
     quarter of two thousand pixels and the tables stayed on the left: beyond
     the cap the side margins grow and the column stays centred. The cap is in
-    characters of the interface font, so it follows the font size."""
+    characters of the interface font, so it follows the font size. At 190 a
+    1920 px window still stretched «Where» to 1500 px and set a cache's
+    figure at the far end of its name."""
 
-    CHARACTERS = 190
+    CHARACTERS = 120
+
+    # The margin at each side changed: what sits above the column follows it.
+    side_changed = Signal(int)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -2359,11 +2398,15 @@ class ReadableRoot(QWidget):
     def content_width(self) -> int:
         return QFontMetrics(ui_font(theme.METRICS.base_pt)).averageCharWidth() * self.CHARACTERS
 
+    def side(self) -> int:
+        return self.column.contentsMargins().left()
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         margin = theme.METRICS.page_margin
         side = max(margin, (self.width() - self.content_width()) // 2)
-        if self.column.contentsMargins().left() != side:
+        if self.side() != side:
             self.column.setContentsMargins(side, margin, side, margin)
+            self.side_changed.emit(side)
         super().resizeEvent(event)
 
 
@@ -2415,12 +2458,83 @@ def unbroken(figure: str) -> str:
     return figure.replace(" ", "\u00a0").replace("/", "/\u2060")
 
 
+class TipsBeside(QObject):
+    """The tip of each option of an open combo box, beside its list and not
+    over it: by the mouse, it covered the options below. To the right if
+    the screen has room, else to the left, at the height of its option."""
+
+    GAP = 6
+
+    def __init__(self, combo: QComboBox):
+        super().__init__(combo)
+        self._combo = combo
+        combo.view().viewport().installEventFilter(self)
+
+    def eventFilter(self, _watched, event) -> bool:  # noqa: N802
+        if event.type() != QEvent.Type.ToolTip:
+            return False
+        view = self._combo.view()
+        index = view.indexAt(event.pos())
+        tip = index.data(Qt.ItemDataRole.ToolTipRole) if index.isValid() else None
+        if not tip:
+            QToolTip.hideText()
+            return True
+        QToolTip.showText(event.globalPos(), tip, view.viewport())
+        label = self.tip_label()
+        if label is not None:
+            label.move(self.place(label.size(), view.visualRect(index)))
+        return True
+
+    @staticmethod
+    def tip_label() -> Optional[QWidget]:
+        """The tip Qt shows, if one is."""
+        return next((w for w in QApplication.topLevelWidgets()
+                     if w.metaObject().className() == "QTipLabel" and w.isVisible()), None)
+
+    def place(self, size: QSize, row: QRect) -> QPoint:
+        """Where a tip of `size` goes for the option at `row`, in the view."""
+        view = self._combo.view()
+        popup = view.window()
+        top = view.viewport().mapToGlobal(row.topLeft()).y()
+        left = popup.mapToGlobal(QPoint(0, 0)).x()
+        right = left + popup.width()
+        screen = (popup.screen() or QApplication.primaryScreen()).availableGeometry()
+        x = right + self.GAP
+        if x + size.width() > screen.right() and left - self.GAP - size.width() >= screen.left():
+            x = left - self.GAP - size.width()
+        y = max(screen.top(), min(top, screen.bottom() - size.height()))
+        return QPoint(x, y)
+
+
+class ElidingComboBox(QComboBox):
+    """A combo box whose choice, where it doesn't fit, ends in «…» instead
+    of being cut halfway through a word. Open, the list shows each whole."""
+
+    def shown_text(self) -> str:
+        """The choice as it is drawn: whole, or cut to the room it has."""
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        room = self.style().subControlRect(QStyle.ComplexControl.CC_ComboBox, option,
+                                           QStyle.SubControl.SC_ComboBoxEditField, self)
+        return self.fontMetrics().elidedText(self.currentText(), Qt.TextElideMode.ElideRight,
+                                             max(0, room.width()))
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        painter = QStylePainter(self)
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        option.currentText = self.shown_text()
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, option)
+        painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option)
+
+
 class RateBar(QWidget):
     """A rate as a bar on a fixed logarithmic scale, shared by a whole table.
 
     Fixed, so that two screenshots of two machines compare by eye. A bar too
     narrow to read isn't drawn: in a narrow window the figures stay and the
-    bars go first.
+    bars go first. A rate that was measured is never an empty bar: at the
+    scale's start, or below it, it is a dot as long as the bar is tall.
     """
 
     NARROWEST = 40
@@ -2440,6 +2554,7 @@ class RateBar(QWidget):
         self._tone = tone
         self._fraction: Optional[float] = None
         self._live = False
+        self._measured = False
         self._round = 3 if height <= 12 else 5
         self.setFixedHeight(height)
         self.setMinimumWidth(0)
@@ -2455,15 +2570,22 @@ class RateBar(QWidget):
         if bytes_per_second:
             decades = math.log10(max(bytes_per_second, self._from) / self._from)
             fraction = decades / self._decades
-        self.set_fraction(fraction, live)
+        self.set_fraction(fraction, live, measured=bool(bytes_per_second))
 
-    def set_fraction(self, fraction: Optional[float], live: bool = False) -> None:
-        """How full, from 0 to 1, on a scale of the caller's."""
+    def set_fraction(self, fraction: Optional[float], live: bool = False,
+                     measured: bool = False) -> None:
+        """How full, from 0 to 1, on a scale of the caller's. `measured`:
+        there is a figure, however small, and it is drawn."""
         if fraction is not None:
             fraction = min(max(fraction, 0.0), 1.0)
-        if (fraction, live) != (self._fraction, self._live):
-            self._fraction, self._live = fraction, live
+        if (fraction, live, measured) != (self._fraction, self._live, self._measured):
+            self._fraction, self._live, self._measured = fraction, live, measured
             self.update()
+
+    def filled_width(self) -> float:
+        """How much of the bar is filled, in pixels."""
+        width = self.width() * (self._fraction or 0.0)
+        return max(width, self.height() - 2.0) if self._measured else width
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         if self.width() < self.NARROWEST:
@@ -2472,13 +2594,14 @@ class RateBar(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
         box = QRectF(0, 1, self.width(), self.height() - 2)
-        painter.setBrush(self._p.q("line_soft"))
+        painter.setBrush(self._p.q("track"))
         painter.drawRoundedRect(box, self._round, self._round)
-        if self._fraction:
+        filled = self.filled_width()
+        if filled:
             colour = self._p.q("muted") if self._live else self._p.q(self._colour, self._tone)
             painter.setBrush(colour)
-            painter.drawRoundedRect(QRectF(0, 1, self.width() * self._fraction,
-                                           self.height() - 2), self._round, self._round)
+            painter.drawRoundedRect(QRectF(0, 1, filled, self.height() - 2),
+                                    self._round, self._round)
         painter.end()
 
 
@@ -2540,14 +2663,20 @@ class Table(QScrollArea):
     locked_clicked = Signal()
 
     def __init__(self, headers: Sequence[str], numeric: Sequence[bool] = (),
-                 parent: Optional[QWidget] = None, cede: Sequence[int] = ()):
+                 parent: Optional[QWidget] = None, cede: Sequence[int] = (),
+                 spare: Sequence[int] = ()):
         """`cede`: las columnas de texto que pueden salir recortadas, con
-        puntos suspensivos, cuando la tabla no cabe (`_encajar`)."""
+        puntos suspensivos, cuando la tabla no cabe (`_encajar`).
+
+        `spare`: columns the table can do without, left out, the last first,
+        where nothing else makes it fit."""
         super().__init__(parent)
         self._headers = list(headers)
         # (fila, columna) → su candado, para las celdas que lo han tenido.
         self._candados: dict[tuple[int, int], "LockMark"] = {}
         self._cede = tuple(cede)
+        self._spare = tuple(spare)
+        self.left_out: frozenset[int] = frozenset()
         # How tall the titles are, broken as the widths leave them.
         self._titles_height = 0
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
@@ -2707,8 +2836,7 @@ class Table(QScrollArea):
         while self._grid.count() > len(self._headers):
             item = self._grid.takeAt(self._grid.count() - 1)
             if (widget := item.widget()) is not None:
-                widget.setParent(None)
-                widget.deleteLater()
+                let_go(widget)
         self._cells.clear()
         # Los candados iban en la rejilla y se han ido con ella.
         self._candados.clear()
@@ -2785,12 +2913,15 @@ class Table(QScrollArea):
         if not self._cells:
             return
         columnas = len(self._headers)
-        anchos = list(self._anchos)
+        if self._spare:
+            self._leave_out(self._spare_to_leave_out(self.viewport().width()))
+        out = self.left_out
+        anchos = [0 if c in out else ancho for c, ancho in enumerate(self._anchos)]
         # The gaps between columns narrow first, down to a floor, before a
         # column is cut: a few pixels of air cost less than a word.
         gap = theme.METRICS.grid_hspace
-        hueco = gap * (columnas - 1)
-        heads = [self._ancho_de_cabecera(c) for c in range(columnas)]
+        hueco = gap * (columnas - len(out) - 1)
+        heads = [0 if c in out else self._ancho_de_cabecera(c) for c in range(columnas)]
         # Lo que ocupa cada columna es su dato o su título, lo que más pida.
         ocupa = sum(max(ancho, heads[c]) for c, ancho in enumerate(anchos))
         sobra = ocupa + hueco - self.viewport().width()
@@ -2801,16 +2932,19 @@ class Table(QScrollArea):
             # del nombre con el que hay que compararla; lo que aún sobre
             # sigue yendo detrás de la última.
             tope = QFontMetrics(value_font()).averageCharWidth() * self.HOLGURA_MAXIMA
-            holgura = min(-sobra // columnas, tope)
-            anchos = [max(ancho, heads[c]) + holgura for c, ancho in enumerate(anchos)]
-        if sobra > 0 and columnas > 1 and self.viewport().width() > 0:
-            narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (columnas - 1))))
+            holgura = min(-sobra // (columnas - len(out)), tope)
+            anchos = [0 if c in out else max(ancho, heads[c]) + holgura
+                      for c, ancho in enumerate(anchos)]
+        shown = columnas - len(out)
+        if sobra > 0 and shown > 1 and self.viewport().width() > 0:
+            narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (shown - 1))))
             gap -= narrower
-            sobra -= narrower * (columnas - 1)
+            sobra -= narrower * (shown - 1)
         if sobra > 0 and self.viewport().width() > 0:
             # Then a title wider than its figures takes a second line, the
             # widest first and never narrower than its longest word.
-            floors = [max(anchos[c], self._palabra_mas_larga(c)) for c in range(columnas)]
+            floors = [0 if c in out else max(anchos[c], self._palabra_mas_larga(c))
+                      for c in range(columnas)]
             while sobra > 0:
                 longer = [c for c in range(columnas) if heads[c] > floors[c]]
                 if not longer:
@@ -2838,6 +2972,8 @@ class Table(QScrollArea):
             width = max(ancho, heads[columna])
             if self._grid.columnMinimumWidth(columna) != width:
                 self._grid.setColumnMinimumWidth(columna, width)
+            if columna in out:
+                continue
             titles = max(titles, self._title_height(columna, width))
             recortada = ancho < max(self._anchos[columna], 1) and columna in self._cede
             for fila in self._cells:
@@ -2853,6 +2989,47 @@ class Table(QScrollArea):
         if titles != self._titles_height:
             self._titles_height = titles
             self._fit_height()
+
+    def _narrowest(self, out: frozenset[int]) -> int:
+        """The least width the table fits in without the columns in `out`:
+        each title broken down to its longest word, the gaps at their least
+        and the columns that may cede cut to their floor, as `_encajar`
+        does it."""
+        suelo = QFontMetrics(value_font()).averageCharWidth() * 10
+        widths = []
+        for column, ancho in enumerate(self._anchos):
+            if column in out:
+                continue
+            word = self._palabra_mas_larga(column)
+            floor = max(ancho, word)
+            if column in self._cede:
+                floor = min(floor, max(suelo, word))
+            widths.append(floor)
+        return sum(widths) + self.MIN_COLUMN_GAP * max(0, len(widths) - 1)
+
+    def _spare_to_leave_out(self, width: int) -> frozenset[int]:
+        """The spare columns to leave out at `width`: none if it fits whole,
+        and one more, the last first, while it doesn't."""
+        out: frozenset[int] = frozenset()
+        if width <= 0:
+            return self.left_out
+        for column in reversed(self._spare):
+            if self._narrowest(out) <= width:
+                break
+            out |= {column}
+        return out
+
+    def _leave_out(self, out: frozenset[int]) -> None:
+        """Hide the columns in `out`, their titles and cells, and show the rest."""
+        self.left_out = out
+        for column in self._spare:
+            hidden = column in out
+            item = self._grid.itemAtPosition(0, column)
+            if item and item.widget() and item.widget().isHidden() != hidden:
+                item.widget().setHidden(hidden)
+            for fila in self._cells:
+                if column < len(fila) and fila[column].isHidden() != hidden:
+                    fila[column].setHidden(hidden)
 
     # Cuánto puede separarse como mucho cada columna, en anchos de letra.
     HOLGURA_MAXIMA = 14

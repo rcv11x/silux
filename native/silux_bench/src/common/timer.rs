@@ -2,7 +2,7 @@
 
 use std::hint::black_box;
 
-use crate::error::{Error, Result};
+use crate::common::error::{Error, Result};
 
 /// A sample shorter than this many clock ticks is mostly rounding...
 const TICKS_PER_SAMPLE: f64 = 1000.0;

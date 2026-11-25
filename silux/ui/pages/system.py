@@ -29,6 +29,7 @@ from ..widgets import (
     ResponsiveRow,
     ScrollPage,
     clear_layout,
+    let_go,
     tone_for,
 )
 from .board import NEED_TITLES
@@ -345,8 +346,7 @@ class SystemPage(ScrollPage):
             nueva.add(nombre)
             nueva.set(nombre, valor)
         donde.replaceWidget(vieja, nueva)
-        vieja.setParent(None)
-        vieja.deleteLater()
+        let_go(vieja)
         return nueva
 
     def _apply_badges(self, system: System) -> None:

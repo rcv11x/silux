@@ -429,6 +429,7 @@ Ocupado 63.6 GB · Libre 60.1 GB
 - Fabricante: Kingston
 - Tipo: Memoria flash
 - Conexión: USB
+- Enlace: USB 480 Mb/s
 - Capacidad: 124 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)

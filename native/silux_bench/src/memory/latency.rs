@@ -11,13 +11,13 @@
 
 use std::hint::black_box;
 
-use crate::cancel::Control;
-use crate::error::{Error, Result};
-use crate::frequency::{Meter, Source};
-use crate::memory::{Block, Pages, Residency, LINE};
-use crate::rng::Rng;
-use crate::stats::{self, Summary};
-use crate::timer::{now_ns, Clock};
+use crate::common::cancel::Control;
+use crate::common::error::{Error, Result};
+use crate::common::frequency::{Meter, Source};
+use crate::common::rng::Rng;
+use crate::common::stats::{self, Summary};
+use crate::common::timer::{now_ns, Clock};
+use crate::memory::block::{Block, Pages, Residency, LINE};
 
 /// Loads per trip round the chase loop: enough that the loop's own counter
 /// is lost in the latency of the loads.
@@ -127,7 +127,7 @@ pub fn curve(
         points,
         pages: settings.pages,
         residency: block.residency(),
-        cpu: crate::topology::current_cpu(),
+        cpu: crate::common::topology::current_cpu(),
         frequency: meter.source(),
     })
 }

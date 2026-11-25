@@ -1,87 +1,17 @@
-//! The border with Python: the only part that knows about it.
-//!
-//! Every call measures without the GIL, so the interface keeps running, and
-//! nothing that goes wrong crosses as a panic: errors arrive as
-//! `SiluxBenchError` with a key, and a panic of ours is caught and arrives
-//! the same way, as an internal error. PyO3's `PanicException` would be a
-//! panic reaching Python under another name.
+//! The memory benchmark, as Python calls it.
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::Arc;
-
-use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 
-use crate::error::{panic_message, Error, Result};
-use crate::frequency::Source;
-use crate::kernels::{Isa, Operation};
-use crate::latency::{self, Settings};
-use crate::memory::Pages;
-use crate::timer::Clock;
-use crate::{bandwidth, cancel, stats, topology};
-
-pyo3::create_exception!(silux_bench, SiluxBenchError, PyException);
-pyo3::create_exception!(silux_bench, Cancelled, SiluxBenchError);
-
-/// Stop a measurement from another thread, and see how far it went.
-#[pyclass(frozen, module = "silux_bench")]
-pub struct Control {
-    inner: Arc<cancel::Control>,
-}
-
-#[pymethods]
-impl Control {
-    #[new]
-    fn new() -> Self {
-        Control {
-            inner: Arc::new(cancel::Control::default()),
-        }
-    }
-
-    fn cancel(&self) {
-        self.inner.cancel();
-    }
-
-    #[getter]
-    fn cancelled(&self) -> bool {
-        self.inner.is_cancelled()
-    }
-
-    /// `(done, total)` steps of the measurement under way.
-    fn progress(&self) -> (u64, u64) {
-        self.inner.progress()
-    }
-}
-
-fn to_python(error: &Error) -> PyErr {
-    let args = (error.key(), error.to_string());
-    match error {
-        Error::Cancelled => Cancelled::new_err(args),
-        _ => SiluxBenchError::new_err(args),
-    }
-}
-
-/// Run `work` without the GIL, with every panic caught on this side.
-fn guarded<T, F>(py: Python<'_>, work: F) -> PyResult<T>
-where
-    T: Send,
-    F: FnOnce() -> Result<T> + Send,
-{
-    let outcome = py.detach(move || catch_unwind(AssertUnwindSafe(work)));
-    match outcome {
-        Ok(Ok(value)) => Ok(value),
-        Ok(Err(error)) => Err(to_python(&error)),
-        Err(payload) => Err(to_python(&Error::Internal(panic_message(&*payload)))),
-    }
-}
-
-fn control_of(control: Option<&Bound<'_, Control>>) -> Arc<cancel::Control> {
-    control.map_or_else(
-        || Arc::new(cancel::Control::default()),
-        |c| Arc::clone(&c.get().inner),
-    )
-}
+use super::{control_of, guarded, to_python, Control};
+use crate::common::error::Error;
+use crate::common::frequency::Source;
+use crate::common::timer::Clock;
+use crate::common::{stats, topology};
+use crate::memory::bandwidth;
+use crate::memory::block::Pages;
+use crate::memory::kernels::{Isa, Operation};
+use crate::memory::latency::{self, Settings};
 
 /// Latency at each block size in `sizes` (bytes), on one thread pinned to
 /// `cpu`. Returns a dict with `points` (one per size, smallest first, each
@@ -89,7 +19,7 @@ fn control_of(control: Option<&Bound<'_, Control>>) -> Arc<cancel::Control> {
 /// gave, the CPU, how the frequency was measured and the clock.
 #[pyfunction]
 #[pyo3(signature = (sizes, *, huge_pages = true, cpu = None, repetitions = 7, seed = 0x5111_0c5e, control = None))]
-fn latency_curve<'py>(
+pub(super) fn latency_curve<'py>(
     py: Python<'py>,
     sizes: Vec<usize>,
     huge_pages: bool,
@@ -155,7 +85,7 @@ fn latency_curve<'py>(
 #[pyfunction]
 #[pyo3(signature = (operation, *, bytes, cpus, isa = None, non_temporal = false, huge_pages = true, repetitions = 7, control = None))]
 #[allow(clippy::too_many_arguments)]
-fn memory_bandwidth<'py>(
+pub(super) fn memory_bandwidth<'py>(
     py: Python<'py>,
     operation: &str,
     bytes: usize,
@@ -215,21 +145,6 @@ fn memory_bandwidth<'py>(
 
 /// The instruction sets this processor runs, widest last.
 #[pyfunction]
-fn instruction_sets() -> Vec<&'static str> {
+pub(super) fn instruction_sets() -> Vec<&'static str> {
     Isa::available().into_iter().map(Isa::key).collect()
-}
-
-/// The CPUs this process may run on, for choosing where to measure.
-#[pyfunction]
-fn allowed_cpus() -> Vec<usize> {
-    topology::allowed_cpus()
-}
-
-#[pymodule]
-mod silux_bench {
-    #[pymodule_export]
-    use super::{
-        allowed_cpus, instruction_sets, latency_curve, memory_bandwidth, Cancelled, Control,
-        SiluxBenchError,
-    };
 }

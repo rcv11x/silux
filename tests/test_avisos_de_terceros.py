@@ -85,6 +85,23 @@ class TestElArchivo(unittest.TestCase):
                 self.assertIn(datos["repo"], texto)
         self.assertIn("Permission is hereby granted, free of charge", texto)
 
+    def test_every_crate_of_the_native_module_is_named(self):
+        """What the native module is built with, from its lock file: a crate
+        added there without its notice here fails."""
+        lock = (RAIZ / "native" / "silux_bench" / "Cargo.lock").read_text(encoding="utf-8")
+        crates = set(re.findall(r'^name = "(.+)"$', lock, re.M)) - {"silux_bench"}
+        self.assertGreater(len(crates), 10)
+        notices = AVISOS.read_text(encoding="utf-8")
+        section = notices[notices.index("## PyO3"):notices.index("# Solo en el repositorio")]
+        for crate in sorted(crates):
+            with self.subTest(crate=crate):
+                self.assertRegex(section, rf"(?<![\w-]){re.escape(crate)}(?![\w-])")
+        self.assertIn("Permission is hereby granted, free of charge", section)
+        # Each crate that is linked in, with its own copyright line.
+        for holder in ("Copyright (c) 2019 quininer", "PyO3 Project and Contributors",
+                       "Copyright (c) 2014 Alex Crichton", "The Rust Project Developers"):
+            self.assertIn(holder, section)
+
     def test_libcpuid_con_el_aviso_entero(self):
         texto = _avisos()
         for trozo in ("Copyright 2008  Veselin Georgiev",

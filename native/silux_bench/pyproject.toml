@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "silux-bench"
 version = "0.1.0"
-description = "Silux's native memory benchmark: latency by block size and bandwidth"
+description = "Silux's native benchmarks: memory latency and bandwidth, and disk speed"
 requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
 classifiers = [

@@ -11,7 +11,7 @@ sin pantalla:
 
 ```bash
 uv sync --extra gui
-QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"
+QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas
 ```
 

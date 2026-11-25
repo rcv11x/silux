@@ -11,10 +11,11 @@ disco, y la pregunta «dónde está montado /home» no se hace por disco.
 
 from __future__ import annotations
 
+import time
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from ... import render, thermal
 from ...i18n import _
@@ -39,7 +40,9 @@ from ..widgets import (
     boton_de_permiso_permanente,
     clear_layout,
     dismiss_buttons,
+    let_go,
     paint_level,
+    unbroken,
 )
 
 DISK_HEADERS = ("storage.col.unit", "storage.col.model", "gpu.vram.type", "storage.col.size", "storage.col.used",
@@ -88,6 +91,8 @@ class StoragePage(ScrollPage):
     explain_requested = Signal()
     permission_snoozed = Signal()
     permission_dismissed = Signal()
+    # A disk's last test asked to be opened in Performance: its name.
+    disk_test_requested = Signal(str)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -101,6 +106,10 @@ class StoragePage(ScrollPage):
         self._pies: dict = {}
         self._smart: dict = {}
         self._smart_signature: dict = {}
+        # Each disk's line of its last disk test, and the tests to say.
+        self._tests: dict = {}
+        self._disk_tests: tuple = ()
+        self._models: dict = {}
         self._prefs = prefs
         m = theme.METRICS
 
@@ -514,6 +523,7 @@ class StoragePage(ScrollPage):
                 card.body.addWidget(completo)
                 self._smart[disco.name] = completo
                 self._smart_signature[disco.name] = ()
+                card.body.addWidget(self._last_test_line(disco.name))
                 fila.add(card)
                 self._grids[disco.name] = grid
                 self._bars[disco.name] = barra
@@ -521,6 +531,59 @@ class StoragePage(ScrollPage):
 
         for disco in discos:
             self._fill(disco)
+        self._paint_disk_tests(discos)
+
+    def _last_test_line(self, name: str) -> QWidget:
+        """A disk's last disk test, in short, and the way to its tab."""
+        line = QWidget()
+        row = QHBoxLayout(line)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        summary = QLabel("")
+        summary.setObjectName("Muted")
+        summary.setWordWrap(True)
+        summary.setFont(ui_font(theme.METRICS.small_pt))
+        link = QPushButton(_("memory.lasttest.open"))
+        link.setObjectName("TextButton")
+        link.setCursor(Qt.CursorShape.PointingHandCursor)
+        link.clicked.connect(lambda: self.disk_test_requested.emit(name))
+        row.addWidget(summary, 1)
+        row.addWidget(link, 0, Qt.AlignmentFlag.AlignTop)
+        line.hide()
+        self._tests[name] = (line, summary)
+        return line
+
+    def set_disk_tests(self, results) -> None:
+        """The disk tests saved, newest first: each disk says its last."""
+        self._disk_tests = tuple(results or ())
+        self._paint_disk_tests()
+
+    def _paint_disk_tests(self, discos=None) -> None:
+        from ... import disktest
+        from .disktest import PROFILE_NAMES
+
+        models = {d.name: d.model for d in (discos or ())} or self._models
+        self._models = models
+        for name, (line, summary) in self._tests.items():
+            last = next((r for r in self._disk_tests
+                         if r.is_of((name,), models.get(name))), None)
+            line.setVisible(last is not None)
+            if last is None:
+                continue
+            figures = []
+            for direction, key in (("read", "storage.lasttest.read"),
+                                   ("write", "storage.lasttest.write")):
+                measure = last.measure(disktest.headline_test(last.profile), direction)
+                middle = measure.median if measure is not None else None
+                if middle is not None:
+                    figures.append(_(key).format(
+                        rate=unbroken(render.disk_rate(middle.bytes_per_second))))
+            # Another profile's figures aren't the standard's: it is named.
+            summary.setText(_("storage.lasttest" if last.profile == "standard"
+                              else "storage.lasttest.profile").format(
+                figures=" · ".join(figures) or render.DASH, profile=_(PROFILE_NAMES.get(
+                    last.profile, "disktest.profile.standard")).lower(),
+                when=time.strftime("%d/%m/%Y %H:%M", time.localtime(last.timestamp))))
 
     def _fill(self, disco: Disk) -> None:
         d = render.DASH
@@ -558,11 +621,15 @@ class StoragePage(ScrollPage):
         grid.set_visible(_("storage.field.bridge"), bool(disco.usb_bridge))
         f(_("storage.col.size"), render.decimal_size(disco.size_bytes),
           tooltip=render.size(disco.size_bytes))
-        # El enlace PCIe es del NVMe. Un SATA no tiene uno propio —negocia su
-        # controladora, que comparte con los demás—, así que ahí la fila no
-        # es un dato que falte: no existe, y no sale.
-        f(_("gpu.clock.link"), render.pcie_link(disco.link) if disco.link else d)
-        grid.set_visible(_("gpu.clock.link"), bool(disco.link))
+        # The link the disk runs over: an NVMe's PCIe one, a SATA port's own,
+        # or the USB port's of a bridge. Without one (eMMC, a virtual disk)
+        # the row doesn't exist, and doesn't show.
+        link = render.disk_link(disco)
+        note = render.disk_link_note(disco)
+        if note and disco.sata_max_gbps:
+            link += " · " + _("storage.sata.supports").format(max=f"{disco.sata_max_gbps:g} Gb/s")
+        f(_("gpu.clock.link"), link, tooltip=note)
+        grid.set_visible(_("gpu.clock.link"), link != d)
         t = self._details[disco.name].set
         t(_("storage.field.firmware"), disco.firmware or d)
         t(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)
@@ -655,8 +722,7 @@ class StoragePage(ScrollPage):
                 nueva.add(nombre)
                 nueva.set(nombre, valor)
             pliegue.body.replaceWidget(vieja, nueva)
-            vieja.setParent(None)
-            vieja.deleteLater()
+            let_go(vieja)
         else:
             for nombre, valor in filas:
                 vieja.set(nombre, valor)

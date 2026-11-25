@@ -28,7 +28,7 @@ from ...model import Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font, value_font
-from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, Table
+from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, Table, let_go
 
 USB_HEADERS = ("dev.col.device", "dev.col.maker", "dev.col.kind", "dev.col.speed")
 SOUND_HEADERS = ("dev.col.card", "dev.col.where")
@@ -290,8 +290,7 @@ class DevicesPage(ScrollPage):
                 nueva.add(nombre)
                 nueva.set(nombre, valor)
             self._bt_host.replaceWidget(self.bluetooth, nueva)
-            self.bluetooth.setParent(None)
-            self.bluetooth.deleteLater()
+            let_go(self.bluetooth)
             self.bluetooth = nueva
         else:
             for nombre, valor in filas:

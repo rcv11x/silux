@@ -17,21 +17,17 @@ and the result says so: no curve, no pinned threads, one thread reading.
 
 from __future__ import annotations
 
-import collections
 import dataclasses
-import functools
 import json
-import os
 import pathlib
 import statistics
-import subprocess
 import sys
 import threading
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional, Sequence
 
-from . import membench
+from . import childrun, membench, saved
 
 KIB = 1024
 MIB = 1024 * KIB
@@ -399,52 +395,19 @@ def run(plan: Plan, on_progress: Optional[Callable[[str, float], None]] = None,
     started = time.time()
     if native_module() is None:
         return _simple(plan, started, memory)
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [root] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
-    try:
-        child = subprocess.Popen(
-            [sys.executable, "-m", "silux.memtest", json.dumps(dataclasses.asdict(plan))],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, text=True)
-    except OSError as error:
-        return Result("native", started, reason="not_started", detail=str(error))
+    def progress(message: dict) -> None:
+        if on_progress is not None and "phase" in message:
+            on_progress(message["phase"], float(message.get("done", 0.0)))
 
-    finished = threading.Event()
-
-    def watch() -> None:
-        deadline = time.monotonic() + TIMEOUT_S
-        while not finished.wait(0.1):
-            if (stop is not None and stop.is_set()) or time.monotonic() > deadline:
-                child.kill()
-                return
-
-    watcher = threading.Thread(target=watch, daemon=True)
-    watcher.start()
-    answer = None
-    try:
-        for line in child.stdout:
-            try:
-                message = json.loads(line)
-            except ValueError:
-                continue
-            if "result" in message:
-                answer = message["result"]
-            elif on_progress is not None and "phase" in message:
-                on_progress(message["phase"], float(message.get("done", 0.0)))
-        errors = child.stderr.read()
-        child.wait()
-    finally:
-        finished.set()
-        watcher.join(timeout=2)
-        child.stdout.close()
-        child.stderr.close()
-    if stop is not None and stop.is_set():
+    outcome = childrun.run("silux.memtest", json.dumps(dataclasses.asdict(plan)),
+                           progress, stop, TIMEOUT_S)
+    if outcome.not_started is not None:
+        return Result("native", started, reason="not_started", detail=outcome.not_started)
+    if outcome.cancelled:
         return Result("native", started, reason="cancelled")
-    if answer is None:
-        return Result("native", started, reason="failed",
-                      detail=errors.strip()[-2000:] or f"exit {child.returncode}")
-    return _result(answer, plan, started, memory)
+    if outcome.answer is None:
+        return Result("native", started, reason="failed", detail=outcome.detail)
+    return _result(outcome.answer, plan, started, memory)
 
 
 def _result(answer: dict, plan: Plan, started: float, memory: Memory) -> Result:
@@ -581,146 +544,24 @@ def history_path() -> pathlib.Path:
 
 # The parts of a saved test that are lists of rows of their own, and the
 # fields that tell one row of each from another.
-PARTS = (("points", Point, ("bytes_",)),
-         ("levels", Level, ("level",)),
-         ("rates", Rate, ("operation", "threads", "level", "non_temporal")))
-
-
-def _known(kind, row: dict) -> dict:
-    """`row` without the fields this version has no name for: a newer one
-    may have saved more."""
-    names = {f.name for f in dataclasses.fields(kind)}
-    return {name: value for name, value in row.items() if name in names}
+PARTS = (("points", Point, ("bytes_",), ()),
+         ("levels", Level, ("level",), ()),
+         ("rates", Rate, ("operation", "threads", "level", "non_temporal"), ()))
 
 
 def _from_dict(row: dict) -> Result:
-    row = _known(Result, row)
-    for part, kind, _names in PARTS:
-        row[part] = tuple(kind(**_known(kind, r)) for r in row.get(part, ()))
+    row = dict(row)
     row["caches"] = tuple((str(n), int(s)) for n, s in row.get("caches", ()))
-    return Result(**row)
-
-
-def _identity(kind, names: Sequence[str], row: dict) -> tuple:
-    """What tells `row` from the others in its list. A field the file left
-    out counts as its default, which is what reading it gives."""
-    defaults = {f.name: f.default for f in dataclasses.fields(kind)}
-    return tuple(row.get(name, defaults[name]) for name in names)
-
-
-def _by_identity(rows, identity: Callable[[dict], object]) -> dict:
-    """Each row under what identifies it, without those that share it: there
-    is no telling which of them is which."""
-    found, shared = {}, set()
-    for row in rows if isinstance(rows, (list, tuple)) else ():
-        if not isinstance(row, dict):
-            continue
-        try:
-            key = identity(row)
-            if key in found:
-                shared.add(key)
-            found[key] = row
-        except TypeError:
-            # A list or an object where a number or a name goes.
-            continue
-    return {key: row for key, row in found.items() if key not in shared}
-
-
-def _to_dict(result: Result, saved: Optional[dict]) -> dict:
-    """The row to write over `saved`, the one the file has for that test.
-    What this version has no name for stays in it: going back a version and
-    measuring mustn't strip what the newer one saved.
-
-    Each point, level and rate keeps what its own saved row had, matched by
-    what it is and never by its place in the list.
-    """
-    row = dataclasses.asdict(result)
-    if saved is None:
-        return row
-    for part, kind, names in PARTS:
-        identity = functools.partial(_identity, kind, names)
-        before = _by_identity(saved.get(part), identity)
-        unmistakable = _by_identity(row[part], identity)
-        merged = []
-        for new in row[part]:
-            key = identity(new)
-            old = before.get(key) if key in unmistakable else None
-            merged.append(new if old is None else {**old, **new})
-        row[part] = merged
-    return {**saved, **row}
-
-
-def _saved_file() -> Optional[dict]:
-    """The history file as it is written, when there is one and it is a
-    JSON object."""
-    try:
-        data = json.loads(history_path().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
-
-
-def _version(data: Optional[dict]) -> Optional[int]:
-    """The version a history file says it is, when it says one."""
-    version = None if data is None else data.get("version")
-    return version if type(version) is int else None
-
-
-def _saved_rows(data: Optional[dict]) -> Optional[list[dict]]:
-    """The tests of a file of this version, as they are written. None for a
-    file that isn't one."""
-    if _version(data) != HISTORY_VERSION or not isinstance(data.get("tests"), list):
-        return None
-    return [row for row in data["tests"] if isinstance(row, dict)]
-
-
-def _set_aside(path: pathlib.Path, data: Optional[dict]) -> None:
-    """Move out of the way a history this version can't read, so that
-    nothing is written over it: another version's under a name that says
-    which, and one that is cut short or isn't a history as broken. Raises
-    `OSError` when it can't be moved."""
-    if _saved_rows(data) is not None or not os.path.lexists(path):
-        return
-    version = _version(data)
-    kind = "broken" if version in (None, HISTORY_VERSION) else f"v{version}"
-    aside = path.with_name(f"{path.name}.{kind}")
-    number = 0
-    while os.path.lexists(aside):
-        number += 1
-        aside = path.with_name(f"{path.name}.{kind}.{number}")
-    path.rename(aside)
+    return saved.from_dict(Result, row, PARTS)
 
 
 def load_history() -> list[Result]:
-    """Saved tests, newest first. A row that can't be read is left out
-    without taking the rest with it."""
-    results = []
-    for row in _saved_rows(_saved_file()) or ():
-        try:
-            results.append(_from_dict(row))
-        except (TypeError, ValueError, AttributeError):
-            continue
-    return results
+    """Saved tests, newest first."""
+    return saved.load(history_path(), HISTORY_VERSION, _from_dict)
 
 
 def save_history(results: Sequence[Result]) -> bool:
-    path = history_path()
-    data = _saved_file()
-    saved = _by_identity(_saved_rows(data) or (), lambda row: row.get("timestamp"))
-    times = collections.Counter(r.timestamp for r in results)
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        _set_aside(path, data)
-        temporary = path.with_suffix(".tmp")
-        temporary.write_text(json.dumps(
-            {"version": HISTORY_VERSION,
-             "tests": [_to_dict(r, saved.get(r.timestamp) if times[r.timestamp] == 1 else None)
-                       for r in results[:MAX_ENTRIES]]},
-            indent=1), encoding="utf-8")
-        temporary.replace(path)
-    except OSError:
-        return False
-    return True
+    return saved.save(history_path(), HISTORY_VERSION, results[:MAX_ENTRIES], PARTS)
 
 
 def append_history(result: Result) -> list[Result]:

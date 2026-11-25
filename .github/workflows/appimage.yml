@@ -237,15 +237,16 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64-compat.AppImage --help
 
-      # Each package measures with its native module: a short test, with the
-      # package's own interpreter.
+      # Each package measures with its native module: a short memory test and
+      # a short disk test, with the package's own interpreter. The disk one
+      # in the workspace, on the runner's disk.
       - name: Comprobar el módulo nativo de cada paquete
         run: |
           for ai in silux-x86_64.AppImage silux-x86_64-compat.AppImage; do
             rm -rf /tmp/nativo && mkdir /tmp/nativo && cd /tmp/nativo
             "$GITHUB_WORKSPACE/dist/$ai" --appimage-extract > /dev/null
             PYTHONHOME=squashfs-root/usr PYTHONPATH=squashfs-root/usr/lib/python \
-              squashfs-root/usr/bin/python3 "$GITHUB_WORKSPACE/tools/native_check.py" \
+              squashfs-root/usr/bin/python3 "$GITHUB_WORKSPACE/tools/native_check.py" "$GITHUB_WORKSPACE" \
               || { echo "::error::$ai no mide con su módulo nativo"; exit 1; }
             cd "$GITHUB_WORKSPACE"
           done
