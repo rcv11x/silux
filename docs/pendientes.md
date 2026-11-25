@@ -330,17 +330,6 @@ la memoria) no va: está propuesto en las notas
     `memcpy` de la glibc). Con doce hilos cuadra, y en el 5800X3D
     cuadraban. Ver qué hace distinto la glibc (cuatro páginas a la
     vez, prefetch) antes de enseñar la copia por niveles.
-  - media · el aviso «La frecuencia cambió durante la prueba» sale en todas
-    las del i5-10400 con el turbo fijo: los puntos van de 4,05 a 4,27 GHz y
-    avisa desde un 3 % (`CLOCK_DROP`). Y solo mira los puntos de la curva,
-    no el ancho de banda de un hilo, que corre en la misma CPU: con
-    auto-cpufreq, una prueba hizo la curva a 4,2 GHz y el ancho de banda a
-    2,89 sin avisar de ello.
-  - alta · el camino AVX-512 no ha corrido nunca en una pieza de verdad:
-    hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
-  - alta · el CI (`cargo fmt`, `clippy`, `cargo test`, y la suite con el
-    módulo y sin él) y el módulo dentro de los dos AppImage, con AVX2 solo
-    en las funciones que lo comprueban.
   - media · un programa que cambia el turbo o el gobernador según la carga
     (auto-cpufreq, TLP, power-profiles-daemon, tuned o tuned-ppd, thermald)
     puede mover la frecuencia a mitad de la prueba: en un i5-10400, auto-cpufreq empezó una

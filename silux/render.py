@@ -354,6 +354,11 @@ def percent(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.1f} %"
 
 
+def whole_percent(value: Optional[float]) -> str:
+    """«32 %»: where a decimal would claim more than the figure knows."""
+    return DASH if _none(value) else f"{float(value):.0f} %"
+
+
 def multiplier(value: Optional[float]) -> str:
     return DASH if _none(value) else f"× {float(value):.1f}"
 

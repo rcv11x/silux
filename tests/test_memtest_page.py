@@ -9,7 +9,7 @@ import time
 import unittest
 from unittest import mock
 
-from silux import memtest
+from silux import memtest, render
 from silux.i18n import _
 from silux.memtest import KIB, MIB
 from tests import pantalla
@@ -346,16 +346,27 @@ class TestWideScreens(TabCase):
 
 
 class TestWhatWentOnWhileMeasuring(TabCase):
-    def test_points_taken_with_the_clock_down_are_said(self):
-        """A core that was still coming up to speed for the first blocks."""
-        result = recorded()
-        slow = tuple(dataclasses.replace(p, frequency_hz=int(p.frequency_hz * 0.65))
-                     if index < 3 else p for index, p in enumerate(result.points))
+    def test_a_clock_that_changed_is_said_with_how_much(self):
+        """A power manager switched the turbo on halfway through the curve:
+        2.89 to 4.25 GHz."""
         tab = self.tab()
-        tab.show_result(dataclasses.replace(result, points=slow))
-        self.assertIn(_("memtest.notice.clock"), visible_texts(tab))
-        tab.show_result(result)
-        self.assertNotIn(_("memtest.notice.clock"), visible_texts(tab))
+        tab.show_result(recorded("i5-10400-auto-cpufreq-curve"))
+        title = _("memtest.notice.clock").format(percent=render.whole_percent(32))
+        self.assertIn(title, visible_texts(tab))
+        self.assertIn(render.hz(2_887_094_477), visible_texts(tab))
+
+    def test_a_single_thread_pass_with_the_clock_down_is_said_too(self):
+        tab = self.tab()
+        tab.show_result(recorded("i5-10400-auto-cpufreq-rates"))
+        self.assertIn(_("memtest.notice.clock").format(percent=render.whole_percent(32)),
+                      visible_texts(tab))
+
+    def test_the_turbo_s_own_steps_say_nothing(self):
+        tab = self.tab()
+        for result in (recorded("i5-10400-auto-cpufreq-curve"), recorded("i5-10400")):
+            tab.show_result(result)
+        clock = _("memtest.notice.clock").split("{")[0]
+        self.assertNotIn(clock, visible_texts(tab))
 
     def test_without_the_module_it_says_the_measure_is_the_simple_one(self):
         plan = memtest.make_plan((("L1", 32 * KIB), ("L2", 256 * KIB)), (0,), cpu=0,

@@ -68,6 +68,12 @@ STEP_TOLERANCE = 2.0
 # looked for.
 DISTINCT = 1.3
 
+# The clock of what ran on the measured CPU changed when its lowest is this
+# far below its highest. Intel's turbo steps down a little as other cores
+# wake (4.05 to 4.27 GHz on an i5-10400, held at full turbo); a power manager
+# switching the turbo off mid-test took it to 68 %.
+CLOCK_CHANGE = 0.10
+
 # What each bandwidth kernel is called in a result.
 OPERATIONS = (("read", False), ("write", False), ("copy", False),
               ("write", True), ("copy", True))
@@ -333,6 +339,22 @@ def share_of_theoretical(result: Result) -> Optional[float]:
     if read is None or not result.theoretical_bytes_per_second:
         return None
     return round(read.bytes_per_second / result.theoretical_bytes_per_second * 100, 1)
+
+
+def clock_change(result: Result) -> Optional[tuple[int, int]]:
+    """The lowest and highest clock the measured CPU ran at, when they are
+    far enough apart to move its figures; None otherwise.
+
+    The curve and the single-thread passes run on that CPU. The passes with
+    every thread don't count: with all cores busy the turbo is lower by
+    design.
+    """
+    hertz = [p.frequency_hz for p in result.points if p.frequency_hz]
+    hertz += [r.frequency_hz for r in result.rates if r.threads == 1 and r.frequency_hz]
+    if not hertz:
+        return None
+    low, high = min(hertz), max(hertz)
+    return (low, high) if low < high * (1 - CLOCK_CHANGE) else None
 
 
 def with_memory(result: Result, memory: Memory, booted_at: Optional[float]) -> Result:

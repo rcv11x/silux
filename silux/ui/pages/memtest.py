@@ -53,9 +53,6 @@ REASONS = {"cancelled": "memtest.reason.cancelled", "no_memory": "memtest.reason
 RATE_ROWS = (("read", False, "memtest.op.read"), ("write", False, "memtest.op.write"),
              ("copy", False, "memtest.op.copy"), ("write", True, "memtest.op.writent"),
              ("copy", True, "memtest.op.copynt"))
-# Points measured this far below the fastest ran with the clock down, and
-# their nanoseconds read high for it.
-CLOCK_DROP = 0.97
 # A size mark under the curve every this many powers of two: 64 KiB, 1 MiB,
 # 16 MiB, 256 MiB.
 SIZE_MARK_EVERY = 4
@@ -525,10 +522,13 @@ class MemoryTestTab(ScrollPage):
         if result.engine == "simple":
             self._notices.addWidget(Notice(_("memtest.notice.simple"),
                                            _("memtest.notice.simple.body"), tone="info"))
-        if frequencies and min(frequencies) < max(frequencies) * CLOCK_DROP:
+        clock = memtest.clock_change(result)
+        if clock is not None:
+            low, high = clock
             self._notices.addWidget(Notice(
-                _("memtest.notice.clock"), _("memtest.notice.clock.body").format(
-                    low=render.hz(min(frequencies)), high=render.hz(max(frequencies)))))
+                _("memtest.notice.clock").format(
+                    percent=render.whole_percent((high - low) / high * 100)),
+                _("memtest.notice.clock.body").format(low=render.hz(low), high=render.hz(high))))
         noisy = sum(1 for p in result.points if p.noisy) + sum(1 for r in result.rates if r.noisy)
         if noisy:
             self._notices.addWidget(Notice(
@@ -648,7 +648,7 @@ class MemoryTestTab(ScrollPage):
                 when(result.timestamp),
                 render.nanoseconds(ram.nanoseconds) if ram else render.DASH,
                 render.bandwidth(read.bytes_per_second, 1) if read else render.DASH,
-                render.DASH if share is None else f"{share:.0f} %",
+                render.whole_percent(share),
                 render.hz(max(frequencies)) if frequencies else render.DASH))
         self.history.set_rows(rows)
         self.history_card.setVisible(bool(rows))

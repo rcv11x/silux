@@ -1,7 +1,8 @@
 """The memory test: what it asks for, how it reads a curve, and a short run.
 
-The curves are real: the one in `fixtures/memtest/` is a whole run on a Ryzen
-7 5800X3D, and the short one below it is what an i5-10400 gave. What a test
+The curves are real: those in `fixtures/memtest/` are whole runs on a Ryzen
+7 5800X3D and on an i5-10400 (two of them with a power manager switching the
+turbo mid-test), and the short one below is what that i5-10400 gave. What a test
 checks is the reading of them; the run on whoever executes the suite only
 has to come back whole, with whatever figures that machine gives.
 """
@@ -16,7 +17,8 @@ from unittest import mock
 from silux import memtest
 from silux.memtest import GIB, KIB, MIB, Point
 
-FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "memtest" / "5800x3d.json"
+FIXTURES = pathlib.Path(__file__).parent / "fixtures" / "memtest"
+FIXTURE = FIXTURES / "5800x3d.json"
 
 # An i5-10400 (L1d 32 KiB, L2 256 KiB, L3 12 MiB), huge pages.
 I5_CACHES = (("L1", 32 * KIB), ("L2", 256 * KIB), ("L3", 12 * MIB))
@@ -25,8 +27,9 @@ I5_CURVE = tuple(Point(size, ns) for size, ns in (
     (16 * MIB, 52.86), (48 * MIB, 67.37), (192 * MIB, 66.05), (GIB, 72.01)))
 
 
-def recorded() -> memtest.Result:
-    return memtest._from_dict(json.loads(FIXTURE.read_text(encoding="utf-8")))
+def recorded(name: str = "5800x3d") -> memtest.Result:
+    path = FIXTURES / f"{name}.json"
+    return memtest._from_dict(json.loads(path.read_text(encoding="utf-8")))
 
 
 class TestSizes(unittest.TestCase):
@@ -40,6 +43,35 @@ class TestSizes(unittest.TestCase):
         self.assertEqual(sizes[-1], 88 * MIB)
         self.assertEqual(list(sizes), sorted(set(sizes)))
         self.assertTrue(all(size % 64 == 0 for size in sizes))
+
+
+class TestClockChange(unittest.TestCase):
+    def test_a_turbo_switched_off_mid_curve_is_a_change(self):
+        low, high = memtest.clock_change(recorded("i5-10400-auto-cpufreq-curve"))
+        self.assertAlmostEqual(low / 1e9, 2.89, places=2)
+        self.assertAlmostEqual(high / 1e9, 4.25, places=2)
+
+    def test_a_single_thread_pass_runs_on_the_measured_cpu_too(self):
+        """The curve stayed near 4.2 GHz; two single-thread passes ran at 2.89."""
+        result = recorded("i5-10400-auto-cpufreq-rates")
+        curve_only = dataclasses.replace(result, rates=())
+        self.assertIsNone(memtest.clock_change(curve_only))
+        low, _high = memtest.clock_change(result)
+        self.assertAlmostEqual(low / 1e9, 2.89, places=2)
+
+    def test_the_turbo_s_own_steps_and_every_thread_s_lower_clock_are_not(self):
+        """4.14 to 4.27 GHz on the measured CPU, 3.9 with every core busy."""
+        result = recorded("i5-10400")
+        self.assertTrue(any(r.threads > 1 and r.frequency_hz < 4.0e9 for r in result.rates))
+        self.assertIsNone(memtest.clock_change(result))
+        self.assertIsNone(memtest.clock_change(recorded()))
+
+    def test_without_a_frequency_there_is_nothing_to_compare(self):
+        result = recorded()
+        bare = dataclasses.replace(
+            result, points=tuple(dataclasses.replace(p, frequency_hz=None) for p in result.points),
+            rates=tuple(dataclasses.replace(r, frequency_hz=None) for r in result.rates))
+        self.assertIsNone(memtest.clock_change(bare))
 
 
 class TestPlan(unittest.TestCase):
