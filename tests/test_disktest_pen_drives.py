@@ -61,3 +61,24 @@ class TestFat32(TabCase):
         self.assertIn("16 GiB", text)
         self.assertIn(_("disktest.action.smaller"), text)
         self.assertNotIn(_("disktest.note.io"), text)
+
+
+class TestNtfsThroughTheCache(TabCase):
+    """A hard disk with NTFS (ntfs3)."""
+
+    DUMP = "ryzen5-5600g"
+
+    def test_a_test_stopped_by_the_cache_says_why_and_offers_another_folder(self):
+        from silux.ui.pages.disktest import DiskTestRun
+
+        run = DiskTestRun()
+        tab = self.tab(run=run)
+        self.pick(tab, "/media/unidad2 ")
+        run._on_done(disktest.Result(reason="cache_fallback", filesystem="ntfs3",
+                                     figures=(("cached_bytes", 4 * MIB),)))
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.cache_fallback"), text)
+        self.assertIn(_("disktest.action.folder"), text)
+        self.assertNotIn(_("disktest.note.failed"), text)
+        # Nothing went to the history.
+        self.assertEqual(disktest.load_history(), [])

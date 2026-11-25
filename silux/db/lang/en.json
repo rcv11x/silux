@@ -614,6 +614,8 @@
   "disktest.method.nocow": "on btrfs, the file is kept out of copy-on-write and checksums (+C) so that reading and writing are direct",
   "disktest.method.unchecked": "some went through the system's memory, or it couldn't be checked",
   "disktest.method.written": "it wrote {size}",
+  "disktest.note.cache_fallback": "The test stopped: it was measuring memory",
+  "disktest.note.cache_fallback.body": "FAT32, exFAT and NTFS sometimes read and write through the system's memory, without saying so, when they can't go straight to the disk. That happened here, and the figures would have been the memory's, not the disk's.",
   "disktest.note.copy_on_write": "The file couldn't be kept out of btrfs's copies",
   "disktest.note.copy_on_write.body": "With checksums, btrfs takes writes through the system's memory: the writing figures may not be the disk's.",
   "disktest.note.disk_moved_less": "The disk moved less than the test counted",

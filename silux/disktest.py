@@ -68,6 +68,9 @@ NETWORK = frozenset({
 # FAT keeps a file's size in 32 bits: the kernel takes files of up to
 # 2^32 - 1 bytes there (`s_maxbytes` in fs/fat/inode.c).
 LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
+# These go through the page cache without an error where they can't read or
+# write directly, so the cache check after each test is what tells.
+SILENT_FALLBACK = frozenset({"vfat", "msdos", "exfat", "ntfs3"})
 
 
 @dataclass(frozen=True)
@@ -589,6 +592,11 @@ def die_with_parent() -> None:
         os._exit(0)
 
 
+class _ThroughTheCache(Exception):
+    """A file system that falls back to the page cache without a word did:
+    what comes after would be the memory's figures."""
+
+
 def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
     """Everything the plan asks for, in this process."""
     import silux_bench
@@ -660,6 +668,12 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
                     cached = file.cached_bytes()
                 except silux_bench.SiluxBenchError:
                     cached = None
+                if cached and plan["filesystem"] in SILENT_FALLBACK:
+                    rates = sorted(lap["bytes_per_second"] for lap in laps[1:]) or [0]
+                    raise _ThroughTheCache(
+                        f"{cached} bytes of the file in the page cache after {ran.name} "
+                        f"{direction} on {plan['filesystem']}, measured at "
+                        f"{rates[len(rates) // 2]} B/s", cached)
                 answer["measures"].append({
                     "pattern": ran.pattern, "block": ran.block, "depth": ran.depth,
                     "threads": ran.threads, "direction": direction,
@@ -671,6 +685,10 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
         # What was measured before it stays in the answer.
         answer.update(reason=str(error.args[0]), detail=str(error.args[-1]),
                       figures=dict(getattr(error, "details", {}) or {}))
+    except _ThroughTheCache as error:
+        # The measure that went through it isn't kept: it timed the memory.
+        answer.update(reason="cache_fallback", detail=str(error.args[0]),
+                      figures={"cached_bytes": error.args[1]})
     answer["temperature_end_c"] = now = _temperature(disks)
     answer["temperature_peak_c"] = hottest(now)
     return answer

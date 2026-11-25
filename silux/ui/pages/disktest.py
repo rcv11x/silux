@@ -73,7 +73,7 @@ ERRORS = {
     "read_only": "folder", "no_write": "folder", "no_folder": "folder",
     "no_direct": "folder", "no_space": "smaller", "io": None, "no_module": None,
     "internal": None, "failed": None, "not_started": None,
-    "too_big_for_fat": "fits", "too_big": "smaller",
+    "too_big_for_fat": "fits", "too_big": "smaller", "cache_fallback": "folder",
 }
 ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.smaller",
            "fits": "disktest.action.fits"}
@@ -97,6 +97,7 @@ NOTES = {
     "no_space": ("disktest.note.no_space", "disktest.note.no_space.body"),
     "too_big": ("disktest.note.too_big", "disktest.note.too_big.body"),
     "too_big_for_fat": ("disktest.note.too_big_for_fat", "disktest.note.too_big_for_fat.body"),
+    "cache_fallback": ("disktest.note.cache_fallback", "disktest.note.cache_fallback.body"),
     "io": ("disktest.note.io", "disktest.note.io.body"),
     "no_module": ("disktest.note.no_module", "disktest.note.no_module.body"),
     "internal": ("disktest.note.internal", "disktest.note.internal.body"),

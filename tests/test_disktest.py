@@ -389,6 +389,65 @@ class TestRunning(unittest.TestCase):
         self.assertEqual(os.listdir(self.folder), [])
 
 
+class _CachedFile:
+    """The engine's file, real in everything but the cache check, which
+    answers as on a file system that fell back to the page cache."""
+
+    def __init__(self, file):
+        self._file = file
+
+    def cached_bytes(self) -> int:
+        return self._file.cached_bytes() + 4 * MIB
+
+    def __getattr__(self, name):
+        return getattr(self._file, name)
+
+
+class TestThroughTheCache(unittest.TestCase):
+    """FAT32, exFAT and NTFS fall back to the page cache without an error:
+    the check after each test stops them, and only them."""
+
+    def setUp(self):
+        silux_bench = disktest.native_module()
+        if silux_bench is None:
+            self.skipTest("silux_bench has no disk benchmark")
+        real = silux_bench.DiskFile
+        patch = mock.patch.object(silux_bench, "DiskFile",
+                                  lambda *args, **kwargs: _CachedFile(real(*args, **kwargs)))
+        patch.start()
+        self.addCleanup(patch.stop)
+        _base().mkdir(parents=True, exist_ok=True)
+        self.folder = pathlib.Path(tempfile.mkdtemp(prefix="disktest-", dir=_base()))
+        self.addCleanup(shutil.rmtree, self.folder, True)
+
+    def measure(self, filesystem: str) -> dict:
+        plan = disktest.make_plan(self.folder, bytes_=8 * MIB, laps=1, lap_seconds=0.05,
+                                  pause_seconds=0.0, write=False)
+        answer = disktest._measure(dataclasses.asdict(
+            dataclasses.replace(plan, filesystem=filesystem)), lambda _message: None)
+        if answer.get("reason") in ("in_memory", "no_direct", "no_space"):
+            self.skipTest(answer["detail"])
+        return answer
+
+    def test_it_stops_where_the_fall_back_is_silent(self):
+        for filesystem in ("vfat", "exfat", "ntfs3"):
+            with self.subTest(filesystem):
+                answer = self.measure(filesystem)
+                self.assertEqual(answer["reason"], "cache_fallback")
+                self.assertEqual(answer["figures"], {"cached_bytes": 4 * MIB})
+                # The measure that timed the memory isn't kept; the report
+                # has its figure.
+                self.assertEqual(answer["measures"], [])
+                self.assertIn("B/s", answer["detail"])
+                self.assertEqual(os.listdir(self.folder), [])
+
+    def test_elsewhere_it_goes_on_and_says_it(self):
+        answer = self.measure("ext4")
+        self.assertIsNone(answer.get("reason"))
+        self.assertEqual(len(answer["measures"]), len(disktest.PROFILES["standard"]))
+        self.assertTrue(all(m["cached_bytes"] for m in answer["measures"]))
+
+
 class TestPenDrives(unittest.TestCase):
     def test_fat32_takes_files_below_4_gib_and_it_is_known_before_starting(self):
         self.assertEqual(disktest.largest_file("vfat"), 4095 * MIB)
