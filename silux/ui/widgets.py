@@ -2594,7 +2594,7 @@ class RateBar(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
         box = QRectF(0, 1, self.width(), self.height() - 2)
-        painter.setBrush(self._p.q("line_soft"))
+        painter.setBrush(self._p.q("track"))
         painter.drawRoundedRect(box, self._round, self._round)
         filled = self.filled_width()
         if filled:

@@ -66,6 +66,9 @@ class Palette:
     # the status colours: a bar in amber or red reads as a warning.
     series_b: str = "#6A47C8"
     series_c: str = "#0E8077"
+    # The empty part of a bar, up to its 100 %: seen on its card, and far
+    # below the bar's own colour.
+    track: str = "#ECEEF2"
 
     def q(self, name: str, alpha: float = 1.0) -> QColor:
         color = QColor(getattr(self, name))
@@ -108,6 +111,8 @@ DARK = Palette(
     accent="#F2994A", accent_soft="#F7B77D", accent_wash="#2B2017",
     ok="#6FBF9A", warn="#D6AF4E", crit="#E0857D", info="#7FB2E5",
     disabled="#525C6A", series_b="#B49CFF", series_c="#47C1B6",
+    # Its `line_soft` was nearly the card's: where the 100 % was didn't show.
+    track="#2F3744",
 )
 
 
