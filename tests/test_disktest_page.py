@@ -195,9 +195,10 @@ class TestWhatAResultShows(TabCase):
         text = visible_texts(tab)
         self.assertIn(_("disktest.empty"), text)
         self.assertFalse(tab.rows.isVisibleTo(tab))
-        # The others are still in the history.
-        self.assertIn("Samsung SSD 970 EVO Plus 2TB", text)
-        self.assertIn("6 592", text)
+        # Nor are the others' runs in the history.
+        self.assertFalse(tab.history_card.isVisibleTo(tab))
+        self.assertNotIn("Samsung SSD 970 EVO Plus 2TB", text)
+        self.assertNotIn("6 592", text)
 
     def test_each_test_is_said_in_words_with_its_code(self):
         text = visible_texts(self.tab())
@@ -302,12 +303,18 @@ class TestWhatAResultShows(TabCase):
         self.assertIn(_("disktest.method.nocow"), text)
         self.assertIn(_("disktest.method.written").format(size="242 GB"), text)
 
-    def test_the_history_lists_every_run_with_its_disk(self):
+    def test_the_history_lists_the_runs_of_the_disk_chosen_only(self):
         tab = self.tab()
-        rows = visible_texts(tab.history_card)
-        for expected in ("WD_BLACK SN850X HS 1000GB", "Samsung SSD 970 EVO Plus 2TB", "6 592",
-                         "3 946", "63.3", "3 579", "3 322", "48.1", "62.9 °C", "56.9 °C"):
-            self.assertIn(expected, rows)
+        sn850x = ("WD_BLACK SN850X HS 1000GB", "6 592", "3 946", "63.3", "62.9 °C")
+        evo = ("Samsung SSD 970 EVO Plus 2TB", "3 579", "3 322", "48.1", "56.9 °C")
+        for pick, shown, hidden in ((None, sn850x, evo), ("unidad2", evo, sn850x)):
+            if pick:
+                self.pick(tab, pick)
+            rows = visible_texts(tab.history_card)
+            for expected in shown:
+                self.assertIn(expected, rows)
+            for other in hidden:
+                self.assertNotIn(other, rows)
 
     def test_the_history_never_puts_another_engine_s_test_in_a_column(self):
         """The run through threads (SEQ1M Q1T8) sat under SEQ1M Q8T1."""

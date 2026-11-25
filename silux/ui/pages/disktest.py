@@ -716,6 +716,7 @@ class DiskTestTab(ScrollPage):
         they have none yet: never another disk's."""
         if self.running:
             return
+        self._paint_history()
         plan = self.plan()
         disks = plan.disks if plan is not None else ()
         model = self._model_of(disks)
@@ -1088,7 +1089,6 @@ class DiskTestTab(ScrollPage):
         self.running_changed.emit(False)
         if history is not None:
             self._history = history
-        self._paint_history()
         self._drop_failure()
         if result.reason and result.reason != "cancelled":
             key = result.reason if result.reason in ERRORS else "failed"
@@ -1235,10 +1235,15 @@ class DiskTestTab(ScrollPage):
         self.detail_button.setText(_("disktest.detail.hide" if shown else "disktest.detail.show"))
 
     def _paint_history(self) -> None:
+        """The runs of the disk the folder chosen is on, never another's: by
+        engine and profile, whose figures don't compare."""
         clear_layout(self._history_groups)
         self.history_tables = []
+        plan = self.plan() if not self.running else self._run.plan
+        disks = plan.disks if plan is not None else ()
+        model = self._model_of(disks)
         groups: dict[tuple, list[disktest.Result]] = {}
-        for result in self._history:
+        for result in (r for r in self._history if r.is_of(disks, model)):
             groups.setdefault((result.model or " + ".join(result.disks), result.engine,
                                result.profile), []).append(result)
         fahrenheit = self._prefs.fahrenheit
@@ -1283,7 +1288,7 @@ class DiskTestTab(ScrollPage):
             self._history_groups.addWidget(heading)
             self._history_groups.addWidget(table)
             self.history_tables.append((heading, table))
-        self.history_card.setVisible(bool(self._history))
+        self.history_card.setVisible(bool(groups))
 
     # -- the window's protocol -----------------------------------------------
 
