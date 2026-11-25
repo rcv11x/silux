@@ -121,14 +121,60 @@ class TestFat32(TabCase):
         self.assertNotIn(_("disktest.note.io"), text)
 
 
+def notices(tab) -> list[str]:
+    """The text of each note shown: its title, its body and its button."""
+    from PySide6.QtWidgets import QAbstractButton, QLabel
+
+    from silux.ui.widgets import Notice
+
+    visible_texts(tab)
+    return [plain(" ".join(child.text() for kind in (QLabel, QAbstractButton)
+                           for child in notice.findChildren(kind)))
+            for notice in tab.findChildren(Notice) if notice.isVisibleTo(tab)]
+
+
 class TestASlowPenDrive(TabCase):
-    """A pen drive on USB 2.0, with exFAT."""
+    """A pen drive on USB 2.0, with exFAT, and a hard disk."""
 
     DUMP = "athlon-3000g"
 
     def pen(self, tab) -> None:
         self.pick(tab, "/media/unidad1 ")
         self.assertEqual(tab.plan().disks, ("sdb",))
+
+    def test_how_long_writing_the_file_takes_is_said_once_in_its_note(self):
+        """A pen drive's note says it can take long; with a figure, in it."""
+        tab = self.tab()
+        self.pen(tab)
+        for size, fill in ((GIB, None), (4 * GIB, "1 min 11 s")):
+            with self.subTest(size=size):
+                tab.size_box.setCurrentIndex(tab.size_box.findData(size))
+                tab._describe()
+                shown = notices(tab)
+                about = [n for n in shown if n.startswith(_("disktest.note.removable"))]
+                self.assertEqual(len(about), 1, shown)
+                said = [n for n in shown if "min" in n]
+                if fill is None:
+                    self.assertEqual(said, [])
+                    continue
+                self.assertEqual(said, about)
+                self.assertIn(fill, about[0])
+                self.assertIn(_("disktest.action.smaller"), about[0])
+
+    def test_on_a_hard_disk_it_has_a_note_of_its_own(self):
+        model = next(d for d in self.snapshot.disks if d.name == "sda").model
+        last = recorded("970-evo-plus-ext4")
+        slow = tuple(dataclasses.replace(measure, laps=tuple(
+            dataclasses.replace(lap, bytes_per_second=100_000_000) for lap in measure.laps))
+            for measure in last.measures)
+        disktest.save_history([dataclasses.replace(last, disks=("sda",), model=model,
+                                                   measures=slow)])
+        tab = self.tab()
+        tab.size_box.setCurrentIndex(tab.size_box.findData(16 * GIB))
+        tab._describe()
+        said = [n for n in notices(tab) if "min" in n]
+        self.assertEqual(len(said), 1)
+        self.assertTrue(said[0].startswith(_("disktest.note.slow_fill").format(fill="2 min 51 s")))
 
     def test_how_long_writing_the_file_takes_at_least_by_its_link(self):
         tab = self.tab()

@@ -132,6 +132,8 @@ NOTES = {
     "placement_unknown.unsaid": ("disktest.note.placement_unknown",
                                  "disktest.unplaced.unsaid"),
     "removable": ("disktest.note.removable", "disktest.note.removable.body"),
+    "removable_slow": ("disktest.note.removable", "disktest.note.removable.slow"),
+    "removable_slow_link": ("disktest.note.removable", "disktest.note.removable.slow_link"),
     "encrypted": ("disktest.note.encrypted", "disktest.note.encrypted.body"),
     "several_disks": ("disktest.note.several_disks", "disktest.note.several_disks.body"),
     "fuse_driver": ("disktest.note.fuse_driver", "disktest.note.fuse_driver.body"),
@@ -838,10 +840,15 @@ class DiskTestTab(ScrollPage):
         else:
             if too_big:
                 self._notices.addWidget(self._too_big(plan, limit, free))
-            for warning in self._warnings(place, disk):
-                self._notices.addWidget(self._note(warning))
-            if fill is not None and fill[0] >= SLOW_FILL_SECONDS:
-                self._notices.addWidget(self._slow_fill(plan, disk, fill))
+            slow = fill if fill is not None and fill[0] >= SLOW_FILL_SECONDS else None
+            warnings = self._warnings(place, disk)
+            for warning in warnings:
+                # A pen drive's note says how long writing the file takes.
+                self._notices.addWidget(self._slow_fill(plan, disk, slow, removable=True)
+                                        if warning == "removable" and slow else
+                                        self._note(warning))
+            if slow and "removable" not in warnings:
+                self._notices.addWidget(self._slow_fill(plan, disk, slow))
         model = self._model_of(plan.disks)
         last = next((r for r in self._history if r.is_of(plan.disks, model)
                      and r.bytes_ == plan.bytes_ and r.laps == plan.laps
@@ -892,16 +899,17 @@ class DiskTestTab(ScrollPage):
         link = render.link_bytes_per_second(disk) if disk is not None else None
         return disktest.fill_estimate(plan, self._history, model, link)
 
-    def _slow_fill(self, plan: disktest.Plan, disk, estimate: tuple[float, str]) -> Notice:
+    def _slow_fill(self, plan: disktest.Plan, disk, estimate: tuple[float, str],
+                   removable: bool = False) -> Notice:
         """How long writing the file takes, where it is long enough to say:
-        at what this disk wrote last time, or at least what its link takes."""
+        at what this disk wrote last time, or at least what its link takes.
+        On a pen drive or a card, in the note that says what it is."""
         seconds, source = estimate
-        rate = plan.bytes_ / seconds
-        if source == "last":
-            return self._note("slow_fill", "smaller", fill=render.duration(seconds),
-                              rate=render.disk_rate(rate))
-        return self._note("slow_fill_link", "smaller", fill=render.duration(seconds),
-                          rate=render.disk_rate(rate), link=render.disk_link(disk))
+        key = ("removable_slow" if removable else "slow_fill") + (
+            "" if source == "last" else "_link")
+        return self._note(key, "smaller", fill=render.duration(seconds),
+                          rate=render.disk_rate(plan.bytes_ / seconds),
+                          link=render.disk_link(disk) if source == "link" else "")
 
     def _warnings(self, place, disk) -> list[str]:
         found = list(place.warnings) if place is not None else []
