@@ -113,7 +113,9 @@ cosas que cambian el resultado y no se ven:
 2. **fio envía las peticiones de una en una.** Para la RND4K Q32T1 hay que
    añadir `--iodepth_batch_submit=32 --iodepth_batch_complete_min=1
    --iodepth_batch_complete_max=32`; sin ellas fio da un 35 % menos en un
-   disco rápido, limitado por su propio hilo.
+   disco rápido, limitado por su propio hilo. Eso es leyendo: escribiendo,
+   en ext4 da lo mismo con lotes o sin ellos, y en btrfs con lotes da menos,
+   lo mismo que Silux.
 3. **Los dos sobre el mismo archivo.** Dos archivos en dos sitios del disco
    difieren del 2 al 4 %. Mientras la prueba de Silux tiene su archivo
    abierto, fio puede leer ese mismo por `/proc/PID/fd/N`.
@@ -206,19 +208,96 @@ La cifra de cada prueba (la vuelta del medio), con archivo nuevo cada vez:
 | °C al empezar · la más alta · al acabar | 50,9 · 62,9 · 53,9 | 39,9 · 56,9 · 55,9 |
 
 En las 16 medidas, nada en la caché y los contadores del disco a 1,00 de lo
-contado (una a 1,03). Las escrituras no se han comparado con fio.
+contado (una a 1,03). Las escrituras contra fio, justo debajo.
+
+### Escrituras contra fio
+
+Los mismos dos discos, Linux 7.3.6, 25 de noviembre de 2026. El mismo
+archivo y 5 s de pausa antes de cada medida, como en las lecturas, pero con
+medidas de 3 s y dos rondas: la primera en el orden de la tabla y la
+segunda al revés, para que un disco que cambia a mitad no castigue siempre
+al mismo programa. Junto a cada medida, lo que contó el kernel que llegó al
+disco: ×1,00 en todas salvo tres de 4K en btrfs (×1,01 a ×1,03). MB/s,
+ronda 1 · ronda 2.
+
+970 EVO Plus, ext4:
+
+| | Silux io_uring | fio io_uring | Silux con hilos | fio psync | fio con lotes |
+|---|---|---|---|---|---|
+| SEQ1M Q8 | 2325 · 3310 | 2375 · 3312 | 2958 · 3312 | 3309 · 3301 | |
+| SEQ1M Q1 | 3101 · 3104 | 3094 · 3075 | 3140 · 3109 | 3123 · 3121 | |
+| RND4K Q32 | 954 · 508 | 970 · 510 | 1162 · 551 | 1159 · 550 | 948 · 506 |
+| RND4K Q1 | 260 · 244 | 258 · 243 | 269 · 258 | 266 · 251 | |
+
+Con el disco en el mismo estado, todo a menos del 1 % en las secuenciales y
+del 2,5 % en las de 4K. Las dos cosas que se salen son del disco, no de un
+programa. Al empezar escribía a unos 2300 MB/s y a mitad de la tercera
+medida subió a 3300 (+45 % a los 1,25 s); en la ronda al revés, los cuatro
+dan 3301–3312. Y la RND4K Q32 baja a la mitad entre rondas en los cinco por
+igual: depende de lo que se haya escrito antes.
+
+SN850X, btrfs con `+C`:
+
+| | Silux io_uring | fio io_uring | Silux con hilos | fio psync | fio con lotes |
+|---|---|---|---|---|---|
+| SEQ1M Q8 | 3920 · 3918 | 3992 · 4007 | 3919 · 3925 | 3962 · 4025 | |
+| SEQ1M Q1 | 3576 · 3604 | 3543 · 3544 | 3608 · 3598 | 3547 · 3571 | |
+| RND4K Q32 | 314 · 306 | 356 · 358 | 392 · 475 | 391 · 397 | 363 · 311 |
+| RND4K Q1 | 233 · 231 | 232 · 230 | 239 · 234 | 232 · 224 | |
+
+Las secuenciales y la RND4K Q1 cuadran (la SEQ1M Q8, siempre un 2 % por
+debajo, con los dos motores). La RND4K Q32 por io_uring sale de un 12 a un
+15 % por debajo de fio, y fio con lotes da lo mismo que Silux (311 frente a
+306): ver «Límites».
+
+### Otros discos y sistemas de archivos
+
+La tanda entera con escritura, con lo que dice la pestaña. MB/s, lectura ·
+escritura:
+
+| | Kingston A400, USB 5 Gb/s, exFAT | SanDisk Cruzer Blade, USB 2.0, FAT32, 64 MiB | ST4000DM004 (SMR), SATA, ext4 |
+|---|---|---|---|
+| SEQ1M Q8T1 | 422,7 · 371,3 | 20,8 · 7,2 | 139,9 · 129,6 |
+| SEQ1M Q1T1 | 408,6 · 354,1 | 20,8 · 7,3 | 139,7 · 135,4 |
+| RND4K Q32T1 | 250,2 · 181,1 | 5,1 · 2,8 | 1,6 · 0,2 |
+| RND4K Q1T1 | 22,9 · 50,9 | 4,0 · 2,2 | 0,5 · 0,1 |
+| Escribió | 28,6 GB | 0,7 GB | 9,1 GB |
+
+- En exFAT y en FAT32 de verdad, nada pasó por la caché y el disco escribió
+  ×1,00 de lo contado. No queda nada en ninguno: el archivo se crea con
+  nombre y se le quita antes de escribir.
+- El A400 sale como SSD aunque el kernel lo dé por rotacional (el IDENTIFY
+  dice 0 RPM).
+- En FAT32 el kernel cuenta 64 MiB más que Silux: los ceros de reservar el
+  archivo. El de 4 GiB se rechaza antes de empezar (se ofrece 4095 MiB), y
+  pedido a la fuerza el motor dice que no cabe, no que el disco falla.
+- El pendrive desconectado a mitad da «El disco se desconectó durante la
+  prueba» y nada más.
+- En el disco de platos, lo que dice Silux de dónde cae el archivo
+  (`FIEMAP`) es lo mismo que `filefrag -v` más el inicio de la partición,
+  tramo a tramo: del 72,1 al 72,2 % del disco, la zona interior. Otro
+  archivo del mismo tamaño quedó repartido del 2 al 72 %.
+
+### Sin io_uring
+
+- **Con `sysctl kernel.io_uring_disabled=2`** (el 970, ext4, sin
+  escritura): io_uring contesta EPERM y Silux mide con hilos, con las
+  pruebas llamadas por lo que son (SEQ1M Q1T8, RND4K Q1T32) y el aviso de
+  la cola de hilos. 3622 · 2633 · 1127 · 51,2 MB/s, como los hilos del 24.
+- **Dentro de un contenedor** (podman sin root, su seccomp por defecto):
+  io_uring contesta ENOSYS y Silux mide con hilos. En una carpeta del
+  anfitrión montada dentro ve el disco de debajo; en una del propio
+  contenedor, un overlay sin disco, con el aviso de la capa de más.
 
 ### Lo que falta por validar
 
-- **Las escrituras contra fio**, en los dos discos.
-- **Un disco de platos, un SSD SATA y una memoria USB.**
-- **El camino sin io_uring en un sistema que lo prohíbe**
-  (`sysctl kernel.io_uring_disabled=2`), y dentro de un contenedor.
-- **ext4, XFS, f2fs, exFAT, NTFS y FAT32** más allá de ext4 y btrfs. vfat,
-  exfat y ntfs3 aceptan `O_DIRECT` y tienen caminos que pasan por la caché
-  sin dar error: la comprobación de la caché tiene que verlo en un disco de
-  verdad.
-- **La SEQ1M Q8 por io_uring en btrfs**, un 5 % por debajo de fio.
+- **Un SSD SATA por su puerto SATA**, no por una caja USB.
+- **XFS, f2fs y NTFS** en un disco de verdad.
+- **La RND4K Q32 de escritura por io_uring en btrfs** (abajo, en «Límites»).
+- **La SEQ1M Q8 de lectura por io_uring en btrfs**, un 5 % por debajo de
+  fio.
+- **Lo que enseña la ventana cuando el disco se va a mitad**, en una de
+  verdad: se ha probado el resultado y, con volcados, la pestaña.
 - **Otro equipo.**
 
 ## Límites
@@ -237,9 +316,16 @@ contado (una a 1,03). Las escrituras no se han comparado con fio.
   que el 970 con ext4, con los dos programas. No es la temperatura. Sin
   separar si es btrfs con muchas lecturas directas a la vez sobre un archivo
   o el disco.
+- **Escribiendo en btrfs, mandar las 32 peticiones juntas cuesta.** La
+  RND4K Q32 de escritura por io_uring en el SN850X sale de un 12 a un 15 %
+  por debajo de fio, que las manda de una en una; con lotes, fio da lo mismo
+  que Silux. En ext4 no pasa. Sin separar si es btrfs o el disco.
 - **Una cola hecha con hilos no es una cola.** En un disco rápido, 32 hilos
   con una petición cada uno dan más que una cola de 32 en un hilo. Por eso
   lleva otro nombre.
+- **En FAT32 el archivo se escribe dos veces**: reservarlo ya lo escribe
+  entero con ceros. En un pendrive lento eso se nota; la barra lo dice
+  mientras pasa.
 - **En un disco de platos** la velocidad seguida depende de en qué parte del
   plato cae el archivo, y cae donde hay hueco. El resultado dice entre qué
   porcentajes del disco quedó, preguntándolo al kernel (`FIEMAP`): el
