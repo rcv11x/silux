@@ -466,6 +466,22 @@ class TestPenDrives(unittest.TestCase):
             self.assertEqual((result.reason, dict(result.figures)),
                              ("too_big_for_fat", {"largest": 4095 * MIB}))
 
+    def test_writing_the_file_says_how_long_it_has_left_at_its_pace(self):
+        self.assertIsNone(disktest.fill_left(1.0, 0.5))
+        self.assertIsNone(disktest.fill_left(10.0, 0.0))
+        self.assertEqual(disktest.fill_left(30.0, 0.25), 90.0)
+
+    def test_how_long_writing_the_file_takes_comes_from_what_is_known(self):
+        plan = disktest.Plan("/media/pen", disktest.PROFILES["standard"], bytes_=GIB,
+                             disks=("sdb",))
+        mine = dataclasses.replace(recorded("sn850x-btrfs"), disks=("sdb",), model="Pen")
+        rate = mine.measure("SEQ1M Q8T1", "write").median.bytes_per_second
+        self.assertEqual(disktest.fill_estimate(plan, [mine], "Pen", 60e6), (GIB / rate, "last"))
+        # Another disk under the same name: only its link is known.
+        self.assertEqual(disktest.fill_estimate(plan, [mine], "Other", 60e6),
+                         (GIB / 60e6, "link"))
+        self.assertIsNone(disktest.fill_estimate(plan, [mine], "Other", None))
+
 
 class TestRecordedRuns(unittest.TestCase):
     """Two whole runs with the defaults, recorded on real disks: an NVMe on

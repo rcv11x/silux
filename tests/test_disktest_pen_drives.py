@@ -2,10 +2,13 @@
 writing the file takes on a slow disk, and a file system that went through
 the page cache. On the dumps of machines that have them mounted."""
 
-from silux import disktest
+import dataclasses
+
+from silux import disktest, render
 from silux.disktest import GIB, MIB
 from silux.i18n import _
-from tests.test_disktest_page import TabCase, visible_texts
+from tests.test_disktest import recorded
+from tests.test_disktest_page import Running, TabCase, visible_texts
 
 
 class TestFat32(TabCase):
@@ -61,6 +64,59 @@ class TestFat32(TabCase):
         self.assertIn("16 GiB", text)
         self.assertIn(_("disktest.action.smaller"), text)
         self.assertNotIn(_("disktest.note.io"), text)
+
+
+class TestASlowPenDrive(TabCase):
+    """A pen drive on USB 2.0, with exFAT."""
+
+    DUMP = "athlon-3000g"
+
+    def pen(self, tab) -> None:
+        self.pick(tab, "/media/unidad1 ")
+        self.assertEqual(tab.plan().disks, ("sdb",))
+
+    def test_how_long_writing_the_file_takes_at_least_by_its_link(self):
+        tab = self.tab()
+        self.pen(tab)
+        # 1 GiB at 60 MB/s, which USB 2.0 carries at most: not worth saying.
+        self.assertNotIn(_("disktest.note.slow_fill_link").split("{")[0], visible_texts(tab))
+        tab.size_box.setCurrentIndex(tab.size_box.findData(4 * GIB))
+        tab._describe()
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.slow_fill_link").format(fill="1 min 11 s"), text)
+        self.assertIn("USB 480 Mb/s", text)
+        self.assertIn(_("disktest.action.smaller"), text)
+        tab._smaller_file()
+        self.assertEqual(tab.plan().bytes_, GIB)
+        self.assertNotIn(_("disktest.note.slow_fill_link").split("{")[0], visible_texts(tab))
+
+    def test_and_by_what_it_wrote_last_time(self):
+        last = recorded("sn850x-btrfs")
+        slow = tuple(dataclasses.replace(measure, laps=tuple(
+            dataclasses.replace(lap, bytes_per_second=10_000_000) for lap in measure.laps))
+            for measure in last.measures)
+        disktest.save_history([dataclasses.replace(
+            last, disks=("sdb",), model="DataTraveler 3.0", measures=slow)])
+        tab = self.tab()
+        self.pen(tab)
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.slow_fill").format(fill="1 min 47 s"), text)
+        self.assertIn(render.disk_rate(10_000_000).replace(" ", " "), text)
+
+    def test_while_writing_it_says_how_long_is_left(self):
+        from silux.ui.pages.disktest import DiskTestRun
+
+        run = DiskTestRun()
+        plan = disktest.make_plan("/media/unidad1")
+        with Running(run, plan, {}):
+            run.last = {"phase": "fill", "done": 0.25, "left_seconds": 90}
+            tab = self.tab(run=run)
+            self.assertEqual(tab.progress.label.text(), _("disktest.step").format(
+                what=_("disktest.step.fill.left").format(left="1 min 30 s"), n=1,
+                of=1 + 2 * len(plan.tests)))
+            # Before its pace is known, it says only what it is doing.
+            tab._on_progress({"phase": "fill", "done": 0.01})
+            self.assertTrue(tab.progress.label.text().startswith(_("disktest.step.fill") + " ("))
 
 
 class TestNtfsThroughTheCache(TabCase):

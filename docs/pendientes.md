@@ -350,6 +350,11 @@ la memoria) no va: está propuesto en las notas
     [prueba-de-memoria.md](prueba-de-memoria.md).
 * **La prueba de disco** (`disktest.py`, `ui/pages/disktest.py`; cómo mide, en
   [prueba-de-disco.md](prueba-de-disco.md)):
+  - alta · probar con un pendrive de verdad en FAT32, exFAT y NTFS: que el
+    tope de FAT32 y la parada por la caché salen donde deben. Están escritos
+    leyendo el código del kernel y probados con un sustituto.
+  - media · en FAT32, reservar el archivo ya escribe ceros: se escribe dos
+    veces, y mientras reserva la barra no avanza.
   - baja · con los títulos en palabras, el historial pide 37 px más en la
     ventana más estrecha (480 px); cabe desde 520.
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija

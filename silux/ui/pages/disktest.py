@@ -77,6 +77,9 @@ ERRORS = {
 }
 ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.smaller",
            "fits": "disktest.action.fits"}
+# From how long writing the file is said before starting, with the way to a
+# smaller one.
+SLOW_FILL_SECONDS = 30
 # The notes that put a figure in doubt; the rest of those that aren't
 # errors are facts to read the figures with.
 DOUBTFUL = frozenset({"copy_on_write", "through_the_cache", "disk_moved_less", "disk_was_busy",
@@ -98,6 +101,8 @@ NOTES = {
     "too_big": ("disktest.note.too_big", "disktest.note.too_big.body"),
     "too_big_for_fat": ("disktest.note.too_big_for_fat", "disktest.note.too_big_for_fat.body"),
     "cache_fallback": ("disktest.note.cache_fallback", "disktest.note.cache_fallback.body"),
+    "slow_fill": ("disktest.note.slow_fill", "disktest.note.slow_fill.body"),
+    "slow_fill_link": ("disktest.note.slow_fill_link", "disktest.note.slow_fill_link.body"),
     "io": ("disktest.note.io", "disktest.note.io.body"),
     "no_module": ("disktest.note.no_module", "disktest.note.no_module.body"),
     "internal": ("disktest.note.internal", "disktest.note.internal.body"),
@@ -734,6 +739,9 @@ class DiskTestTab(ScrollPage):
                                                    size=largest))
             for warning in self._warnings(place, disk):
                 self._notices.addWidget(self._note(warning))
+            slow = self._slow_fill(plan, disk)
+            if slow is not None:
+                self._notices.addWidget(slow)
         last = next((r for r in self._history if r.disks == plan.disks and r.bytes_ == plan.bytes_
                      and r.laps == plan.laps and any(m.direction == "write" for m in r.measures)),
                     None)
@@ -750,6 +758,22 @@ class DiskTestTab(ScrollPage):
         self.about.setText(text)
         self.run_button.setEnabled(not refused and not too_big and not self.running
                                    and not self._blocked)
+
+    def _slow_fill(self, plan: disktest.Plan, disk) -> Optional[Notice]:
+        """How long writing the file takes, where it is long enough to say:
+        at what this disk wrote last time, or at least what its link takes."""
+        model = disk.model if disk is not None else None
+        link = render.link_bytes_per_second(disk) if disk is not None else None
+        estimate = disktest.fill_estimate(plan, self._history, model, link)
+        if estimate is None or estimate[0] < SLOW_FILL_SECONDS:
+            return None
+        seconds, source = estimate
+        rate = plan.bytes_ / seconds
+        if source == "last":
+            return self._note("slow_fill", "smaller", fill=render.duration(seconds),
+                              rate=render.disk_rate(rate))
+        return self._note("slow_fill_link", "smaller", fill=render.duration(seconds),
+                          rate=render.disk_rate(rate), link=render.disk_link(disk))
 
     def _warnings(self, place, disk) -> list[str]:
         found = list(place.warnings) if place is not None else []
@@ -891,8 +915,11 @@ class DiskTestTab(ScrollPage):
         done = float(message.get("done") or 0.0)
         phase = message.get("phase")
         if phase == "fill":
-            self.progress.set_state(_("disktest.step").format(
-                what=_("disktest.step.fill"), n=1, of=total), done / total, percent=False)
+            left = message.get("left_seconds")
+            what = (_("disktest.step.fill") if left is None else
+                    _("disktest.step.fill.left").format(left=render.duration(left)))
+            self.progress.set_state(_("disktest.step").format(what=what, n=1, of=total),
+                                    done / total, percent=False)
             return
         name, direction = message.get("test"), message.get("direction", "read")
         # The test that runs may be another than asked (a queue of threads

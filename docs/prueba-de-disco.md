@@ -51,12 +51,19 @@ MB/s de un millón de bytes.
   lo que el disco admita durante dos minutos: 242 GB en un NVMe PCIe 4.0 y
   216 GB en uno PCIe 3.0, medidos. La pestaña lo dice antes de empezar y el
   resultado dice lo que escribió de verdad.
+- **En un pendrive o una tarjeta.** FAT32 no guarda archivos de 4 GiB o
+  más: la pestaña lo dice antes de empezar y ofrece 4095 MiB. Si escribir el
+  archivo va a tardar, lo dice también: con lo que escribió ese disco la
+  última vez, o al menos lo que tarda por su conexión. Mientras lo escribe,
+  dice lo que falta.
 
 ## Lo que acompaña a cada cifra
 
 - **Qué pasó por la caché.** Tras cada prueba se pregunta al kernel cuánto
   del archivo tiene en memoria (`mincore`). Leyendo y escribiendo directo es
-  cero; si no, el resultado lo dice y las cifras no son las del disco.
+  cero; si no, el resultado lo dice y las cifras no son las del disco. En
+  FAT32, exFAT y NTFS la prueba se para ahí: pasan por la caché sin dar
+  error, y lo que siguiera sería la memoria.
 - **Lo que movió el disco.** Sus propios contadores (`/sys/block/…/stat`)
   antes y después de cada prueba, contra lo que contó el motor. Si movió
   menos, algo contestó por él; si movió bastante más, otro programa lo

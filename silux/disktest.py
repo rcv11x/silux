@@ -71,6 +71,11 @@ LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
 # These go through the page cache without an error where they can't read or
 # write directly, so the cache check after each test is what tells.
 SILENT_FALLBACK = frozenset({"vfat", "msdos", "exfat", "ntfs3"})
+# The test that tells how fast a disk writes the file.
+FILL_TEST = "SEQ1M Q8T1"
+# Writing the file says how long it has left once it has gone on this long:
+# before, the pace is the disk's cache, not the disk.
+FILL_PACE_SECONDS = 3.0
 
 
 @dataclass(frozen=True)
@@ -443,6 +448,31 @@ def fits(plan: Plan) -> bool:
     return largest is None or plan.bytes_ <= largest
 
 
+def fill_estimate(plan: Plan, history: Sequence[Result], model: Optional[str],
+                  link_bytes_per_second: Optional[float]) -> Optional[tuple[float, str]]:
+    """How long writing the file takes, and what that comes from: "last",
+    this disk's sequential write in its last test, or else "link", the most
+    its link carries, which makes it the least it can take. None if neither
+    is known."""
+    for result in history:
+        if result.disks != plan.disks or result.model != model:
+            continue
+        measure = result.measure(FILL_TEST, "write")
+        rate = measure.median.bytes_per_second if measure and measure.median else None
+        if rate:
+            return plan.bytes_ / rate, "last"
+    if link_bytes_per_second:
+        return plan.bytes_ / link_bytes_per_second, "link"
+    return None
+
+
+def fill_left(elapsed: float, done: float) -> Optional[float]:
+    """How long writing the file has left, at the pace it has gone so far."""
+    if done <= 0 or elapsed < FILL_PACE_SECONDS:
+        return None
+    return elapsed * (1 - done) / done
+
+
 def written_estimate(plan: Plan, bytes_per_second: float) -> int:
     """About how much a run of `plan` writes on a disk that writes that
     fast: the file once, and every lap of every test for as long as it
@@ -618,11 +648,15 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
         control = silux_bench.Control()
         filled = threading.Event()
 
+        began = time.monotonic()
+
         def report() -> None:
             while not filled.wait(0.1):
                 step, of = control.progress()
                 if of:
-                    emit({"phase": "fill", "done": step / of})
+                    left = fill_left(time.monotonic() - began, step / of)
+                    emit({"phase": "fill", "done": step / of,
+                          **({} if left is None else {"left_seconds": round(left)})})
 
         reporter = threading.Thread(target=report, daemon=True)
         reporter.start()
