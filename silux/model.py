@@ -1330,6 +1330,12 @@ class GpuClocks:
     overdrive: Optional[bool] = None
 
 
+# The OpenCL platforms that are Mesa's. Another (ROCm's «AMD Accelerated
+# Parallel Processing», «NVIDIA CUDA», Intel's compute runtime) is a driver
+# of its own, and Mesa's version is not its.
+MESA_OPENCL = ("rusticl", "Clover")
+
+
 @dataclass(frozen=True, slots=True)
 class GpuApi:
     """A graphics API and how far it goes on this machine."""
@@ -1338,8 +1344,18 @@ class GpuApi:
     version: Optional[str] = None
     device: Optional[str] = None    # what the card calls itself there
     driver: Optional[str] = None
-    implementation: Optional[str] = None  # radv, radeonsi, rusticl…
+    # Mesa's driver (radv, radeonsi, rusticl…), or OpenCL's platform.
+    implementation: Optional[str] = None
     extra: Optional[str] = None     # GLSL, compute units…
+
+    @property
+    def by_mesa(self) -> bool:
+        """Whether Mesa's driver answers. Vulkan's and OpenGL's
+        implementation is only read from Mesa's names; an OpenCL platform
+        may be another maker's."""
+        if self.name == "OpenCL":
+            return self.implementation in MESA_OPENCL
+        return self.implementation is not None
 
 
 @dataclass(frozen=True, slots=True)

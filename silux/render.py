@@ -1680,8 +1680,12 @@ def gpu_driver_version(gpu) -> Optional[str]:
 
 
 def api_driver(api, gpu) -> Optional[str]:
-    """A library's driver: «radv (Mesa 26.2.6)», «rusticl (Mesa 26.2.6)»."""
+    """A library's driver: «radv (Mesa 26.2.6)», «rusticl (Mesa 26.2.6)»,
+    or another maker's by its name, «AMD Accelerated Parallel Processing»:
+    Mesa's version is not its."""
     if api.implementation and gpu.userspace_driver and gpu.driver_version:
+        if not api.by_mesa:
+            return api.implementation
         return f"{api.implementation} ({gpu.userspace_driver} {gpu.driver_version})"
     return api.driver
 

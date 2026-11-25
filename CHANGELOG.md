@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: la OpenCL de ROCm (o la de Intel) sale por su nombre, «AMD
+  Accelerated Parallel Processing», sin la versión de Mesa pegada: su
+  driver no es de Mesa.
 - Gráficos: un monitor cuyo modelo ya lleva la marca no la repite: «LG HDR
   4K» y «HP 27wm», no «LG LG HDR 4K» ni «Hewlett Packard HP 27wm».
 - Placa base: con una base de dispositivos PCI antigua, que escribe el
