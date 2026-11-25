@@ -477,6 +477,24 @@ class TestPenDrives(unittest.TestCase):
             self.assertEqual((result.reason, dict(result.figures)),
                              ("too_big_for_fat", {"largest": 4095 * MIB}))
 
+    def test_what_fits_is_what_the_file_system_holds_and_what_is_free(self):
+        plan = disktest.Plan("/media/pen", disktest.PROFILES["standard"], bytes_=GIB,
+                             filesystem="vfat")
+        self.assertEqual(disktest.largest_that_fits(plan, None), 4095 * MIB)
+        self.assertEqual(disktest.largest_that_fits(plan, 32 * GIB), 4095 * MIB)
+        # What is free counts with the margin a test leaves.
+        self.assertEqual(disktest.largest_that_fits(plan, 3 * GIB), 2 * GIB)
+        self.assertEqual(disktest.largest_that_fits(plan, 213_688_320), 213_688_320 - GIB)
+        ext4 = dataclasses.replace(plan, filesystem="ext4")
+        self.assertIsNone(disktest.largest_that_fits(ext4, None))
+        self.assertEqual(disktest.largest_that_fits(ext4, 100 * GIB), 99 * GIB)
+
+    def test_the_margin_is_the_one_the_engine_leaves(self):
+        native = disktest.native_module()
+        if native is None:
+            self.skipTest("without silux_bench")
+        self.assertEqual(disktest.FREE_MARGIN, native.FREE_MARGIN)
+
     def test_writing_the_file_says_how_long_it_has_left_at_its_pace(self):
         self.assertIsNone(disktest.fill_left(1.0, 0.5))
         self.assertIsNone(disktest.fill_left(10.0, 0.0))

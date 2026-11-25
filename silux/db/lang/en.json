@@ -652,6 +652,8 @@
   "disktest.note.no_folder.body": "It couldn't be opened: it may have been deleted, or the disk unplugged. Choose another folder.",
   "disktest.note.no_module": "This installation doesn't have the disk test",
   "disktest.note.no_module.body": "The module that runs it is missing. The AppImage has it; from the source code, it has to be built.",
+  "disktest.note.no_room": "No test fits in this folder",
+  "disktest.note.no_room.body": "{free} are free, and even the smallest file, of {size}, needs {needed} with the margin the test leaves so as not to fill the disk. Free some space or choose another folder.",
   "disktest.note.no_space": "There is no room for the test's file",
   "disktest.note.no_space.body": "It needs {needed} and {free} are free: the test always leaves a margin so as not to fill the disk. Choose a smaller file or free some space.",
   "disktest.note.no_write": "You may not write in that folder",

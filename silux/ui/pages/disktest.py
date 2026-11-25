@@ -74,7 +74,7 @@ ERRORS = {
     "no_direct": "folder", "no_space": "smaller", "io": None, "no_module": None,
     "internal": None, "failed": None, "not_started": None,
     "too_big_for_fat": "fits", "too_big": "smaller", "cache_fallback": "folder",
-    "disconnected": None,
+    "disconnected": None, "no_room": "folder",
 }
 ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.smaller",
            "fits": "disktest.action.fits"}
@@ -99,6 +99,7 @@ NOTES = {
     "no_folder": ("disktest.note.no_folder", "disktest.note.no_folder.body"),
     "no_direct": ("disktest.note.no_direct", "disktest.note.no_direct.body"),
     "no_space": ("disktest.note.no_space", "disktest.note.no_space.body"),
+    "no_room": ("disktest.note.no_room", "disktest.note.no_room.body"),
     "too_big": ("disktest.note.too_big", "disktest.note.too_big.body"),
     "too_big_for_fat": ("disktest.note.too_big_for_fat", "disktest.note.too_big_for_fat.body"),
     "cache_fallback": ("disktest.note.cache_fallback", "disktest.note.cache_fallback.body"),
@@ -433,6 +434,8 @@ class DiskTestTab(ScrollPage):
         self._chosen_place: Optional[disktest.Place] = None
         self._blocked = False
         self._placed = False
+        # The size the note of a file that doesn't fit offers instead.
+        self._offer: Optional[int] = None
         self.result: Optional[disktest.Result] = None
         self._history: list = []
 
@@ -807,14 +810,14 @@ class DiskTestTab(ScrollPage):
         disk = self._disk_of(place)
         refused = place.refusal if place is not None else None
         self.about.setVisible(not refused)
-        too_big = not refused and not disktest.fits(plan)
+        free = self._free_of(plan)
+        limit = None if refused else disktest.largest_that_fits(plan, free)
+        too_big = limit is not None and plan.bytes_ > limit
         if refused:
             self._notices.addWidget(self._note(refused, "folder"))
         else:
             if too_big:
-                largest = render.file_size(disktest.largest_file(plan.filesystem))
-                self._notices.addWidget(self._note("too_big_for_fat", "fits", largest=largest,
-                                                   size=largest))
+                self._notices.addWidget(self._too_big(plan, limit, free))
             for warning in self._warnings(place, disk):
                 self._notices.addWidget(self._note(warning))
             slow = self._slow_fill(plan, disk)
@@ -836,6 +839,30 @@ class DiskTestTab(ScrollPage):
         self.about.setText(text)
         self.run_button.setEnabled(not refused and not too_big and not self.running
                                    and not self._blocked)
+
+    def _free_of(self, plan: disktest.Plan) -> Optional[int]:
+        """What is free where the folder is mounted, as the last sample read it."""
+        return next((partition.free_bytes for disk in self._disks.values()
+                     for partition in disk.partitions
+                     if plan.mountpoint and partition.mountpoint == plan.mountpoint), None)
+
+    def _too_big(self, plan: disktest.Plan, limit: int, free: Optional[int]) -> Notice:
+        """Why the file chosen doesn't fit in the folder, with the largest
+        size offered that does, or that none does."""
+        largest = disktest.largest_file(plan.filesystem)
+        sizes = [self.size_box.itemData(i) for i in range(self.size_box.count())]
+        self._offer = max((size for size in sizes + [largest] if size and size <= limit),
+                          default=None)
+        if self._offer is None:
+            smallest = min(sizes)
+            return self._note("no_room", "folder", free=render.decimal_size(free),
+                              size=render.file_size(smallest),
+                              needed=render.decimal_size(smallest + disktest.FREE_MARGIN))
+        offer = render.file_size(self._offer)
+        if limit == largest:
+            return self._note("too_big_for_fat", "fits", largest=offer, size=offer)
+        return self._note("no_space", "fits", size=offer, free=render.decimal_size(free),
+                          needed=render.decimal_size(plan.bytes_ + disktest.FREE_MARGIN))
 
     def _slow_fill(self, plan: disktest.Plan, disk) -> Optional[Notice]:
         """How long writing the file takes, where it is long enough to say:
@@ -880,10 +907,9 @@ class DiskTestTab(ScrollPage):
         return note
 
     def _largest_that_fits(self) -> None:
-        """The largest file the folder's file system takes, offered among
-        the sizes if it isn't one of them."""
-        plan = self.plan()
-        largest = disktest.largest_file(plan.filesystem) if plan is not None else None
+        """The size the note offered, the largest that fits, among the
+        sizes if it isn't one of them."""
+        largest = self._offer
         if largest is None:
             return
         index = self.size_box.findData(largest)

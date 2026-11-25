@@ -652,6 +652,8 @@
   "disktest.note.no_folder.body": "No se ha podido abrir: puede que se haya borrado o que el disco se haya desconectado. Elige otra carpeta.",
   "disktest.note.no_module": "Esta instalación no trae la prueba de disco",
   "disktest.note.no_module.body": "Falta el módulo que la hace. El AppImage lo trae; si usas Silux desde su código, hay que compilarlo.",
+  "disktest.note.no_room": "No cabe ninguna prueba en esta carpeta",
+  "disktest.note.no_room.body": "Quedan {free} libres, y hasta el archivo más pequeño, de {size}, necesita {needed} con el margen que la prueba deja para no llenar el disco. Libera espacio o elige otra carpeta.",
   "disktest.note.no_space": "No hay sitio para el archivo de la prueba",
   "disktest.note.no_space.body": "Hacen falta {needed} y quedan {free} libres: la prueba deja siempre un margen para no llenar el disco. Elige un archivo más pequeño o libera espacio.",
   "disktest.note.no_write": "No tienes permiso para escribir en esa carpeta",

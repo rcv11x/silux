@@ -3,22 +3,64 @@ writing the file takes on a slow disk, and a file system that went through
 the page cache. On the dumps of machines that have them mounted."""
 
 import dataclasses
+import json
 
-from silux import disktest, render
-from silux.disktest import GIB, MIB
+from silux import disktest, render, sysroot
+from silux.collector import Collector
+from silux.disktest import GIB, KIB, MIB
 from silux.i18n import _
 from tests.test_disktest import recorded
 from tests.test_disktest_page import Running, TabCase, visible_texts
 
 
+def plain(text: str) -> str:
+    return text.replace("\u00a0", " ").replace("\u202f", " ")
+
+
 class TestFat32(TabCase):
-    """A SATA disk with a FAT32 partition."""
+    """A SATA disk with a small FAT32 partition, nearly full; and, with
+    what is free changed in the dump's copy, a pen drive with room."""
 
     DUMP = "i7-12700kf"
+    FAT = "/media/unidad1"
+
+    def with_free(self, total: int, free: int):
+        """The tab once the FAT32 partition has `free` bytes free of
+        `total`, sampled again as the sampler does."""
+        recorded_file = self.root / "grabado.json"
+        data = json.loads(recorded_file.read_text())
+        data["statfs"][self.FAT] = [total // KIB, free // KIB, free // KIB, KIB]
+        recorded_file.write_text(json.dumps(data))
+        sysroot.forget()
+        collector = Collector()
+        self.addCleanup(collector.close)
+        tab = self.tab()
+        tab.apply(collector.snapshot())
+        self.pick(tab, self.FAT + " ")
+        return tab
+
+    def button(self, tab, text: str):
+        return next(b for b in tab.findChildren(type(tab.run_button))
+                    if b.isVisibleTo(tab) and plain(b.text()) == text)
+
+    def test_a_nearly_full_one_says_no_test_fits(self):
+        tab = self.tab()
+        self.pick(tab, self.FAT + " ")
+        self.assertEqual(tab.plan().filesystem, "vfat")
+        self.assertIn("214 MB", plain(tab.place_box.currentText()))
+        for size in (4 * GIB, GIB, 64 * MIB):
+            tab.size_box.setCurrentIndex(tab.size_box.findData(size))
+            tab._describe()
+            text = plain(visible_texts(tab))
+            self.assertIn(_("disktest.note.no_room"), text)
+            self.assertIn("214 MB", text)
+            self.assertNotIn(_("disktest.note.too_big_for_fat"), text)
+            self.assertNotIn("4 095", text)
+            self.assertFalse(tab.run_button.isEnabled())
+        self.button(tab, _("disktest.action.folder"))
 
     def test_a_file_too_large_for_it_is_said_before_and_the_largest_offered(self):
-        tab = self.tab()
-        self.pick(tab, "/media/unidad1 ")
+        tab = self.with_free(32 * GIB, 20 * GIB)
         self.assertEqual(tab.plan().filesystem, "vfat")
         self.assertTrue(tab.run_button.isEnabled())
         tab.size_box.setCurrentIndex(tab.size_box.findData(4 * GIB))
@@ -43,6 +85,19 @@ class TestFat32(TabCase):
         self.assertEqual(sizes, sorted(sizes))
         tab._largest_that_fits()
         self.assertEqual(tab.size_box.count(), len(sizes))
+
+    def test_where_what_is_free_is_the_limit_the_largest_that_fits_is_offered(self):
+        tab = self.with_free(32 * GIB, 3 * GIB)
+        tab.size_box.setCurrentIndex(tab.size_box.findData(4 * GIB))
+        tab._describe()
+        text = plain(visible_texts(tab))
+        self.assertIn(_("disktest.note.no_space"), text)
+        self.assertNotIn(_("disktest.note.too_big_for_fat"), text)
+        self.assertFalse(tab.run_button.isEnabled())
+        self.button(tab, _("disktest.action.fits").format(size="1 GiB")).click()
+        self.assertEqual(tab.plan().bytes_, GIB)
+        self.assertNotIn(_("disktest.note.no_space"), visible_texts(tab))
+        self.assertTrue(tab.run_button.isEnabled())
 
     def test_elsewhere_the_same_size_is_no_trouble(self):
         tab = self.tab()

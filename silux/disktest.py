@@ -68,6 +68,9 @@ NETWORK = frozenset({
 # FAT keeps a file's size in 32 bits: the kernel takes files of up to
 # 2^32 - 1 bytes there (`s_maxbytes` in fs/fat/inode.c).
 LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
+# Free space a test leaves alone besides its file: the native module's own
+# margin, which it won't start without.
+FREE_MARGIN = GIB
 # These go through the page cache without an error where they can't read or
 # write directly, so the cache check after each test is what tells.
 SILENT_FALLBACK = frozenset({"vfat", "msdos", "exfat", "ntfs3"})
@@ -465,6 +468,16 @@ def largest_file(filesystem: Optional[str]) -> Optional[int]:
     takes less than the sizes offered: 4095 MiB on FAT32."""
     largest = LARGEST_FILE.get(filesystem or "")
     return None if largest is None else largest // MIB * MIB
+
+
+def largest_that_fits(plan: Plan, free_bytes: Optional[int]) -> Optional[int]:
+    """The largest file the folder takes: what its file system holds, and
+    what is free less the margin a test leaves. None if neither is a limit
+    that is known."""
+    limits = [limit for limit in (largest_file(plan.filesystem),
+                                  None if free_bytes is None else free_bytes - FREE_MARGIN)
+              if limit is not None]
+    return min(limits) if limits else None
 
 
 def fits(plan: Plan) -> bool:

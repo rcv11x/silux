@@ -35,6 +35,8 @@ historial agrupa cada perfil aparte: sus cifras no se comparan entre sí.
   sistema de archivos no admite lo primero), así que el kernel lo libera
   cuando el proceso termina, se cancela o muere. No queda nada que borrar.
   Antes se comprueba que cabe, con 1 GiB de margen, y se reserva su espacio.
+  La pestaña lo mira antes de empezar: ofrece el mayor tamaño que cabe, o
+  dice que no cabe ninguno.
 - **Sus datos.** Al azar, para que nada los comprima, y con un sello cada
   4 KiB que dice a qué parte del archivo va cada bloque: no hay dos bloques
   iguales, y cada lectura se comprueba contra el sello del bloque que pidió.
@@ -56,7 +58,8 @@ historial agrupa cada perfil aparte: sus cifras no se comparan entre sí.
   216 GB en uno PCIe 3.0, medidos. La pestaña lo dice antes de empezar y el
   resultado dice lo que escribió de verdad.
 - **En un pendrive o una tarjeta.** FAT32 no guarda archivos de 4 GiB o
-  más: la pestaña lo dice antes de empezar y ofrece 4095 MiB. Si escribir el
+  más: la pestaña lo dice antes de empezar y ofrece 4095 MiB, si hay sitio
+  libre para ellos. Si escribir el
   archivo va a tardar, lo dice también: con lo que escribió ese disco la
   última vez, o al menos lo que tarda por su conexión. Mientras lo escribe,
   dice lo que falta.
