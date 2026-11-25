@@ -357,6 +357,9 @@ la memoria) no va: está propuesto en las notas
     salir «el disco se desconectó» y nada más. Probado con el volcado.
   - media · en FAT32, reservar el archivo ya escribe ceros: se escribe dos
     veces, y mientras reserva la barra no avanza.
+  - media · dónde cae el archivo en un disco de platos solo se ha probado
+    en btrfs (que no lo dice) y contra `filefrag`; falta un disco de platos
+    con ext4 o XFS. Los volcados no guardan dónde empieza cada partición.
   - baja · con los títulos en palabras, el historial pide 37 px más en la
     ventana más estrecha (480 px); cabe desde 520.
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija

@@ -230,6 +230,10 @@ contado (una a 1,03). Las escrituras no se han comparado con fio.
   con una petición cada uno dan más que una cola de 32 en un hilo. Por eso
   lleva otro nombre.
 - **En un disco de platos** la velocidad seguida depende de en qué parte del
-  plato cae el archivo, y cae donde hay hueco.
+  plato cae el archivo, y cae donde hay hueco. El resultado dice entre qué
+  porcentajes del disco quedó, preguntándolo al kernel (`FIEMAP`): el
+  principio es la parte de fuera, la más rápida. Solo se sabe con ext4, XFS
+  o f2fs directamente sobre una partición; con btrfs, LVM, RAID o cifrado,
+  dice que no se sabe.
 - **La cifra incluye lo que hay entre la carpeta y el disco**: el cifrado,
   el sistema de archivos, un RAID. Es la velocidad de esa carpeta.

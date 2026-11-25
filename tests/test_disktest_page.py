@@ -509,6 +509,37 @@ class TestRunningAndFailing(TabCase):
         self.assertIn("6 592", visible_texts(tab))
 
 
+class TestWhereTheFileLay(TabCase):
+    """A hard disk with ext4 on a partition, as the home's."""
+
+    DUMP = "athlon-3000g"
+
+    def on_the_hard_disk(self, **changes) -> str:
+        model = next(d for d in self.snapshot.disks if d.name == "sda").model
+        disktest.save_history([dataclasses.replace(
+            recorded("970-evo-plus-ext4"), disks=("sda",), model=model, **changes)])
+        tab = self.tab()
+        self.assertEqual(tab.plan().disks, ("sda",))
+        return visible_texts(tab)
+
+    def test_where_it_lay_is_said_with_the_result(self):
+        text = self.on_the_hard_disk(placement=(0.6123, 0.6271))
+        self.assertIn(_("disktest.note.placement").format(first="61", last="63"), text)
+        self.assertNotIn(_("disktest.note.placement_unknown"), text)
+
+    def test_where_it_couldn_t_be_known_it_says_so(self):
+        text = self.on_the_hard_disk()
+        self.assertIn(_("disktest.note.placement_unknown"), text)
+
+
+class TestNoPlatterNoPlace(TabCase):
+    def test_a_solid_state_disk_says_nothing_of_it(self):
+        disktest.save_history([recorded("sn850x-btrfs")])
+        text = visible_texts(self.tab())
+        self.assertIn("6 592", text)
+        self.assertNotIn(_("disktest.note.placement_unknown"), text)
+
+
 def disktest_page():
     from silux.ui.pages import disktest as page
 

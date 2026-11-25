@@ -113,6 +113,9 @@ NOTES = {
     "gone_disk": ("disktest.note.gone_disk", "disktest.note.gone_disk.body"),
     "gone_mount": ("disktest.note.gone_mount", "disktest.note.gone_mount.body"),
     "rotational": ("disktest.note.rotational", "disktest.note.rotational.body"),
+    "placement": ("disktest.note.placement", "disktest.note.placement.body"),
+    "placement_unknown": ("disktest.note.placement_unknown",
+                          "disktest.note.placement_unknown.body"),
     "removable": ("disktest.note.removable", "disktest.note.removable.body"),
     "encrypted": ("disktest.note.encrypted", "disktest.note.encrypted.body"),
     "several_disks": ("disktest.note.several_disks", "disktest.note.several_disks.body"),
@@ -1115,6 +1118,13 @@ class DiskTestTab(ScrollPage):
         for warning in result.warnings:
             if warning in RESULT_NOTES:
                 self._result_notes.addWidget(self._note(warning))
+        # On platters, where the file lay says how much of the figure is
+        # the disk and how much the spot.
+        if result.placement is not None:
+            first, last = render.disk_span(*result.placement)
+            self._result_notes.addWidget(self._note("placement", first=first, last=last))
+        elif same_disk and disk.kind == "HDD":
+            self._result_notes.addWidget(self._note("placement_unknown"))
         varied = [m for m in result.measures if m.noisy]
         if varied:
             self._result_notes.addWidget(self._note("varied", tests=", ".join(

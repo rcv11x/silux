@@ -73,6 +73,12 @@ LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
 SILENT_FALLBACK = frozenset({"vfat", "msdos", "exfat", "ntfs3"})
 # The test that tells how fast a disk writes the file.
 FILL_TEST = "SEQ1M Q8T1"
+# Where FIEMAP's offsets are on the device under the file system. btrfs's
+# are in its own address space, not the disk's.
+PLACEABLE = frozenset({"ext4", "xfs", "f2fs"})
+# FIEMAP flags of an extent whose place isn't known, or isn't the file's
+# alone: unknown, delayed allocation, encoded, inline and tail.
+UNPLACED = 0x2 | 0x4 | 0x8 | 0x200 | 0x400
 # Writing the file says how long it has left once it has gone on this long:
 # before, the pace is the disk's cache, not the disk.
 FILL_PACE_SECONDS = 3.0
@@ -220,6 +226,9 @@ class Place:
     # Why no test makes sense here: a key the interface translates.
     refusal: Optional[str] = None
     warnings: tuple[str, ...] = ()
+    # The kernel's name of what is mounted, when it is a block device:
+    # "sda2", "dm-0".
+    device: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -241,6 +250,7 @@ class Plan:
     disks: tuple[str, ...] = ()
     layers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
+    device: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -279,10 +289,15 @@ class Result:
     figures: tuple[tuple[str, Union[int, str]], ...] = ()
     # A name the user gives it, as in the processor's history.
     label: str = ""
+    # Where the file lay on the disk, from its start (the outer part of a
+    # platter) to its end, as fractions: where that can be known.
+    placement: Optional[tuple[float, float]] = None
 
     def __post_init__(self):
         for name in ("measures", "disks", "layers", "warnings"):
             object.__setattr__(self, name, tuple(getattr(self, name)))
+        if self.placement is not None:
+            object.__setattr__(self, "placement", tuple(self.placement))
         object.__setattr__(self, "figures", tuple((str(k), v) for k, v in self.figures))
 
     def measure(self, name: str, direction: str) -> Optional[Measure]:
@@ -382,9 +397,11 @@ def where(folder: Union[str, os.PathLike]) -> Optional[Place]:
 
     disks: list[str] = []
     layers: list[str] = []
+    device = None
     if source.startswith("/dev/"):
         real = sysroot.recorded("realpath", source, os.path.realpath, source) or source
-        names = {os.path.basename(real)}
+        device = os.path.basename(real)
+        names = {device}
         # A btrfs over several devices only names one of them in its mount.
         for volume in _names(pathlib.Path(sysroot.path(SYS_BTRFS))):
             devices = _names(pathlib.Path(sysroot.path(SYS_BTRFS)) / volume / "devices")
@@ -420,7 +437,7 @@ def where(folder: Union[str, os.PathLike]) -> Optional[Place]:
     if len(disks) > 1:
         warnings.append("several_disks")
     return Place(mountpoint, filesystem, source, options, tuple(disks),
-                 tuple(dict.fromkeys(layers)), refusal, tuple(warnings))
+                 tuple(dict.fromkeys(layers)), refusal, tuple(warnings), device)
 
 
 def make_plan(folder: Union[str, os.PathLike], place: Optional[Place] = None,
@@ -432,7 +449,8 @@ def make_plan(folder: Union[str, os.PathLike], place: Optional[Place] = None,
     if place is not None:
         plan = dataclasses.replace(
             plan, mountpoint=place.mountpoint, filesystem=place.filesystem,
-            disks=place.disks, layers=place.layers, warnings=place.warnings)
+            disks=place.disks, layers=place.layers, warnings=place.warnings,
+            device=place.device)
     return dataclasses.replace(plan, **changes)
 
 
@@ -471,6 +489,42 @@ def fill_left(elapsed: float, done: float) -> Optional[float]:
     if done <= 0 or elapsed < FILL_PACE_SECONDS:
         return None
     return elapsed * (1 - done) / done
+
+
+def span(extents: Sequence[Sequence[int]], start: int, size: int) -> Optional[tuple[float, float]]:
+    """Where a file's extents lie on a disk of `size` bytes, as fractions
+    of it, when they are offsets in a partition that starts at `start`
+    bytes. None if any extent's place isn't known, or if they fall past
+    the disk's end, which can't be."""
+    if not extents or size <= 0 or any(flags & UNPLACED for *_rest, flags in extents):
+        return None
+    first = start + min(physical for _logical, physical, _length, _flags in extents)
+    last = start + max(physical + length for _logical, physical, length, _flags in extents)
+    if last > size:
+        return None
+    return first / size, last / size
+
+
+def _sectors(path: str) -> Optional[int]:
+    try:
+        return int(_read(pathlib.Path(sysroot.path(path))))
+    except ValueError:
+        return None
+
+
+def placement_of(plan: Plan, extents: Optional[Sequence[Sequence[int]]]) -> Optional[tuple[float, float]]:
+    """Where the file lay on its disk: only on ext4, XFS or f2fs straight
+    on a partition, or on the whole disk, where FIEMAP's offsets are the
+    disk's."""
+    if (not extents or plan.filesystem not in PLACEABLE or plan.layers
+            or len(plan.disks) != 1 or not plan.device):
+        return None
+    disk = plan.disks[0]
+    size = _sectors(f"{SYS_BLOCK}/{disk}/size")
+    start = 0 if plan.device == disk else _sectors(f"{SYS_BLOCK}/{disk}/{plan.device}/start")
+    if not size or start is None:
+        return None
+    return span(extents, start * SECTOR, size * SECTOR)
 
 
 def written_estimate(plan: Plan, bytes_per_second: float) -> int:
@@ -564,7 +618,8 @@ def _result(answer: dict, plan: Plan, started: float) -> Result:
         temperature_end_c=answer.get("temperature_end_c"),
         seconds=round(time.time() - started, 1),
         reason=reason, detail=answer.get("detail", ""),
-        figures=tuple((answer.get("figures") or {}).items()))
+        figures=tuple((answer.get("figures") or {}).items()),
+        placement=placement_of(plan, answer.get("extents")))
     return dataclasses.replace(result, warnings=warnings_of(result, plan.warnings))
 
 
@@ -676,6 +731,11 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
             filled.set()
             reporter.join()
         answer["written_bytes"] = plan["bytes_"]
+        if plan["filesystem"] in PLACEABLE and hasattr(file, "extents"):
+            try:
+                answer["extents"] = [list(extent) for extent in file.extents()]
+            except silux_bench.SiluxBenchError:
+                pass
 
         directions = ("read", "write") if plan["write"] else ("read",)
         steps = len(tests) * len(directions) * (plan["laps"] + 1)

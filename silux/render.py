@@ -1412,6 +1412,13 @@ def disk_link(disk) -> str:
     return DASH
 
 
+def disk_span(first: float, last: float) -> tuple[str, str]:
+    """«61», «63»: where a file lay on a disk, as whole percents that
+    hold it: the first rounded down and the last up."""
+    low = max(0, math.floor(first * 100))
+    return str(low), str(min(100, max(low + 1, math.ceil(last * 100))))
+
+
 def disk_link_note(disk) -> Optional[str]:
     """Why a SATA disk's link runs slower than the disk supports, when it
     does: the port, the cable or the controller. A PCIe one, as a card's."""

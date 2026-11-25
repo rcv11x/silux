@@ -326,6 +326,17 @@ class TestRunning(unittest.TestCase):
         self.assertEqual(messages[-1]["done"], 1.0)
         self.assertEqual(sum(1 for m in messages if m["phase"] == "pause"), len(result.measures))
 
+    def test_where_the_file_lay_is_said_where_it_can_be(self):
+        result = self.run_it(self.plan(laps=1))
+        plan = self.plan()
+        if plan.filesystem in disktest.PLACEABLE and not plan.layers and len(plan.disks) == 1:
+            first, last = result.placement
+            self.assertLessEqual(0, first)
+            self.assertLess(first, last)
+            self.assertLessEqual(last, 1)
+        else:
+            self.assertIsNone(result.placement)
+
     def test_without_a_ring_the_tests_are_the_ones_threads_can_run(self):
         result = self.run_it(self.plan(engine="threads", laps=1))
         self.assertEqual(result.engine, "threads")
@@ -481,6 +492,45 @@ class TestPenDrives(unittest.TestCase):
         self.assertEqual(disktest.fill_estimate(plan, [mine], "Other", 60e6),
                          (GIB / 60e6, "link"))
         self.assertIsNone(disktest.fill_estimate(plan, [mine], "Other", None))
+
+
+class TestWhereTheFileLay(unittest.TestCase):
+    SECTOR = 512
+
+    def test_its_extents_as_fractions_of_the_disk(self):
+        start, size = 2048 * 512, 1_000_000 * 512
+        extents = [(0, 600_000 * 512, 8 * 512, 0), (8 * 512, 610_000 * 512, 2000 * 512, 1)]
+        first, last = disktest.span(extents, start, size)
+        self.assertAlmostEqual(first, 0.602048)
+        self.assertAlmostEqual(last, 0.614048)
+        # A place not known, or past the disk's end, is no place.
+        self.assertIsNone(disktest.span([(0, 0, 4096, 0x2 | 0x1)], start, size))
+        self.assertIsNone(disktest.span([(0, size, 4096, 1)], start, size))
+        self.assertIsNone(disktest.span([], start, size))
+
+    def test_only_where_the_offsets_are_the_disk_s(self):
+        plan = disktest.Plan("/media/hdd", disktest.PROFILES["standard"], filesystem="ext4",
+                             disks=("sda",), device="sda2")
+        extents = [(0, 4096, 4096, 1)]
+        for changes in (dict(filesystem="btrfs"), dict(layers=("crypt",)),
+                        dict(disks=("sda", "sdb")), dict(device=None)):
+            with self.subTest(**changes):
+                self.assertIsNone(disktest.placement_of(dataclasses.replace(plan, **changes),
+                                                        extents))
+        self.assertIsNone(disktest.placement_of(plan, None))
+
+    def test_a_partition_starts_where_lsblk_says(self):
+        """On this machine's disks, if it has a partition."""
+        found = sorted(pathlib.Path("/sys/class/block").glob("*/partition"))
+        if not found or shutil.which("lsblk") is None:
+            self.skipTest("no partition here, or no lsblk")
+        partition = found[0].parent.name
+        disk = (found[0].parent / "..").resolve().name
+        told = subprocess.run(["lsblk", "-bno", "START", f"/dev/{partition}"],
+                              capture_output=True, text=True).stdout.split()
+        if not told:
+            self.skipTest("this lsblk doesn't say where a partition starts")
+        self.assertEqual(disktest._sectors(f"/sys/block/{disk}/{partition}/start"), int(told[0]))
 
 
 class TestRecordedRuns(unittest.TestCase):
