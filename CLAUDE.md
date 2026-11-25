@@ -477,6 +477,37 @@ Co-Authored-By: <el modelo de la sesión> <noreply@anthropic.com>
   Lo que solo mueve código va en uno propio. La suite queda en verde entre uno y
   otro.
 
+### Cómo se escribe lo público
+
+El README y `docs/` los lee alguien que llega nuevo. El cuaderno de trabajo
+(fechas como relato, sesiones, lo descartado) va en las notas privadas, fuera
+del repositorio.
+
+- **Primero la idea, luego el detalle.** Cada documento abre con dos o tres
+  líneas que dicen qué hay en él; cada apartado, con su conclusión.
+- **Frases cortas.** Una idea por frase. Un párrafo, una idea, cinco líneas
+  como mucho.
+- **Tablas solo para comparar** piezas, herramientas, versiones o medidas.
+  Unos hechos sueltos van en lista; una explicación, en prosa.
+- **Nada de diario.** Ni «por la mañana», ni «antes», ni «se probó», ni la
+  fecha de una sesión. Una fecha, una versión o un equipo solo cuando son el
+  dato, y entonces en su sitio: la fila de condiciones de una medida.
+- **Ni códigos internos ni nombres.** Ni F-…, ni quién mandó un informe, ni
+  «el equipo del autor»: el hardware se nombra por su modelo.
+- **Lenguaje normal.** Rutas, nodos y funciones, solo en los documentos de
+  desarrollo.
+- **De tú, cercano y claro**, sin frases solemnes ni rayas.
+- **Cada cosa en su sitio.** Lo que falta, una línea en `docs/pendientes.md`.
+  Una cifra de validación, en el anexo de cifras de su prueba: cada equipo
+  abre con una tabla de condiciones (fecha, sistema, CPU, energía,
+  repeticiones) y cada tabla lleva debajo su conclusión en una o dos frases.
+  Un porqué con lo descartado, en `docs/decisiones/`. Lo que solo sirve para
+  trabajar (el detalle de cada pendiente, lo que se probó, los informes), en
+  las notas privadas. Lo público no enlaza a ellas.
+- **Un tamaño orientativo**: un documento para usuarios, unas 150 líneas; uno
+  de desarrollo, unas 250. Si crece, se parte o se lleva el detalle a su
+  sitio.
+
 El porqué de cada convención: [docs/convenciones.md](docs/convenciones.md).
 
 ## Lo que queda por arreglar
