@@ -77,8 +77,7 @@ class TestWhatAResultShows(TabCase):
         tab.show_result(recorded())
         seen = visible_texts(tab)
         for expected in ("0.90 ns", "2.72 ns", "11.3 ns", "77.4 ns",
-                         _("memtest.tile.cycles").format(n="4.0", freq="4.44 GHz"),
-                         "performance", _("memtest.conditions.at").format(freq="4.44 GHz")):
+                         _("memtest.grid.cycles").format(n="4.0"), "performance", "4.44 GHz"):
             self.assertIn(expected, seen)
 
     def test_a_latency_keeps_three_figures(self):
@@ -116,12 +115,23 @@ class TestWhatAResultShows(TabCase):
             self.assertIn(_(key).format(**values), tab.method.text())
 
     def test_the_three_rates_and_every_pass_in_the_table(self):
-        """The line says the three are one thread's."""
+        """Each cell with every thread, large, and the same kind with one
+        under it; the fastest kind, and named when it skips the cache."""
         tab = self.tab()
-        tab.show_result(recorded())
-        self.assertEqual(tab.rates.text(), _("memtest.rates.one").format(rates="  ·  ".join((
-            f"{_('memtest.op.read')} 43.9 GB/s", f"{_('memtest.op.write')} 20.6 GB/s",
-            f"{_('memtest.op.copy')} 27.7 GB/s"))))
+        result = recorded()
+        tab.show_result(result)
+        one = render.counted("memtest.threads", 1).replace(" ", "\u00a0")
+        for operation, every, single in (("read", "40.2", "43.9"), ("write", "25.4", "25.4"),
+                                         ("copy", "38.5", "40.1")):
+            with self.subTest(operation=operation):
+                bar, figure, under = tab.grid.cells["RAM", operation]
+                self.assertEqual(figure.text(), every)
+                self.assertTrue(under.text().startswith(f"{one}\u00a0{single}"), under.text())
+                self.assertTrue(bar.isVisibleTo(tab))
+        _bar, _figure, under = tab.grid.cells["RAM", "copy"]
+        self.assertTrue(under.text().endswith(_("memtest.grid.nt").replace(" ", "\u00a0")))
+        _bar, figure, _under = tab.grid.cells["L1", "read"]
+        self.assertFalse(figure.isVisibleTo(tab))
         tab.detail_button.setChecked(True)
         self.assertTrue(tab.chart.isVisibleTo(tab))
         table = visible_texts(tab.rates_table)
@@ -129,15 +139,53 @@ class TestWhatAResultShows(TabCase):
             self.assertIn(expected, table)
 
 
+class TestDesignA(TabCase):
+    def test_a_result_s_notices_go_inside_its_card(self):
+        tab = self.tab()
+        tab.show_result(recorded("i5-10400-auto-cpufreq-curve"))
+        title = _("memtest.notice.clock").format(percent=render.whole_percent(32))
+        self.assertIn(title, visible_texts(tab.result_card))
+
+    def test_each_bandwidth_column_has_its_own_colour(self):
+        tab = self.tab()
+        tab.show_result(recorded())
+        tab.resize(1400, 900)
+        for _turn in range(3):
+            self.app.processEvents()
+        colours = []
+        for operation in ("read", "write", "copy"):
+            bar = tab.grid.cells["RAM", operation][0]
+            image = bar.grab().toImage()
+            colours.append(image.pixelColor(4, image.height() // 2).name())
+        self.assertEqual(len(set(colours)), 3, colours)
+
+    def test_the_history_says_whose_read_it_shows(self):
+        """It showed every thread's read under «Read» while the line above
+        said one thread's."""
+        memtest.append_history(recorded())
+        tab = self.tab()
+        seen = visible_texts(tab.history_card)
+        self.assertIn(_("memtest.col.read.all").upper(), seen.upper())
+        self.assertIn("40.2 GB/s", seen)
+        self.assertNotIn("43.9 GB/s", seen)
+
+    def test_the_processor_is_named_over_the_result(self):
+        tab = self.tab()
+        tab.apply(shared_snapshot(EQUIPOS / "i5-10400"))
+        tab.show_result(recorded("i5-10400"))
+        self.assertIn("Core i5-10400", tab.cpu_name.text())
+        self.assertTrue(tab.cpu_name.isVisibleTo(tab))
+
+
 class TestShareOfTheMaximum(TabCase):
     def test_the_percentage_with_what_it_is_made_of(self):
         tab = self.tab()
         tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
         self.assertEqual(tab.share.text(), _("memtest.share").format(
-            pct="86", rate="43.9 GB/s", threads=_("memtest.threads.one").format(n=1),
+            rate="43.9 GB/s", threads=_("memtest.threads.one").format(n=1),
             channels=_("memtest.channels").format(n=2), mts=3200, total="51.2 GB/s"))
-        self.assertEqual(tab.share_bar.value(), 85)
-        self.assertTrue(tab.share_bar.isVisibleTo(tab))
+        self.assertEqual(tab.share_value.text(), "86 %")
+        self.assertTrue(tab.share_value.isVisibleTo(tab))
 
     def test_one_channel_is_said_in_the_singular(self):
         tab = self.tab()
@@ -149,14 +197,14 @@ class TestShareOfTheMaximum(TabCase):
         tab = self.tab()
         tab.show_result(recorded())
         self.assertEqual(tab.share.text(), _("memtest.share.unknown"))
-        self.assertFalse(tab.share_bar.isVisibleTo(tab))
+        self.assertFalse(tab.share_value.isVisibleTo(tab))
 
     def test_above_a_hundred_is_a_wrong_figure_and_is_said(self):
         tab = self.tab()
         tab.show_result(dataclasses.replace(
             recorded(), theoretical_bytes_per_second=25_600_000_000, channels=1, speed_mts=3200))
         self.assertIn(_("memtest.notice.over"), visible_texts(tab))
-        self.assertEqual(tab.share_bar.value(), 100)
+        self.assertEqual(tab.share_value.text(), "172 %")
         tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
         self.assertNotIn(_("memtest.notice.over"), visible_texts(tab))
 
@@ -251,19 +299,24 @@ class TestTheChannelsWaitForPermissions(TabCase):
         self.assertEqual(button.palette().buttonText().color().name(),
                          QColor(theme_palette(self.app).info).name())
 
-    def test_the_padlock_and_the_button_sit_on_the_text_line(self):
-        """The padlock rode above the words."""
+    def test_the_padlock_sits_on_the_text_line_and_the_button_under_it(self):
+        """The padlock rode above the words. In the share's card the button
+        doesn't fit beside them: it goes under, where the text starts."""
         for width in (1400, 700):
             with self.subTest(width=width):
                 tab = self.locked_tab(width)
                 share, lock, button = tab.share, tab.share_lock, tab.share_button
 
+                def top(widget):
+                    return widget.mapTo(tab, widget.rect().topLeft())
+
                 def middle(widget, height):
-                    return widget.mapTo(tab, widget.rect().topLeft()).y() + height / 2
+                    return top(widget).y() + height / 2
 
                 text = middle(share, share.fontMetrics().height())
                 self.assertLessEqual(abs(text - middle(lock, lock.height())), 1.5)
-                self.assertLessEqual(abs(text - middle(button, button.height())), 1.5)
+                self.assertGreaterEqual(top(button).y(), top(share).y() + share.height())
+                self.assertLessEqual(top(button).x(), top(share).x())
 
     def test_as_root_there_is_nothing_to_give(self):
         from silux.model import PrivilegedState
@@ -289,8 +342,8 @@ class TestTheChannelsWaitForPermissions(TabCase):
         tab.measured.connect(measured.append)
         tab.apply(con_permisos(self.without))
         self.assertFalse(tab.share_lock.isVisibleTo(tab))
-        self.assertTrue(tab.share_bar.isVisibleTo(tab))
-        self.assertIn("%", tab.share.text())
+        self.assertTrue(tab.share_value.isVisibleTo(tab))
+        self.assertIn("%", tab.share_value.text())
         self.assertIsNotNone(memtest.load_history()[0].theoretical_bytes_per_second)
         self.assertEqual(len(measured), 1)
 
@@ -386,6 +439,7 @@ class TestWhatWentOnWhileMeasuring(TabCase):
             self.skipTest("the simple measure gave nothing here")
         tab = self.tab()
         tab.show_result(result)
+        tab.detail_button.setChecked(True)
         seen = visible_texts(tab)
         self.assertIn(_("memtest.notice.simple"), seen)
         self.assertIn(_("memtest.method.simple"), seen)

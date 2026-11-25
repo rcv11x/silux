@@ -2408,6 +2408,89 @@ class ProgressLine(QWidget):
         return self.bar.value()
 
 
+class RateBar(QWidget):
+    """A rate as a bar on a fixed logarithmic scale, shared by a whole table.
+
+    Fixed, so that two screenshots of two machines compare by eye. A bar too
+    narrow to read isn't drawn: in a narrow window the figures stay and the
+    bars go first.
+    """
+
+    NARROWEST = 40
+
+    def __init__(self, palette: Palette, scale: tuple[float, int], tone: float = 1.0,
+                 height: int = 10, parent: Optional[QWidget] = None):
+        """`scale`: what an empty bar stands for, in bytes per second, and how
+        many powers of ten a full one is above it. `tone`: how much of the
+        accent it is drawn with, to tell columns apart."""
+        super().__init__(parent)
+        self._p = palette
+        self._from, self._decades = scale
+        self._tone = tone
+        self._fraction: Optional[float] = None
+        self._live = False
+        self._round = 3 if height <= 12 else 5
+        self.setFixedHeight(height)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+
+    @property
+    def fraction(self) -> Optional[float]:
+        return self._fraction
+
+    def set_rate(self, bytes_per_second: Optional[float], live: bool = False) -> None:
+        """`live`: a figure still under way, drawn muted."""
+        fraction = None
+        if bytes_per_second:
+            decades = math.log10(max(bytes_per_second, self._from) / self._from)
+            fraction = min(max(decades / self._decades, 0.0), 1.0)
+        if (fraction, live) != (self._fraction, self._live):
+            self._fraction, self._live = fraction, live
+            self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        if self.width() < self.NARROWEST:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        box = QRectF(0, 1, self.width(), self.height() - 2)
+        painter.setBrush(self._p.q("line_soft"))
+        painter.drawRoundedRect(box, self._round, self._round)
+        if self._fraction:
+            colour = self._p.q("muted") if self._live else self._p.q("accent", self._tone)
+            painter.setBrush(colour)
+            painter.drawRoundedRect(QRectF(0, 1, self.width() * self._fraction,
+                                           self.height() - 2), self._round, self._round)
+        painter.end()
+
+
+class Fact(Card):
+    """One thing a result says besides its table: its name, the figure,
+    large, and a line under it."""
+
+    def __init__(self, name: str, parent: Optional[QWidget] = None):
+        super().__init__(parent=parent)
+        self.name = QLabel(name)
+        self.name.setObjectName("FieldName")
+        self.name.setWordWrap(True)
+        self.value = QLabel("")
+        self.value.setObjectName("Headline")
+        self.value.setFont(ui_font(theme.METRICS.headline_px))
+        self.detail = QLabel("")
+        self.detail.setObjectName("Muted")
+        self.detail.setWordWrap(True)
+        for widget in (self.name, self.value, self.detail):
+            self.body.addWidget(widget)
+
+    def show_fact(self, value: str, detail: str = "") -> None:
+        """`value` large and `detail` under it; an empty one isn't shown."""
+        self.value.setText(value)
+        self.value.setVisible(bool(value))
+        self.detail.setText(detail)
+        self.detail.setVisible(bool(detail))
+
+
 class ScrollPage(QScrollArea):
     """A page of the window: a scroll area that stays where the user left it."""
 

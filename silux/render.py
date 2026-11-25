@@ -1113,6 +1113,16 @@ def bandwidth(value: Optional[int], decimals: int = 0) -> str:
     return f"{float(value) / 1e9:.{decimals}f} GB/s"
 
 
+def rate_figure(bytes_per_second: Optional[float], unit: float) -> str:
+    """A rate in a table whose unit is said once, at its foot: «6 592»,
+    «63.3». `unit` is the bytes per second one of them is (1e6 for MB/s,
+    1e9 for GB/s). From a hundred up, whole: a decimal there is noise."""
+    if _none(bytes_per_second):
+        return DASH
+    value = float(bytes_per_second) / unit
+    return thousands(round(value)) if value >= 100 else f"{value:.1f}"
+
+
 def core_cycles(nanoseconds: Optional[float], frequency_hz: Optional[float]) -> Optional[float]:
     """How many of the core's cycles a latency is. A cache answers in
     cycles, so this is the figure that doesn't move with the clock."""

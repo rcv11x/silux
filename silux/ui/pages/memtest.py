@@ -16,9 +16,9 @@ from typing import Optional
 from PySide6.QtCore import QObject, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
+    QGridLayout,
     QHBoxLayout,
     QLabel,
-    QProgressBar,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -31,10 +31,12 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
+    Fact,
     FoldingRow,
     LockMark,
     Notice,
     ProgressLine,
+    RateBar,
     ReadableRoot,
     ResponsiveRow,
     ScrollPage,
@@ -43,7 +45,16 @@ from ..widgets import (
     value_font,
 )
 
-LEVELS = ("L1", "L2", "L3", "RAM")
+# The grid's rows, the RAM first: it's what the test is mostly run for.
+GRID_LEVELS = ("RAM", "L1", "L2", "L3")
+# Its bandwidth columns, each in its own tone of the accent: the status
+# colours would make a bar look like a warning.
+GRID_COLUMNS = (("read", "memtest.op.read", 1.0), ("write", "memtest.op.write", 0.65),
+                ("copy", "memtest.op.copy", 0.4))
+# The bars' scale: from 1 GB/s to 10 000, where the L1 of a fast core gets.
+GRID_SCALE = (1e9, 4)
+GB = 1e9
+NBSP = "\u00a0"
 # What each step of a test is called while it runs; the one with every
 # thread says how many (`render.counted`).
 STEPS = {"latency": "memtest.step.latency", "single": "memtest.step.single",
@@ -161,28 +172,155 @@ class CurveChart(QWidget):
         painter.drawPolyline(QPolygonF([at(s, t) for s, t in zip(sizes, times)]))
 
 
-class LevelTile(Card):
-    """One level's latency, with what it is in cycles and the clock it ran at."""
+class LevelGrid(QWidget):
+    """A row per level: what it reads, writes and copies with every thread
+    (large) and with one (under it), and its latency in nanoseconds and in
+    the core's cycles. A level without a figure leaves its cells empty."""
 
-    def __init__(self, name: str):
-        super().__init__()
-        self.name = QLabel(name)
-        self.name.setObjectName("FieldName")
-        self.value = QLabel("")
-        self.value.setObjectName("Headline")
-        self.value.setFont(ui_font(theme.METRICS.headline_px))
-        self.detail = QLabel("")
-        self.detail.setObjectName("Muted")
-        self.detail.setWordWrap(True)
-        for widget in (self.name, self.value, self.detail):
-            self.body.addWidget(widget)
+    def __init__(self, palette: Palette, parent=None):
+        super().__init__(parent)
+        self._p = palette
+        layout = QGridLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(2)
+        for index, (_operation, key, _tone) in enumerate(GRID_COLUMNS):
+            layout.addWidget(self._head(key), 0, 1 + 2 * index, 1, 2)
+            layout.setColumnStretch(1 + 2 * index, 1)
+        latency = self._head("memtest.col.latency")
+        latency.setAlignment(Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(latency, 0, 7)
+        self.names: dict[str, tuple[QLabel, QLabel]] = {}
+        self.cells: dict[tuple[str, str], tuple[RateBar, QLabel, QLabel]] = {}
+        self.latencies: dict[str, tuple[QLabel, QLabel]] = {}
+        self.rows: dict[str, list[QWidget]] = {}
+        for line, level in enumerate(GRID_LEVELS):
+            top = 1 + 3 * line
+            name, size = self._name(level)
+            block = QWidget()
+            inside = QVBoxLayout(block)
+            inside.setContentsMargins(0, 0, 0, 0)
+            inside.setSpacing(0)
+            inside.addWidget(name)
+            inside.addWidget(size)
+            layout.addWidget(block, top, 0, 2, 1, Qt.AlignmentFlag.AlignTop)
+            self.names[level] = (name, size)
+            widgets: list[QWidget] = [block]
+            for index, (operation, _key, tone) in enumerate(GRID_COLUMNS):
+                bar = RateBar(palette, GRID_SCALE, tone=tone, height=18)
+                figure = self._big()
+                under = self._small()
+                layout.addWidget(bar, top, 1 + 2 * index)
+                layout.addWidget(figure, top, 2 + 2 * index)
+                layout.addWidget(under, top + 1, 1 + 2 * index, 1, 2)
+                self.cells[level, operation] = (bar, figure, under)
+                widgets += [bar, figure, under]
+            nanoseconds, cycles = self._big(), self._small()
+            layout.addWidget(nanoseconds, top, 7)
+            layout.addWidget(cycles, top + 1, 7)
+            self.latencies[level] = (nanoseconds, cycles)
+            widgets += [nanoseconds, cycles]
+            layout.setRowMinimumHeight(top + 2, 8)
+            self.rows[level] = widgets
+        self.unit = QLabel("")
+        self.unit.setObjectName("Muted")
+        self.unit.setFont(ui_font(theme.METRICS.small_pt))
+        self.unit.setWordWrap(True)
+        layout.addWidget(self.unit, 1 + 3 * len(GRID_LEVELS), 0, 1, 8)
 
-    def show_level(self, level: memtest.Level) -> None:
-        self.value.setText(render.nanoseconds(level.nanoseconds))
-        cycles = render.core_cycles(level.nanoseconds, level.frequency_hz)
-        self.detail.setText("" if cycles is None else _("memtest.tile.cycles").format(
-            n=f"{cycles:.1f}", freq=render.hz(level.frequency_hz)))
-        self.detail.setVisible(cycles is not None)
+    @staticmethod
+    def _head(key: str) -> QLabel:
+        head = QLabel(_(key).upper())
+        head.setObjectName("ColumnTitle")
+        return head
+
+    @staticmethod
+    def _name(level: str) -> tuple[QLabel, QLabel]:
+        name = QLabel(_("memtest.level.ram") if level == "RAM"
+                      else _("memtest.level.cache").format(level=level))
+        name.setFont(ui_font(theme.METRICS.base_pt + 1))
+        name.setWordWrap(True)
+        size = QLabel("")
+        size.setObjectName("Muted")
+        size.setFont(ui_font(theme.METRICS.small_pt - 1))
+        return name, size
+
+    @staticmethod
+    def _big() -> QLabel:
+        label = QLabel("")
+        font = value_font()
+        font.setPointSizeF(font.pointSizeF() + 3)
+        font.setWeight(font.Weight.DemiBold)
+        label.setFont(font)
+        label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        return label
+
+    @staticmethod
+    def _small() -> QLabel:
+        label = QLabel("")
+        label.setObjectName("Muted")
+        label.setFont(ui_font(theme.METRICS.small_pt - 1))
+        label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        # In a narrow window it takes two lines before the table outgrows
+        # the page.
+        label.setWordWrap(True)
+        return label
+
+    def set_result(self, result: memtest.Result) -> None:
+        threads = max((r.threads for r in result.rates), default=1)
+        sizes = dict(result.caches)
+        for level in GRID_LEVELS:
+            found = result.level(level)
+            figures = {operation: self._fastest(result, level, operation, threads)
+                       for operation, _key, _tone in GRID_COLUMNS}
+            shown = found is not None or any(every for every, _one in figures.values())
+            for widget in self.rows[level]:
+                widget.setVisible(shown)
+            if not shown:
+                continue
+            _name, size = self.names[level]
+            if level == "RAM":
+                size.setText(_("memtest.level.block").format(block=render.size(result.ram_block))
+                             if result.ram_block else "")
+            else:
+                size.setText(render.size(sizes[level]) if level in sizes else "")
+            for operation, _key, _tone in GRID_COLUMNS:
+                bar, figure, under = self.cells[level, operation]
+                every, one = figures[operation]
+                for widget in (bar, figure, under):
+                    widget.setVisible(every is not None)
+                if every is None:
+                    continue
+                bar.set_rate(every.bytes_per_second)
+                figure.setText(render.rate_figure(every.bytes_per_second, GB))
+                parts = [] if threads == 1 or one is None else [
+                    f"{render.counted('memtest.threads', 1)} {render.rate_figure(one.bytes_per_second, GB)}"]
+                if every.non_temporal:
+                    parts.append(_("memtest.grid.nt"))
+                # A narrow window breaks the line between the parts, not
+                # inside one.
+                under.setText(" · ".join(part.replace(" ", NBSP) for part in parts))
+            nanoseconds, cycles = self.latencies[level]
+            nanoseconds.setText(render.nanoseconds(found.nanoseconds) if found else "")
+            count = render.core_cycles(found.nanoseconds, found.frequency_hz) if found else None
+            cycles.setText("" if count is None else _("memtest.grid.cycles").format(n=f"{count:.1f}"))
+        unit = [_("memtest.grid.unit" if threads > 1 else "memtest.grid.unit.single").format(
+            threads=render.counted("memtest.threads", threads))]
+        if any(result.level(level) for level in ("L1", "L2", "L3")):
+            unit.append(_("memtest.grid.caches"))
+        self.unit.setText(" ".join(unit))
+
+    @staticmethod
+    def _fastest(result: memtest.Result, level: str, operation: str, threads: int):
+        """The fastest kind of `operation` with every thread, and the same kind
+        with one: (every, one), None where it wasn't measured."""
+        kinds = [result.rate(operation, threads, non_temporal, level)
+                 for non_temporal in (False, True)]
+        every = max((r for r in kinds if r is not None),
+                    key=lambda r: r.bytes_per_second, default=None)
+        if every is None:
+            return None, None
+        return every, result.rate(operation, 1, every.non_temporal, level)
 
 
 class MemoryTestRun(QObject):
@@ -331,34 +469,31 @@ class MemoryTestTab(ScrollPage):
 
     def _build_result(self) -> Card:
         card = Card(_("memtest.card.result"))
+        self.cpu_name = QLabel("")
+        self.cpu_name.setFont(ui_font(theme.METRICS.base_pt + 3))
+        self.cpu_name.setWordWrap(True)
+        self.cpu_name.hide()
+        card.body.addWidget(self.cpu_name)
         self.conditions = QLabel("")
         self.conditions.setObjectName("Muted")
         self.conditions.setWordWrap(True)
         card.body.addWidget(self.conditions)
 
-        self.tiles = {name: LevelTile(name) for name in LEVELS}
-        row = ResponsiveRow(min_item_width=130)
-        for tile in self.tiles.values():
-            row.add(tile)
-        self.tiles_row = row
-        card.body.addWidget(row)
+        self.grid = LevelGrid(self._p)
+        card.body.addWidget(self.grid)
 
-        self.verdict = QLabel("")
-        self.verdict.setWordWrap(True)
-        card.body.addWidget(self.verdict)
-
-        self.rates = QLabel("")
-        self.rates.setWordWrap(True)
-        self.rates.setFont(value_font())
-        card.body.addWidget(self.rates)
-        self.share_bar = QProgressBar()
-        self.share_bar.setRange(0, 100)
-        self.share_bar.setTextVisible(False)
-        self.share_bar.setFixedHeight(8)
-        card.body.addWidget(self.share_bar)
-        self.share = QLabel("")
-        self.share.setObjectName("Muted")
-        self.share.setWordWrap(True)
+        self.facts = {name: Fact(_(key)) for name, key in (
+            ("share", "memtest.fact.share"), ("curve", "memtest.fact.curve"),
+            ("pages", "memtest.fact.pages"))}
+        self.facts_row = ResponsiveRow(min_item_width=170)
+        for fact in self.facts.values():
+            self.facts_row.add(fact)
+        card.body.addWidget(self.facts_row)
+        # The share's detail, with the padlock and the way to give
+        # permissions when that is what it waits for (rule 5).
+        share = self.facts["share"]
+        self.share_value = share.value
+        self.share = share.detail
         self.share.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.share_lock = LockMark(self._p.info, theme.METRICS.small_pt + 3)
         self.share_lock.hacer_pulsable()
@@ -376,9 +511,19 @@ class MemoryTestTab(ScrollPage):
         self._lock_column.addWidget(self.share_lock)
         self._lock_column.addStretch(1)
         share_row.addLayout(self._lock_column)
+        share.body.removeWidget(self.share)
         share_row.addWidget(self.share, 1)
-        share_row.addWidget(self.share_button, 0, Qt.AlignmentFlag.AlignTop)
-        card.body.addLayout(share_row)
+        share.body.addLayout(share_row)
+        buttons = QHBoxLayout()
+        buttons.addWidget(self.share_button)
+        buttons.addStretch(1)
+        share.body.addLayout(buttons)
+        self.verdict = self.facts["curve"].detail
+
+        # What this result has to be read with, inside its own card.
+        self._result_notes = QVBoxLayout()
+        self._result_notes.setSpacing(6)
+        card.body.addLayout(self._result_notes)
 
         self.detail_button = QPushButton(_("memtest.detail.show"))
         self.detail_button.setObjectName("GhostButton")
@@ -401,20 +546,19 @@ class MemoryTestTab(ScrollPage):
         self.threads_note.setObjectName("Muted")
         self.threads_note.setWordWrap(True)
         inside.addWidget(self.threads_note)
-        self.detail.hide()
-        card.body.addWidget(self.detail)
-
         self.method = QLabel("")
         self.method.setObjectName("Muted")
         self.method.setWordWrap(True)
-        card.body.addWidget(self.method)
+        inside.addWidget(self.method)
+        self.detail.hide()
+        card.body.addWidget(self.detail)
         card.hide()
         return card
 
     def _build_history(self) -> Card:
         card = Card(_("memtest.card.history"))
         self.history = Table(
-            [_("memtest.col.date"), _("memtest.col.ram"), _("memtest.col.read"),
+            [_("memtest.col.date"), _("memtest.col.ram"), _("memtest.col.read.all"),
              _("memtest.col.share"), _("memtest.col.frequency")],
             numeric=(False, True, True, True, True))
         card.body.addWidget(self.history)
@@ -504,73 +648,75 @@ class MemoryTestTab(ScrollPage):
 
     def show_result(self, result: memtest.Result) -> None:
         self.result = result
-        clear_layout(self._notices)
-        self._failure = None
+        clear_layout(self._result_notes)
         frequencies = [p.frequency_hz for p in result.points if p.frequency_hz]
-        parts = [when(result.timestamp)]
+        parts = []
+        if result.speed_mts:
+            parts.append(f"{render.memory_speed(result.speed_mts)} MT/s")
+        if result.channels:
+            parts.append(render.counted("memtest.channels", result.channels))
+        if frequencies:
+            parts.append(render.hz(max(frequencies)))
         if result.governor:
             parts.append(result.governor)
-        if frequencies:
-            parts.append(_("memtest.conditions.at").format(freq=render.hz(max(frequencies))))
+        parts.append(when(result.timestamp))
         self.conditions.setText(" · ".join(parts))
 
-        for name, tile in self.tiles.items():
-            level = result.level(name)
-            tile.setVisible(level is not None)
-            if level is not None:
-                tile.show_level(level)
-        self.tiles_row.setVisible(bool(result.levels))
-
+        self.grid.set_result(result)
+        self.grid.setVisible(bool(result.levels or result.rates))
         self._paint_verdict(result)
         self._paint_rates(result)
+        self._paint_pages(result)
+        self.facts_row.setVisible(any(f.isVisibleTo(self.facts_row) for f in self.facts.values()))
         self.chart.set_curve(result.points, result.caches)
         self.chart.setVisible(len(result.points) > 1)
         self.method.setText(self._method(result))
         self.result_card.show()
 
         if result.engine == "simple":
-            self._notices.addWidget(Notice(_("memtest.notice.simple"),
-                                           _("memtest.notice.simple.body"), tone="info"))
+            self._note(Notice(_("memtest.notice.simple"), _("memtest.notice.simple.body"),
+                              tone="info"))
         clock = memtest.clock_change(result)
         if clock is not None:
             low, high = clock
-            self._notices.addWidget(Notice(
+            self._note(Notice(
                 _("memtest.notice.clock").format(
                     percent=render.whole_percent((high - low) / high * 100)),
                 _("memtest.notice.clock.body").format(low=render.hz(low), high=render.hz(high))))
         noisy = sum(1 for p in result.points if p.noisy) + sum(1 for r in result.rates if r.noisy)
         if noisy:
-            self._notices.addWidget(Notice(
-                _("memtest.notice.noisy"), render.counted("memtest.notice.noisy.body", noisy)))
+            self._note(Notice(_("memtest.notice.noisy"),
+                              render.counted("memtest.notice.noisy.body", noisy)))
+
+    def _note(self, notice: Notice) -> None:
+        self._result_notes.addWidget(notice)
 
     def _paint_verdict(self, result: memtest.Result) -> None:
         steps = memtest.curve_steps(result.points, result.levels, result.caches)
         wrong = next((s for s in steps if not s.matches), None)
+        fact = self.facts["curve"]
         if wrong is not None:
             text = _("memtest.verdict.differs").format(
                 level=wrong.level, flat=render.size(wrong.flat_until),
                 rises=render.size(wrong.rises_by), declared=render.size(wrong.declared_bytes))
             if result.huge_fraction is not None and result.huge_fraction < 0.9:
                 text += " " + _("memtest.verdict.smallpages")
+            fact.show_fact(_("memtest.fact.curve.differs"), text)
         elif steps:
-            text = _("memtest.verdict.matches").format(sizes=", ".join(
-                f"{s.level} {render.size(s.declared_bytes)}" for s in steps))
-        else:
-            text = ""
-        self.verdict.setText(text)
-        self.verdict.setProperty("tone", "no" if wrong is not None else "")
-        self.verdict.setVisible(bool(text))
+            fact.show_fact(_("memtest.fact.curve.matches"), _("memtest.verdict.matches").format(
+                sizes=", ".join(f"{s.level} {render.size(s.declared_bytes)}" for s in steps)))
+        fact.setVisible(bool(steps))
+
+    def _paint_pages(self, result: memtest.Result) -> None:
+        fact = self.facts["pages"]
+        fact.setVisible(result.huge_fraction is not None and bool(result.ram_block))
+        if fact.isVisibleTo(self.facts_row):
+            fact.show_fact(render.whole_percent(result.huge_fraction * 100),
+                           _("memtest.fact.pages.detail").format(
+                               block=render.size(result.ram_block)))
 
     def _paint_rates(self, result: memtest.Result) -> None:
-        one_thread = [(key, result.rate(operation, 1)) for operation, key in
-                      (("read", "memtest.op.read"), ("write", "memtest.op.write"),
-                       ("copy", "memtest.op.copy"))]
-        rates = "  ·  ".join(f"{_(key)} {render.bandwidth(rate.bytes_per_second, 1)}"
-                             for key, rate in one_thread if rate is not None)
-        self.rates.setText(_("memtest.rates.one").format(rates=rates) if rates else "")
-        self.rates.setVisible(bool(rates))
         self._paint_share(result)
-
         threads = max((r.threads for r in result.rates), default=1)
         rows = []
         for operation, non_temporal, key in RATE_ROWS:
@@ -594,20 +740,18 @@ class MemoryTestTab(ScrollPage):
 
     def _paint_share(self, result: memtest.Result) -> None:
         share = memtest.share_of_theoretical(result)
-        self.share_bar.setVisible(share is not None)
         locked = False
         if share is not None:
             read = result.rate("read")
-            self.share_bar.setValue(int(min(share, 100)))
+            self.share_value.setText(render.whole_percent(share))
             self.share.setText(_("memtest.share").format(
-                pct=f"{share:.0f}", mts=render.memory_speed(result.speed_mts),
+                mts=render.memory_speed(result.speed_mts),
                 rate=render.bandwidth(read.bytes_per_second, 1),
                 threads=render.counted("memtest.threads", read.threads),
                 channels=render.counted("memtest.channels", result.channels or 0),
                 total=render.bandwidth(result.theoretical_bytes_per_second, 1)))
             if share > 100:
-                self._notices.addWidget(Notice(_("memtest.notice.over"),
-                                               _("memtest.notice.over.body")))
+                self._note(Notice(_("memtest.notice.over"), _("memtest.notice.over.body")))
         elif result.rates and self._channels_locked:
             # Rule 5: missing for want of permissions, with its padlock and
             # the way to give them.
@@ -617,7 +761,9 @@ class MemoryTestTab(ScrollPage):
                                         else "perm.button.read"))
         else:
             self.share.setText(_("memtest.share.unknown") if result.rates else "")
+        self.share_value.setVisible(share is not None)
         self.share.setVisible(bool(self.share.text()))
+        self.facts["share"].setVisible(bool(self.share.text()))
         self.share.ensurePolished()
         self._lock_column.setContentsMargins(
             0, max(0, (self.share.fontMetrics().height() - self.share_lock.height()) // 2), 0, 0)
@@ -650,7 +796,8 @@ class MemoryTestTab(ScrollPage):
     def _paint_history(self, results) -> None:
         rows = []
         for result in results:
-            ram, read = result.level("RAM"), result.rate("read")
+            threads = max((r.threads for r in result.rates), default=1)
+            ram, read = result.level("RAM"), result.rate("read", threads)
             share = memtest.share_of_theoretical(result)
             frequencies = [p.frequency_hz for p in result.points if p.frequency_hz]
             rows.append((
@@ -680,6 +827,9 @@ class MemoryTestTab(ScrollPage):
         memory the next test will be measured against, and whether the
         channels wait for permissions."""
         self._types = tuple(snapshot.cpu.types)
+        name = render.cpu_short_name(self._types[0].brand) if self._types else ""
+        self.cpu_name.setText(name)
+        self.cpu_name.setVisible(bool(name))
         parts = render.memory_theoretical_parts(snapshot.modules)
         self._memory = memtest.Memory(
             render.memory_theoretical_bandwidth(snapshot.modules), *(parts or (None, None)))
