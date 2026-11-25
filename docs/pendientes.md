@@ -224,6 +224,34 @@ la memoria) no va: está propuesto en las notas
     la API.
   - VM · baja · el historial de Rendimiento de la VM tenía una prueba «15 s ·
     — · — · —»: preguntar si la canceló.
+* **Visto al arreglar los informes de la prueba11 y la prueba12** (sin
+  volcado):
+  - Almacenamiento · media · con una tarjeta metida, un lector por USB que
+    marca `rotational` a 0 sale «SSD», no «Flash»: `storage._kind` solo mira
+    `removable` cuando `rotational` es 1. Los lectores vacíos ya no salen.
+  - Sensores · baja · el chip `thinkpad` da 0 °C en varias sondas (volcados
+    `i5-1135g7` e `i5-8350u`) y no se marcan como relleno:
+    `hwmon._is_filler` solo mira los Super I/O y las gráficas.
+  - Disco · media · al juntar con la prueba de disco: una ranura del lector
+    que pierde la tarjeta deja de ser unidad pero sigue en `/sys/block`, así
+    que «Dónde» diría «Esa carpeta ya no está montada» y no «Ese disco ya no
+    está conectado».
+  - Gráficos · media · en una RX 9060 XT la ficha de la frecuencia dice
+    «memoria 1 MHz» y Relojes «Memoria: 96 MHz». La primera es
+    `memory_clock_average` de `gpu_metrics` (la media de `average_uclk`, con
+    la memoria en autorrefresco casi todo el tiempo), guardada en
+    `GpuClocks.memory_effective_hz` como si fuera la efectiva; la segunda, el
+    escalón de `pp_dpm_mclk`. Tienen que decir lo mismo, y la media llevar su
+    nombre (va con «Memoria (efectiva)» en Sensores).
+  - Gráficos · baja · en un i7-12700 salen seguidos dos avisos con el mismo
+    título, «Este equipo no lo expone» (la temperatura y el consumo de la
+    integrada): juntarlos o darles títulos distintos. Y la ficha del consumo
+    lleva el candado de «con permisos» mientras el aviso dice que el contador
+    de energía no avanza: no pueden contradecirse.
+  - Placa base · baja · en un Ryzen 9 7900 los USB 3 del procesador salen
+    «en el procesador» (comparten dispositivo con la integrada) y su USB 2
+    «en la placa»: cuelga de otro puente interno del procesador (`00:08.x`).
+    Decidirlo pide mirar de qué puente cuelga cada dispositivo.
 
 ## Datos que se leen mal o no se leen
 
@@ -512,6 +540,23 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
 ## Propuestas sin aplicar
 
+* **Una revisión de limpieza del código** (después de la prueba13).
+  Objetivo: código profesional, fácil de mantener y de leer, sin parches
+  sueltos. Primero solo el mapa, sin cambiar nada: todas las excepciones por
+  hardware (filtros, nombres, casos especiales), con dónde está cada una, qué
+  equipo la provocó y cuáles se pueden juntar en una regla o pasar a una
+  tabla de `silux/db/`; el código repetido; las funciones demasiado largas;
+  los nombres poco claros o en español. Luego, con el OK del autor, se limpia
+  por partes.
+* **La ficha del chip de la gráfica** (idea, después de la prueba13), como la
+  de TechPowerUp. Sin tabla se puede calcular: las unidades de sombreado a
+  partir de las CU, los TFLOPS en FP32 con el reloj máximo, y las tasas de
+  píxeles y de texturas con los ROP y las TMU. Necesita una tabla propia por
+  chip en `silux/db/`: la arquitectura, la generación, el proceso en nm, la
+  fundición, los transistores, el tamaño del die y la fecha de salida. La
+  tabla se hace con fuentes públicas (las especificaciones de AMD, Intel y
+  NVIDIA, Mesa, el kernel, Wikipedia), nunca copiando la base de datos de
+  TechPowerUp.
 * **La presión del sistema (PSI) para «¿Qué frena tu equipo?»** (idea, sin
   escribir). `/proc/pressure/{cpu,memory,io}` dicen qué parte del tiempo hubo
   tareas esperando CPU, memoria o disco: `some` y `full`, medias de 10, 60 y
