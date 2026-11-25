@@ -118,11 +118,15 @@ class TestDiskFile(unittest.TestCase):
             self.assertLessEqual(lap["latency_p99_ns"], lap["latency_p999_ns"])
             self.assertLessEqual(lap["latency_p999_ns"], lap["latency_max_ns"])
             self.assertLessEqual(lap["latency_min_ns"], lap["latency_mean_ns"])
-            self.assertEqual(len(lap["samples"]), 2)
-            (first_at, first), (second_at, second) = lap["samples"]
-            self.assertLess(first_at, second_at)
-            self.assertLessEqual(first, second)
-            self.assertLessEqual(second, lap["bytes"])
+            # One every quarter of a second while the lap ran: a slow
+            # machine finishing its last requests can run past the third.
+            samples = lap["samples"]
+            self.assertGreaterEqual(len(samples), 2)
+            self.assertLessEqual(len(samples), lap["elapsed_ns"] // 250_000_000)
+            for (first_at, first), (second_at, second) in zip(samples, samples[1:]):
+                self.assertLess(first_at, second_at)
+                self.assertLessEqual(first, second)
+            self.assertLessEqual(samples[-1][1], lap["bytes"])
         if file.no_cow is not False:
             self.assertEqual(file.cached_bytes(), 0)
 
