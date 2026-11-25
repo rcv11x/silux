@@ -2874,7 +2874,7 @@ class Table(QScrollArea):
         margins = label.contentsMargins()
         widest = max((metrics.horizontalAdvance(piece) for piece in pieces(label.text())),
                      default=0)
-        return widest + margins.left() + margins.right() + 2 * label.margin() + 2
+        return widest + margins.left() + margins.right() + 2 * label.margin()
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
