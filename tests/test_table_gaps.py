@@ -70,14 +70,19 @@ class TestTitlesBreakOnlyWhenNeeded(unittest.TestCase):
         table.show()
         title = table._grid.itemAtPosition(0, 1).widget()
         line = title.fontMetrics().height()
-        for width, broken in ((2000, False), (360, True)):
+        cell = table._cells[0][1]
+        # And back: a title once broken came back to one line no more.
+        for width, broken in ((2000, False), (360, True), (2000, False)):
             with self.subTest(width=width):
                 table.resize(width, 300)
                 for _turn in range(4):
                     self.app.processEvents()
                 self.assertEqual(table.horizontalScrollBar().maximum(), 0)
-                lines = round(title.heightForWidth(title.width()) / line)
+                lines = round(title.height() / line)
                 self.assertEqual(lines > 1, broken, lines)
+                # The table grows with its titles: the row stays in view.
+                bottom = cell.mapTo(table.viewport(), cell.rect().bottomLeft()).y()
+                self.assertLessEqual(bottom, table.viewport().height())
                 words = title.text().split()
                 self.assertGreaterEqual(title.width(),
                                         max(title.fontMetrics().horizontalAdvance(w) for w in words))

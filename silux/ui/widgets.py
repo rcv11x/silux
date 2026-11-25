@@ -2548,6 +2548,8 @@ class Table(QScrollArea):
         # (fila, columna) → su candado, para las celdas que lo han tenido.
         self._candados: dict[tuple[int, int], "LockMark"] = {}
         self._cede = tuple(cede)
+        # How tall the titles are, broken as the widths leave them.
+        self._titles_height = 0
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
 
         self.setWidgetResizable(True)
@@ -2830,16 +2832,27 @@ class Table(QScrollArea):
                 sobra -= quita
         if self._grid.horizontalSpacing() != gap:
             self._grid.setHorizontalSpacing(gap)
+        titles = 0
         for columna, ancho in enumerate(anchos):
             # The title doesn't ask for its width any more: its column does.
             width = max(ancho, heads[columna])
             if self._grid.columnMinimumWidth(columna) != width:
                 self._grid.setColumnMinimumWidth(columna, width)
+            titles = max(titles, self._title_height(columna, width))
             recortada = ancho < max(self._anchos[columna], 1) and columna in self._cede
             for fila in self._cells:
                 if columna < len(fila):
                     # Cedida, la celda no puede pedir más que su columna.
                     fila[columna].setMaximumWidth(ancho if recortada else 16777215)
+        # Every title as tall as the one with most lines, and the table as
+        # tall as that: measured as one line, a broken title hid the rows.
+        for columna in range(columnas):
+            item = self._grid.itemAtPosition(0, columna)
+            if item and item.widget() and item.widget().height() != titles:
+                item.widget().setFixedHeight(titles)
+        if titles != self._titles_height:
+            self._titles_height = titles
+            self._fit_height()
 
     # Cuánto puede separarse como mucho cada columna, en anchos de letra.
     HOLGURA_MAXIMA = 14
@@ -2869,6 +2882,21 @@ class Table(QScrollArea):
         """What the column's title takes on one line (a line of its own
         for each break written in it)."""
         return self._title_width(columna, lambda text: text.split("\n"))
+
+    def _title_height(self, column: int, width: int) -> int:
+        """How tall the column's title is at `width`, broken as it must."""
+        item = self._grid.itemAtPosition(0, column)
+        label = item.widget() if item else None
+        if label is None or not label.text():
+            return 0
+        label.ensurePolished()
+        # From the letter, not from the label: its own fixed height would
+        # count, and a title once broken never came back to one line.
+        margins = label.contentsMargins()
+        inner = max(1, width - margins.left() - margins.right() - 2 * label.margin())
+        box = label.fontMetrics().boundingRect(QRect(0, 0, inner, 100000),
+                                               int(Qt.TextFlag.TextWordWrap), label.text())
+        return box.height() + margins.top() + margins.bottom() + 2 * label.margin()
 
     def _palabra_mas_larga(self, columna: int) -> int:
         """The narrowest the title can go: its longest word."""
@@ -2920,7 +2948,7 @@ class Table(QScrollArea):
         rows = self._rows + 1                       # las filas más la cabecera
         spacing = self._grid.verticalSpacing()
         extra = self.horizontalScrollBar().sizeHint().height() + 4
-        alto = line + filas + max(0, rows - 1) * spacing + extra
+        alto = max(line, self._titles_height) + filas + max(0, rows - 1) * spacing + extra
         if self.height() != alto or self.minimumHeight() != alto:
             self.setFixedHeight(alto)
 
