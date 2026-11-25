@@ -842,19 +842,19 @@ def fan(rpm_value: Optional[int], percent_value: Optional[float]) -> str:
     only the percentage. Putting «—» with «(0.0 %)» looked as if one datum
     were missing and another extra, when both say it's stopped.
     """
-    stopped = (rpm_value == 0) or (percent_value == 0)
     if _none(rpm_value) and _none(percent_value):
         return DASH
     # Its revolutions say it, whatever the PWM duty asks: «0 %» next to
-    # a fan spinning down read as a broken reading.
+    # a fan spinning down read as a broken reading, and a fan spinning
+    # with its duty read as 0 is not stopped.
     if rpm_value == 0:
         return _("fan.stopped.rpm")
-    if stopped:
+    if _none(rpm_value) and percent_value == 0:
         return _("fan.stopped")
     parts = []
     if not _none(rpm_value):
         parts.append(f"{int(rpm_value)} RPM")
-    if not _none(percent_value):
+    if not _none(percent_value) and not (parts and percent_value == 0):
         parts.append(f"({percent(percent_value)})" if parts else percent(percent_value))
     return "   ".join(parts)
 

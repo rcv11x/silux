@@ -89,6 +89,11 @@ class TestVentilador(unittest.TestCase):
     def test_con_las_dos_cifras_van_las_dos(self):
         self.assertEqual(render.fan(1200, 45.0), "1200 RPM   (45.0 %)")
 
+    def test_one_that_spins_is_not_stopped(self):
+        # From a report: an RX 550 whose hwmon gives fan1_input 1696 with
+        # pwm1 at 0. The revolutions are what it does; the duty, what it asks.
+        self.assertEqual(render.fan(1696, 0.0), "1696 RPM")
+
     def test_con_una_sola_va_esa(self):
         self.assertEqual(render.fan(1200, None), "1200 RPM")
         self.assertEqual(render.fan(None, 45.0), "45.0 %")

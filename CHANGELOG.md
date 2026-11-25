@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: un ventilador que gira ya no sale «parado» porque su driver
+  diga que lo mueve al 0 %: salen sus revoluciones («1696 RPM»).
 - Gráficos y Sensores: el voltaje de una Radeon en reposo, con el núcleo
   apagado, dice «en reposo» como su reloj, no «0.006 V».
 - Sensores: las temperaturas de la placa que nadie mide (las entradas sin
