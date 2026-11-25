@@ -395,6 +395,27 @@ class TestWhatAResultShows(TabCase):
         self.assertEqual(widths[0], widths[1])
         self.assertLessEqual(disk.place_box.width(), disk.widget().content_width())
 
+    def test_start_ends_the_row_of_choices_on_the_right_as_the_main_button(self):
+        tab = self.tab()
+        tab.resize(1200, 900)
+        for _turn in range(5):
+            self.app.processEvents()
+        button = tab.run_button
+        self.assertEqual(button.objectName(), "Primary")
+        row = button.parentWidget()
+        self.assertIs(tab.profile_box.parentWidget().parentWidget(), row)
+        self.assertLessEqual(row.width() - button.geometry().right(), 2)
+        # Every control of the row as tall as the others, and level with
+        # its caption.
+        boxes = (tab.profile_box, tab.size_box, tab.laps_box, button)
+        self.assertEqual(len({box.height() for box in boxes}), 1)
+        middles = {box.mapTo(row, box.rect().center()).y() for box in boxes}
+        middles.add(tab.write_box.mapTo(row, tab.write_box.rect().center()).y())
+        for box in (tab.profile_box, tab.size_box, tab.laps_box):
+            caption = box.parentWidget().layout().itemAt(0).widget()
+            middles.add(caption.mapTo(row, caption.rect().center()).y())
+        self.assertLessEqual(max(middles) - min(middles), 1, middles)
+
     def test_a_narrow_window_cuts_the_place_with_an_ellipsis(self):
         """It was cut halfway through a word: «457 GB fre»."""
         tab = self.tab()

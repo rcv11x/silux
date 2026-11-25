@@ -53,6 +53,7 @@ from ..widgets import (
     clear_layout,
     let_go,
     paint_level,
+    same_height,
     unbroken,
     value_font,
 )
@@ -542,30 +543,31 @@ class DiskTestTab(ScrollPage):
             options.add_widget(pair)
         options.add_widget(self.write_box)
         options.add_stretch(1)
-
-        self.about = QLabel("")
-        self.about.setObjectName("Muted")
-        self.about.setWordWrap(True)
+        # At the end of the choices, on the right: the one thing to press.
         self.run_button = QPushButton(_("memtest.button.run"))
+        self.run_button.setObjectName("Primary")
         self.run_button.clicked.connect(self.start)
         self.cancel_button = QPushButton(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
         self.cancel_button.clicked.connect(self._cancel)
         self.cancel_button.hide()
+        options.add_widget(self.run_button)
+        options.add_widget(self.cancel_button)
+        same_height(self.profile_box, self.size_box, self.laps_box, self.run_button,
+                    self.cancel_button)
+
+        self.about = QLabel("")
+        self.about.setObjectName("Muted")
+        self.about.setWordWrap(True)
         self.blocked_note = QLabel("")
         self.blocked_note.setObjectName("Muted")
         self.blocked_note.hide()
-        buttons = FoldingRow()
-        buttons.add_widget(self.run_button)
-        buttons.add_widget(self.cancel_button)
-        buttons.add_widget(self.blocked_note)
-        buttons.add_stretch(1)
         self.progress = ProgressLine()
         self.progress.hide()
         card.body.addWidget(title)
         card.body.addWidget(intro)
         card.body.addLayout(where)
-        for widget in (options, self.about, buttons, self.progress):
+        for widget in (options, self.about, self.blocked_note, self.progress):
             card.body.addWidget(widget)
         return card
 

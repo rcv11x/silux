@@ -73,6 +73,8 @@ class TestWhatAResultShows(TabCase):
         self.assertFalse(tab.result_card.isVisibleTo(tab))
         self.assertFalse(tab.history_card.isVisibleTo(tab))
         self.assertTrue(tab.run_button.isEnabled())
+        # The main button, as the Disk tab's.
+        self.assertEqual(tab.run_button.objectName(), "Primary")
 
     def test_each_level_with_its_cycles_and_the_clock_it_ran_at(self):
         tab = self.tab()

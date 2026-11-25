@@ -343,6 +343,16 @@ class FoldingRow(QWidget):
             self.updateGeometry()
 
 
+def same_height(*widgets: QWidget) -> None:
+    """Give a row's controls the height of the tallest: a list, a button
+    and the rest, each its own, left the row ragged."""
+    for widget in widgets:
+        widget.ensurePolished()
+    tallest = max(widget.sizeHint().height() for widget in widgets)
+    for widget in widgets:
+        widget.setFixedHeight(tallest)
+
+
 def balanced_columns(count: int, fits: int) -> int:
     """Cuántas columnas usar para `count` elementos si caben `fits`.
 

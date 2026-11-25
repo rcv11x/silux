@@ -500,6 +500,7 @@ class MemoryTestTab(ScrollPage):
         self.intro.setObjectName("Subhead")
         self.intro.setWordWrap(True)
         self.run_button = QPushButton(_("memtest.button.run"))
+        self.run_button.setObjectName("Primary")
         self.run_button.clicked.connect(self.start)
         self.cancel_button = QPushButton(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
