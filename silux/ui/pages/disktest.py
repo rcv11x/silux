@@ -73,8 +73,10 @@ ERRORS = {
     "read_only": "folder", "no_write": "folder", "no_folder": "folder",
     "no_direct": "folder", "no_space": "smaller", "io": None, "no_module": None,
     "internal": None, "failed": None, "not_started": None,
+    "too_big_for_fat": "fits",
 }
-ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.smaller"}
+ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.smaller",
+           "fits": "disktest.action.fits"}
 # The notes that put a figure in doubt; the rest of those that aren't
 # errors are facts to read the figures with.
 DOUBTFUL = frozenset({"copy_on_write", "through_the_cache", "disk_moved_less", "disk_was_busy",
@@ -93,6 +95,7 @@ NOTES = {
     "no_folder": ("disktest.note.no_folder", "disktest.note.no_folder.body"),
     "no_direct": ("disktest.note.no_direct", "disktest.note.no_direct.body"),
     "no_space": ("disktest.note.no_space", "disktest.note.no_space.body"),
+    "too_big_for_fat": ("disktest.note.too_big_for_fat", "disktest.note.too_big_for_fat.body"),
     "io": ("disktest.note.io", "disktest.note.io.body"),
     "no_module": ("disktest.note.no_module", "disktest.note.no_module.body"),
     "internal": ("disktest.note.internal", "disktest.note.internal.body"),
@@ -464,7 +467,7 @@ class DiskTestTab(ScrollPage):
         self.profile_box.activated.connect(self._describe)
         self.size_box = QComboBox()
         for size in FILE_SIZES:
-            self.size_box.addItem(render.size(size), size)
+            self.size_box.addItem(render.file_size(size), size)
         self.size_box.setCurrentIndex(FILE_SIZES.index(disktest.FILE_BYTES))
         self.size_box.activated.connect(self._describe)
         self.laps_box = QComboBox()
@@ -719,15 +722,20 @@ class DiskTestTab(ScrollPage):
         disk = self._disk_of(place)
         refused = place.refusal if place is not None else None
         self.about.setVisible(not refused)
+        too_big = not refused and not disktest.fits(plan)
         if refused:
             self._notices.addWidget(self._note(refused, "folder"))
         else:
+            if too_big:
+                largest = render.file_size(disktest.largest_file(plan.filesystem))
+                self._notices.addWidget(self._note("too_big_for_fat", "fits", largest=largest,
+                                                   size=largest))
             for warning in self._warnings(place, disk):
                 self._notices.addWidget(self._note(warning))
         last = next((r for r in self._history if r.disks == plan.disks and r.bytes_ == plan.bytes_
                      and r.laps == plan.laps and any(m.direction == "write" for m in r.measures)),
                     None)
-        values = dict(size=render.size(plan.bytes_), folder=render.home_path(plan.folder),
+        values = dict(size=render.file_size(plan.bytes_), folder=render.home_path(plan.folder),
                       writing=render.duration(disktest.writing_seconds(plan)),
                       total=render.duration(disktest.seconds_estimate(plan)))
         if not plan.write:
@@ -738,7 +746,8 @@ class DiskTestTab(ScrollPage):
         else:
             text = _("disktest.about.write").format(**values)
         self.about.setText(text)
-        self.run_button.setEnabled(not refused and not self.running and not self._blocked)
+        self.run_button.setEnabled(not refused and not too_big and not self.running
+                                   and not self._blocked)
 
     def _warnings(self, place, disk) -> list[str]:
         found = list(place.warnings) if place is not None else []
@@ -755,14 +764,32 @@ class DiskTestTab(ScrollPage):
         colour, as everywhere else."""
         title, body = NOTES[key]
         tone = "bad" if key in ERRORS else "warn" if key in DOUBTFUL else "idle"
-        note = Notice(_(title), _(body).format(**values), tone=tone,
-                      action=_(ACTIONS[action]) if action else None)
+        note = Notice(_(title).format(**values), _(body).format(**values), tone=tone,
+                      action=_(ACTIONS[action]).format(**values) if action else None)
         if action == "folder":
             note.action_clicked.connect(
                 lambda: self._on_place(self.place_box.count() - 1))
         elif action == "smaller":
             note.action_clicked.connect(self._smaller_file)
+        elif action == "fits":
+            note.action_clicked.connect(self._largest_that_fits)
         return note
+
+    def _largest_that_fits(self) -> None:
+        """The largest file the folder's file system takes, offered among
+        the sizes if it isn't one of them."""
+        plan = self.plan()
+        largest = disktest.largest_file(plan.filesystem) if plan is not None else None
+        if largest is None:
+            return
+        index = self.size_box.findData(largest)
+        if index < 0:
+            index = next((i for i in range(self.size_box.count())
+                          if self.size_box.itemData(i) > largest), self.size_box.count())
+            self.size_box.insertItem(index, render.file_size(largest), largest)
+        self.size_box.setCurrentIndex(index)
+        self._drop_failure()
+        self._describe()
 
     def _smaller_file(self) -> None:
         if self.size_box.currentIndex() > 0:
@@ -892,9 +919,12 @@ class DiskTestTab(ScrollPage):
         if result.reason and result.reason != "cancelled":
             key = result.reason if result.reason in ERRORS else "failed"
             figures = dict(result.figures)
+            largest = render.file_size(figures.get("largest"))
             self._failure = self._note(
                 key, ERRORS[key], needed=render.decimal_size(figures.get("needed")),
-                free=render.decimal_size(figures.get("free")))
+                free=render.decimal_size(figures.get("free")),
+                size=largest if key == "too_big_for_fat" else render.file_size(result.bytes_),
+                largest=largest)
             self._notices.insertWidget(0, self._failure)
         self._describe()
         self._show_for_place()

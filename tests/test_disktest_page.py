@@ -56,7 +56,10 @@ class Running:
 
 
 class TabCase(unittest.TestCase):
-    """Each test, on the dump of the machine the recorded runs came from."""
+    """Each test, on the dump of the machine the recorded runs came from,
+    or on another's."""
+
+    DUMP = "5800x3d"
 
     @classmethod
     def setUpClass(cls):
@@ -64,14 +67,14 @@ class TabCase(unittest.TestCase):
 
         cls.app = app()
         theme.apply(cls.app, "dark", "normal")
-        cls.snapshot = shared_snapshot(EQUIPOS / "5800x3d")
+        cls.snapshot = shared_snapshot(EQUIPOS / cls.DUMP)
 
     def setUp(self):
         self.clear()
         self.addCleanup(self.clear)
         stack = contextlib.ExitStack()
         self.addCleanup(stack.close)
-        stack.enter_context(_herramienta().mounted(EQUIPOS / "5800x3d"))
+        stack.enter_context(_herramienta().mounted(EQUIPOS / self.DUMP))
         sysroot.forget()
         self.addCleanup(sysroot.forget)
         # The dump's folders aren't this machine's: every one can be

@@ -241,6 +241,14 @@ def size(value: Optional[int]) -> str:
     return f"{value} B"
 
 
+def file_size(value: Optional[int]) -> str:
+    """A test file's size: «1 GiB», and «4 095 MiB» for one that isn't a
+    whole number of GiB, which `size` would round to «4.0 GiB»."""
+    if not _none(value) and int(value) > 1024**3 and int(value) % 1024**3:
+        return f"{thousands(int(value) // 1024**2)} MiB"
+    return size(value)
+
+
 def calculating() -> str:
     """A figure made of two readings, while there is only one: «Calculando…»,
     not the dash of what can't be read."""

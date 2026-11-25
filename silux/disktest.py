@@ -65,6 +65,9 @@ NETWORK = frozenset({
     "fuse.rclone", "fuse.s3fs", "fuse.curlftpfs", "fuse.gvfsd-fuse", "fuse.smbnetfs",
     "fuse.vmhgfs-fuse", "fuse.nfs", "fuse.portal",
 })
+# FAT keeps a file's size in 32 bits: the kernel takes files of up to
+# 2^32 - 1 bytes there (`s_maxbytes` in fs/fat/inode.c).
+LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
 
 
 @dataclass(frozen=True)
@@ -425,6 +428,18 @@ def make_plan(folder: Union[str, os.PathLike], place: Optional[Place] = None,
     return dataclasses.replace(plan, **changes)
 
 
+def largest_file(filesystem: Optional[str]) -> Optional[int]:
+    """The largest file in whole MiB that the file system takes, where it
+    takes less than the sizes offered: 4095 MiB on FAT32."""
+    largest = LARGEST_FILE.get(filesystem or "")
+    return None if largest is None else largest // MIB * MIB
+
+
+def fits(plan: Plan) -> bool:
+    largest = largest_file(plan.filesystem)
+    return largest is None or plan.bytes_ <= largest
+
+
 def written_estimate(plan: Plan, bytes_per_second: float) -> int:
     """About how much a run of `plan` writes on a disk that writes that
     fast: the file once, and every lap of every test for as long as it
@@ -472,6 +487,9 @@ def run(plan: Plan, on_progress: Optional[Callable[[dict], None]] = None,
     started = time.time()
     if native_module() is None:
         return _result({"reason": "no_module"}, plan, started)
+    if not fits(plan):
+        return _result({"reason": "too_big_for_fat",
+                        "figures": {"largest": largest_file(plan.filesystem)}}, plan, started)
     # Time to write the file on a slow pen drive, and the tests half as
     # long again.
     timeout = 120 + plan.bytes_ / (2 * MIB) + 1.5 * seconds_estimate(plan)

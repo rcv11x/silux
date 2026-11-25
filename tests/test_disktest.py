@@ -17,7 +17,7 @@ import unittest
 from unittest import mock
 
 from silux import disktest, sysroot
-from silux.disktest import KIB, MIB, Lap, Measure, Place
+from silux.disktest import GIB, KIB, MIB, Lap, Measure, Place
 from tests.per_dump import per_dump
 from tests.test_disk_native import _base
 from tests.test_equipos import shared_snapshot
@@ -387,6 +387,25 @@ class TestRunning(unittest.TestCase):
             os.kill(child, signal.SIGKILL)
             self.fail("the child outlived the process that started it")
         self.assertEqual(os.listdir(self.folder), [])
+
+
+class TestPenDrives(unittest.TestCase):
+    def test_fat32_takes_files_below_4_gib_and_it_is_known_before_starting(self):
+        self.assertEqual(disktest.largest_file("vfat"), 4095 * MIB)
+        self.assertEqual(disktest.largest_file("msdos"), 4095 * MIB)
+        for filesystem in ("exfat", "ntfs3", "ext4", None):
+            self.assertIsNone(disktest.largest_file(filesystem), filesystem)
+        plan = disktest.Plan("/media/pen", disktest.PROFILES["standard"], bytes_=4 * GIB,
+                             filesystem="vfat")
+        self.assertFalse(disktest.fits(plan))
+        self.assertTrue(disktest.fits(dataclasses.replace(plan, bytes_=4095 * MIB)))
+        self.assertTrue(disktest.fits(dataclasses.replace(plan, filesystem="exfat")))
+        # Refused before the child, which would stop half way.
+        with mock.patch.object(disktest.childrun, "run", side_effect=AssertionError):
+            result = disktest.run(plan)
+        if disktest.native_module() is not None:
+            self.assertEqual((result.reason, dict(result.figures)),
+                             ("too_big_for_fat", {"largest": 4095 * MIB}))
 
 
 class TestRecordedRuns(unittest.TestCase):
