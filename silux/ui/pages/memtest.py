@@ -591,7 +591,7 @@ class MemoryTestTab(ScrollPage):
             read = result.rate("read")
             self.share_bar.setValue(int(min(share, 100)))
             self.share.setText(_("memtest.share").format(
-                pct=f"{share:.0f}", mts=result.speed_mts,
+                pct=f"{share:.0f}", mts=render.memory_speed(result.speed_mts),
                 rate=render.bandwidth(read.bytes_per_second, 1),
                 threads=render.counted("memtest.threads", read.threads),
                 channels=render.counted("memtest.channels", result.channels or 0),

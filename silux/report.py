@@ -193,7 +193,8 @@ def _memory(snapshot: Snapshot) -> str:
         for module in snapshot.modules:
             lines.append(
                 f"- {module.locator or '?'}: {render.size(module.size_bytes)} "
-                f"{render.memory_type(module.type, in_spanish) or ''} {module.speed_mts or ''} MT/s "
+                f"{render.memory_type(module.type, in_spanish) or ''} "
+                f"{render.memory_speed(module.speed_mts) or ''} MT/s "
                 f"{module.manufacturer or ''} {module.part_number or ''}".rstrip()
             )
     else:
@@ -590,7 +591,8 @@ def _memory_test() -> str:
         facts.append(f"EPP {result.energy_preference}")
     share = memtest.share_of_theoretical(result)
     if share is not None:
-        facts.append(f"lectura al {share:.0f} % de {result.channels} × {result.speed_mts} MT/s × 8 B")
+        facts.append(f"lectura al {share:.0f} % de {result.channels} × "
+                     f"{render.memory_speed(result.speed_mts)} MT/s × 8 B")
     for step in memtest.curve_steps(result.points, result.levels, result.caches):
         facts.append(
             f"{step.level} de {render.size(step.declared_bytes)}: la curva sube entre "

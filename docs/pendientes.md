@@ -523,8 +523,7 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   el nombre de equipo `(none)` llega crudo; las salidas de video no se
   actualizan al enchufar un monitor; `power_supply` no filtra por `scope`;
   `alarm_level` dice «alto» también por debajo del mínimo.
-* «DDR4-2667» en Inicio, la tarjeta y el informe frente a 2666 en Memoria; al
-  ordenar el árbol ascendente las celdas vacías salen primero; el CSV pierde
+* Al ordenar el árbol ascendente las celdas vacías salen primero; el CSV pierde
   precisión con `{v:g}`; un fallo al cargar un driver se titula «Se ha parado
   la grabación».
 * Cancelar no interrumpe una medida en curso (`time.sleep` de hasta 1800 s);

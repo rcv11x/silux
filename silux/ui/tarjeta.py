@@ -77,7 +77,7 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
             detalle = " · ".join(x for x in (
                 render.counted("share.modules", len(modulos)),
                 primero.type or "",
-                f"{primero.speed_mts} MT/s" if primero.speed_mts else "",
+                f"{render.memory_speed(primero.speed_mts)} MT/s" if primero.speed_mts else "",
             ) if x)
         elif snapshot.spd:
             spd = snapshot.spd[0]
