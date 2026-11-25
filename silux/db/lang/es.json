@@ -589,7 +589,7 @@
   "disktest.conditions.nocow": "{filesystem} (archivo con +C)",
   "disktest.conditions.running": "En marcha: en gris, la última vuelta de cada prueba.",
   "disktest.detail.hide": "▾ Detalles",
-  "disktest.detail.note": "La cifra de cada prueba es la vuelta del medio. La vuelta previa no cuenta: despierta el disco. La mejor es la que daría CrystalDiskMark.",
+  "disktest.detail.note": "La cifra de cada prueba es la vuelta del medio. La vuelta previa no cuenta: despierta el disco. Hay programas de discos que se quedan con la mejor.",
   "disktest.detail.show": "▸ Detalles",
   "disktest.dir.read": "lectura",
   "disktest.dir.write": "escritura",

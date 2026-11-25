@@ -589,7 +589,7 @@
   "disktest.conditions.nocow": "{filesystem} (file with +C)",
   "disktest.conditions.running": "Under way: in grey, the last run of each test.",
   "disktest.detail.hide": "▾ Details",
-  "disktest.detail.note": "Each test's figure is the middle run. The warm-up run doesn't count: it wakes the disk. The best is the one CrystalDiskMark would give.",
+  "disktest.detail.note": "Each test's figure is the middle run. The warm-up run doesn't count: it wakes the disk. Some disk programs keep the best one.",
   "disktest.detail.show": "▸ Details",
   "disktest.dir.read": "read",
   "disktest.dir.write": "write",
