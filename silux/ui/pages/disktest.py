@@ -578,11 +578,11 @@ class DiskTestTab(ScrollPage):
 
     def _build_result(self) -> Card:
         card = Card(_("memtest.card.result"))
-        # A disk with nothing measured says so, instead of showing another's.
+        # A disk with nothing measured says so under its empty table,
+        # instead of showing another's.
         self.empty = QLabel(_("disktest.empty"))
         self.empty.setObjectName("Muted")
         self.empty.setWordWrap(True)
-        card.body.addWidget(self.empty)
 
         self.disk_name = QLabel("")
         self.disk_name.setFont(ui_font(theme.METRICS.base_pt + 3))
@@ -595,6 +595,7 @@ class DiskTestTab(ScrollPage):
 
         self.rows = TestRows(self._p)
         card.body.addWidget(self.rows)
+        card.body.addWidget(self.empty)
 
         self.facts = {name: Fact(_(FACT_NAMES[name])) for name in ("single", "link", "heat")}
         # The single request on a row of its own: its reading and its
@@ -884,6 +885,9 @@ class DiskTestTab(ScrollPage):
         self.about.setText(text)
         self.run_button.setEnabled(not refused and not too_big and not self.running
                                    and not self._blocked)
+        # A disk without measures shows the tests the profile chosen runs.
+        if self.result is None and not self.running and self.disk_name.isVisibleTo(self):
+            self.rows.set_rows(plan.tests, plan.write)
 
     def _free_of(self, plan: disktest.Plan) -> Optional[int]:
         """What is free where the folder is mounted, as the last sample read it."""
@@ -1038,13 +1042,21 @@ class DiskTestTab(ScrollPage):
         self.result_card.show()
 
     def _show_empty(self, measurable: bool) -> None:
-        """No result to show: the disk has none yet, or the folder isn't on
-        a disk that can be measured, and then there is nothing to say."""
+        """No result to show: the disk has none yet, and its table says what
+        a test of the profile chosen measures, with nothing in it; or the
+        folder isn't on a disk that can be measured, and then there is
+        nothing to say."""
         self.result = None
         clear_layout(self._result_notes)
-        for widget in (self.disk_name, self.conditions, self.rows, self.facts["single"],
-                       self.fact_row, self.detail_button, self.detail):
+        for widget in (self.conditions, self.facts["single"], self.fact_row,
+                       self.detail_button, self.detail):
             widget.hide()
+        plan = self.plan() if measurable else None
+        if plan is not None:
+            self.disk_name.setText(self._model_of(plan.disks) or " + ".join(plan.disks))
+            self.rows.set_rows(plan.tests, plan.write)
+        self.disk_name.setVisible(plan is not None)
+        self.rows.setVisible(plan is not None)
         self.empty.show()
         self.result_card.setVisible(measurable)
 

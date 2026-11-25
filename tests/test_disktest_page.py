@@ -12,7 +12,7 @@ import pathlib
 import unittest
 from unittest import mock
 
-from silux import disktest, sysroot
+from silux import disktest, render, sysroot
 from silux.i18n import _
 from tests.qt import app
 from tests.test_disktest import recorded
@@ -126,8 +126,27 @@ class TestBeforeAnyTest(TabCase):
         text = visible_texts(tab)
         self.assertIn(_("disktest.empty"), text)
         self.assertFalse(tab.history_card.isVisibleTo(tab))
-        self.assertFalse(tab.rows.isVisibleTo(tab))
         self.assertTrue(tab.run_button.isEnabled())
+        # Its table: the profile's tests, as a run would fill them, empty;
+        # and the sentence under it.
+        self.assertTrue(tab.rows.isVisibleTo(tab))
+        self.assertEqual(tab.disk_name.text(), "WD_BLACK SN850X HS 1000GB")
+        self.assertEqual(sorted(tab.rows._cells), sorted(
+            (test.name, direction) for test in disktest.PROFILES["standard"]
+            for direction in ("read", "write")))
+        self.assertEqual({figure.text() for _bar, figure in tab.rows._cells.values()},
+                         {render.DASH})
+        self.assertGreater(tab.empty.mapTo(tab, tab.empty.rect().topLeft()).y(),
+                           tab.rows.mapTo(tab, tab.rows.rect().bottomLeft()).y())
+        # It follows the profile and the writing chosen.
+        tab.profile_box.setCurrentIndex(tab.profile_box.findData("real"))
+        tab.profile_box.activated.emit(tab.profile_box.currentIndex())
+        tab.write_box.setChecked(False)
+        self.assertEqual(sorted(tab.rows._cells), sorted(
+            (test.name, "read") for test in disktest.PROFILES["real"]))
+        tab.profile_box.setCurrentIndex(tab.profile_box.findData("standard"))
+        tab.profile_box.activated.emit(tab.profile_box.currentIndex())
+        tab.write_box.setChecked(True)
         # What it will write, where and for how long, before starting.
         self.assertIn("1 GiB", tab.about.text())
         self.assertIn("~/.cache/silux", tab.about.text())
@@ -194,7 +213,10 @@ class TestWhatAResultShows(TabCase):
         self.pick(tab, "unidad3")
         text = visible_texts(tab)
         self.assertIn(_("disktest.empty"), text)
-        self.assertFalse(tab.rows.isVisibleTo(tab))
+        # Its own empty table, never another disk's figures.
+        self.assertTrue(tab.rows.isVisibleTo(tab))
+        self.assertEqual({figure.text() for _bar, figure in tab.rows._cells.values()},
+                         {render.DASH})
         # Nor are the others' runs in the history.
         self.assertFalse(tab.history_card.isVisibleTo(tab))
         self.assertNotIn("Samsung SSD 970 EVO Plus 2TB", text)
