@@ -5,6 +5,7 @@ The run shown is the recorded one of `test_memtest`; the tab's own run is a
 short one on whoever executes the suite."""
 
 import dataclasses
+import threading
 import time
 import unittest
 from unittest import mock
@@ -659,18 +660,27 @@ class TestATestOutlivesTheRebuild(unittest.TestCase):
             with self.subTest(**change), pantalla.Ventana(self.snapshot) as window:
                 memtest.clear_history()
                 old = window.benchmarks_page.memory_tab
-                # Long enough to outlast the rebuild on a loaded machine.
-                plan = dataclasses.replace(TestRunningIt.short_plan(self),
-                                           sizes=memtest.curve_sizes(32 * MIB))
-                with mock.patch.object(old, "plan", return_value=plan):
+                # The real test, held until the new tab has been looked at:
+                # however fast or loaded the machine, it outlasts the rebuild.
+                release = threading.Event()
+                self.addCleanup(release.set)
+                real_run = memtest.run
+
+                def held(*args, **kwargs):
+                    release.wait(60)
+                    return real_run(*args, **kwargs)
+
+                with mock.patch.object(old, "plan", return_value=TestRunningIt.short_plan(self)), \
+                        mock.patch.object(memtest, "run", held):
                     old.start()
-                window._on_preferences(dataclasses.replace(window.prefs, **change))
-                new = window.benchmarks_page.memory_tab
-                self.assertIsNot(new, old)
-                self.assertTrue(new.running)
-                self.assertTrue(new.cancel_button.isVisibleTo(new))
-                self.assertFalse(new.run_button.isEnabled())
-                self.assertFalse(window.benchmarks_page.cpu_tab.run_button.isEnabled())
+                    window._on_preferences(dataclasses.replace(window.prefs, **change))
+                    new = window.benchmarks_page.memory_tab
+                    self.assertIsNot(new, old)
+                    self.assertTrue(new.running)
+                    self.assertTrue(new.cancel_button.isVisibleTo(new))
+                    self.assertFalse(new.run_button.isEnabled())
+                    self.assertFalse(window.benchmarks_page.cpu_tab.run_button.isEnabled())
+                    release.set()
                 deadline = time.monotonic() + 60
                 while new.running and time.monotonic() < deadline:
                     self.app.processEvents()
