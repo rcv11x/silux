@@ -233,7 +233,7 @@ class TestWhatAResultShows(TabCase):
                              "RND4K Q1T1")):
             self.assertIn(words, text.splitlines())
             self.assertIn(code, text.splitlines())
-        self.assertIn(_(disktest_page().COLUMNS["read"]), text.splitlines())
+        self.assertIn(_(disktest_page().COLUMNS["read"]).upper(), text.splitlines())
 
     def test_each_name_on_one_line_and_every_row_as_tall(self):
         """The names took three lines, in English too, and each row was of
@@ -541,7 +541,7 @@ class TestWhatAResultShows(TabCase):
         tab = self.tab()
         tab.detail_button.setChecked(True)
         text = visible_texts(tab)
-        for expected in ("Include writes", "Runs", "Some tests varied between runs",
+        for expected in ("Measure writes too", "Runs", "Some tests varied between runs",
                          "6 592", "▾ Details"):
             self.assertIn(expected, text)
         for spanish in ("Vueltas", "Lectura", "escritura", "Detalles", "Dónde"):

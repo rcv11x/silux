@@ -309,7 +309,7 @@ class TestRows(QWidget):
 
     @staticmethod
     def _head(direction: str) -> QLabel:
-        head = QLabel(_(COLUMNS[direction]))
+        head = QLabel(_(COLUMNS[direction]).upper())
         head.setObjectName("ColumnTitle")
         return head
 
