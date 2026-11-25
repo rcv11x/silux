@@ -17,6 +17,7 @@
   "about.notices.missing": "This copy of Silux does not include the notices file (THIRD_PARTY_NOTICES.md).",
   "about.openocd": "memory makers by their JEDEC code (JEP106) · GPL-2.0 or later",
   "about.polkit": "the helper that reads the SMBIOS table",
+  "about.pyo3": "the native module of the memory and disk tests, with io-uring, libc, bitflags, cfg-if and once_cell · MIT or Apache-2.0",
   "about.python": "the whole program; the hardware reading only uses its standard library",
   "about.qt": "the interface, and nothing else: the terminal dump works without it",
   "about.smartmontools": "the unit each disk counts what it wrote and read in: drivedb.h · GPL-2.0 or later",

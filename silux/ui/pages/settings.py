@@ -68,6 +68,7 @@ DATOS_DE_TERCEROS = (
     ("smartmontools", "about.smartmontools"),
     ("OpenOCD", "about.openocd"),
     ("Mesa", "about.mesa"),
+    ("PyO3", "about.pyo3"),
 )
 
 AVISOS = pathlib.Path(db.__file__).parent / "THIRD_PARTY_NOTICES.md"

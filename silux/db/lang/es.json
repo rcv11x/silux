@@ -17,6 +17,7 @@
   "about.notices.missing": "Esta copia de Silux no trae el archivo de avisos (THIRD_PARTY_NOTICES.md).",
   "about.openocd": "los fabricantes de memoria por su código JEDEC (JEP106) · GPL-2.0 o posterior",
   "about.polkit": "el ayudante que lee la tabla SMBIOS",
+  "about.pyo3": "el módulo nativo de las pruebas de memoria y de disco, con io-uring, libc, bitflags, cfg-if y once_cell · MIT o Apache-2.0",
   "about.python": "todo el programa; lo que lee el hardware solo usa su biblioteca estándar",
   "about.qt": "la interfaz, y nada más: el volcado en terminal funciona sin él",
   "about.smartmontools": "la unidad en que cada disco cuenta lo escrito y lo leído: drivedb.h · GPL-2.0 o posterior",
