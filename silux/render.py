@@ -1269,6 +1269,16 @@ def nanoseconds(value: Optional[float]) -> str:
     return f"{value:.{decimals}f} ns"
 
 
+def microseconds(nanoseconds: Optional[float]) -> str:
+    """How long a disk took to answer: «46.5 µs», «312 µs», «1.5 ms»."""
+    if _none(nanoseconds):
+        return DASH
+    value = float(nanoseconds) / 1e3
+    if value >= 1000:
+        return f"{value / 1e3:.1f} ms"
+    return f"{value:.0f} µs" if value >= 100 else f"{value:.1f} µs"
+
+
 def nanoseconds_mark(value: float) -> str:
     """A mark on a scale of nanoseconds: «0.1 ns», «1 ns», «100 ns»."""
     return f"{float(value):g} ns"

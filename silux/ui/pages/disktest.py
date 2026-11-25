@@ -10,7 +10,6 @@ read with care, is said as a note: what happened, why, and what to do.
 from __future__ import annotations
 
 import dataclasses
-import math
 import os
 import pathlib
 import threading
@@ -32,7 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import disktest, render
+from ... import disktest, render, thermal
 from ...disktest import GIB, MIB
 from ...i18n import _
 from ...settings import Preferences
@@ -40,20 +39,20 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
+    Fact,
     FoldingRow,
     Notice,
     ProgressLine,
+    RateBar,
     ReadableRoot,
     ResponsiveRow,
     ScrollPage,
     Table,
     clear_layout,
+    paint_level,
+    unbroken,
     value_font,
 )
-
-# A draft's switch, until the author picks: the look of now, or one of the
-# two proposed.
-DESIGN = os.environ.get("SILUX_DISK_DESIGN", "a")
 
 # The bars share one scale, logarithmic and fixed, as CrystalDiskMark's and
 # KDiskMark's do: from 0.1 MB/s to 100 000. Fixed, so that two screenshots
@@ -61,8 +60,10 @@ DESIGN = os.environ.get("SILUX_DISK_DESIGN", "a")
 # lack, so that a bar's length can be read.
 SCALE_FROM = -1
 SCALE_DECADES = 6
-# A bar narrower than this says nothing and isn't drawn.
-NARROWEST_BAR = 40
+SCALE = (10 ** SCALE_FROM * 1e6, SCALE_DECADES)
+# Each column in its own tone of the accent.
+TONES = {"read": 1.0, "write": 0.6}
+MB = 1e6
 FILE_SIZES = (64 * MIB, 256 * MIB, GIB, 4 * GIB, 8 * GIB, 16 * GIB, 32 * GIB)
 LAPS = tuple(range(1, 10))
 # What a result that didn't measure is said with, and whether its note
@@ -120,7 +121,6 @@ COLUMNS = {"read": "disktest.col.read", "write": "disktest.col.write"}
 ENGINES = {"uring": "disktest.engine.uring", "threads": "disktest.engine.threads"}
 PROFILE_NAMES = {"standard": "disktest.profile.standard"}
 PROFILE_TIPS = {"standard": "disktest.profile.standard.tip"}
-HERO_NAMES = {"read": "disktest.hero.read", "write": "disktest.hero.write"}
 FACT_NAMES = {"single": "disktest.fact.single", "link": "disktest.fact.link",
               "heat": "disktest.fact.heat"}
 SEQUENTIAL, SINGLE = "SEQ1M Q8T1", "RND4K Q1T1"
@@ -133,19 +133,12 @@ def when(timestamp: float) -> str:
 def megabytes(bytes_per_second: Optional[float]) -> str:
     """A rate as the table writes it, in MB/s without the unit: «6 592»,
     «63.3»."""
-    if bytes_per_second is None:
-        return render.DASH
-    value = bytes_per_second / 1e6
-    return render.thousands(round(value)) if value >= 100 else f"{value:.1f}"
+    return render.rate_figure(bytes_per_second, MB)
 
 
 def microseconds(nanoseconds: Optional[float]) -> str:
-    if nanoseconds is None:
-        return render.DASH
-    value = nanoseconds / 1e3
-    if value >= 1000:
-        return f"{value / 1e3:.1f} ms"
-    return f"{value:.0f} µs" if value >= 100 else f"{value:.1f} µs"
+    """«64.5 µs», whole on its line."""
+    return unbroken(render.microseconds(nanoseconds))
 
 
 def test_words(test: disktest.Test) -> str:
@@ -185,55 +178,12 @@ def link_bytes_per_second(link) -> Optional[float]:
     return None if bits is None else bits / 8 * link.current_width
 
 
-class Bar(QWidget):
-    """One bar of the table, on the scale they all share."""
-
-    def __init__(self, palette: Palette, soft: bool = False, parent=None, height: int = 10,
-                 scale: tuple[float, int] = (10 ** SCALE_FROM * 1e6, SCALE_DECADES)):
-        """`scale`: what an empty bar stands for, in bytes per second, and
-        how many powers of ten a full one is above it."""
-        super().__init__(parent)
-        self._p = palette
-        self._soft = soft
-        self._from, self._decades = scale
-        self._fraction: Optional[float] = None
-        self._live = False
-        self._round = 3 if height <= 12 else 5
-        self.setFixedHeight(height)
-        # It gives way first: in a narrow window the figures stay and the
-        # bars go.
-        self.setMinimumWidth(0)
-        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-
-    def set_rate(self, bytes_per_second: Optional[float], live: bool = False) -> None:
-        fraction = None
-        if bytes_per_second:
-            decades = math.log10(max(bytes_per_second, self._from) / self._from)
-            fraction = min(max(decades / self._decades, 0.0), 1.0)
-        if (fraction, live) != (self._fraction, self._live):
-            self._fraction, self._live = fraction, live
-            self.update()
-
-    def paintEvent(self, _event) -> None:  # noqa: N802
-        if self.width() < NARROWEST_BAR:
-            return
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(Qt.PenStyle.NoPen)
-        box = QRectF(0, 1, self.width(), self.height() - 2)
-        painter.setBrush(self._p.q("line_soft"))
-        painter.drawRoundedRect(box, self._round, self._round)
-        if self._fraction:
-            colour = "muted" if self._live else "accent"
-            painter.setBrush(self._p.q(colour, 0.6 if self._soft and not self._live else 1.0))
-            painter.drawRoundedRect(QRectF(0, 1, self.width() * self._fraction,
-                                           self.height() - 2), self._round, self._round)
-        painter.end()
-
-
 class Axis(QWidget):
     """What the bars above it are measured against: a mark at each power of
     ten, with its figure where there is room."""
+
+    # Between two figures, at least this much.
+    GAP = 8
 
     def __init__(self, palette: Palette, parent=None, first: float = 10 ** SCALE_FROM,
                  decades: int = SCALE_DECADES):
@@ -247,58 +197,70 @@ class Axis(QWidget):
         self.setMinimumWidth(0)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
 
+    def labels(self, width: float) -> list[tuple[QRectF, str]]:
+        """Where each figure goes at `width`: none over another. The ends are
+        pulled in to fit, so the spacing between marks isn't enough to know
+        whether two figures meet."""
+        metrics = self.fontMetrics()
+        placed: list[tuple[QRectF, str]] = []
+        for decade in range(self._decades + 1):
+            value = self._first * 10 ** decade
+            # Below one, the figure is left out: «0.1» says little and crowds.
+            if value < 1:
+                continue
+            text = render.thousands(round(value))
+            text_width = metrics.horizontalAdvance(text)
+            x = min(width * decade / self._decades, width - 1)
+            left = max(0.0, min(x - text_width / 2, width - text_width))
+            box = QRectF(left, 4, text_width, metrics.height())
+            if placed and box.left() < placed[-1][0].right() + self.GAP:
+                continue
+            placed.append((box, text))
+        return placed
+
     def paintEvent(self, _event) -> None:  # noqa: N802
-        if self.width() < NARROWEST_BAR:
+        if self.width() < RateBar.NARROWEST:
             return
         painter = QPainter(self)
         painter.setPen(self._p.q("muted"))
-        metrics = self.fontMetrics()
-        # Below one, the figure is left out: «0.1» says little and crowds.
-        texts = {decade: render.thousands(round(self._first * 10 ** decade))
-                 for decade in range(self._decades + 1) if self._first * 10 ** decade >= 1}
-        # Every figure where the widest fits between two marks; where it
-        # doesn't, one in two, or one in three.
-        widest = max(metrics.horizontalAdvance(text) for text in texts.values()) + 8
-        step = next((step for step in (1, 2, 3)
-                     if widest <= step * self.width() / self._decades), self._decades)
-        lowest = min(texts)
         for decade in range(self._decades + 1):
             x = min(self.width() * decade / self._decades, self.width() - 1)
             painter.drawLine(int(x), 0, int(x), 3)
-            if decade in texts and (decade - lowest) % step == 0:
-                width = metrics.horizontalAdvance(texts[decade])
-                left = max(0.0, min(x - width / 2, self.width() - width))
-                painter.drawText(QRectF(left, 4, width, metrics.height()),
-                                 Qt.AlignmentFlag.AlignCenter, texts[decade])
+        for box, text in self.labels(self.width()):
+            painter.drawText(box, Qt.AlignmentFlag.AlignCenter, text)
         painter.end()
 
 
-class Rows(QWidget):
-    """The tests of a result, each with what it reads and what it writes.
-    Three looks of the same thing; each says how it lays a row out."""
+class TestRows(QWidget):
+    """The tests of a result, a row each: what it is in words, with its code
+    small under them, and what it reads and writes, each as a bar on the
+    scale they all share and a figure."""
 
-    BAR = 10
-    BIG = 0
+    BAR = 20
 
     def __init__(self, palette: Palette, parent=None):
         super().__init__(parent)
         self._p = palette
         self._tests: tuple = ()
         self._writes: Optional[bool] = None
-        self._cells: dict[tuple[str, str], tuple[Bar, QLabel]] = {}
+        self._cells: dict[tuple[str, str], tuple[RateBar, QLabel]] = {}
+        self.names: list[QWidget] = []
+        self._grid = QGridLayout(self)
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setHorizontalSpacing(14)
+        self._grid.setVerticalSpacing(10)
+        self._grid.setColumnStretch(1, 1)
+        self._grid.setColumnStretch(3, 1)
 
     def _name(self, test: disktest.Test) -> QWidget:
-        """A test in words, with its code small under them and what the
-        code's letters mean on hovering."""
+        """A test in words on one line, with its code small under them and
+        what the code's letters mean on hovering."""
         block = QWidget()
         inside = QVBoxLayout(block)
         inside.setContentsMargins(0, 0, 0, 0)
         inside.setSpacing(0)
         words = QLabel(test_words(test))
         words.setFont(ui_font(theme.METRICS.base_pt + 1))
-        # In a narrow window the name takes two lines before the figures go.
-        words.setWordWrap(True)
-        words.setMinimumWidth(96)
         code = QLabel(test.name)
         code.setObjectName("Muted")
         code.setFont(ui_font(theme.METRICS.small_pt - 1))
@@ -307,30 +269,54 @@ class Rows(QWidget):
         block.setToolTip(test_tip(test))
         return block
 
-    def _figure(self) -> QLabel:
+    @staticmethod
+    def _figure() -> QLabel:
         figure = QLabel(render.DASH)
         font = value_font()
-        font.setPointSizeF(font.pointSizeF() + self.BIG)
-        if self.BIG:
-            font.setWeight(font.Weight.DemiBold)
+        font.setPointSizeF(font.pointSizeF() + 3)
+        font.setWeight(font.Weight.DemiBold)
         figure.setFont(font)
         figure.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         figure.setMinimumWidth(figure.fontMetrics().horizontalAdvance("00 000*"))
         return figure
 
-    def _head(self, direction: str) -> QLabel:
+    @staticmethod
+    def _head(direction: str) -> QLabel:
         head = QLabel(_(COLUMNS[direction]))
         head.setObjectName("ColumnTitle")
         return head
 
     def _build(self, tests: tuple, writes: bool) -> None:
-        raise NotImplementedError
+        directions = ("read", "write") if writes else ("read",)
+        for index, direction in enumerate(directions):
+            self._grid.addWidget(self._head(direction), 0, 1 + 2 * index, 1, 2)
+        self.names = []
+        for row, test in enumerate(tests, start=1):
+            name = self._name(test)
+            self.names.append(name)
+            self._grid.addWidget(name, row, 0)
+            for index, direction in enumerate(directions):
+                bar = RateBar(self._p, SCALE, tone=TONES[direction], height=self.BAR)
+                figure = self._figure()
+                self._grid.addWidget(bar, row, 1 + 2 * index)
+                self._grid.addWidget(figure, row, 2 + 2 * index)
+                self._cells[test.name, direction] = (bar, figure)
+        # Every row as tall as the tallest: a name never takes two lines,
+        # and the figures line up whatever the test.
+        tallest = max((name.sizeHint().height() for name in self.names), default=0)
+        for row in range(1, len(tests) + 1):
+            self._grid.setRowMinimumHeight(row, tallest)
+        for index, _direction in enumerate(directions):
+            self._grid.addWidget(Axis(self._p), len(tests) + 1, 1 + 2 * index)
+        unit = QLabel(_("disktest.unit"))
+        unit.setObjectName("Muted")
+        unit.setFont(ui_font(theme.METRICS.small_pt))
+        self._grid.addWidget(unit, len(tests) + 1, 0)
 
     def set_rows(self, tests: tuple, writes: bool) -> None:
         """The tests to show, each with nothing measured yet."""
         if (tests, writes) != (self._tests, self._writes):
-            if self.layout() is not None:
-                clear_layout(self.layout())
+            clear_layout(self._grid)
             self._cells = {}
             self._build(tests, writes)
             self._tests, self._writes = tests, writes
@@ -340,7 +326,8 @@ class Rows(QWidget):
             figure.setToolTip("")
             self._tint(figure, False)
 
-    def _tint(self, figure: QLabel, live: bool) -> None:
+    @staticmethod
+    def _tint(figure: QLabel, live: bool) -> None:
         if figure.objectName() != ("Muted" if live else ""):
             figure.setObjectName("Muted" if live else "")
             figure.style().unpolish(figure)
@@ -357,127 +344,6 @@ class Rows(QWidget):
         figure.setText(megabytes(bytes_per_second) + ("*" if note else ""))
         figure.setToolTip(note)
         self._tint(figure, live)
-
-
-class RowsNow(Rows):
-    """As the first draft had them: codes for names, thin bars."""
-
-    def __init__(self, palette: Palette, parent=None):
-        super().__init__(palette, parent)
-        self._grid = QGridLayout(self)
-        self._grid.setContentsMargins(0, 0, 0, 0)
-        self._grid.setHorizontalSpacing(10)
-        self._grid.setVerticalSpacing(7)
-        self._grid.setColumnStretch(1, 1)
-        self._grid.setColumnStretch(3, 1)
-
-    def _label(self, test: disktest.Test) -> QWidget:
-        label = QLabel(test.name)
-        label.setFont(value_font())
-        return label
-
-    def _build(self, tests: tuple, writes: bool) -> None:
-        directions = ("read", "write") if writes else ("read",)
-        for index, direction in enumerate(directions):
-            self._grid.addWidget(self._head(direction), 0, 1 + 2 * index, 1, 2)
-        for row, test in enumerate(tests, start=1):
-            self._grid.addWidget(self._label(test), row, 0)
-            for index, direction in enumerate(directions):
-                bar = Bar(self._p, soft=direction == "write", height=self.BAR)
-                figure = self._figure()
-                self._grid.addWidget(bar, row, 1 + 2 * index)
-                self._grid.addWidget(figure, row, 2 + 2 * index)
-                self._cells[test.name, direction] = (bar, figure)
-        for index, _direction in enumerate(directions):
-            self._grid.addWidget(Axis(self._p), len(tests) + 1, 1 + 2 * index)
-        unit = QLabel(_("disktest.unit"))
-        unit.setObjectName("Muted")
-        unit.setFont(ui_font(theme.METRICS.small_pt))
-        self._grid.addWidget(unit, len(tests) + 1, 0)
-
-
-class RowsA(RowsNow):
-    """Version A, the table: each test in words, a column for reading and
-    one for writing, thick bars and large figures."""
-
-    BAR = 20
-    BIG = 3
-
-    def __init__(self, palette: Palette, parent=None):
-        super().__init__(palette, parent)
-        self._grid.setHorizontalSpacing(14)
-        self._grid.setVerticalSpacing(10)
-
-    def _label(self, test: disktest.Test) -> QWidget:
-        return self._name(test)
-
-
-class RowsB(Rows):
-    """Version B, the pairs: each test in words, with its reading and its
-    writing one over the other along the whole width."""
-
-    BAR = 16
-    BIG = 2
-
-    def __init__(self, palette: Palette, parent=None):
-        super().__init__(palette, parent)
-        self._grid = QGridLayout(self)
-        self._grid.setContentsMargins(0, 0, 0, 0)
-        self._grid.setHorizontalSpacing(12)
-        self._grid.setVerticalSpacing(3)
-        self._grid.setColumnStretch(2, 1)
-
-    def _build(self, tests: tuple, writes: bool) -> None:
-        directions = ("read", "write") if writes else ("read",)
-        row = 0
-        for test in tests:
-            self._grid.addWidget(self._name(test), row, 0, len(directions), 1,
-                                 Qt.AlignmentFlag.AlignVCenter)
-            for direction in directions:
-                tag = QLabel(_(DIRECTIONS[direction]).capitalize())
-                tag.setObjectName("Muted")
-                tag.setFont(ui_font(theme.METRICS.small_pt))
-                bar = Bar(self._p, soft=direction == "write", height=self.BAR)
-                figure = self._figure()
-                self._grid.addWidget(tag, row, 1)
-                self._grid.addWidget(bar, row, 2)
-                self._grid.addWidget(figure, row, 3)
-                self._cells[test.name, direction] = (bar, figure)
-                row += 1
-            # Air between one test and the next.
-            self._grid.setRowMinimumHeight(row, 9)
-            row += 1
-        self._grid.addWidget(Axis(self._p), row, 2)
-        unit = QLabel(_("disktest.unit"))
-        unit.setObjectName("Muted")
-        unit.setFont(ui_font(theme.METRICS.small_pt))
-        self._grid.addWidget(unit, row, 3, Qt.AlignmentFlag.AlignRight)
-
-
-class Fact(Card):
-    """One thing a result says besides its table: its name, the figure,
-    large, and a line under it."""
-
-    def __init__(self, name: str):
-        super().__init__()
-        self.name = QLabel(name)
-        self.name.setObjectName("FieldName")
-        self.value = QLabel("")
-        self.value.setObjectName("Headline")
-        self.value.setFont(ui_font(theme.METRICS.headline_px))
-        self.detail = QLabel("")
-        self.detail.setObjectName("Muted")
-        self.detail.setWordWrap(True)
-        for widget in (self.name, self.value, self.detail):
-            self.body.addWidget(widget)
-
-    def show_fact(self, value: str, detail: str = "") -> None:
-        self.value.setText(value)
-        self.detail.setText(detail)
-        self.detail.setVisible(bool(detail))
-
-
-ROWS = {"now": RowsNow, "a": RowsA, "b": RowsB}
 
 
 class DiskTestRun(QObject):
@@ -543,12 +409,11 @@ class DiskTestTab(ScrollPage):
     running_changed = Signal(bool)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None,
-                 run: Optional[DiskTestRun] = None, design: Optional[str] = None):
+                 run: Optional[DiskTestRun] = None):
         """`run`: the window's, which outlives this tab; without one, its own."""
         super().__init__(parent)
         self._p = palette
         self._prefs = prefs
-        self._design = design or DESIGN
         self._run = run if run is not None else DiskTestRun(self)
         self._disks: dict = {}
         self._places: tuple = ()
@@ -690,27 +555,17 @@ class DiskTestTab(ScrollPage):
         card.body.addWidget(self.disk_name)
         card.body.addWidget(self.conditions)
 
-        # Version B opens with the two figures most people came for.
-        self.heroes = {direction: Fact(_(HERO_NAMES[direction])) for direction in ("read", "write")}
-        self.hero_row = ResponsiveRow(min_item_width=200)
-        for hero in self.heroes.values():
-            hero.value.setFont(ui_font(theme.METRICS.headline_px + 8))
-            self.hero_row.add(hero)
-        card.body.addWidget(self.hero_row)
-        self.hero_row.setVisible(self._design == "b")
-
-        self.rows = ROWS[self._design](self._p)
+        self.rows = TestRows(self._p)
         card.body.addWidget(self.rows)
 
         self.facts = {name: Fact(_(FACT_NAMES[name])) for name in ("single", "link", "heat")}
+        # The single request on a row of its own: its reading and its
+        # writing each want a whole line.
+        card.body.addWidget(self.facts["single"])
         self.fact_row = ResponsiveRow(min_item_width=170)
-        for fact in self.facts.values():
-            self.fact_row.add(fact)
+        for name in ("link", "heat"):
+            self.fact_row.add(self.facts[name])
         card.body.addWidget(self.fact_row)
-        # As the first draft said the same things: in lines.
-        self.lines = QLabel("")
-        self.lines.setWordWrap(True)
-        card.body.addWidget(self.lines)
 
         self._result_notes = QVBoxLayout()
         self._result_notes.setSpacing(6)
@@ -746,11 +601,12 @@ class DiskTestTab(ScrollPage):
 
     def _build_history(self) -> Card:
         card = Card(_("memtest.card.history"))
-        self.history = Table(
-            [_("memtest.col.date"), _("disktest.col.disk"), _("disktest.col.seqread"),
-             _("disktest.col.seqwrite"), _("disktest.col.single"), _("disktest.col.hottest")],
-            numeric=(False, False, True, True, True, True), cede=(1,))
-        card.body.addWidget(self.history)
+        # A table per disk, engine and profile: a test made of threads, or
+        # another profile's, isn't the same test, and sat in the same column.
+        self._history_groups = QVBoxLayout()
+        self._history_groups.setSpacing(14)
+        card.body.addLayout(self._history_groups)
+        self.history_tables: list[tuple[QLabel, Table]] = []
         card.hide()
         return card
 
@@ -969,7 +825,7 @@ class DiskTestTab(ScrollPage):
         """The result card with its table and nothing a finished result
         adds to it."""
         clear_layout(self._result_notes)
-        for widget in (self.empty, self.hero_row, self.fact_row, self.lines,
+        for widget in (self.empty, self.facts["single"], self.fact_row,
                        self.detail_button, self.detail):
             widget.hide()
         for widget in (self.disk_name, self.conditions, self.rows):
@@ -981,8 +837,8 @@ class DiskTestTab(ScrollPage):
         a disk that can be measured, and then there is nothing to say."""
         self.result = None
         clear_layout(self._result_notes)
-        for widget in (self.disk_name, self.conditions, self.hero_row, self.rows, self.fact_row,
-                       self.lines, self.detail_button, self.detail):
+        for widget in (self.disk_name, self.conditions, self.rows, self.facts["single"],
+                       self.fact_row, self.detail_button, self.detail):
             widget.hide()
         self.empty.show()
         self.result_card.setVisible(measurable)
@@ -995,16 +851,30 @@ class DiskTestTab(ScrollPage):
     def _on_progress(self, message: dict) -> None:
         if self._run.cancelling:
             return
+        plan = self._run.plan
+        if plan is None:
+            return
+        directions = ("read", "write") if plan.write else ("read",)
+        order = [(test, direction) for test in plan.tests for direction in directions]
+        total = 1 + len(order)
+        done = float(message.get("done") or 0.0)
         phase = message.get("phase")
         if phase == "fill":
-            self.progress.set_state(_("disktest.phase.fill"), 0.0)
+            self.progress.set_state(_("disktest.step").format(
+                what=_("disktest.step.fill"), n=1, of=total), done / total, percent=False)
             return
-        values = dict(test=message.get("test", ""), lap=message.get("lap", 0),
-                      laps=message.get("laps", 0),
-                      direction=_(DIRECTIONS[message.get("direction", "read")]))
-        key = ("disktest.phase.pause" if phase == "pause"
-               else "disktest.phase.first" if message.get("lap") == 0 else "disktest.phase.lap")
-        self.progress.set_state(_(key).format(**values), message.get("done"))
+        name, direction = message.get("test"), message.get("direction", "read")
+        # The test that runs may be another than asked (a queue of threads
+        # without io_uring): its place is the asked one's.
+        index = next((i for i, (test, way) in enumerate(order) if way == direction
+                      and name in (test.name, test.as_run_by("threads").name)), None)
+        if index is None:
+            return
+        words = test_words(order[index][0])
+        what = _("disktest.step.test").format(test=words[:1].lower() + words[1:],
+                                              direction=_(DIRECTIONS[direction]))
+        self.progress.set_state(_("disktest.step").format(what=what, n=index + 2, of=total),
+                                (1 + done * (total - 1)) / total, percent=False)
         if phase == "lapped":
             self.rows.set_cell(message["test"], message["direction"],
                                message["bytes_per_second"], live=True)
@@ -1059,8 +929,6 @@ class DiskTestTab(ScrollPage):
             self.rows.set_cell(measure.name, measure.direction,
                                middle.bytes_per_second if middle else None, note=note)
 
-        sequential = {m.direction: m for m in result.measures
-                      if m.pattern == "sequential" and m.median is not None}
         fastest = {direction: max((m.median.bytes_per_second for m in result.measures
                                    if m.direction == direction and m.pattern == "sequential"
                                    and m.median is not None), default=None)
@@ -1068,41 +936,40 @@ class DiskTestTab(ScrollPage):
         most = link_bytes_per_second(link)
         best = max((rate for rate in fastest.values() if rate), default=None)
         share = best / most * 100 if best and most else None
-        for direction, hero in self.heroes.items():
-            hero.setVisible(fastest[direction] is not None)
-            hero.show_fact(megabytes(fastest[direction]) + " MB/s")
-        self.hero_row.setVisible(self._design == "b" and bool(sequential))
 
         single = {direction: result.measure(SINGLE, direction) for direction in ("read", "write")}
         single = {direction: m.median for direction, m in single.items()
                   if m is not None and m.median is not None}
+        read = single.get("read")
+        self.facts["single"].setVisible(read is not None)
+        if read is not None:
+            # A line for reading and one for writing: in one, the card was
+            # crammed and «µs» parted from its figure.
+            self.facts["single"].show_fact(microseconds(read.latency_mean_ns), "\n".join(
+                _("disktest.single.line").format(
+                    direction=_(DIRECTIONS[direction]).capitalize(),
+                    iops=render.thousands(round(lap.requests_per_second)),
+                    mean=microseconds(lap.latency_mean_ns), p99=microseconds(lap.latency_p99_ns))
+                for direction, lap in single.items()))
+        self.facts["link"].setVisible(share is not None)
+        if share is not None:
+            self.facts["link"].show_fact(render.whole_percent(share),
+                                         _("disktest.fact.link.detail").format(
+                                             link=render.pcie_link(link), most=megabytes(most)))
         fahrenheit = self._prefs.fahrenheit
         hot = result.temperature_peak_c
-        if self._design == "now":
-            self._paint_lines(result, single, share, link, most)
-        else:
-            read = single.get("read")
-            self.facts["single"].setVisible(read is not None)
-            if read is not None:
-                write = single.get("write")
-                self.facts["single"].show_fact(
-                    microseconds(read.latency_mean_ns), _("disktest.fact.single.detail").format(
-                        iops=render.thousands(round(read.requests_per_second)),
-                        p99=microseconds(read.latency_p99_ns))
-                    + ("" if write is None else " " + _("disktest.fact.single.write").format(
-                        mean=microseconds(write.latency_mean_ns))))
-            self.facts["link"].setVisible(share is not None)
-            if share is not None:
-                self.facts["link"].show_fact(f"{share:.0f} %", _("disktest.fact.link.detail").format(
-                    link=render.pcie_link(link), most=megabytes(most)))
-            self.facts["heat"].setVisible(hot is not None)
-            if hot is not None:
-                self.facts["heat"].show_fact(
-                    render.temperature(hot, fahrenheit), _("disktest.fact.heat.detail").format(
-                        start=render.temperature(result.temperature_start_c, fahrenheit),
-                        end=render.temperature(result.temperature_end_c, fahrenheit)))
-        self.fact_row.setVisible(self._design != "now")
-        self.lines.setVisible(self._design == "now")
+        heat = self.facts["heat"]
+        heat.setVisible(hot is not None)
+        if hot is not None:
+            heat.show_fact(render.temperature(hot, fahrenheit), _("disktest.fact.heat.detail").format(
+                start=unbroken(render.temperature(result.temperature_start_c, fahrenheit)),
+                end=unbroken(render.temperature(result.temperature_end_c, fahrenheit))))
+            # As everywhere else, from the limits the disk itself declares;
+            # another disk's, or none, leave it uncoloured.
+            paint_level(heat.value, thermal.level(hot, disk.temp_high_c, disk.temp_critical_c)
+                        if same_disk else thermal.OK)
+        self.fact_row.setVisible(any(self.facts[name].isVisibleTo(self.fact_row)
+                                     for name in ("link", "heat")))
 
         # What this result has to be read with, in its own card.
         for warning in result.warnings:
@@ -1129,25 +996,6 @@ class DiskTestTab(ScrollPage):
         self.detail.setVisible(self.detail_button.isChecked())
         self.result_card.show()
 
-    def _paint_lines(self, result, single, share, link, most) -> None:
-        """The first draft's way of saying what the tiles say."""
-        lines = []
-        for direction, lap in single.items():
-            lines.append(_("disktest.single.line").format(
-                direction=_(DIRECTIONS[direction]).capitalize(),
-                iops=render.thousands(round(lap.requests_per_second)),
-                mean=microseconds(lap.latency_mean_ns), p99=microseconds(lap.latency_p99_ns)))
-        if share is not None:
-            lines.append(_("disktest.share").format(
-                percent=f"{share:.0f}", link=render.pcie_link(link), most=megabytes(most)))
-        fahrenheit = self._prefs.fahrenheit
-        if result.temperature_peak_c is not None:
-            lines.append(_("disktest.temperature").format(
-                start=render.temperature(result.temperature_start_c, fahrenheit),
-                peak=render.temperature(result.temperature_peak_c, fahrenheit),
-                end=render.temperature(result.temperature_end_c, fahrenheit)))
-        self.lines.setText("\n".join(lines))
-
     def _method(self, result: disktest.Result) -> str:
         cached = [m.cached_bytes for m in result.measures]
         checked = ("disktest.method.direct" if cached and all(c == 0 for c in cached)
@@ -1168,18 +1016,46 @@ class DiskTestTab(ScrollPage):
         self.detail_button.setText(_("disktest.detail.hide" if shown else "disktest.detail.show"))
 
     def _paint_history(self) -> None:
+        clear_layout(self._history_groups)
+        self.history_tables = []
+        groups: dict[tuple, list[disktest.Result]] = {}
+        for result in self._history:
+            groups.setdefault((result.model or " + ".join(result.disks), result.engine,
+                               result.profile), []).append(result)
         fahrenheit = self._prefs.fahrenheit
-
-        def figure(result, name, direction) -> str:
-            measure = result.measure(name, direction)
-            middle = measure.median if measure is not None else None
-            return megabytes(middle.bytes_per_second) if middle else render.DASH
-
-        self.history.set_rows([
-            [r.label or when(r.timestamp), r.model or " + ".join(r.disks),
-             figure(r, SEQUENTIAL, "read"), figure(r, SEQUENTIAL, "write"),
-             figure(r, SINGLE, "read"), render.temperature(r.temperature_peak_c, fahrenheit)]
-            for r in self._history])
+        for (disk, engine, profile), results in groups.items():
+            ran = {name: next((m.name for r in results for m in r.measures
+                               if name in (m.name, m.stands_for)), name)
+                   for name in (SEQUENTIAL, SINGLE)}
+            writes = any(m.direction == "write" for r in results for m in r.measures)
+            columns = [(SEQUENTIAL, "read")] + ([(SEQUENTIAL, "write")] if writes else []) \
+                + [(SINGLE, "read")]
+            # The headers in short lines, so the table fits the narrowest
+            # window: «SEQ1M / Q8T1 / READ».
+            table = Table([_("memtest.col.date")]
+                          + [f"{ran[name].replace(' ', chr(10))}\n{_(DIRECTIONS[direction])}"
+                             for name, direction in columns]
+                          + [_("disktest.col.hottest")],
+                          numeric=(False,) + (True,) * (len(columns) + 1))
+            table.set_header(len(columns) + 1, _("disktest.col.hottest"), two_lines=True)
+            rows = []
+            for result in results:
+                cells = [result.label or when(result.timestamp)]
+                for name, direction in columns:
+                    measure = result.measure(name, direction)
+                    middle = measure.median if measure is not None else None
+                    cells.append(megabytes(middle.bytes_per_second) if middle else render.DASH)
+                cells.append(render.temperature(result.temperature_peak_c, fahrenheit))
+                rows.append(cells)
+            table.set_rows(rows)
+            heading = QLabel(" · ".join(part for part in (
+                disk, _(ENGINES[engine]) if engine in ENGINES else "",
+                _(PROFILE_NAMES[profile]) if profile in PROFILE_NAMES else profile) if part))
+            heading.setObjectName("FieldName")
+            heading.setWordWrap(True)
+            self._history_groups.addWidget(heading)
+            self._history_groups.addWidget(table)
+            self.history_tables.append((heading, table))
         self.history_card.setVisible(bool(self._history))
 
     # -- the window's protocol -----------------------------------------------

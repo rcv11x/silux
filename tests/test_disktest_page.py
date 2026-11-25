@@ -1,4 +1,4 @@
-"""The Disk tab of Performance, mounted for real, in each of its designs.
+"""The Disk tab of Performance, mounted for real.
 
 The results shown are whole runs recorded on real disks (`test_disktest`),
 and the machine they are shown on is the dump of the one they were measured
@@ -18,7 +18,6 @@ from tests.qt import app
 from tests.test_disktest import recorded
 from tests.test_equipos import EQUIPOS, _herramienta, shared_snapshot
 
-DESIGNS = ("now", "a", "b")
 HOME = pathlib.Path("/home/someone")
 OURS = str(HOME / ".cache" / "silux")
 
@@ -32,8 +31,10 @@ def visible_texts(widget) -> str:
         app().processEvents()
     found = [w.text() for w in widget.findChildren(QLabel) if w.isVisibleTo(widget)]
     found += [w.text() for w in widget.findChildren(QAbstractButton) if w.isVisibleTo(widget)]
-    # Thousands are set apart with a narrow space; here, a plain one.
-    return "\n".join(text for text in found if text).replace("\u202f", " ")
+    # Thousands are set apart with a narrow space, and a figure is kept with
+    # its unit by a space that doesn't break; here, plain ones.
+    text = "\n".join(text for text in found if text)
+    return text.replace("\u202f", " ").replace("\u00a0", " ").replace("\u2060", "")
 
 
 class Running:
@@ -83,13 +84,13 @@ class TabCase(unittest.TestCase):
         for file in disktest.history_path().parent.glob("disk-tests.json*"):
             file.unlink()
 
-    def tab(self, design: str, prefs=None, run=None):
+    def tab(self, prefs=None, run=None):
         from silux.settings import Preferences
         from silux.ui import theme
         from silux.ui.pages.disktest import DiskTestTab
 
         tab = DiskTestTab(theme.palette_for(self.app, "dark"),
-                          prefs or Preferences().normalized(), run=run, design=design)
+                          prefs or Preferences().normalized(), run=run)
         self.addCleanup(tab.deleteLater)
         tab.resize(900, 900)
         tab.show()
@@ -104,37 +105,35 @@ class TabCase(unittest.TestCase):
 
 class TestBeforeAnyTest(TabCase):
     def test_every_disk_that_can_be_written_to_is_offered_with_what_it_is(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            offered = [tab.place_box.itemText(i) for i in range(tab.place_box.count())]
-            self.assertEqual(offered[-1], _("disktest.option.choose"))
-            self.assertTrue(offered[0].startswith("~/.cache/silux · WD_BLACK SN850X"), offered)
-            self.assertIn("btrfs", offered[0])
-            self.assertTrue(any("/media/unidad2 · Samsung SSD 970 EVO Plus" in row and "ext4" in row
-                                for row in offered), offered)
-            # One row for each file system, not one for each btrfs subvolume.
-            self.assertEqual(sum("btrfs" in row for row in offered), 1)
-            self.assertEqual(tab.profile_box.count(), len(disktest.PROFILES))
-            self.assertEqual(tab.profile_box.currentData(), "standard")
+        tab = self.tab()
+        offered = [tab.place_box.itemText(i) for i in range(tab.place_box.count())]
+        self.assertEqual(offered[-1], _("disktest.option.choose"))
+        self.assertTrue(offered[0].startswith("~/.cache/silux · WD_BLACK SN850X"), offered)
+        self.assertIn("btrfs", offered[0])
+        self.assertTrue(any("/media/unidad2 · Samsung SSD 970 EVO Plus" in row and "ext4" in row
+                            for row in offered), offered)
+        # One row for each file system, not one for each btrfs subvolume.
+        self.assertEqual(sum("btrfs" in row for row in offered), 1)
+        self.assertEqual(tab.profile_box.count(), len(disktest.PROFILES))
+        self.assertEqual(tab.profile_box.currentData(), "standard")
 
     def test_a_disk_with_nothing_measured_says_so_and_can_be_started(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            text = visible_texts(tab)
-            self.assertIn(_("disktest.empty"), text)
-            self.assertFalse(tab.history_card.isVisibleTo(tab))
-            self.assertFalse(tab.rows.isVisibleTo(tab))
-            self.assertTrue(tab.run_button.isEnabled())
-            # What it will write, where and for how long, before starting.
-            self.assertIn("1 GiB", tab.about.text())
-            self.assertIn("~/.cache/silux", tab.about.text())
-            self.assertIn("2 min", tab.about.text())
-            plan = tab.plan()
-            self.assertEqual((plan.folder, plan.disks, plan.filesystem, plan.write, plan.laps),
-                             (OURS, ("nvme0n1",), "btrfs", True, 5))
+        tab = self.tab()
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.empty"), text)
+        self.assertFalse(tab.history_card.isVisibleTo(tab))
+        self.assertFalse(tab.rows.isVisibleTo(tab))
+        self.assertTrue(tab.run_button.isEnabled())
+        # What it will write, where and for how long, before starting.
+        self.assertIn("1 GiB", tab.about.text())
+        self.assertIn("~/.cache/silux", tab.about.text())
+        self.assertIn("2 min", tab.about.text())
+        plan = tab.plan()
+        self.assertEqual((plan.folder, plan.disks, plan.filesystem, plan.write, plan.laps),
+                         (OURS, ("nvme0n1",), "btrfs", True, 5))
 
     def test_the_options_change_the_plan_and_what_is_said_of_it(self):
-        tab = self.tab("a")
+        tab = self.tab()
         tab.write_box.setChecked(False)
         tab.size_box.setCurrentIndex(0)
         tab.laps_box.setCurrentIndex(2)
@@ -145,21 +144,20 @@ class TestBeforeAnyTest(TabCase):
             size="64 MiB", folder="~/.cache/silux", writing="", total="1 min 40 s"))
 
     def test_a_folder_that_cant_be_measured_says_why_and_offers_another(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            with mock.patch.object(disktest, "where", return_value=disktest.Place(
-                    "/tmp", "tmpfs", "tmpfs", refusal="in_memory")):
-                tab.choose("/tmp/somewhere")
-            text = visible_texts(tab)
-            self.assertIn(_("disktest.note.in_memory"), text)
-            self.assertIn(_("disktest.action.folder"), text)
-            self.assertFalse(tab.run_button.isEnabled())
-            self.assertFalse(tab.result_card.isVisibleTo(tab))
-            self.assertFalse(tab.about.isVisibleTo(tab))
-            self.assertNotIn(_("disktest.empty"), text)
+        tab = self.tab()
+        with mock.patch.object(disktest, "where", return_value=disktest.Place(
+                "/tmp", "tmpfs", "tmpfs", refusal="in_memory")):
+            tab.choose("/tmp/somewhere")
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.in_memory"), text)
+        self.assertIn(_("disktest.action.folder"), text)
+        self.assertFalse(tab.run_button.isEnabled())
+        self.assertFalse(tab.result_card.isVisibleTo(tab))
+        self.assertFalse(tab.about.isVisibleTo(tab))
+        self.assertNotIn(_("disktest.empty"), text)
 
     def test_a_hard_disk_is_said_to_be_one_before_starting(self):
-        tab = self.tab("a")
+        tab = self.tab()
         self.pick(tab, "unidad3")
         text = visible_texts(tab)
         self.assertIn(_("disktest.note.rotational"), text)
@@ -175,120 +173,206 @@ class TestWhatAResultShows(TabCase):
         disktest.save_history([recorded("970-evo-plus-ext4"), recorded("sn850x-btrfs")])
 
     def test_the_disk_chosen_shows_its_own_last_result(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            text = visible_texts(tab)
-            for expected in ("WD_BLACK SN850X HS 1000GB", "PCIe 4.0 × 4", "6 592", "3 946*",
-                             "3 172", "268", "363", "63.3", "222"):
-                self.assertIn(expected, text)
-            # The file was kept out of btrfs's copies, and the result says so.
-            self.assertIn(_("disktest.conditions.nocow").format(filesystem="btrfs"), text)
-            self.assertNotIn("3 579", text.split(_("memtest.card.history"))[0])
-            self.pick(tab, "unidad2")
-            text = visible_texts(tab)
-            for expected in ("Samsung SSD 970 EVO Plus 2TB", "PCIe 3.0 × 4", "3 579", "3 322",
-                             "1 075", "48.1", "257"):
-                self.assertIn(expected, text)
-            self.assertNotIn("+C", text)
-            self.pick(tab, "unidad3")
-            text = visible_texts(tab)
-            self.assertIn(_("disktest.empty"), text)
-            self.assertFalse(tab.rows.isVisibleTo(tab))
-            # The others are still in the history.
-            self.assertIn("Samsung SSD 970 EVO Plus 2TB", text)
-            self.assertIn("6 592", text)
+        tab = self.tab()
+        text = visible_texts(tab)
+        for expected in ("WD_BLACK SN850X HS 1000GB", "PCIe 4.0 × 4", "6 592", "3 946*",
+                         "3 172", "268", "363", "63.3", "222"):
+            self.assertIn(expected, text)
+        # The file was kept out of btrfs's copies, and the result says so.
+        self.assertIn(_("disktest.conditions.nocow").format(filesystem="btrfs"), text)
+        self.assertNotIn("3 579", text.split(_("memtest.card.history"))[0])
+        self.pick(tab, "unidad2")
+        text = visible_texts(tab)
+        for expected in ("Samsung SSD 970 EVO Plus 2TB", "PCIe 3.0 × 4", "3 579", "3 322",
+                         "1 075", "48.1", "257"):
+            self.assertIn(expected, text)
+        self.assertNotIn("+C", text)
+        self.pick(tab, "unidad3")
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.empty"), text)
+        self.assertFalse(tab.rows.isVisibleTo(tab))
+        # The others are still in the history.
+        self.assertIn("Samsung SSD 970 EVO Plus 2TB", text)
+        self.assertIn("6 592", text)
 
     def test_each_test_is_said_in_words_with_its_code(self):
-        for design in ("a", "b"):
-            with self.subTest(design=design):
-                text = visible_texts(self.tab(design))
-                for words, code in ((_("disktest.kind.sequential"), "SEQ1M Q8T1"),
-                                    (_("disktest.kind.single").format(
-                                        kind=_("disktest.kind.sequential")), "SEQ1M Q1T1"),
-                                    (_("disktest.kind.random").format(block="4K"), "RND4K Q32T1"),
-                                    (_("disktest.kind.single").format(
-                                        kind=_("disktest.kind.random").format(block="4K")),
-                                     "RND4K Q1T1")):
-                    self.assertIn(words, text.splitlines())
-                    self.assertIn(code, text.splitlines())
-                self.assertIn(_(disktest_page().COLUMNS["read"]) if design == "a"
-                              else _("disktest.dir.read").capitalize(), text.splitlines())
+        text = visible_texts(self.tab())
+        for words, code in ((_("disktest.kind.sequential"), "SEQ1M Q8T1"),
+                            (_("disktest.kind.single").format(
+                                kind=_("disktest.kind.sequential")), "SEQ1M Q1T1"),
+                            (_("disktest.kind.random").format(block="4K"), "RND4K Q32T1"),
+                            (_("disktest.kind.single").format(
+                                kind=_("disktest.kind.random").format(block="4K")),
+                             "RND4K Q1T1")):
+            self.assertIn(words, text.splitlines())
+            self.assertIn(code, text.splitlines())
+        self.assertIn(_(disktest_page().COLUMNS["read"]), text.splitlines())
+
+    def test_each_name_on_one_line_and_every_row_as_tall(self):
+        """The names took three lines, in English too, and each row was of
+        its own height."""
+        from PySide6.QtWidgets import QLabel
+
+        from silux import i18n
+
+        before = i18n.current()
+        self.addCleanup(i18n.set_language, before)
+        for language in ("es", "en"):
+            with self.subTest(language=language):
+                i18n.set_language(language)
+                tab = self.tab()
+                for _turn in range(3):
+                    self.app.processEvents()
+                heights = set()
+                for name in tab.rows.names:
+                    words = name.findChildren(QLabel)[0]
+                    self.assertEqual(words.height(), words.fontMetrics().height(), words.text())
+                    heights.add(name.height())
+                self.assertEqual(len(heights), 1, heights)
 
     def test_the_single_request_the_link_and_the_heat(self):
-        for design in ("a", "b"):
-            with self.subTest(design=design):
-                text = visible_texts(self.tab(design))
-                self.assertIn("64.5 µs", text)
-                self.assertIn("15 464 IOPS", text)
-                self.assertIn("84 %", text)
-                self.assertIn("7 877 MB/s", text)
-                self.assertIn("62.9 °C", text)
-        text = visible_texts(self.tab("now"))
-        for expected in ("15 464 IOPS", "64.5 µs", "84 %", "62.9 °C"):
-            self.assertIn(expected, text)
+        tab = self.tab()
+        text = visible_texts(tab)
+        self.assertIn("64.5 µs", text)
+        self.assertIn("15 464 IOPS", text)
+        self.assertIn(_("disktest.fact.link"), text)
+        self.assertIn("84 %", text)
+        self.assertIn("7 877 MB/s", text)
+        self.assertIn("62.9 °C", text)
+
+    def test_a_single_request_reads_on_one_line_and_writes_on_another(self):
+        """In one line the card was crammed and «µs» parted from its figure."""
+        detail = self.tab().facts["single"].detail.text()
+        lines = detail.split("\n")
+        self.assertEqual(len(lines), 2)
+        self.assertTrue(lines[0].startswith(_("disktest.dir.read").capitalize()), lines)
+        self.assertTrue(lines[1].startswith(_("disktest.dir.write").capitalize()), lines)
+        self.assertIn("64.5\u00a0µs", lines[0])
+        self.assertNotIn(" µs", detail)
+        # Nor a temperature from its unit, in a narrow window.
+        heat = self.tab().facts["heat"].detail.text()
+        self.assertIn("50.9\u00a0°C", heat)
+        self.assertNotIn(" °C", heat)
+
+    def test_the_heat_is_coloured_by_the_disk_s_own_limits(self):
+        from silux import thermal
+        from silux.ui import theme
+
+        tab = self.tab()
+        heat = tab.facts["heat"].value
+        self.assertEqual(heat.property("level") or "", "")
+        # The SN850X declares 89.85 °C as high and 93.85 °C as critical.
+        for peak, level in ((90.0, thermal.HIGH), (94.0, thermal.CRITICAL), (62.85, thermal.OK)):
+            with self.subTest(peak=peak):
+                tab.show_result(dataclasses.replace(recorded("sn850x-btrfs"),
+                                                    temperature_peak_c=peak))
+                self.assertEqual(heat.property("level") or "",
+                                 theme.LEVEL_PROPERTY.get(level, ""))
 
     def test_temperatures_follow_the_unit_chosen(self):
         from silux.settings import Preferences
 
         fahrenheit = dataclasses.replace(Preferences().normalized(), temperature_unit="f")
-        for design in DESIGNS:
-            text = visible_texts(self.tab(design, prefs=fahrenheit))
-            self.assertIn("145.1 °F", text)
-            self.assertNotIn("°C", text)
+        text = visible_texts(self.tab(prefs=fahrenheit))
+        self.assertIn("145.1 °F", text)
+        self.assertNotIn("°C", text)
 
     def test_what_a_result_is_read_with_is_inside_its_own_card(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            inside = visible_texts(tab.result_card)
-            self.assertIn(_("disktest.note.varied"), inside)
-            self.assertIn("SEQ1M Q8T1 (" + _("disktest.dir.write") + ")", inside)
-            self.assertEqual(tab._notices.count(), 0)
-            self.pick(tab, "unidad2")
-            self.assertNotIn(_("disktest.note.varied"), visible_texts(tab))
+        tab = self.tab()
+        inside = visible_texts(tab.result_card)
+        self.assertIn(_("disktest.note.varied"), inside)
+        self.assertIn("SEQ1M Q8T1 (" + _("disktest.dir.write") + ")", inside)
+        self.assertEqual(tab._notices.count(), 0)
+        self.pick(tab, "unidad2")
+        self.assertNotIn(_("disktest.note.varied"), visible_texts(tab))
 
     def test_the_details_are_folded_until_asked_for(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            self.assertFalse(tab.detail.isVisibleTo(tab))
-            self.assertNotIn(_("disktest.method"), visible_texts(tab))
-            tab.detail_button.setChecked(True)
-            text = visible_texts(tab)
-            self.assertIn("6 584  6 586  6 608  6 616  6 592", text)
-            self.assertIn(_("disktest.detail.note"), text)
-            self.assertIn(_("disktest.method.direct"), text)
-            self.assertIn(_("disktest.method.nocow"), text)
-            self.assertIn(_("disktest.method.written").format(size="242 GB"), text)
+        tab = self.tab()
+        self.assertFalse(tab.detail.isVisibleTo(tab))
+        self.assertNotIn(_("disktest.method"), visible_texts(tab))
+        tab.detail_button.setChecked(True)
+        text = visible_texts(tab)
+        self.assertIn("6 584  6 586  6 608  6 616  6 592", text)
+        self.assertIn(_("disktest.detail.note"), text)
+        self.assertIn(_("disktest.method.direct"), text)
+        self.assertIn(_("disktest.method.nocow"), text)
+        self.assertIn(_("disktest.method.written").format(size="242 GB"), text)
 
     def test_the_history_lists_every_run_with_its_disk(self):
-        tab = self.tab("a")
+        tab = self.tab()
         rows = visible_texts(tab.history_card)
         for expected in ("WD_BLACK SN850X HS 1000GB", "Samsung SSD 970 EVO Plus 2TB", "6 592",
                          "3 946", "63.3", "3 579", "3 322", "48.1", "62.9 °C", "56.9 °C"):
             self.assertIn(expected, rows)
 
+    def test_the_history_never_puts_another_engine_s_test_in_a_column(self):
+        """The run through threads (SEQ1M Q1T8) sat under SEQ1M Q8T1."""
+        threads = recorded("sn850x-btrfs-threads")
+        disktest.save_history([threads, recorded("sn850x-btrfs")])
+        tab = self.tab()
+        self.assertEqual(len(tab.history_tables), 2)
+        headings = [heading.text() for heading, _table in tab.history_tables]
+        self.assertIn(_("disktest.engine.threads"), headings[0])
+        self.assertIn(_("disktest.engine.uring"), headings[1])
+        for heading in headings:
+            self.assertIn(_("disktest.profile.standard"), heading)
+        through, ring = (visible_texts(table) for _heading, table in tab.history_tables)
+        self.assertIn("SEQ1M\nQ1T8", through)
+        self.assertNotIn("Q8T1", through)
+        self.assertIn("SEQ1M\nQ8T1", ring)
+        sequential = threads.measure("SEQ1M Q1T8", "read").median.bytes_per_second
+        self.assertNotIn(disktest_page().megabytes(sequential), ring)
+
+    def test_a_narrow_window_shows_the_history_whole(self):
+        """It was cut at the right, behind a scroll bar."""
+        from silux.ui import theme
+
+        tab = self.tab()
+        tab.resize(theme.METRICS.min_window_w, 900)
+        for _turn in range(4):
+            self.app.processEvents()
+        for _heading, table in tab.history_tables:
+            self.assertEqual(table.horizontalScrollBar().maximum(), 0)
+
+    def test_the_axis_never_sets_one_figure_on_another(self):
+        """Reading only, a column took the whole width and «10 000» met
+        «100 000»."""
+        from silux.ui import theme
+        from silux.ui.pages.disktest import Axis
+
+        axis = Axis(theme.palette_for(self.app, "dark"))
+        self.addCleanup(axis.deleteLater)
+        for width in range(120, 1600, 7):
+            boxes = [box for box, _text in axis.labels(width)]
+            with self.subTest(width=width):
+                self.assertTrue(boxes)
+                for left, right in zip(boxes, boxes[1:]):
+                    self.assertGreaterEqual(right.left() - left.right(), Axis.GAP)
+                self.assertLessEqual(boxes[-1].right(), width)
+
     def test_a_run_through_threads_is_named_for_what_it_is_and_says_why(self):
         disktest.save_history([recorded("sn850x-btrfs-threads")])
-        for design in DESIGNS:
-            tab = self.tab(design)
-            text = visible_texts(tab)
-            for expected in ("SEQ1M Q1T8", "RND4K Q1T32", _("disktest.engine.threads")):
-                self.assertIn(expected, text)
-            self.assertNotIn("RND4K Q32T1\n", text + "\n")
-            self.assertIn(_("disktest.note.queue_of_threads"), visible_texts(tab.result_card))
-            if design != "now":
-                self.assertIn(_("disktest.kind.threads").format(
-                    kind=_("disktest.kind.random").format(block="4K"), n=32), text)
-            # It only read: no writing column, and nothing said of writing.
-            self.assertNotIn(_(disktest_page().COLUMNS["write"]), text.splitlines())
+        tab = self.tab()
+        text = visible_texts(tab)
+        for expected in ("SEQ1M Q1T8", "RND4K Q1T32", _("disktest.engine.threads")):
+            self.assertIn(expected, text)
+        self.assertNotIn("RND4K Q32T1\n", text + "\n")
+        self.assertIn(_("disktest.note.queue_of_threads"), visible_texts(tab.result_card))
+        self.assertIn(_("disktest.kind.threads").format(
+            kind=_("disktest.kind.random").format(block="4K"), n=32), text)
+        # It only read: no writing column, and nothing said of writing.
+        self.assertNotIn(_(disktest_page().COLUMNS["write"]), text.splitlines())
 
-    def test_it_fits_a_narrow_window(self):
-        for design in DESIGNS:
-            tab = self.tab(design)
-            tab.resize(380, 800)
-            for _turn in range(4):
-                self.app.processEvents()
-            self.assertLessEqual(tab.widget().minimumSizeHint().width(), 380)
-            self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+    def test_it_fits_the_narrowest_window(self):
+        from silux.ui import theme
+
+        narrowest = theme.METRICS.min_window_w
+        tab = self.tab()
+        tab.resize(narrowest, 800)
+        for _turn in range(4):
+            self.app.processEvents()
+        self.assertLessEqual(tab.widget().minimumSizeHint().width(), narrowest)
+        self.assertLessEqual(tab.widget().width(), tab.viewport().width())
 
     def test_it_reads_the_same_in_english(self):
         from silux import i18n
@@ -296,16 +380,16 @@ class TestWhatAResultShows(TabCase):
         before = i18n.current()
         self.addCleanup(i18n.set_language, before)
         i18n.set_language("en")
-        for design in DESIGNS:
-            tab = self.tab(design)
-            tab.detail_button.setChecked(True)
-            text = visible_texts(tab)
-            for expected in ("Include writes", "Runs", "Some tests varied between runs",
-                             "6 592", "▾ Details"):
-                self.assertIn(expected, text)
-            for spanish in ("Vueltas", "Lectura", "escritura", "Detalles", "Dónde"):
-                self.assertNotIn(spanish, text)
-        self.assertIn("84 % of the link's maximum", visible_texts(self.tab("now")))
+        tab = self.tab()
+        tab.detail_button.setChecked(True)
+        text = visible_texts(tab)
+        for expected in ("Include writes", "Runs", "Some tests varied between runs",
+                         "6 592", "▾ Details"):
+            self.assertIn(expected, text)
+        for spanish in ("Vueltas", "Lectura", "escritura", "Detalles", "Dónde"):
+            self.assertNotIn(spanish, text)
+        self.assertIn("Of the link's maximum", text)
+        self.assertIn(_("disktest.kind.single").format(kind="Sequential"), text)
 
 
 class TestRunningAndFailing(TabCase):
@@ -316,34 +400,35 @@ class TestRunningAndFailing(TabCase):
     def test_a_tab_that_arrives_half_way_shows_the_run_under_way(self):
         from silux.ui.pages.disktest import DiskTestRun
 
-        for design in DESIGNS:
-            run = DiskTestRun()
-            plan = disktest.make_plan(OURS)
-            laps = {("SEQ1M Q8T1", "read"): 6_500_000_000, ("SEQ1M Q8T1", "write"): 3_900_000_000}
-            with Running(run, plan, laps):
-                tab = self.tab(design, run=run)
-                text = visible_texts(tab)
-                self.assertIn(_("bench.button.cancel"), text)
-                self.assertFalse(tab.run_button.isEnabled())
-                self.assertIn(_("disktest.conditions.running"), text)
-                self.assertIn("6 500", text)
-                self.assertIn("3 900", text)
-                self.assertIn(_("disktest.phase.lap").format(
-                    test="RND4K Q32T1", direction=_("disktest.dir.write"), lap=3, laps=5),
-                    tab.progress.label.text())
-                # Nothing of the result before it: neither its figures nor
-                # its notes.
-                self.assertNotIn("6 592", text.split(_("memtest.card.history"))[0])
-                self.assertNotIn(_("disktest.note.varied"), text)
-                tab._on_progress({"phase": "lapped", "test": "RND4K Q1T1", "direction": "read",
-                                  "lap": 1, "laps": 5, "done": 0.9, "bytes_per_second": 61_000_000})
-                self.assertIn("61.0", visible_texts(tab))
+        run = DiskTestRun()
+        plan = disktest.make_plan(OURS)
+        laps = {("SEQ1M Q8T1", "read"): 6_500_000_000, ("SEQ1M Q8T1", "write"): 3_900_000_000}
+        with Running(run, plan, laps):
+            tab = self.tab(run=run)
+            text = visible_texts(tab)
+            self.assertIn(_("bench.button.cancel"), text)
+            self.assertFalse(tab.run_button.isEnabled())
+            self.assertIn(_("disktest.conditions.running"), text)
+            self.assertIn("6 500", text)
+            self.assertIn("3 900", text)
+            words = _("disktest.kind.random").format(block="4K")
+            self.assertEqual(tab.progress.label.text(), _("disktest.step").format(
+                what=_("disktest.step.test").format(
+                    test=words[:1].lower() + words[1:], direction=_("disktest.dir.write")),
+                n=7, of=9))
+            # Nothing of the result before it: neither its figures nor
+            # its notes.
+            self.assertNotIn("6 592", text.split(_("memtest.card.history"))[0])
+            self.assertNotIn(_("disktest.note.varied"), text)
+            tab._on_progress({"phase": "lapped", "test": "RND4K Q1T1", "direction": "read",
+                              "lap": 1, "laps": 5, "done": 0.9, "bytes_per_second": 61_000_000})
+            self.assertIn("61.0", visible_texts(tab))
 
     def test_a_run_that_ends_shows_its_result_and_joins_the_history(self):
         from silux.ui.pages.disktest import DiskTestRun
 
         run = DiskTestRun()
-        tab = self.tab("a", run=run)
+        tab = self.tab(run=run)
         states = []
         tab.running_changed.connect(states.append)
         run.model = "Another name"
@@ -358,26 +443,25 @@ class TestRunningAndFailing(TabCase):
     def test_a_run_that_fails_says_what_happened_and_what_to_do(self):
         from silux.ui.pages.disktest import DiskTestRun
 
-        for design in DESIGNS:
-            run = DiskTestRun()
-            tab = self.tab(design, run=run)
-            failed = disktest.Result(reason="no_space", figures=(
-                ("needed", 35_433_480_192), ("free", 21_300_000_000)))
-            run._on_done(failed)
-            text = visible_texts(tab)
-            self.assertIn(_("disktest.note.no_space"), text)
-            self.assertIn("35.4 GB", text)
-            self.assertIn("21.3 GB", text)
-            self.assertIn(_("disktest.action.smaller"), text)
-            # Never a code on the screen.
-            self.assertNotIn("errno", text)
-            # The result before it is still there, and nothing was saved.
-            self.assertIn("6 592", text)
-            self.assertEqual(len(disktest.load_history()), 1)
-            before = tab.size_box.currentIndex()
-            tab._smaller_file()
-            self.assertEqual(tab.size_box.currentIndex(), before - 1)
-            self.assertNotIn(_("disktest.note.no_space"), visible_texts(tab))
+        run = DiskTestRun()
+        tab = self.tab(run=run)
+        failed = disktest.Result(reason="no_space", figures=(
+            ("needed", 35_433_480_192), ("free", 21_300_000_000)))
+        run._on_done(failed)
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.no_space"), text)
+        self.assertIn("35.4 GB", text)
+        self.assertIn("21.3 GB", text)
+        self.assertIn(_("disktest.action.smaller"), text)
+        # Never a code on the screen.
+        self.assertNotIn("errno", text)
+        # The result before it is still there, and nothing was saved.
+        self.assertIn("6 592", text)
+        self.assertEqual(len(disktest.load_history()), 1)
+        before = tab.size_box.currentIndex()
+        tab._smaller_file()
+        self.assertEqual(tab.size_box.currentIndex(), before - 1)
+        self.assertNotIn(_("disktest.note.no_space"), visible_texts(tab))
 
     def test_every_error_and_every_note_has_its_words_in_both_languages(self):
         from silux import i18n
@@ -402,7 +486,7 @@ class TestRunningAndFailing(TabCase):
         from silux.ui.pages.disktest import DiskTestRun
 
         run = DiskTestRun()
-        tab = self.tab("a", run=run)
+        tab = self.tab(run=run)
         run._on_done(disktest.Result(reason="cancelled"))
         self.assertEqual(tab._notices.count(), 0)
         self.assertIn("6 592", visible_texts(tab))
