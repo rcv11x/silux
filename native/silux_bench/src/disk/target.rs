@@ -688,6 +688,7 @@ fn alignment(file: &File) -> Result<Align> {
 pub(crate) mod testing {
     use std::os::unix::fs::MetadataExt;
     use std::path::PathBuf;
+    use std::sync::{Mutex, MutexGuard};
 
     use super::*;
 
@@ -695,8 +696,12 @@ pub(crate) mod testing {
     /// to run them on another disk or another file system.
     pub const FOLDER_VARIABLE: &str = "SILUX_BENCH_DISK_DIR";
 
-    /// A folder of a test's own, removed with it.
-    pub struct Folder(pub PathBuf);
+    /// A folder of a test's own, removed with it, and the disk to itself
+    /// while it lives: tests writing to the same disk at once slowed each
+    /// other past the times they check (a lap of 0.2 s taking 2).
+    pub struct Folder(pub PathBuf, #[allow(dead_code)] MutexGuard<'static, ()>);
+
+    static ONE_AT_A_TIME: Mutex<()> = Mutex::new(());
 
     impl Folder {
         pub fn new(name: &str) -> Folder {
@@ -708,9 +713,13 @@ pub(crate) mod testing {
                 },
                 PathBuf::from,
             );
+            // A test that failed with it held doesn't stop the rest.
+            let turn = ONE_AT_A_TIME
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let path = base.join(format!("{name}-{}", std::process::id()));
             std::fs::create_dir_all(&path).unwrap();
-            Folder(path)
+            Folder(path, turn)
         }
 
         pub fn names(&self) -> Vec<String> {

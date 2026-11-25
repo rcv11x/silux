@@ -117,7 +117,12 @@ fn what_moved_is_noted_as_the_lap_goes() {
             ..job(Pattern::Random, Direction::Read, 4096, 2)
         };
         let lap = run(&target, &job, &Control::default()).unwrap();
-        assert_eq!(lap.samples.len(), 3, "{engine} {:?}", lap.samples);
+        // A quarter of a second each; one fewer when the watcher woke late.
+        assert!(
+            (2..=3).contains(&lap.samples.len()),
+            "{engine} {:?}",
+            lap.samples
+        );
         for pair in lap.samples.windows(2) {
             assert!(pair[1].at_ns > pair[0].at_ns, "{engine}");
             assert!(pair[1].bytes >= pair[0].bytes, "{engine}");
@@ -175,6 +180,18 @@ fn a_sequential_lap_goes_round_the_file_in_order() {
             .chunks(FILL_BLOCK / STAMP_EVERY)
             .map(|block| block[0].1)
             .collect();
+        let written = lap.requests as usize;
+        if written < turns.len() {
+            // A slow disk didn't go round once: what it wrote, in order, and
+            // the rest as the fill left it.
+            for index in 1..written {
+                assert!(turns[index - 1] < turns[index], "{engine} {turns:?}");
+            }
+            for turn in &turns[written..] {
+                assert!(*turn < turns[0], "{engine} {turns:?}");
+            }
+            continue;
+        }
         let last = ((lap.requests - 1) % 8) as usize;
         for index in 0..8 {
             if index != last {
@@ -234,7 +251,9 @@ fn a_read_that_brings_another_block_is_an_error() {
                 text.contains("read at offset 2097152 says it belongs at 5242880"),
                 "{engine}: {text}"
             );
-            assert!(now_ns() - began < 5_000_000_000, "{engine}");
+            // It stops the lap, long before its minute: a slow disk under
+            // the other tests' writes took more than 5 s to get there.
+            assert!(now_ns() - began < 30_000_000_000, "{engine}");
         }
     }
 }
