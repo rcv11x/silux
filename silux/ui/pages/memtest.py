@@ -42,6 +42,7 @@ from ..widgets import (
     ScrollPage,
     Table,
     clear_layout,
+    unbroken,
     value_font,
 )
 
@@ -49,8 +50,8 @@ from ..widgets import (
 GRID_LEVELS = ("RAM", "L1", "L2", "L3")
 # Its bandwidth columns, each in its own tone of the accent: the status
 # colours would make a bar look like a warning.
-GRID_COLUMNS = (("read", "memtest.op.read", 1.0), ("write", "memtest.op.write", 0.65),
-                ("copy", "memtest.op.copy", 0.4))
+GRID_COLUMNS = (("read", "memtest.op.read", 1.0), ("write", "memtest.op.write", 0.7),
+                ("copy", "memtest.op.copy", 0.45))
 # The bars' scale: from 1 GB/s to 10 000, where the L1 of a fast core gets.
 GRID_SCALE = (1e9, 4)
 GB = 1e9
@@ -561,6 +562,7 @@ class MemoryTestTab(ScrollPage):
             [_("memtest.col.date"), _("memtest.col.ram"), _("memtest.col.read.all"),
              _("memtest.col.share"), _("memtest.col.frequency")],
             numeric=(False, True, True, True, True))
+        self.history.set_header(3, _("memtest.col.share"), two_lines=True)
         card.body.addWidget(self.history)
         self.clear_button = QPushButton(_("bench.button.clear"))
         self.clear_button.clicked.connect(self._clear_history)
@@ -746,10 +748,10 @@ class MemoryTestTab(ScrollPage):
             self.share_value.setText(render.whole_percent(share))
             self.share.setText(_("memtest.share").format(
                 mts=render.memory_speed(result.speed_mts),
-                rate=render.bandwidth(read.bytes_per_second, 1),
+                rate=unbroken(render.bandwidth(read.bytes_per_second, 1)),
                 threads=render.counted("memtest.threads", read.threads),
                 channels=render.counted("memtest.channels", result.channels or 0),
-                total=render.bandwidth(result.theoretical_bytes_per_second, 1)))
+                total=unbroken(render.bandwidth(result.theoretical_bytes_per_second, 1))))
             if share > 100:
                 self._note(Notice(_("memtest.notice.over"), _("memtest.notice.over.body")))
         elif result.rates and self._channels_locked:
@@ -794,6 +796,11 @@ class MemoryTestTab(ScrollPage):
         self.detail_button.setText(_("memtest.detail.hide" if shown else "memtest.detail.show"))
 
     def _paint_history(self, results) -> None:
+        # Whose read it is, in the header: the line above the table gives
+        # one thread's.
+        threads = max((r.threads for result in results[:1] for r in result.rates), default=0)
+        self.history.set_header(2, render.counted("memtest.col.read.threads", threads)
+                                if threads else _("memtest.col.read.all"), two_lines=True)
         rows = []
         for result in results:
             threads = max((r.threads for r in result.rates), default=1)

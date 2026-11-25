@@ -12,6 +12,7 @@ from unittest import mock
 from silux import memtest, render
 from silux.i18n import _
 from silux.memtest import KIB, MIB
+from silux.ui.widgets import unbroken
 from tests import pantalla
 from tests.qt import app
 from tests.test_equipos import EQUIPOS, shared_snapshot
@@ -165,9 +166,19 @@ class TestDesignA(TabCase):
         memtest.append_history(recorded())
         tab = self.tab()
         seen = visible_texts(tab.history_card)
-        self.assertIn(_("memtest.col.read.all").upper(), seen.upper())
+        self.assertIn(render.counted("memtest.col.read.threads", 16).upper().replace(" ", "\n", 1),
+                      seen)
         self.assertIn("40.2 GB/s", seen)
         self.assertNotIn("43.9 GB/s", seen)
+
+    def test_a_narrow_window_shows_the_history_whole(self):
+        """It was cut at the right, behind a scroll bar."""
+        memtest.append_history(recorded("i5-10400-window"))
+        tab = self.tab()
+        tab.resize(520, 900)
+        for _turn in range(3):
+            self.app.processEvents()
+        self.assertEqual(tab.history.horizontalScrollBar().maximum(), 0)
 
     def test_the_processor_is_named_over_the_result(self):
         tab = self.tab()
@@ -177,13 +188,35 @@ class TestDesignA(TabCase):
         self.assertTrue(tab.cpu_name.isVisibleTo(tab))
 
 
+class TestFiguresKeepTheirUnits(TabCase):
+    def test_a_figure_and_its_unit_stay_on_one_line(self):
+        """«42.7 GB/» ended a line and «s.» began the next."""
+        from PySide6.QtGui import QTextLayout
+
+        def lines(text: str) -> int:
+            layout = QTextLayout(text, self.app.font())
+            layout.beginLayout()
+            count = 0
+            while (line := layout.createLine()).isValid():
+                # Narrower than any figure: whatever can break does.
+                line.setLineWidth(20)
+                count += 1
+            layout.endLayout()
+            return count
+
+        for figure in ("42.7 GB/s", "64.5 µs"):
+            with self.subTest(figure=figure):
+                self.assertGreater(lines(figure), 1)
+                self.assertEqual(lines(unbroken(figure)), 1)
+
+
 class TestShareOfTheMaximum(TabCase):
     def test_the_percentage_with_what_it_is_made_of(self):
         tab = self.tab()
         tab.show_result(dataclasses.replace(recorded(), **DDR4_3200_TWO_CHANNELS))
         self.assertEqual(tab.share.text(), _("memtest.share").format(
-            rate="43.9 GB/s", threads=_("memtest.threads.one").format(n=1),
-            channels=_("memtest.channels").format(n=2), mts=3200, total="51.2 GB/s"))
+            rate=unbroken("43.9 GB/s"), threads=_("memtest.threads.one").format(n=1),
+            channels=_("memtest.channels").format(n=2), mts=3200, total=unbroken("51.2 GB/s")))
         self.assertEqual(tab.share_value.text(), "86 %")
         self.assertTrue(tab.share_value.isVisibleTo(tab))
 

@@ -2408,6 +2408,13 @@ class ProgressLine(QWidget):
         return self.bar.value()
 
 
+def unbroken(figure: str) -> str:
+    """A figure with its unit, «42.7 GB/s» or «64.5 µs», that a wrapping
+    label won't split: at a space, or after the slash, it left «GB/» on one
+    line and «s» on the next."""
+    return figure.replace(" ", "\u00a0").replace("/", "/\u2060")
+
+
 class RateBar(QWidget):
     """A rate as a bar on a fixed logarithmic scale, shared by a whole table.
 

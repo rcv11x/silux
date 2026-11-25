@@ -1098,6 +1098,8 @@
   "memtest.col.operation": "Operation",
   "memtest.col.ram": "RAM",
   "memtest.col.read.all": "Read, all threads",
+  "memtest.col.read.threads": "Read, {n} threads",
+  "memtest.col.read.threads.one": "Read, {n} thread",
   "memtest.col.share": "Of the maximum",
   "memtest.conditions.at": "at {freq}",
   "memtest.detail.hide": "▾ Hide the curve",
