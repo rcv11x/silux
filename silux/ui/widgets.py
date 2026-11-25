@@ -2383,6 +2383,9 @@ class ReadableRoot(QWidget):
 
     CHARACTERS = 120
 
+    # The margin at each side changed: what sits above the column follows it.
+    side_changed = Signal(int)
+
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setObjectName("Root")
@@ -2395,11 +2398,15 @@ class ReadableRoot(QWidget):
     def content_width(self) -> int:
         return QFontMetrics(ui_font(theme.METRICS.base_pt)).averageCharWidth() * self.CHARACTERS
 
+    def side(self) -> int:
+        return self.column.contentsMargins().left()
+
     def resizeEvent(self, event) -> None:  # noqa: N802
         margin = theme.METRICS.page_margin
         side = max(margin, (self.width() - self.content_width()) // 2)
-        if self.column.contentsMargins().left() != side:
+        if self.side() != side:
             self.column.setContentsMargins(side, margin, side, margin)
+            self.side_changed.emit(side)
         super().resizeEvent(event)
 
 

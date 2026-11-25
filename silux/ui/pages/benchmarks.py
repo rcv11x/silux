@@ -51,6 +51,7 @@ class BenchmarksPage(QWidget):
         bar = QHBoxLayout()
         m = theme.METRICS
         bar.setContentsMargins(m.page_margin, m.page_margin // 2, m.page_margin, 0)
+        self._bar = bar
         bar.setSpacing(4)
         self._group = QButtonGroup(self)
         self.buttons: dict[str, QPushButton] = {}
@@ -69,6 +70,9 @@ class BenchmarksPage(QWidget):
         layout.addLayout(bar)
         layout.addWidget(self.stack, 1)
         self.buttons["cpu"].setChecked(True)
+        # The tabs start where the column of the one shown does.
+        for tab in self._tabs.values():
+            tab.widget().side_changed.connect(lambda _side: self._align_tabs())
 
         # One test at a time: while one runs, the others can't start.
         for key, tab in self._tabs.items():
@@ -86,6 +90,12 @@ class BenchmarksPage(QWidget):
             if key != running:
                 tab.set_blocked(_(names[running]) if running is not None else None)
 
+    def _align_tabs(self) -> None:
+        side = self.stack.currentWidget().widget().side()
+        margins = self._bar.contentsMargins()
+        if margins.left() != side:
+            self._bar.setContentsMargins(side, margins.top(), side, margins.bottom())
+
     @property
     def tab(self) -> str:
         return TABS[self.stack.currentIndex()][0]
@@ -98,6 +108,7 @@ class BenchmarksPage(QWidget):
         self.buttons[key].setChecked(True)
         if self.stack.currentWidget() is not self._tabs[key]:
             self.stack.setCurrentWidget(self._tabs[key])
+            self._align_tabs()
             self.tab_changed.emit(key)
         return True
 

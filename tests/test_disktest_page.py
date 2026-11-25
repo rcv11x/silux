@@ -395,6 +395,26 @@ class TestWhatAResultShows(TabCase):
         self.assertEqual(widths[0], widths[1])
         self.assertLessEqual(disk.place_box.width(), disk.widget().content_width())
 
+    def test_on_a_wide_screen_the_tabs_start_where_the_column_does(self):
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.benchmarks import BenchmarksPage
+
+        page = BenchmarksPage(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(page.deleteLater)
+        page.show()
+        for key in ("disk", "memory", "cpu"):
+            for width in (1690, 700):
+                with self.subTest(tab=key, width=width):
+                    page.select_tab(key)
+                    page.resize(width, 900)
+                    for _turn in range(5):
+                        self.app.processEvents()
+                    root = page.stack.currentWidget().widget()
+                    first = page.buttons["cpu"]
+                    self.assertEqual(first.mapTo(page, first.rect().topLeft()).x(),
+                                     root.mapTo(page, root.rect().topLeft()).x() + root.side())
+
     def test_start_ends_the_row_of_choices_on_the_right_as_the_main_button(self):
         tab = self.tab()
         tab.resize(1200, 900)
