@@ -1545,6 +1545,7 @@
   "sensors.matches.one": "· {n} coincidencia",
   "sensors.mirror": "{espejo} repite las {n} temperaturas de {chip}: es el mismo chip leído por otro driver. Se enseñan una vez, las de {chip}.",
   "sensors.placeholder": "{chip}: {valor} fijos no es una medida. Es el número que devuelve el firmware por una zona térmica que no conectó a ningún sensor.",
+  "sensors.placeholder.input": "{chip}: un {valor} fijo no es una medida: es lo que da el chip en una entrada sin nada conectado.",
   "sensors.record.button": "Grabar a CSV",
   "sensors.record.starting": "Grabando…",
   "sensors.record.stop.many": "Detener ({n} filas)",

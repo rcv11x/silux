@@ -2106,11 +2106,11 @@ class Sensor:
     # what reaches each input was decided by the board's designer, and the
     # kernel doesn't know. Said in the window instead of making up a name.
     unnamed: bool = False
-    # True when what's read isn't a measurement but the fixed number the
-    # firmware returns for a thermal zone wired to no sensor: 16.8 or 27.8 °C
-    # stuck in many desktop boards' `acpitz`. The machine publishes it, so
-    # it's shown; but it says what it is, carries no thresholds and doesn't
-    # count as any part's temperature.
+    # True when what's read isn't a measurement but a fixed number nobody
+    # measured: 16.8 or 27.8 °C stuck in many desktop boards' `acpitz`, or 0 °C
+    # on a Super I/O input with no probe. The machine publishes it, so it's
+    # shown; but it says what it is, carries no thresholds and doesn't count
+    # as any part's temperature.
     placeholder: bool = False
     # The chip this reading repeats, or None. A Gigabyte board's WMI
     # interface publishes the same probes as its Super I/O: the same chip

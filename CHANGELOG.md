@@ -12,6 +12,10 @@ que hace falta.
 
 ## Sin publicar
 
+- Sensores: las temperaturas de la placa que nadie mide (las entradas sin
+  sonda de un chip nct67xx, a 0 °C o −1 °C) y el 0 °C de una gráfica en un
+  sensor que no tiene salen en gris, al final, sin límites ni avisos, y el
+  pie dice que no son una medida.
 - Gráficos: una Radeon cuyo driver da 0 °C en lo que no mide (la memoria y
   los reguladores de una RX 5500 XT) ya no enseña esos 0.0 °C: las filas se
   esconden y el pie dice que su driver no los publica.

@@ -1002,6 +1002,20 @@ def chip_name(chip: str) -> str:
     return _CHIP_ADDRESS.sub("", chip)
 
 
+def placeholder_note(chip: str, readings, fahrenheit: bool = False) -> str:
+    """Why a chip's fixed readings (`Sensor.placeholder`) are no measurement:
+    an ACPI zone the firmware wired to no sensor, or an input with nothing
+    connected («a steady 0.0 °C or -1.0 °C»)."""
+    from .providers.hwmon import ACPI_ZONES_CHIP
+
+    if chip == ACPI_ZONES_CHIP:
+        shown = ", ".join(temperature(v, fahrenheit) for v in sorted(readings))
+        return _("sensors.placeholder").format(chip=chip_name(chip), valor=shown)
+    shown = enumeration([temperature(v, fahrenheit) for v in sorted(readings, reverse=True)],
+                        last="list.or")
+    return _("sensors.placeholder.input").format(chip=chip_name(chip), valor=shown)
+
+
 # How each bus is written. The kernel gives them in lower case, and putting
 # them all in capitals leaves «NVME» next to a properly written «NVMe».
 _BUSES = {"nvme": "NVMe"}

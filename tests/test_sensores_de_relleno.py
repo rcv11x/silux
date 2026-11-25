@@ -149,6 +149,94 @@ class TestUnaZonaQueSiMide(unittest.TestCase):
             self.assertFalse(self._leer(proveedor, raiz, 27800).placeholder)
 
 
+# From two reports: an i7-12700's nct6798 (an ASRock H670), with inputs the
+# board never wired and PCH readings the firmware never passes on, and an
+# RX 5500 XT, whose driver gives 0 for the memory sensor it lacks. Millidegrees.
+NCT6798 = {"SYSTIN": 21000, "CPUTIN": 0, "AUXTIN0": 16000, "AUXTIN1": 23000,
+           "AUXTIN2": 35000, "AUXTIN3": -1000, "PECI Agent 0": 26000,
+           "AUXTIN4": 32000, "PCH_CHIP_CPU_MAX_TEMP": 0, "PCH_CHIP_TEMP": 0,
+           "PCH_CPU_TEMP": 0, "PCH_MCH_TEMP": 0}
+RX_5500_XT = {"edge": 42000, "junction": 43000, "mem": 0}
+NOT_MEASURED = {"CPUTIN", "AUXTIN3", "PCH_CHIP_CPU_MAX_TEMP", "PCH_CHIP_TEMP",
+                "PCH_CPU_TEMP", "PCH_MCH_TEMP", "mem"}
+# Their fans, from the same reports, in RPM: a stopped one is a reading.
+FANS = {"nct6798": {"fan1_input": 1094, "fan3_input": 0}, "amdgpu": {"fan1_input": 0}}
+
+
+class TestInputsThatMeasureNothing(unittest.TestCase):
+
+    def _collect(self, provider=None, nct=NCT6798):
+        root = pathlib.Path(self._tmp.name)
+        for number, (chip, channels) in enumerate((("nct6798", nct),
+                                                   ("amdgpu", RX_5500_XT))):
+            folder = root / f"sys/class/hwmon/hwmon{number}"
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / "name").write_text(f"{chip}\n")
+            for index, (label, millidegrees) in enumerate(channels.items(), 1):
+                (folder / f"temp{index}_label").write_text(f"{label}\n")
+                (folder / f"temp{index}_input").write_text(f"{millidegrees}\n")
+                (folder / f"temp{index}_crit").write_text("115000\n")
+            for file_name, rpm in FANS[chip].items():
+                (folder / file_name).write_text(f"{rpm}\n")
+        draft = Draft()
+        with mock.patch.dict(os.environ, {"SILUX_SYSROOT": str(root)}):
+            from silux import sysroot
+            sysroot.forget()
+            self.addCleanup(sysroot.forget)
+            (provider or HwmonSensors()).collect(draft)
+        return draft
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+
+    def test_they_are_marked_and_only_they(self):
+        sensors = self._collect().sensors
+        marked = {s.chip_label for s in sensors if s.placeholder}
+        self.assertEqual(marked, NOT_MEASURED)
+        for sensor in (s for s in sensors if s.placeholder):
+            self.assertIsNone(sensor.critical)
+            self.assertEqual(sensor.alarm_level, "ok")
+
+    def test_a_stopped_fan_is_a_reading(self):
+        fans = {(s.chip, s.key.rsplit("/", 1)[1]): s for s in self._collect().sensors
+                if s.kind is SensorKind.FAN}
+        self.assertEqual({key: s.value for key, s in fans.items()},
+                         {("nct6798", "fan1"): 1094, ("nct6798", "fan3"): 0,
+                          ("amdgpu", "fan1"): 0})
+        self.assertFalse([key for key, s in fans.items() if s.placeholder])
+
+    def test_one_seen_measuring_is_not_marked_again(self):
+        provider = HwmonSensors()
+        self._collect(provider, nct={**NCT6798, "AUXTIN3": 24000})
+        sensors = self._collect(provider).sensors
+        self.assertFalse(next(s for s in sensors if s.chip_label == "AUXTIN3").placeholder)
+
+    @unittest.skipIf(QApplication is None, "sin PySide6")
+    def test_the_foot_says_what_they_are(self):
+        from silux import render
+        from silux.i18n import _
+        from silux.settings import Preferences
+        from silux.tracking import Tracker
+        from silux.ui import theme
+        from silux.ui.pages.monitor import MonitorPage
+
+        app = qt.app()
+        page = MonitorPage(theme.palette_for(app, "dark"), Preferences().normalized(),
+                           Tracker())
+        self.addCleanup(page.deleteLater)
+        page.apply(self._collect().freeze())
+        foot = page.absent.text().split("\n")
+        zero, below = render.temperature(0.0), render.temperature(-1.0)
+        # «nct6798: un 0.0 °C o -1.0 °C fijo no es una medida…»
+        self.assertIn(_("sensors.placeholder.input").format(
+            chip="nct6798", valor=f"{zero} {_('list.or')} {below}"), foot)
+        self.assertIn(_("sensors.placeholder.input").format(chip="amdgpu", valor=zero), foot)
+        # Not the ACPI zones' sentence: there is no thermal zone here.
+        self.assertFalse([line for line in foot if line.startswith("nct6798")
+                          and line.endswith(_("sensors.placeholder")[-30:])])
+
+
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestEnLaPaginaDeSensores(unittest.TestCase):
 

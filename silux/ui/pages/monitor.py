@@ -288,11 +288,9 @@ class MonitorPage(ScrollPage):
         relleno: dict[str, set[float]] = {}
         for s in snapshot.sensors:
             if s.placeholder:
-                relleno.setdefault(render.chip_name(s.chip), set()).add(s.value)
+                relleno.setdefault(s.chip, set()).add(s.value)
         for chip, valores in sorted(relleno.items()):
-            faltan.append(_("sensors.placeholder").format(
-                chip=chip, valor=", ".join(
-                    render.temperature(v, self._prefs.fahrenheit) for v in sorted(valores))))
+            faltan.append(render.placeholder_note(chip, valores, self._prefs.fahrenheit))
         # Cada explicación en su renglón: seguidas en un párrafo no se leen.
         texto = "\n".join(faltan)
         if self.absent.text() != texto:
@@ -449,9 +447,8 @@ class MonitorPage(ScrollPage):
         if limits:
             lines.append("\n".join(limits))
         if sensor.placeholder:
-            lines.append(_("sensors.placeholder").format(
-                chip=sensor.chip,
-                valor=render.temperature(sensor.value, self._prefs.fahrenheit)))
+            lines.append(render.placeholder_note(
+                sensor.chip, (sensor.value,), self._prefs.fahrenheit))
         if sensor.alarm_level == "crítico":
             lines.append(_("sensors.alarm.crit"))
         elif sensor.alarm_level == "alto":
