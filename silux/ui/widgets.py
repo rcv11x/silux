@@ -2769,7 +2769,10 @@ class Table(QScrollArea):
             return
         columnas = len(self._headers)
         anchos = list(self._anchos)
-        hueco = self._grid.horizontalSpacing() * (columnas - 1)
+        # The gaps between columns narrow first, down to a floor, before a
+        # column is cut: a few pixels of air cost less than a word.
+        gap = theme.METRICS.grid_hspace
+        hueco = gap * (columnas - 1)
         # Lo que ocupa cada columna es su dato o su título, lo que más pida.
         ocupa = sum(max(ancho, self._ancho_de_cabecera(c)) for c, ancho in enumerate(anchos))
         sobra = ocupa + hueco - self.viewport().width()
@@ -2783,6 +2786,10 @@ class Table(QScrollArea):
             holgura = min(-sobra // columnas, tope)
             anchos = [max(ancho, self._ancho_de_cabecera(c)) + holgura
                       for c, ancho in enumerate(anchos)]
+        if sobra > 0 and columnas > 1 and self.viewport().width() > 0:
+            narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (columnas - 1))))
+            gap -= narrower
+            sobra -= narrower * (columnas - 1)
         if sobra > 0 and self.viewport().width() > 0:
             suelo = QFontMetrics(value_font()).averageCharWidth() * 10
             suelos = {c: max(suelo, self._ancho_de_cabecera(c))
@@ -2795,6 +2802,8 @@ class Table(QScrollArea):
                 quita = min(sobra, anchos[ancha] - suelos[ancha], 8)
                 anchos[ancha] -= quita
                 sobra -= quita
+        if self._grid.horizontalSpacing() != gap:
+            self._grid.setHorizontalSpacing(gap)
         for columna, ancho in enumerate(anchos):
             if self._grid.columnMinimumWidth(columna) != ancho:
                 self._grid.setColumnMinimumWidth(columna, ancho)
@@ -2806,6 +2815,8 @@ class Table(QScrollArea):
 
     # Cuánto puede separarse como mucho cada columna, en anchos de letra.
     HOLGURA_MAXIMA = 14
+    # The least air between two columns of a table that doesn't fit.
+    MIN_COLUMN_GAP = 8
 
     def set_header(self, column: int, title: str, two_lines: bool = False) -> None:
         """Rename a column, for a datum whose name depends on what it holds.
