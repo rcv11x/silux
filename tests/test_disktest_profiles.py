@@ -27,6 +27,22 @@ def as_real_use(result: disktest.Result) -> disktest.Result:
         m for m in result.measures if m.name in REAL))
 
 
+class TestTheirWords(unittest.TestCase):
+    def test_each_says_what_it_does_and_names_no_other_program(self):
+        from silux import i18n
+        from silux.ui.pages.disktest import PROFILE_TIPS
+
+        for language in ("es", "en"):
+            i18n.set_language(language)
+            self.addCleanup(i18n.set_language, "es")
+            for profile, key in PROFILE_TIPS.items():
+                with self.subTest(language=language, profile=profile):
+                    tip = _(key)
+                    self.assertNotEqual(tip, key)
+                    for program in ("CrystalDiskMark", "KDiskMark", "fio"):
+                        self.assertNotIn(program, tip)
+
+
 class TestTheProfiles(unittest.TestCase):
     def test_real_use_is_one_request_at_a_time(self):
         self.assertEqual([t.name for t in disktest.PROFILES["real"]], list(REAL))

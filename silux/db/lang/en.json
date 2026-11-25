@@ -702,7 +702,7 @@
   "disktest.profile.real": "Real use",
   "disktest.profile.real.tip": "Two tests, one request at a time: sequential and random 4K. It's what almost any program asks for, and it takes half as long.",
   "disktest.profile.standard": "Standard",
-  "disktest.profile.standard.tip": "The four tests of CrystalDiskMark and KDiskMark.",
+  "disktest.profile.standard.tip": "The usual four tests: sequential and random, with many requests at once and one at a time.",
   "disktest.single.line": "{direction}: {iops} IOPS · {mean} on average · 99 % in under {p99}",
   "disktest.step": "{what} ({n} of {of})",
   "disktest.step.fill": "Writing the file",
