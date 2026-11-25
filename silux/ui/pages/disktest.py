@@ -74,6 +74,7 @@ ERRORS = {
     "no_direct": "folder", "no_space": "smaller", "io": None, "no_module": None,
     "internal": None, "failed": None, "not_started": None,
     "too_big_for_fat": "fits", "too_big": "smaller", "cache_fallback": "folder",
+    "disconnected": None,
 }
 ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.smaller",
            "fits": "disktest.action.fits"}
@@ -108,6 +109,7 @@ NOTES = {
     "internal": ("disktest.note.internal", "disktest.note.internal.body"),
     "failed": ("disktest.note.failed", "disktest.note.failed.body"),
     "not_started": ("disktest.note.not_started", "disktest.note.not_started.body"),
+    "disconnected": ("disktest.note.disconnected", "disktest.note.disconnected.body"),
     "gone_disk": ("disktest.note.gone_disk", "disktest.note.gone_disk.body"),
     "gone_mount": ("disktest.note.gone_mount", "disktest.note.gone_mount.body"),
     "rotational": ("disktest.note.rotational", "disktest.note.rotational.body"),

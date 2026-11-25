@@ -618,6 +618,8 @@
   "disktest.note.cache_fallback.body": "FAT32, exFAT y NTFS a veces leen y escriben a través de la memoria del sistema, sin avisar, cuando no pueden hacerlo directamente en el disco. Aquí ha pasado, y las cifras habrían sido las de la memoria y no las del disco.",
   "disktest.note.copy_on_write": "No se pudo apartar el archivo de las copias de btrfs",
   "disktest.note.copy_on_write.body": "Con sumas de verificación, btrfs pasa las escrituras por la memoria del sistema: las cifras de escritura pueden no ser las del disco.",
+  "disktest.note.disconnected": "El disco se desconectó durante la prueba",
+  "disktest.note.disconnected.body": "La prueba no pudo seguir porque el disco ya no está en el sistema. Si lo vuelves a conectar, puedes empezarla otra vez.",
   "disktest.note.disk_moved_less": "El disco movió menos de lo que contó la prueba",
   "disktest.note.disk_moved_less.body": "Según sus propios contadores, parte de lo leído o escrito no llegó al disco: algo contestó por él. Las cifras no son de fiar.",
   "disktest.note.disk_was_busy": "Otro programa estaba usando el disco",

@@ -353,6 +353,8 @@ la memoria) no va: está propuesto en las notas
   - alta · probar con un pendrive de verdad en FAT32, exFAT y NTFS: que el
     tope de FAT32 y la parada por la caché salen donde deben. Están escritos
     leyendo el código del kernel y probados con un sustituto.
+  - alta · desconectar un USB de verdad a mitad de la prueba: tiene que
+    salir «el disco se desconectó» y nada más. Probado con el volcado.
   - media · en FAT32, reservar el archivo ya escribe ceros: se escribe dos
     veces, y mientras reserva la barra no avanza.
   - baja · con los títulos en palabras, el historial pide 37 px más en la

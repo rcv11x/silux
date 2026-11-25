@@ -56,6 +56,9 @@ MB/s de un millón de bytes.
   archivo va a tardar, lo dice también: con lo que escribió ese disco la
   última vez, o al menos lo que tarda por su conexión. Mientras lo escribe,
   dice lo que falta.
+- **Un disco que se va.** «Dónde» sigue a lo que está montado. Si el disco
+  elegido se desconecta o se desmonta, la pestaña lo dice y deja de estar
+  elegido; si se va a mitad de la prueba, el error es que se desconectó.
 
 ## Lo que acompaña a cada cifra
 

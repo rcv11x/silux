@@ -537,9 +537,19 @@ def run(plan: Plan, on_progress: Optional[Callable[[dict], None]] = None,
     return _result(outcome.answer, plan, started)
 
 
+def _disconnected(disks: Sequence[str]) -> bool:
+    """Whether any of the disks has gone from the system."""
+    return any(not os.path.exists(sysroot.path(f"{SYS_BLOCK}/{disk}")) for disk in disks)
+
+
 def _result(answer: dict, plan: Plan, started: float) -> Result:
     measures = tuple(saved.from_dict(Measure, m, MEASURE_PARTS)
                      for m in answer.get("measures", ()))
+    reason = answer.get("reason")
+    # Whatever the engine made of it (an I/O error, a folder that went), a
+    # disk that went away mid-test is that.
+    if reason not in (None, "cancelled") and _disconnected(plan.disks):
+        reason = "disconnected"
     result = Result(
         timestamp=started, profile=plan.profile, measures=measures,
         engine=answer.get("engine"), uring_errno=answer.get("uring_errno"),
@@ -553,7 +563,7 @@ def _result(answer: dict, plan: Plan, started: float) -> Result:
         temperature_peak_c=answer.get("temperature_peak_c"),
         temperature_end_c=answer.get("temperature_end_c"),
         seconds=round(time.time() - started, 1),
-        reason=answer.get("reason"), detail=answer.get("detail", ""),
+        reason=reason, detail=answer.get("detail", ""),
         figures=tuple((answer.get("figures") or {}).items()))
     return dataclasses.replace(result, warnings=warnings_of(result, plan.warnings))
 

@@ -9,7 +9,7 @@ from unittest import mock
 from silux import disktest, sysroot
 from silux.collector import Collector
 from silux.i18n import _
-from tests.test_disktest_page import TabCase, visible_texts
+from tests.test_disktest_page import Running, TabCase, visible_texts
 
 PEN = "/media/unidad1"
 PEN_MOUNT = "/dev/sdb1 /media/unidad1 exfat"
@@ -142,3 +142,39 @@ class TestWhereFollowsTheMounts(TabCase):
                           if c.args and str(c.args[0]).endswith("home/someone")], [])
         self.assertEqual(tab.place_box.currentIndex(), index)
         self.assertIn("1.0 GB", tab.place_box.itemText(index))
+
+    def test_unplugged_mid_test_it_is_said_once_and_as_what_it_is(self):
+        from silux.ui.pages.disktest import DiskTestRun
+
+        run = DiskTestRun()
+        plan = disktest.make_plan(PEN)
+        with Running(run, plan, {}):
+            tab = self.tab(run=run)
+            tab.apply(self.sample())
+            self.pick(tab, PEN + " ")
+            self.unplug()
+            tab.apply(self.sample())
+            # The run says it when it ends; not the list before.
+            self.assertNotIn(_("disktest.note.gone_disk"), visible_texts(tab))
+        # What the engine answers to a write on a disk that went.
+        answer = {"reason": "io", "detail": "pwrite failed (errno 5)",
+                  "figures": {"call": "pwrite", "errno": 5}}
+        run._on_done(disktest._result(answer, plan, 0.0))
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.disconnected"), text)
+        self.assertNotIn(_("disktest.note.io"), text)
+        self.assertNotIn(_("disktest.note.gone_disk"), text)
+
+
+class TestAnErrorOnADiskThatWent(TabCase):
+    DUMP = "athlon-3000g"
+
+    def test_is_a_disconnection_and_only_then(self):
+        plan = disktest.make_plan(PEN)
+        answer = {"reason": "io", "detail": "pread failed (errno 5)"}
+        self.assertEqual(disktest._result(answer, plan, 0.0).reason, "io")
+        (self.root / "sys" / "block" / "sdb").unlink()
+        self.assertEqual(disktest._result(answer, plan, 0.0).reason, "disconnected")
+        self.assertEqual(disktest._result({"reason": "cancelled"}, plan, 0.0).reason,
+                         "cancelled")
+        self.assertIsNone(disktest._result({}, plan, 0.0).reason)

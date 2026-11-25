@@ -618,6 +618,8 @@
   "disktest.note.cache_fallback.body": "FAT32, exFAT and NTFS sometimes read and write through the system's memory, without saying so, when they can't go straight to the disk. That happened here, and the figures would have been the memory's, not the disk's.",
   "disktest.note.copy_on_write": "The file couldn't be kept out of btrfs's copies",
   "disktest.note.copy_on_write.body": "With checksums, btrfs takes writes through the system's memory: the writing figures may not be the disk's.",
+  "disktest.note.disconnected": "The disk was disconnected during the test",
+  "disktest.note.disconnected.body": "The test couldn't go on because the disk is no longer in the system. If you connect it again, you can start it over.",
   "disktest.note.disk_moved_less": "The disk moved less than the test counted",
   "disktest.note.disk_moved_less.body": "By its own counters, part of what was read or written never reached the disk: something answered for it. The figures can't be trusted.",
   "disktest.note.disk_was_busy": "Another program was using the disk",
