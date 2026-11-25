@@ -142,7 +142,10 @@ mod silux_bench {
     #[pymodule_export]
     use super::{allowed_cpus, Cancelled, Control, SiluxBenchError};
 
-    /// Free space a disk test leaves alone besides its file.
+    /// Free space a disk test leaves alone besides its file, unless told less.
     #[pymodule_export]
     const FREE_MARGIN: u64 = crate::disk::target::MARGIN;
+    /// The least it can be told to leave.
+    #[pymodule_export]
+    const LEAST_FREE_MARGIN: u64 = crate::disk::target::LEAST_MARGIN;
 }

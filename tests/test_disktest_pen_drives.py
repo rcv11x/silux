@@ -43,18 +43,32 @@ class TestFat32(TabCase):
         return next(b for b in tab.findChildren(type(tab.run_button))
                     if b.isVisibleTo(tab) and plain(b.text()) == text)
 
-    def test_a_nearly_full_one_says_no_test_fits(self):
+    def test_a_nearly_full_one_is_measured_with_what_fits(self):
+        """214 MB free on a 256 MiB partition: with 5 % of it, at least
+        32 MiB, as the margin, 64 MiB fit."""
         tab = self.tab()
         self.pick(tab, self.FAT + " ")
         self.assertEqual(tab.plan().filesystem, "vfat")
+        self.assertEqual(tab.plan().margin, 32 * MIB)
         self.assertIn("214 MB", plain(tab.place_box.currentText()))
-        for size in (4 * GIB, GIB, 64 * MIB):
+        tab.size_box.setCurrentIndex(tab.size_box.findData(4 * GIB))
+        tab._describe()
+        text = plain(visible_texts(tab))
+        self.assertIn(_("disktest.note.no_space"), text)
+        self.assertNotIn(_("disktest.note.too_big_for_fat"), text)
+        self.assertFalse(tab.run_button.isEnabled())
+        self.button(tab, _("disktest.action.fits").format(size="64 MiB")).click()
+        self.assertEqual(tab.plan().bytes_, 64 * MIB)
+        self.assertTrue(tab.run_button.isEnabled())
+
+    def test_one_with_even_less_says_no_test_fits(self):
+        tab = self.with_free(256 * MIB, 60_000_000)
+        for size in (4 * GIB, 64 * MIB):
             tab.size_box.setCurrentIndex(tab.size_box.findData(size))
             tab._describe()
             text = plain(visible_texts(tab))
             self.assertIn(_("disktest.note.no_room"), text)
-            self.assertIn("214 MB", text)
-            self.assertNotIn(_("disktest.note.too_big_for_fat"), text)
+            self.assertIn("60.0 MB", text)
             self.assertNotIn("4 095", text)
             self.assertFalse(tab.run_button.isEnabled())
         self.button(tab, _("disktest.action.folder"))

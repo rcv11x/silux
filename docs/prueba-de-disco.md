@@ -34,9 +34,13 @@ historial agrupa cada perfil aparte: sus cifras no se comparan entre sí.
   un nombre que se le quita antes de escribir el primer byte, donde el
   sistema de archivos no admite lo primero), así que el kernel lo libera
   cuando el proceso termina, se cancela o muere. No queda nada que borrar.
-  Antes se comprueba que cabe, con 1 GiB de margen, y se reserva su espacio.
-  La pestaña lo mira antes de empezar: ofrece el mayor tamaño que cabe, o
-  dice que no cabe ninguno.
+  Antes se comprueba que cabe con un margen libre, y se reserva su espacio.
+  El margen es 1 GiB en el sistema de archivos del sistema (el de `/`,
+  `/home` o `/var`), donde quedarse sin sitio rompe los registros y las
+  actualizaciones, y en btrfs, que lleno puede quedarse sin sitio para sus
+  metadatos. En los demás, el 5 % de su tamaño, entre 32 MiB y 1 GiB: así
+  un pendrive pequeño casi lleno se puede probar. La pestaña lo mira antes
+  de empezar: ofrece el mayor tamaño que cabe, o dice que no cabe ninguno.
 - **Sus datos.** Al azar, para que nada los comprima, y con un sello cada
   4 KiB que dice a qué parte del archivo va cada bloque: no hay dos bloques
   iguales, y cada lectura se comprueba contra el sello del bloque que pidió.

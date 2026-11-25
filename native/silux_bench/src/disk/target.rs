@@ -17,8 +17,10 @@ use crate::common::rng::Rng;
 use crate::common::timer::now_ns;
 use crate::disk::buffers::Buffer;
 
-/// Free space left alone besides the file's own.
+/// Free space left alone besides the file's own, unless told less.
 pub const MARGIN: u64 = 1 << 30;
+/// The least that can be left: a test never fills a file system.
+pub const LEAST_MARGIN: u64 = 32 << 20;
 /// The file is written, and sized, in blocks of this.
 pub const FILL_BLOCK: usize = 1 << 20;
 /// Offsets and sizes are multiples of this where the file doesn't say what
@@ -109,14 +111,23 @@ impl Target {
     /// name, with its space reserved, and set to be read and written past
     /// the page cache. Its contents are still to be written (`fill`).
     pub fn create(folder: &Path, bytes: u64) -> Result<Target> {
-        Target::create_as(folder, bytes, true)
+        Target::create_leaving(folder, bytes, MARGIN)
     }
 
-    /// `create`, starting from a name when `unnamed` is false: what happens
-    /// by itself where a file can't be made without one.
-    fn create_as(path: &Path, bytes: u64, unnamed: bool) -> Result<Target> {
+    /// `create`, leaving `margin` bytes free besides the file instead of
+    /// `MARGIN`: never less than `LEAST_MARGIN`.
+    pub fn create_leaving(folder: &Path, bytes: u64, margin: u64) -> Result<Target> {
+        Target::create_as(folder, bytes, margin, true)
+    }
+
+    /// `create_leaving`, starting from a name when `unnamed` is false: what
+    /// happens by itself where a file can't be made without one.
+    fn create_as(path: &Path, bytes: u64, margin: u64, unnamed: bool) -> Result<Target> {
         if bytes == 0 || !bytes.is_multiple_of(FILL_BLOCK as u64) || i64::try_from(bytes).is_err() {
             return Err(Error::BadSetting("bytes"));
+        }
+        if margin < LEAST_MARGIN {
+            return Err(Error::BadSetting("margin"));
         }
         let c_path = CString::new(path.as_os_str().as_bytes()).map_err(|_| Error::NoFolder {
             errno: libc::EINVAL,
@@ -144,7 +155,7 @@ impl Target {
             }
             _ => {}
         }
-        let needed = bytes.saturating_add(MARGIN);
+        let needed = bytes.saturating_add(margin);
         if free < needed {
             return Err(Error::NoSpace { needed, free });
         }
@@ -796,7 +807,7 @@ pub(crate) mod testing {
         }
 
         pub fn create_with_a_name_first(folder: &Path, bytes: u64) -> Result<Target> {
-            Target::create_as(folder, bytes, false)
+            Target::create_as(folder, bytes, MARGIN, false)
         }
     }
 }
@@ -931,6 +942,25 @@ mod tests {
             Some(Error::InMemory) => {}
             other => panic!("{other:?}"),
         }
+        assert!(folder.names().is_empty());
+    }
+
+    #[test]
+    fn the_margin_asked_is_the_one_left_and_never_less_than_the_least() {
+        let folder = Folder::new("margin");
+        let free = folder.free();
+        // More than is free, with either margin.
+        let bytes = (free / FILL_BLOCK as u64 + 1) * FILL_BLOCK as u64;
+        let margin = LEAST_MARGIN * 2;
+        match Target::create_leaving(&folder.0, bytes, margin).err() {
+            Some(Error::NoSpace { needed, .. }) => assert_eq!(needed, bytes + margin),
+            Some(Error::InMemory) => {}
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(
+            Target::create_leaving(&folder.0, SMALL, LEAST_MARGIN - 1).err(),
+            Some(Error::BadSetting("margin"))
+        );
         assert!(folder.names().is_empty());
     }
 

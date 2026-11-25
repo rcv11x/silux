@@ -664,9 +664,19 @@ class DiskTestTab(ScrollPage):
         folder = self._folder()
         if folder is None:
             return None
+        place = disktest.where(folder)
+        partition = self._partition_at(place.mountpoint if place is not None else None)
         return disktest.make_plan(
-            folder, profile=self.profile_box.currentData(), bytes_=self.size_box.currentData(),
-            laps=self.laps_box.currentData(), write=self.write_box.isChecked())
+            folder, place, profile=self.profile_box.currentData(),
+            size_bytes=partition.size_bytes if partition is not None else None,
+            bytes_=self.size_box.currentData(), laps=self.laps_box.currentData(),
+            write=self.write_box.isChecked())
+
+    def _partition_at(self, mountpoint: Optional[str]):
+        """The partition mounted there, as the last sample read it."""
+        return next((partition for disk in self._disks.values()
+                     for partition in disk.partitions
+                     if mountpoint and partition.mountpoint == mountpoint), None)
 
     def _on_place(self, index: int) -> None:
         if self.place_box.itemData(index) == "":
@@ -871,9 +881,8 @@ class DiskTestTab(ScrollPage):
 
     def _free_of(self, plan: disktest.Plan) -> Optional[int]:
         """What is free where the folder is mounted, as the last sample read it."""
-        return next((partition.free_bytes for disk in self._disks.values()
-                     for partition in disk.partitions
-                     if plan.mountpoint and partition.mountpoint == plan.mountpoint), None)
+        partition = self._partition_at(plan.mountpoint)
+        return partition.free_bytes if partition is not None else None
 
     def _too_big(self, plan: disktest.Plan, limit: int, free: Optional[int]) -> Notice:
         """Why the file chosen doesn't fit in the folder, with the largest
@@ -886,12 +895,12 @@ class DiskTestTab(ScrollPage):
             smallest = min(sizes)
             return self._note("no_room", "folder", free=render.decimal_size(free),
                               size=render.file_size(smallest),
-                              needed=render.decimal_size(smallest + disktest.FREE_MARGIN))
+                              needed=render.decimal_size(smallest + plan.margin))
         offer = render.file_size(self._offer)
         if limit == largest:
             return self._note("too_big_for_fat", "fits", largest=offer, size=offer)
         return self._note("no_space", "fits", size=offer, free=render.decimal_size(free),
-                          needed=render.decimal_size(plan.bytes_ + disktest.FREE_MARGIN))
+                          needed=render.decimal_size(plan.bytes_ + plan.margin))
 
     def _fill_estimate(self, plan: disktest.Plan, disk) -> Optional[tuple[float, str]]:
         """How long writing the file takes, and what that comes from."""

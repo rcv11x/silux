@@ -176,6 +176,24 @@ class TestWhere(unittest.TestCase):
         self.assertEqual(plan.tests, disktest.PROFILES["standard"])
 
 
+class TestTheSystemsFileSystem(unittest.TestCase):
+    def test_it_is_that_of_root_home_or_var_and_its_subvolumes(self):
+        from tests.test_equipos import EQUIPOS, _herramienta
+
+        for dump, system, others in (
+                ("athlon-3000g", ("/",), ("/boot", "/media/unidad1")),
+                # /media/unidad1 is a subvolume of the btrfs of / and /home.
+                ("5800x3d", ("/", "/home", "/media/unidad1"), ("/boot", "/media/unidad2"))):
+            with self.subTest(dump=dump), _herramienta().mounted(EQUIPOS / dump), \
+                    mock.patch.object(os.path, "realpath", lambda p, **_k: p):
+                sysroot.forget()
+                for folder in system:
+                    self.assertTrue(disktest.is_system(disktest.where(folder)), folder)
+                for folder in others:
+                    self.assertFalse(disktest.is_system(disktest.where(folder)), folder)
+            sysroot.forget()
+
+
 class TestWhereOnEveryDump(unittest.TestCase):
     pass
 
@@ -369,6 +387,16 @@ class TestRunning(unittest.TestCase):
             in_memory = disktest.run(dataclasses.replace(self.plan(), folder="/dev/shm"))
             self.assertEqual(in_memory.reason, "in_memory")
 
+    def test_the_plan_s_margin_is_the_one_the_engine_leaves(self):
+        free = shutil.disk_usage(self.folder).free
+        asked = (free // MIB + 1) * MIB
+        result = disktest.run(self.plan(bytes_=asked, margin=64 * MIB))
+        if result.reason == "in_memory":
+            self.skipTest(result.detail)
+        self.assertEqual(result.reason, "no_space")
+        self.assertEqual(dict(result.figures)["needed"], asked + 64 * MIB)
+        self.assertEqual(os.listdir(self.folder), [])
+
     def test_the_child_dies_with_whoever_started_it(self):
         """As when the window is killed: nobody is left to stop the test."""
         if self.run_it(self.plan(laps=1)).reason is not None:
@@ -496,6 +524,20 @@ class TestPenDrives(unittest.TestCase):
         if native is None:
             self.skipTest("without silux_bench")
         self.assertEqual(disktest.FREE_MARGIN, native.FREE_MARGIN)
+        self.assertEqual(disktest.LEAST_FREE_MARGIN, native.LEAST_FREE_MARGIN)
+
+    def test_the_margin_is_whole_on_the_system_and_on_btrfs_and_a_share_elsewhere(self):
+        GB = 10**9
+        for filesystem, system, size, margin in (
+                ("ext4", True, 2 * GB, GIB), ("btrfs", False, 2 * GB, GIB),
+                ("exfat", False, None, GIB), ("vfat", False, 2 * GB, 95 * MIB),
+                ("vfat", False, 4 * GB, 190 * MIB), ("vfat", False, 256 * MIB, 32 * MIB),
+                ("exfat", False, 22 * GB, GIB), ("ext4", False, 16 * 10**12, GIB)):
+            with self.subTest(filesystem=filesystem, system=system, size=size):
+                self.assertEqual(disktest.free_margin(filesystem, system, size), margin)
+        plan = disktest.Plan("/media/pen", disktest.PROFILES["standard"], filesystem="exfat",
+                             margin=32 * MIB)
+        self.assertEqual(disktest.largest_that_fits(plan, 214 * MIB), 182 * MIB)
 
     def test_writing_the_file_says_how_long_it_has_left_at_its_pace(self):
         self.assertIsNone(disktest.fill_left(1.0, 0.5))

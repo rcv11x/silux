@@ -177,6 +177,19 @@ class TestDiskFile(unittest.TestCase):
         self.assertGreater(error.details["free"], 0)
         self.assertEqual(os.listdir(self.folder), [])
 
+    def test_the_margin_asked_is_the_one_left_and_never_below_the_least(self):
+        self.file()
+        free = shutil.disk_usage(self.folder).free
+        asked = (free // MIB + 1) * MIB
+        with self.assertRaises(silux_bench.SiluxBenchError) as raised:
+            silux_bench.DiskFile(self.folder, bytes=asked, margin=64 * MIB)
+        self.assertEqual(raised.exception.details["needed"], asked + 64 * MIB)
+        with self.assertRaises(silux_bench.SiluxBenchError) as raised:
+            silux_bench.DiskFile(self.folder, bytes=MIB,
+                                 margin=silux_bench.LEAST_FREE_MARGIN - 1)
+        self.assertEqual(raised.exception.args[0], "bad_setting")
+        self.assertEqual(os.listdir(self.folder), [])
+
     def test_the_ring_is_there_or_the_kernel_says_why_not(self):
         why = silux_bench.uring_error()
         file = self.file()

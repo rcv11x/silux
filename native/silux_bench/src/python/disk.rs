@@ -12,7 +12,7 @@ use pyo3::types::{PyDict, PyList};
 use super::{control_of, guarded, to_python, Control, SiluxBenchError};
 use crate::common::error::Error;
 use crate::disk::job::{Direction, Job, Pattern};
-use crate::disk::target::{Creation, Target};
+use crate::disk::target::{Creation, Target, MARGIN};
 use crate::disk::{threads, uring};
 
 /// The file a disk test reads and writes: made in `folder` without a name,
@@ -36,10 +36,12 @@ impl DiskFile {
 
 #[pymethods]
 impl DiskFile {
+    /// `margin`: the free space left besides the file, from
+    /// `LEAST_FREE_MARGIN` up.
     #[new]
-    #[pyo3(signature = (folder, *, bytes))]
-    fn new(py: Python<'_>, folder: PathBuf, bytes: u64) -> PyResult<Self> {
-        let target = guarded(py, move || Target::create(&folder, bytes))?;
+    #[pyo3(signature = (folder, *, bytes, margin = MARGIN))]
+    fn new(py: Python<'_>, folder: PathBuf, bytes: u64, margin: u64) -> PyResult<Self> {
+        let target = guarded(py, move || Target::create_leaving(&folder, bytes, margin))?;
         Ok(DiskFile {
             target: Mutex::new(Some(Arc::new(target))),
         })

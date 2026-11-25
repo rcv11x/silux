@@ -68,9 +68,17 @@ NETWORK = frozenset({
 # FAT keeps a file's size in 32 bits: the kernel takes files of up to
 # 2^32 - 1 bytes there (`s_maxbytes` in fs/fat/inode.c).
 LARGEST_FILE = {"vfat": 2**32 - 1, "msdos": 2**32 - 1}
-# Free space a test leaves alone besides its file: the native module's own
-# margin, which it won't start without.
+# Free space a test leaves alone besides its file. All of the native
+# module's margin on the file system the system itself writes to, where
+# running out breaks logs, updates and logging in, and on btrfs, which full
+# can be left without room for its own metadata. Elsewhere it only keeps
+# room for what other programs write there meanwhile: a share of the file
+# system, between the least the module takes and the whole margin, so that
+# a small pen drive can be measured.
 FREE_MARGIN = GIB
+LEAST_FREE_MARGIN = 32 * MIB
+MARGIN_SHARE = 0.05
+SYSTEM_MOUNTS = frozenset({"/", "/home", "/var"})
 # These go through the page cache without an error where they can't read or
 # write directly, so the cache check after each test is what tells.
 SILENT_FALLBACK = frozenset({"vfat", "msdos", "exfat", "ntfs3"})
@@ -260,6 +268,8 @@ class Plan:
     layers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     device: Optional[str] = None
+    # Free space left besides the file (`free_margin`).
+    margin: int = FREE_MARGIN
 
 
 @dataclass(frozen=True)
@@ -456,17 +466,37 @@ def where(folder: Union[str, os.PathLike]) -> Optional[Place]:
                  tuple(dict.fromkeys(layers)), refusal, tuple(warnings), device)
 
 
+def is_system(place: Place) -> bool:
+    """Whether the folder is on the file system the system writes to: the
+    one mounted at /, /home or /var, by its source, so that the subvolumes
+    of the same btrfs count too."""
+    return place.source in {source for source, mountpoint, _type, _options in _mounts()
+                            if mountpoint in SYSTEM_MOUNTS}
+
+
+def free_margin(filesystem: Optional[str], system: bool, size_bytes: Optional[int]) -> int:
+    """How much free space a test leaves besides its file, in whole MiB:
+    see FREE_MARGIN. All of it where the file system's size isn't known."""
+    if system or filesystem == "btrfs" or not size_bytes:
+        return FREE_MARGIN
+    share = int(size_bytes * MARGIN_SHARE) // MIB * MIB
+    return min(FREE_MARGIN, max(LEAST_FREE_MARGIN, share))
+
+
 def make_plan(folder: Union[str, os.PathLike], place: Optional[Place] = None,
-              profile: str = "standard", **changes) -> Plan:
-    """The plan to measure `folder` with a profile's tests. `changes` are
-    the plan's own fields: the file's size, the laps, whether to write."""
+              profile: str = "standard", size_bytes: Optional[int] = None,
+              **changes) -> Plan:
+    """The plan to measure `folder` with a profile's tests. `size_bytes` is
+    its file system's, where it is known, for the margin. `changes` are the
+    plan's own fields: the file's size, the laps, whether to write."""
     place = place if place is not None else where(folder)
     plan = Plan(folder=os.fspath(folder), tests=PROFILES[profile], profile=profile)
     if place is not None:
         plan = dataclasses.replace(
             plan, mountpoint=place.mountpoint, filesystem=place.filesystem,
             disks=place.disks, layers=place.layers, warnings=place.warnings,
-            device=place.device)
+            device=place.device,
+            margin=free_margin(place.filesystem, is_system(place), size_bytes))
     return dataclasses.replace(plan, **changes)
 
 
@@ -482,7 +512,7 @@ def largest_that_fits(plan: Plan, free_bytes: Optional[int]) -> Optional[int]:
     what is free less the margin a test leaves. None if neither is a limit
     that is known."""
     limits = [limit for limit in (largest_file(plan.filesystem),
-                                  None if free_bytes is None else free_bytes - FREE_MARGIN)
+                                  None if free_bytes is None else free_bytes - plan.margin)
               if limit is not None]
     return min(limits) if limits else None
 
@@ -748,7 +778,8 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
         return now if peak is None else peak if now is None else max(peak, now)
 
     try:
-        file = silux_bench.DiskFile(plan["folder"], bytes=plan["bytes_"])
+        file = silux_bench.DiskFile(plan["folder"], bytes=plan["bytes_"],
+                                    margin=plan["margin"])
         answer.update(creation=file.creation, no_cow=file.no_cow, align_declared=file.align[2])
 
         control = silux_bench.Control()
