@@ -74,7 +74,8 @@ class TabCase(unittest.TestCase):
         self.addCleanup(self.clear)
         stack = contextlib.ExitStack()
         self.addCleanup(stack.close)
-        stack.enter_context(_herramienta().mounted(EQUIPOS / self.DUMP))
+        # The dump's copy, which a test may mount and unmount things in.
+        self.root = stack.enter_context(_herramienta().mounted(EQUIPOS / self.DUMP))
         sysroot.forget()
         self.addCleanup(sysroot.forget)
         # The dump's folders aren't this machine's: every one can be

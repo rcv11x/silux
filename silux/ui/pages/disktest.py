@@ -108,6 +108,8 @@ NOTES = {
     "internal": ("disktest.note.internal", "disktest.note.internal.body"),
     "failed": ("disktest.note.failed", "disktest.note.failed.body"),
     "not_started": ("disktest.note.not_started", "disktest.note.not_started.body"),
+    "gone_disk": ("disktest.note.gone_disk", "disktest.note.gone_disk.body"),
+    "gone_mount": ("disktest.note.gone_mount", "disktest.note.gone_mount.body"),
     "rotational": ("disktest.note.rotational", "disktest.note.rotational.body"),
     "removable": ("disktest.note.removable", "disktest.note.removable.body"),
     "encrypted": ("disktest.note.encrypted", "disktest.note.encrypted.body"),
@@ -414,7 +416,16 @@ class DiskTestTab(ScrollPage):
         self._run = run if run is not None else DiskTestRun(self)
         self._disks: dict = {}
         self._places: tuple = ()
+        # What is mounted where, as last seen, and the places it gave: they
+        # are looked for again only when it changes.
+        self._mounts: tuple = ()
+        self._offered: list[tuple[str, str, str]] = []
+        # The disk under each folder offered, as it was: to say which went.
+        self._owners: dict[str, tuple[str, Optional[str]]] = {}
+        # A folder that was chosen and went away, while its note is shown.
+        self._gone: Optional[str] = None
         self._chosen: Optional[str] = None
+        self._chosen_place: Optional[disktest.Place] = None
         self._blocked = False
         self._placed = False
         self.result: Optional[disktest.Result] = None
@@ -633,8 +644,10 @@ class DiskTestTab(ScrollPage):
         if self.place_box.itemData(index) == "":
             chosen = QFileDialog.getExistingDirectory(self, _("disktest.option.choose"))
             if chosen:
-                self._chosen = chosen
+                self._choose_folder(chosen)
             self._fill_places()
+        if self._gone is not None:
+            self._drop_failure()
         self._describe()
         self._show_for_place()
 
@@ -655,7 +668,7 @@ class DiskTestTab(ScrollPage):
 
     def choose(self, folder: str) -> None:
         """Measure in `folder`, as if it had been picked in the dialog."""
-        self._chosen = folder
+        self._choose_folder(folder)
         self._fill_places()
         self._describe()
         self._show_for_place()
@@ -673,42 +686,102 @@ class DiskTestTab(ScrollPage):
         else:
             self._show_empty(bool(disks))
 
-    def _fill_places(self) -> None:
-        """Each file system a test can be run on, with its disk and what is
-        free, and the folder the user chose, if any."""
-        before = self._folder()
+    def _choose_folder(self, folder: str) -> None:
+        self._chosen = folder
+        self._chosen_place = disktest.where(folder)
+
+    def _offered_places(self) -> list[tuple[str, str, str]]:
+        """(folder, disk, partition) for each file system a test can be run
+        on that can be written to. In the home's, a folder of ours and not
+        its root, and first: it is the disk most people mean."""
         home = disktest.where(pathlib.Path.home())
-        rows = []
+        found: list[tuple[str, str, str]] = []
         for disk in self._disks.values():
             for partition in disk.partitions:
                 if not partition.mountpoint:
                     continue
-                # In the home's file system, a folder of ours and not its root.
                 at_home = home is not None and os.path.basename(home.source) == partition.name
                 folder = (str(pathlib.Path.home() / ".cache" / "silux") if at_home
                           else partition.mountpoint)
                 check = pathlib.Path.home() if at_home else pathlib.Path(folder)
-                if not os.access(check, os.W_OK):
-                    continue
-                parts = [render.home_path(folder), disk.model or disk.name,
-                         partition.filesystem or ""]
-                if partition.free_bytes is not None:
-                    parts.append(_("disktest.where.free").format(
-                        size=render.decimal_size(partition.free_bytes)))
-                # The home's first: it is the disk most people mean.
-                rows.insert(0 if at_home else len(rows), (" · ".join(p for p in parts if p), folder))
+                if os.access(check, os.W_OK):
+                    found.insert(0 if at_home else len(found), (folder, disk.name, partition.name))
+        return found
+
+    def _place_label(self, folder: str, disk_name: str, partition_name: str) -> str:
+        disk = self._disks[disk_name]
+        partition = next(p for p in disk.partitions if p.name == partition_name)
+        parts = [render.home_path(folder), disk.model or disk.name, partition.filesystem or ""]
+        if partition.free_bytes is not None:
+            parts.append(_("disktest.where.free").format(
+                size=render.decimal_size(partition.free_bytes)))
+        return " · ".join(part for part in parts if part)
+
+    def _chosen_still_there(self) -> bool:
+        """Whether the folder chosen in the dialog is still on what it was."""
+        place = self._chosen_place
+        if self._chosen is None or place is None:
+            return True
+        now = disktest.where(self._chosen)
+        return (now is not None and now.mountpoint == place.mountpoint
+                and all(disk in self._disks for disk in place.disks))
+
+    def _fill_places(self) -> None:
+        """Each file system a test can be run on, with its disk and what is
+        free, and the folder the user chose, if any. Where they are is asked
+        again only when what is mounted changes; what is free is rewritten
+        in the rows there are."""
+        mounts = tuple((disk.name, disk.model,
+                        tuple((p.name, p.mountpoint, p.filesystem) for p in disk.partitions))
+                       for disk in self._disks.values())
+        if mounts != self._mounts:
+            self._mounts = mounts
+            self._offered = self._offered_places()
+            if not self._chosen_still_there():
+                self._chosen = self._chosen_place = None
+        rows = [(self._place_label(*place), place[0]) for place in self._offered]
         if self._chosen and self._chosen not in [folder for _label, folder in rows]:
             rows.insert(0, (render.home_path(self._chosen), self._chosen))
         rows.append((_("disktest.option.choose"), ""))
         if tuple(rows) == self._places:
             return
+        folders = [folder for _label, folder in rows]
+        if folders == [folder for _label, folder in self._places]:
+            for index, (label, _folder) in enumerate(rows):
+                if self.place_box.itemText(index) != label:
+                    self.place_box.setItemText(index, label)
+            self._places = tuple(rows)
+            return
+        before = self._folder()
+        if before and before not in folders and not self.running:
+            self._say_gone(before)
+        elif self._gone is not None and self._gone in folders:
+            self._drop_failure()
+        owners = {folder: (disk, self._disks[disk].model) for folder, disk, _p in self._offered}
+        if self._chosen and self._chosen_place is not None and len(self._chosen_place.disks) == 1:
+            disk = self._chosen_place.disks[0]
+            owners[self._chosen] = (disk, getattr(self._disks.get(disk), "model", None))
+        self._owners = owners
         self._places = tuple(rows)
         self.place_box.clear()
         for label, folder in rows:
             self.place_box.addItem(label, folder)
         wanted = self._chosen or before
-        index = next((i for i, (_l, folder) in enumerate(rows) if folder == wanted), 0)
+        index = next((i for i, folder in enumerate(folders) if folder == wanted), 0)
         self.place_box.setCurrentIndex(index)
+
+    def _say_gone(self, folder: str) -> None:
+        """The folder chosen isn't offered any more: its disk went, or its
+        file system was unmounted. A run under way says it itself."""
+        owner = self._owners.get(folder)
+        if owner is None:
+            return
+        disk, model = owner
+        self._drop_failure()
+        self._failure = self._note("gone_mount" if disk in self._disks else "gone_disk",
+                                   disk=model or disk)
+        self._notices.insertWidget(0, self._failure)
+        self._gone = folder
 
     def _describe(self, *_args) -> None:
         """Say what a test would write and how long it would take, and what
@@ -828,6 +901,7 @@ class DiskTestTab(ScrollPage):
             self._failure.setParent(None)
             self._failure.deleteLater()
             self._failure = None
+        self._gone = None
 
     # -- running -------------------------------------------------------------
 
