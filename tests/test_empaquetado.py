@@ -500,7 +500,7 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
         build = self.build
         vacio = mock.Mock(return_value=set())
         pasos = {nombre: vacio for nombre in (
-            "copiar_python", "copiar_silux", "copiar_pyside",
+            "copiar_python", "copiar_silux", "copy_native_module", "copiar_pyside",
             "copiar_plugins", "copiar_bibliotecas", "quitar_simbolos",
             "escribir_metadatos", "sellar_build", "avisar_de_compatibilidad")}
         pasos["comprobar_juego_de_instrucciones"] = mock.Mock(return_value=[])
