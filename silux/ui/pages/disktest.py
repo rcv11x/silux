@@ -1022,20 +1022,26 @@ class DiskTestTab(ScrollPage):
                                result.profile), []).append(result)
         fahrenheit = self._prefs.fahrenheit
         for (disk, engine, profile), results in groups.items():
-            ran = {name: next((m.name for r in results for m in r.measures
-                               if name in (m.name, m.stands_for)), name)
-                   for name in (SEQUENTIAL, SINGLE)}
+            found = {name: next((m for r in results for m in r.measures
+                                 if name in (m.name, m.stands_for)), None)
+                     for name in (SEQUENTIAL, SINGLE)}
+            ran = {name: m.name if m else name for name, m in found.items()}
+            tests = {name: m.test if m else next(t for t in disktest.PROFILES["standard"]
+                                                 if t.name == name)
+                     for name, m in found.items()}
             writes = any(m.direction == "write" for r in results for m in r.measures)
             columns = [(SEQUENTIAL, "read")] + ([(SEQUENTIAL, "write")] if writes else []) \
                 + [(SINGLE, "read")]
-            # The headers in short lines, so the table fits the narrowest
-            # window: «SEQ1M / Q8T1 / READ».
+            # Each test in words, as the table above names it, with its code
+            # on hovering: «Sequential, read».
             table = Table([_("memtest.col.date")]
-                          + [f"{ran[name].replace(' ', chr(10))}\n{_(DIRECTIONS[direction])}"
+                          + [_("disktest.col.history").format(
+                              test=test_words(tests[name]), direction=_(DIRECTIONS[direction]))
                              for name, direction in columns]
                           + [_("disktest.col.hottest")],
                           numeric=(False,) + (True,) * (len(columns) + 1))
-            table.set_header(len(columns) + 1, _("disktest.col.hottest"), two_lines=True)
+            for column, (name, direction) in enumerate(columns, start=1):
+                table.set_header_tooltip(column, f"{ran[name]} · {_(DIRECTIONS[direction])}")
             rows = []
             for result in results:
                 cells = [result.label or when(result.timestamp)]

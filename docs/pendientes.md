@@ -348,6 +348,10 @@ la memoria) no va: está propuesto en las notas
     siempre, 41–42 algunas veces) sin causa aislada; la mediana de tres
     bloques no lo arregló. Detalle en
     [prueba-de-memoria.md](prueba-de-memoria.md).
+* **La prueba de disco** (`disktest.py`, `ui/pages/disktest.py`; cómo mide, en
+  [prueba-de-disco.md](prueba-de-disco.md)):
+  - baja · con los títulos en palabras, el historial pide 37 px más en la
+    ventana más estrecha (480 px); cabe desde 520.
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
   el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
   distinto tamaño el segundo pisa al primero.

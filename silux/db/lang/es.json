@@ -577,6 +577,7 @@
   "disktest.action.smaller": "Probar con un archivo más pequeño",
   "disktest.col.best": "Mejor",
   "disktest.col.first": "Previa",
+  "disktest.col.history": "{test}, {direction}",
   "disktest.col.hottest": "Temp. máx.",
   "disktest.col.laps": "Vueltas (MB/s)",
   "disktest.col.read": "LECTURA",

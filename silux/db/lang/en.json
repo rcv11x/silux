@@ -577,6 +577,7 @@
   "disktest.action.smaller": "Try with a smaller file",
   "disktest.col.best": "Best",
   "disktest.col.first": "Warm-up",
+  "disktest.col.history": "{test}, {direction}",
   "disktest.col.hottest": "Max. temp.",
   "disktest.col.laps": "Runs (MB/s)",
   "disktest.col.read": "READ",
