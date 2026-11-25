@@ -24,7 +24,17 @@ import pathlib
 from dataclasses import dataclass
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QPainter, QPalette, QPixmap, QPolygonF
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QFontDatabase,
+    QPainter,
+    QPainterPath,
+    QPalette,
+    QPen,
+    QPixmap,
+    QPolygonF,
+)
 from PySide6.QtWidgets import QApplication
 
 from .. import thermal
@@ -351,6 +361,37 @@ def _arrow_icon(color: str, direction: str) -> str:
     return target.as_posix()
 
 
+def _check_icon(color: str) -> str:
+    """Draw a tick for a checked box and return its path, cached by colour.
+
+    With the sheet, a checked box was only filled with the accent: nothing
+    in it said it was ticked. As the arrows, made here to follow the theme.
+    """
+    size, scale = 15, 4
+    cache = icon_cache()
+    target = cache / f"check-{color.lstrip('#')}-{size}.png"
+    if target.exists():
+        return target.as_posix()
+
+    pixmap = QPixmap(size * scale, size * scale)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pen = QPen(QColor(color), 2.0 * scale)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    tick = QPainterPath(QPointF(3.6 * scale, 7.8 * scale))
+    tick.lineTo(QPointF(6.4 * scale, 10.6 * scale))
+    tick.lineTo(QPointF(11.6 * scale, 4.6 * scale))
+    painter.drawPath(tick)
+    painter.end()
+
+    cache.mkdir(parents=True, exist_ok=True)
+    pixmap.save(target.as_posix(), "PNG")
+    return target.as_posix()
+
+
 def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     m = m or METRICS
     try:
@@ -358,7 +399,10 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         arrow_up = _arrow_icon(p.muted, "up")
         arrow_right = _arrow_icon(p.muted, "right")
         arrow_down_hot = _arrow_icon(p.accent, "down")
+        # In the colour a primary button writes on the accent.
+        check = _check_icon(p.bg)
         arrows = f"""
+    QCheckBox::indicator:checked {{{{ image: url({check}); }}}}
     QComboBox::down-arrow {{{{
         image: url({arrow_down}); width: 14px; height: 14px; margin-right: 4px;
     }}}}
