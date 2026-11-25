@@ -448,12 +448,14 @@ class TestRunningAndFailing(TabCase):
         tab = self.tab(run=run)
         states = []
         tab.running_changed.connect(states.append)
-        run.model = "Another name"
-        newer = dataclasses.replace(recorded("sn850x-btrfs"), timestamp=1_900_000_000.0)
+        # The child doesn't know the model: the run that started it does.
+        run.model = "WD_BLACK SN850X HS 1000GB"
+        newer = dataclasses.replace(recorded("sn850x-btrfs"), model=None,
+                                    timestamp=1_900_000_000.0)
         run._on_done(newer)
         self.assertEqual(states, [False])
         self.assertEqual(len(disktest.load_history()), 2)
-        self.assertEqual(disktest.load_history()[0].model, "Another name")
+        self.assertEqual(disktest.load_history()[0].model, run.model)
         self.assertEqual(tab.result.timestamp, 1_900_000_000.0)
         self.assertFalse(tab.cancel_button.isVisibleTo(tab))
 

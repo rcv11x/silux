@@ -158,6 +158,20 @@ class TestASlowPenDrive(TabCase):
         self.assertIn(_("disktest.note.slow_fill").format(fill="1 min 47 s"), text)
         self.assertIn(render.disk_rate(10_000_000).replace(" ", " "), text)
 
+    def test_another_pen_drive_that_came_up_under_its_name_isnt_it(self):
+        """sdb is whatever was plugged in first: its last result is only its
+        own if the model is the same."""
+        mine = dataclasses.replace(recorded("sn850x-btrfs"), disks=("sdb",),
+                                   model="DataTraveler 3.0", written_bytes=3 * GIB)
+        for model, own in (("Another pen", False), ("DataTraveler 3.0", True)):
+            with self.subTest(model=model):
+                disktest.save_history([dataclasses.replace(mine, model=model)])
+                tab = self.tab()
+                self.pen(tab)
+                text = visible_texts(tab)
+                self.assertEqual(_("disktest.empty") not in text, own)
+                self.assertEqual("3.2 GB" in tab.about.text(), own)
+
     def test_while_writing_it_says_how_long_is_left(self):
         from silux.ui.pages.disktest import DiskTestRun
 

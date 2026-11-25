@@ -564,10 +564,8 @@ class StoragePage(ScrollPage):
         models = {d.name: d.model for d in (discos or ())} or self._models
         self._models = models
         for name, (line, summary) in self._tests.items():
-            # By its name and, when the test kept it, its model: a disk can
-            # come up as another sdX after a reboot.
-            last = next((r for r in self._disk_tests if r.disks == (name,)
-                         and (r.model is None or r.model == models.get(name))), None)
+            last = next((r for r in self._disk_tests
+                         if r.is_of((name,), models.get(name))), None)
             line.setVisible(last is not None)
             if last is None:
                 continue

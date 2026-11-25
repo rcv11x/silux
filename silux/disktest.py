@@ -317,6 +317,13 @@ class Result:
     def measured(self) -> bool:
         return any(m.counted for m in self.measures)
 
+    def is_of(self, disks: Sequence[str], model: Optional[str]) -> bool:
+        """Whether it was measured on these disks: by their names and, where
+        it kept it, the model. Another disk can come up under the same name
+        after a reboot or when plugged in again."""
+        return bool(disks) and self.disks == tuple(disks) and (
+            self.model is None or self.model == model)
+
 
 # -- what a folder sits on ---------------------------------------------------
 
@@ -492,7 +499,7 @@ def fill_estimate(plan: Plan, history: Sequence[Result], model: Optional[str],
     its link carries, which makes it the least it can take. None if neither
     is known."""
     for result in history:
-        if result.disks != plan.disks or result.model != model:
+        if not result.is_of(plan.disks, model):
             continue
         measure = result.measure(headline_test(result.profile), "write")
         rate = measure.median.bytes_per_second if measure and measure.median else None

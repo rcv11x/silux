@@ -640,6 +640,10 @@ class DiskTestTab(ScrollPage):
             return None
         return self._disks.get(place.disks[0])
 
+    def _model_of(self, disks) -> Optional[str]:
+        """The model of the one disk a plan is on, as this window knows it."""
+        return getattr(self._disks.get(disks[0]), "model", None) if len(disks) == 1 else None
+
     def plan(self) -> Optional[disktest.Plan]:
         folder = self._folder()
         if folder is None:
@@ -688,7 +692,8 @@ class DiskTestTab(ScrollPage):
             return
         plan = self.plan()
         disks = plan.disks if plan is not None else ()
-        latest = next((r for r in self._history if disks and r.disks == disks), None)
+        model = self._model_of(disks)
+        latest = next((r for r in self._history if r.is_of(disks, model)), None)
         if latest is not None:
             self.show_result(latest)
         else:
@@ -823,8 +828,10 @@ class DiskTestTab(ScrollPage):
             slow = self._slow_fill(plan, disk)
             if slow is not None:
                 self._notices.addWidget(slow)
-        last = next((r for r in self._history if r.disks == plan.disks and r.bytes_ == plan.bytes_
-                     and r.laps == plan.laps and r.profile == plan.profile
+        model = self._model_of(plan.disks)
+        last = next((r for r in self._history if r.is_of(plan.disks, model)
+                     and r.bytes_ == plan.bytes_ and r.laps == plan.laps
+                     and r.profile == plan.profile
                      and any(m.direction == "write" for m in r.measures)), None)
         values = dict(size=render.file_size(plan.bytes_), folder=render.home_path(plan.folder),
                       writing=render.duration(disktest.writing_seconds(plan)),
