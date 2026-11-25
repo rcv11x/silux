@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLayout,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -64,12 +65,6 @@ def avisar_copiado(cerca_de: QLabel, texto: str = "") -> None:
     hacer clic está mirando el valor, no el borde inferior de la pantalla, y
     un aviso que aparece donde no se está mirando no confirma nada.
 
-    Sale a la derecha del valor y a su misma altura, no bajo el cursor: así
-    aparece en el mismo sitio se pinche donde se pinche dentro de la fila, en
-    vez de bailar unos píxeles según dónde cayera el ratón. Y ahí no tapa lo
-    que se acaba de copiar, que es lo que uno mira para comprobar que copió
-    lo que quería.
-
     Se destruye solo. No se reutiliza uno guardado porque dos clics seguidos
     en dos filas distintas tienen que poder solaparse sin que el primero le
     robe el sitio al segundo.
@@ -79,27 +74,47 @@ def avisar_copiado(cerca_de: QLabel, texto: str = "") -> None:
         return
     globo = QLabel(texto or _("app.copied"), ventana)
     globo.setObjectName("Toast")
-    globo.setFont(ui_font(theme.METRICS.small_pt))
+    globo.setFont(ui_font(max(7, theme.METRICS.small_pt - 1)))
     globo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    # It sits over other values for a moment, and a click on one of them
+    # has to reach it.
+    globo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
     globo.adjustSize()
-
-    # El final del texto, no el del widget: la etiqueta ocupa toda la columna
-    # aunque el valor sea corto, y midiendo el widget el aviso aparecía a un
-    # palmo de «AMD».
-    esquina = cerca_de.mapTo(ventana, QPoint(0, 0))
-    ancho_texto = cerca_de.fontMetrics().horizontalAdvance(cerca_de.text())
-    x = esquina.x() + min(ancho_texto, cerca_de.width()) + 10
-    y = esquina.y() + (cerca_de.height() - globo.height()) // 2
-
-    # Siempre dentro de la ventana: en la columna de la derecha, o con la
-    # ventana estrecha, se salía por el borde.
-    x = min(max(0, x), max(0, ventana.width() - globo.width() - 4))
-    y = min(max(0, y), max(0, ventana.height() - globo.height() - 4))
-    globo.move(x, y)
+    globo.move(*_toast_position(cerca_de, ventana, globo.size()))
     globo.show()
     globo.raise_()
 
     QTimer.singleShot(MILISEGUNDOS_DEL_AVISO, globo.deleteLater)
+
+
+def _toast_position(label: QLabel, window: QWidget, size: QSize) -> tuple[int, int]:
+    """Where the «copied» goes: beside the text on the side the label leaves
+    empty, at its height, so it lands in the same place wherever the row was
+    clicked; above the text if that side has no room. Never over the value
+    just copied, which is what one looks at to check it, and never outside
+    the window."""
+    corner = label.mapTo(window, QPoint(0, 0))
+    text_width = min(label.fontMetrics().horizontalAdvance(label.text()), label.width())
+    right_aligned = bool(label.alignment() & Qt.AlignmentFlag.AlignRight)
+    text_left = corner.x() + (label.width() - text_width if right_aligned else 0)
+    text = QRect(text_left, corner.y(), text_width, label.height())
+    gap = 8
+    if right_aligned:
+        # Within its own cell: further left is the value of the next column.
+        x = text.left() - gap - size.width()
+        fits = x >= corner.x()
+    else:
+        x = text.right() + gap
+        fits = x + size.width() <= window.width() - 4
+    y = text.top() + (text.height() - size.height()) // 2
+    if not fits:
+        x = text.right() - size.width() if right_aligned else text.left()
+        y = text.top() - size.height() - 2
+        if y < 0:
+            y = text.bottom() + 2
+    x = min(max(0, x), max(0, window.width() - size.width() - 4))
+    y = min(max(0, y), max(0, window.height() - size.height() - 4))
+    return x, y
 
 
 # Cuánto dura el «copiado». Lo justo para verlo sin que estorbe: por debajo de
@@ -2323,6 +2338,176 @@ class _CuerpoDeTabla(QWidget):
         return resultado
 
 
+class ReadableRoot(QWidget):
+    """A page's root that keeps its content to a readable width. On a wide
+    screen the cards stretched across it, four tiles of a number each took a
+    quarter of two thousand pixels and the tables stayed on the left: beyond
+    the cap the side margins grow and the column stays centred. The cap is in
+    characters of the interface font, so it follows the font size."""
+
+    CHARACTERS = 190
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setObjectName("Root")
+        m = theme.METRICS
+        self.column = QVBoxLayout(self)
+        self.column.setContentsMargins(m.page_margin, m.page_margin,
+                                       m.page_margin, m.page_margin)
+        self.column.setSpacing(m.section_gap)
+
+    def content_width(self) -> int:
+        return QFontMetrics(ui_font(theme.METRICS.base_pt)).averageCharWidth() * self.CHARACTERS
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        margin = theme.METRICS.page_margin
+        side = max(margin, (self.width() - self.content_width()) // 2)
+        if self.column.contentsMargins().left() != side:
+            self.column.setContentsMargins(side, margin, side, margin)
+        super().resizeEvent(event)
+
+
+class ProgressLine(QWidget):
+    """What a long task is doing and how far it has got: the words on a line
+    of their own, over a thin bar. Written on the bar, the text fell half on
+    the fill and half off it, and the percentage read badly at the edge."""
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        self.label = QLabel("")
+        self.label.setObjectName("Muted")
+        self.label.setWordWrap(True)
+        self.bar = QProgressBar()
+        self.bar.setRange(0, 100)
+        self.bar.setTextVisible(False)
+        self.bar.setFixedHeight(6)
+        layout.addWidget(self.label)
+        layout.addWidget(self.bar)
+
+    def begin(self, text: str) -> None:
+        """Back to the start, saying `text` until the first step arrives."""
+        self.bar.setValue(0)
+        self.label.setText(text)
+
+    def set_state(self, text: str, fraction: Optional[float] = None,
+                  percent: bool = True) -> None:
+        """`text`, and how far along as a fraction. Without one (cancelling)
+        the bar stays where it was. `percent`: whether the text says it too;
+        a text that says its step («2 of 3») leaves it to the bar."""
+        if fraction is not None:
+            value = round(min(max(fraction, 0.0), 1.0) * 100)
+            self.bar.setValue(value)
+            if percent:
+                text = f"{text}  ·  {value} %"
+        self.label.setText(text)
+
+    def value(self) -> int:
+        return self.bar.value()
+
+
+def unbroken(figure: str) -> str:
+    """A figure with its unit, «42.7 GB/s» or «64.5 µs», that a wrapping
+    label won't split: at a space, or after the slash, it left «GB/» on one
+    line and «s» on the next."""
+    return figure.replace(" ", "\u00a0").replace("/", "/\u2060")
+
+
+class RateBar(QWidget):
+    """A rate as a bar on a fixed logarithmic scale, shared by a whole table.
+
+    Fixed, so that two screenshots of two machines compare by eye. A bar too
+    narrow to read isn't drawn: in a narrow window the figures stay and the
+    bars go first.
+    """
+
+    NARROWEST = 40
+
+    def __init__(self, palette: Palette, scale: Optional[tuple[float, int]] = None,
+                 tone: float = 1.0, height: int = 10, parent: Optional[QWidget] = None,
+                 colour: str = "accent"):
+        """`scale`: what an empty bar stands for, in bytes per second, and how
+        many powers of ten a full one is above it; without one, the bar is
+        given its fraction (`set_fraction`). `colour` and `tone`: the
+        palette's colour it is drawn with, and how much of it, to tell
+        columns apart."""
+        super().__init__(parent)
+        self._p = palette
+        self._from, self._decades = scale or (1.0, 1)
+        self._colour = colour
+        self._tone = tone
+        self._fraction: Optional[float] = None
+        self._live = False
+        self._round = 3 if height <= 12 else 5
+        self.setFixedHeight(height)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+
+    @property
+    def fraction(self) -> Optional[float]:
+        return self._fraction
+
+    def set_rate(self, bytes_per_second: Optional[float], live: bool = False) -> None:
+        """`live`: a figure still under way, drawn muted."""
+        fraction = None
+        if bytes_per_second:
+            decades = math.log10(max(bytes_per_second, self._from) / self._from)
+            fraction = decades / self._decades
+        self.set_fraction(fraction, live)
+
+    def set_fraction(self, fraction: Optional[float], live: bool = False) -> None:
+        """How full, from 0 to 1, on a scale of the caller's."""
+        if fraction is not None:
+            fraction = min(max(fraction, 0.0), 1.0)
+        if (fraction, live) != (self._fraction, self._live):
+            self._fraction, self._live = fraction, live
+            self.update()
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        if self.width() < self.NARROWEST:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        box = QRectF(0, 1, self.width(), self.height() - 2)
+        painter.setBrush(self._p.q("line_soft"))
+        painter.drawRoundedRect(box, self._round, self._round)
+        if self._fraction:
+            colour = self._p.q("muted") if self._live else self._p.q(self._colour, self._tone)
+            painter.setBrush(colour)
+            painter.drawRoundedRect(QRectF(0, 1, self.width() * self._fraction,
+                                           self.height() - 2), self._round, self._round)
+        painter.end()
+
+
+class Fact(Card):
+    """One thing a result says besides its table: its name, the figure,
+    large, and a line under it."""
+
+    def __init__(self, name: str, parent: Optional[QWidget] = None):
+        super().__init__(parent=parent)
+        self.name = QLabel(name)
+        self.name.setObjectName("FieldName")
+        self.name.setWordWrap(True)
+        self.value = QLabel("")
+        self.value.setObjectName("Headline")
+        self.value.setFont(ui_font(theme.METRICS.headline_px))
+        self.detail = QLabel("")
+        self.detail.setObjectName("Muted")
+        self.detail.setWordWrap(True)
+        for widget in (self.name, self.value, self.detail):
+            self.body.addWidget(widget)
+
+    def show_fact(self, value: str, detail: str = "") -> None:
+        """`value` large and `detail` under it; an empty one isn't shown."""
+        self.value.setText(value)
+        self.value.setVisible(bool(value))
+        self.detail.setText(detail)
+        self.detail.setVisible(bool(detail))
+
+
 class ScrollPage(QScrollArea):
     """A page of the window: a scroll area that stays where the user left it."""
 
@@ -2363,6 +2548,8 @@ class Table(QScrollArea):
         # (fila, columna) → su candado, para las celdas que lo han tenido.
         self._candados: dict[tuple[int, int], "LockMark"] = {}
         self._cede = tuple(cede)
+        # How tall the titles are, broken as the widths leave them.
+        self._titles_height = 0
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
 
         self.setWidgetResizable(True)
@@ -2388,6 +2575,11 @@ class Table(QScrollArea):
         for column, title in enumerate(self._headers):
             label = QLabel(title.upper())
             label.setObjectName("ColumnTitle")
+            # On one line while the table fits; in a narrow one it breaks
+            # between words to its column's width (`_encajar`), which it
+            # doesn't widen.
+            label.setWordWrap(True)
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
             # Abajo de su celda, pegado a las filas que titula. La celda mide
             # lo que una fila y la letra es pequeña: con el texto arriba
             # quedaba un hueco de fila vacía entre los títulos y los datos.
@@ -2594,9 +2786,13 @@ class Table(QScrollArea):
             return
         columnas = len(self._headers)
         anchos = list(self._anchos)
-        hueco = self._grid.horizontalSpacing() * (columnas - 1)
+        # The gaps between columns narrow first, down to a floor, before a
+        # column is cut: a few pixels of air cost less than a word.
+        gap = theme.METRICS.grid_hspace
+        hueco = gap * (columnas - 1)
+        heads = [self._ancho_de_cabecera(c) for c in range(columnas)]
         # Lo que ocupa cada columna es su dato o su título, lo que más pida.
-        ocupa = sum(max(ancho, self._ancho_de_cabecera(c)) for c, ancho in enumerate(anchos))
+        ocupa = sum(max(ancho, heads[c]) for c, ancho in enumerate(anchos))
         sobra = ocupa + hueco - self.viewport().width()
         if sobra < 0 and self.viewport().width() > 0:
             # Con sitio de sobra, las columnas se separan: en una ventana
@@ -2606,12 +2802,26 @@ class Table(QScrollArea):
             # sigue yendo detrás de la última.
             tope = QFontMetrics(value_font()).averageCharWidth() * self.HOLGURA_MAXIMA
             holgura = min(-sobra // columnas, tope)
-            anchos = [max(ancho, self._ancho_de_cabecera(c)) + holgura
-                      for c, ancho in enumerate(anchos)]
+            anchos = [max(ancho, heads[c]) + holgura for c, ancho in enumerate(anchos)]
+        if sobra > 0 and columnas > 1 and self.viewport().width() > 0:
+            narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (columnas - 1))))
+            gap -= narrower
+            sobra -= narrower * (columnas - 1)
+        if sobra > 0 and self.viewport().width() > 0:
+            # Then a title wider than its figures takes a second line, the
+            # widest first and never narrower than its longest word.
+            floors = [max(anchos[c], self._palabra_mas_larga(c)) for c in range(columnas)]
+            while sobra > 0:
+                longer = [c for c in range(columnas) if heads[c] > floors[c]]
+                if not longer:
+                    break
+                widest = max(longer, key=lambda c: heads[c])
+                taken = min(sobra, heads[widest] - floors[widest], 8)
+                heads[widest] -= taken
+                sobra -= taken
         if sobra > 0 and self.viewport().width() > 0:
             suelo = QFontMetrics(value_font()).averageCharWidth() * 10
-            suelos = {c: max(suelo, self._ancho_de_cabecera(c))
-                      for c in self._cede if c < columnas}
+            suelos = {c: max(suelo, heads[c]) for c in self._cede if c < columnas}
             while sobra > 0:
                 cedibles = [c for c, minimo in suelos.items() if anchos[c] > minimo]
                 if not cedibles:
@@ -2620,17 +2830,34 @@ class Table(QScrollArea):
                 quita = min(sobra, anchos[ancha] - suelos[ancha], 8)
                 anchos[ancha] -= quita
                 sobra -= quita
+        if self._grid.horizontalSpacing() != gap:
+            self._grid.setHorizontalSpacing(gap)
+        titles = 0
         for columna, ancho in enumerate(anchos):
-            if self._grid.columnMinimumWidth(columna) != ancho:
-                self._grid.setColumnMinimumWidth(columna, ancho)
+            # The title doesn't ask for its width any more: its column does.
+            width = max(ancho, heads[columna])
+            if self._grid.columnMinimumWidth(columna) != width:
+                self._grid.setColumnMinimumWidth(columna, width)
+            titles = max(titles, self._title_height(columna, width))
             recortada = ancho < max(self._anchos[columna], 1) and columna in self._cede
             for fila in self._cells:
                 if columna < len(fila):
                     # Cedida, la celda no puede pedir más que su columna.
                     fila[columna].setMaximumWidth(ancho if recortada else 16777215)
+        # Every title as tall as the one with most lines, and the table as
+        # tall as that: measured as one line, a broken title hid the rows.
+        for columna in range(columnas):
+            item = self._grid.itemAtPosition(0, columna)
+            if item and item.widget() and item.widget().height() != titles:
+                item.widget().setFixedHeight(titles)
+        if titles != self._titles_height:
+            self._titles_height = titles
+            self._fit_height()
 
     # Cuánto puede separarse como mucho cada columna, en anchos de letra.
     HOLGURA_MAXIMA = 14
+    # The least air between two columns of a table that doesn't fit.
+    MIN_COLUMN_GAP = 8
 
     def set_header(self, column: int, title: str, two_lines: bool = False) -> None:
         """Rename a column, for a datum whose name depends on what it holds.
@@ -2652,8 +2879,40 @@ class Table(QScrollArea):
             item.widget().setToolTip(text)
 
     def _ancho_de_cabecera(self, columna: int) -> int:
-        item = self._grid.itemAtPosition(0, columna)
-        return item.widget().sizeHint().width() if item and item.widget() else 0
+        """What the column's title takes on one line (a line of its own
+        for each break written in it)."""
+        return self._title_width(columna, lambda text: text.split("\n"))
+
+    def _title_height(self, column: int, width: int) -> int:
+        """How tall the column's title is at `width`, broken as it must."""
+        item = self._grid.itemAtPosition(0, column)
+        label = item.widget() if item else None
+        if label is None or not label.text():
+            return 0
+        label.ensurePolished()
+        # From the letter, not from the label: its own fixed height would
+        # count, and a title once broken never came back to one line.
+        margins = label.contentsMargins()
+        inner = max(1, width - margins.left() - margins.right() - 2 * label.margin())
+        box = label.fontMetrics().boundingRect(QRect(0, 0, inner, 100000),
+                                               int(Qt.TextFlag.TextWordWrap), label.text())
+        return box.height() + margins.top() + margins.bottom() + 2 * label.margin()
+
+    def _palabra_mas_larga(self, columna: int) -> int:
+        """The narrowest the title can go: its longest word."""
+        return self._title_width(columna, str.split)
+
+    def _title_width(self, column: int, pieces) -> int:
+        item = self._grid.itemAtPosition(0, column)
+        label = item.widget() if item else None
+        if label is None:
+            return 0
+        label.ensurePolished()
+        metrics = label.fontMetrics()
+        margins = label.contentsMargins()
+        widest = max((metrics.horizontalAdvance(piece) for piece in pieces(label.text())),
+                     default=0)
+        return widest + margins.left() + margins.right() + 2 * label.margin()
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -2689,7 +2948,7 @@ class Table(QScrollArea):
         rows = self._rows + 1                       # las filas más la cabecera
         spacing = self._grid.verticalSpacing()
         extra = self.horizontalScrollBar().sizeHint().height() + 4
-        alto = line + filas + max(0, rows - 1) * spacing + extra
+        alto = max(line, self._titles_height) + filas + max(0, rows - 1) * spacing + extra
         if self.height() != alto or self.minimumHeight() != alto:
             self.setFixedHeight(alto)
 

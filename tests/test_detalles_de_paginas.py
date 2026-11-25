@@ -132,7 +132,7 @@ class TestDetalles(unittest.TestCase):
              mock.patch.dict(os.environ, {"XDG_DATA_HOME": datos}):
             history.append(history.from_result(_resultado(), "Ryzen 7 5800X3D", 2.0))
             with pantalla.Ventana(self.amd) as ventana:
-                pagina = ventana.performance_page
+                pagina = ventana.benchmarks_page.cpu_tab
                 pagina._pintar_historial(history.load())
                 botones = [b for b in pagina.findChildren(QPushButton)
                            if b.property("compacto")]

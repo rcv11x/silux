@@ -1,0 +1,408 @@
+{
+ "engine": "native",
+ "timestamp": 1795529282.5859742,
+ "cpu": 1,
+ "points": [
+  {
+   "bytes_": 4096,
+   "nanoseconds": 0.9027740359306335,
+   "spread": 0.0006173232796570191,
+   "noisy": false,
+   "frequency_hz": 4437307040
+  },
+  {
+   "bytes_": 6144,
+   "nanoseconds": 0.9017816185951233,
+   "spread": 0.0002795883639685288,
+   "noisy": false,
+   "frequency_hz": 4437983334
+  },
+  {
+   "bytes_": 8192,
+   "nanoseconds": 0.9026828408241272,
+   "spread": 0.0011403476046262324,
+   "noisy": false,
+   "frequency_hz": 4437884962
+  },
+  {
+   "bytes_": 12288,
+   "nanoseconds": 0.9023979306221008,
+   "spread": 0.0006241857101103223,
+   "noisy": false,
+   "frequency_hz": 4437108093
+  },
+  {
+   "bytes_": 16384,
+   "nanoseconds": 0.9033313989639282,
+   "spread": 0.00033578821417019666,
+   "noisy": false,
+   "frequency_hz": 4435497056
+  },
+  {
+   "bytes_": 24576,
+   "nanoseconds": 0.902685821056366,
+   "spread": 0.0006709342070466911,
+   "noisy": false,
+   "frequency_hz": 4438712395
+  },
+  {
+   "bytes_": 32768,
+   "nanoseconds": 0.9607580304145813,
+   "spread": 0.0031385623473642187,
+   "noisy": false,
+   "frequency_hz": 4437560542
+  },
+  {
+   "bytes_": 49152,
+   "nanoseconds": 2.697375774383545,
+   "spread": 0.0004967466629142553,
+   "noisy": false,
+   "frequency_hz": 4435593296
+  },
+  {
+   "bytes_": 65536,
+   "nanoseconds": 2.7159509658813477,
+   "spread": 0.0011658668322166552,
+   "noisy": false,
+   "frequency_hz": 4438230864
+  },
+  {
+   "bytes_": 98304,
+   "nanoseconds": 2.7230701446533203,
+   "spread": 0.0011811178049875566,
+   "noisy": false,
+   "frequency_hz": 4437841959
+  },
+  {
+   "bytes_": 131072,
+   "nanoseconds": 2.725597381591797,
+   "spread": 0.002190345962695539,
+   "noisy": false,
+   "frequency_hz": 4432304599
+  },
+  {
+   "bytes_": 196608,
+   "nanoseconds": 2.726999282836914,
+   "spread": 0.0035968254212499816,
+   "noisy": false,
+   "frequency_hz": 4435851368
+  },
+  {
+   "bytes_": 262144,
+   "nanoseconds": 2.7160820960998535,
+   "spread": 0.0009295936806590266,
+   "noisy": false,
+   "frequency_hz": 4437606620
+  },
+  {
+   "bytes_": 393216,
+   "nanoseconds": 2.771090030670166,
+   "spread": 0.006293667426266008,
+   "noisy": false,
+   "frequency_hz": 4435483187
+  },
+  {
+   "bytes_": 524288,
+   "nanoseconds": 2.823291778564453,
+   "spread": 0.001943125944962161,
+   "noisy": false,
+   "frequency_hz": 4434488270
+  },
+  {
+   "bytes_": 786432,
+   "nanoseconds": 8.120110511779785,
+   "spread": 0.006312721290242717,
+   "noisy": false,
+   "frequency_hz": 4435136768
+  },
+  {
+   "bytes_": 1048576,
+   "nanoseconds": 9.443024158477783,
+   "spread": 0.0018592713383324942,
+   "noisy": false,
+   "frequency_hz": 4434544656
+  },
+  {
+   "bytes_": 1572864,
+   "nanoseconds": 10.012744903564453,
+   "spread": 0.0031677880935590437,
+   "noisy": false,
+   "frequency_hz": 4434753542
+  },
+  {
+   "bytes_": 2097152,
+   "nanoseconds": 10.413793563842773,
+   "spread": 0.0008040547804902976,
+   "noisy": false,
+   "frequency_hz": 4433761774
+  },
+  {
+   "bytes_": 3145728,
+   "nanoseconds": 10.968622207641602,
+   "spread": 0.001634578783828173,
+   "noisy": false,
+   "frequency_hz": 4433517630
+  },
+  {
+   "bytes_": 4194304,
+   "nanoseconds": 11.053155899047852,
+   "spread": 0.004402042644421424,
+   "noisy": false,
+   "frequency_hz": 4430392441
+  },
+  {
+   "bytes_": 6291456,
+   "nanoseconds": 11.277727127075195,
+   "spread": 0.0010400358410269828,
+   "noisy": false,
+   "frequency_hz": 4433612116
+  },
+  {
+   "bytes_": 8388608,
+   "nanoseconds": 11.33999252319336,
+   "spread": 0.0009360142980599191,
+   "noisy": false,
+   "frequency_hz": 4434850706
+  },
+  {
+   "bytes_": 12582912,
+   "nanoseconds": 11.441730499267578,
+   "spread": 0.0015369837976569164,
+   "noisy": false,
+   "frequency_hz": 4434998285
+  },
+  {
+   "bytes_": 16777216,
+   "nanoseconds": 11.499418258666992,
+   "spread": 0.0012522791895912544,
+   "noisy": false,
+   "frequency_hz": 4433990348
+  },
+  {
+   "bytes_": 25165824,
+   "nanoseconds": 11.554473876953125,
+   "spread": 0.00014031329813505469,
+   "noisy": false,
+   "frequency_hz": 4433684777
+  },
+  {
+   "bytes_": 33554432,
+   "nanoseconds": 11.566805839538574,
+   "spread": 0.0004865329477457348,
+   "noisy": false,
+   "frequency_hz": 4435037627
+  },
+  {
+   "bytes_": 50331648,
+   "nanoseconds": 11.685823440551758,
+   "spread": 0.00435713169995709,
+   "noisy": false,
+   "frequency_hz": 4434223881
+  },
+  {
+   "bytes_": 67108864,
+   "nanoseconds": 12.282604217529297,
+   "spread": 0.032845095566168325,
+   "noisy": false,
+   "frequency_hz": 4430362758
+  },
+  {
+   "bytes_": 100663296,
+   "nanoseconds": 36.68244552612305,
+   "spread": 0.024892671995447625,
+   "noisy": false,
+   "frequency_hz": 4433397777
+  },
+  {
+   "bytes_": 134217728,
+   "nanoseconds": 53.07366943359375,
+   "spread": 0.035395887455595305,
+   "noisy": false,
+   "frequency_hz": 4434673279
+  },
+  {
+   "bytes_": 201326592,
+   "nanoseconds": 67.04420471191406,
+   "spread": 0.015456406958063038,
+   "noisy": false,
+   "frequency_hz": 4434295310
+  },
+  {
+   "bytes_": 268435456,
+   "nanoseconds": 71.18708038330078,
+   "spread": 0.023704179555663587,
+   "noisy": false,
+   "frequency_hz": 4430063898
+  },
+  {
+   "bytes_": 402653184,
+   "nanoseconds": 74.6344223022461,
+   "spread": 0.008283173096237427,
+   "noisy": false,
+   "frequency_hz": 4434910760
+  },
+  {
+   "bytes_": 536870912,
+   "nanoseconds": 77.23338317871094,
+   "spread": 0.004728772729868043,
+   "noisy": false,
+   "frequency_hz": 4434607075
+  },
+  {
+   "bytes_": 805306368,
+   "nanoseconds": 77.14461135864258,
+   "spread": 0.0020006925778607394,
+   "noisy": false,
+   "frequency_hz": 4434426474
+  },
+  {
+   "bytes_": 1073741824,
+   "nanoseconds": 77.43791961669922,
+   "spread": 0.0038581497452744315,
+   "noisy": false,
+   "frequency_hz": 4433544761
+  }
+ ],
+ "levels": [
+  {
+   "level": "L1",
+   "nanoseconds": 0.9026828408241272,
+   "bytes_": 16384,
+   "frequency_hz": 4437307040
+  },
+  {
+   "level": "L2",
+   "nanoseconds": 2.719576120376587,
+   "bytes_": 262144,
+   "frequency_hz": 4436728994
+  },
+  {
+   "level": "L3",
+   "nanoseconds": 11.277727127075195,
+   "bytes_": 50331648,
+   "frequency_hz": 4434223881
+  },
+  {
+   "level": "RAM",
+   "nanoseconds": 77.43791961669922,
+   "bytes_": 1073741824,
+   "frequency_hz": 4433544761
+  }
+ ],
+ "rates": [
+  {
+   "operation": "read",
+   "threads": 1,
+   "bytes_per_second": 43895842579,
+   "non_temporal": false,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 4434786580
+  },
+  {
+   "operation": "write",
+   "threads": 1,
+   "bytes_per_second": 20603166765,
+   "non_temporal": false,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 4433518000
+  },
+  {
+   "operation": "copy",
+   "threads": 1,
+   "bytes_per_second": 27682331311,
+   "non_temporal": false,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 4433102787
+  },
+  {
+   "operation": "write",
+   "threads": 1,
+   "bytes_per_second": 25424878082,
+   "non_temporal": true,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 4437233280
+  },
+  {
+   "operation": "copy",
+   "threads": 1,
+   "bytes_per_second": 40069824238,
+   "non_temporal": true,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 4431120976
+  },
+  {
+   "operation": "read",
+   "threads": 16,
+   "bytes_per_second": 40169968577,
+   "non_temporal": false,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 3421916662
+  },
+  {
+   "operation": "write",
+   "threads": 16,
+   "bytes_per_second": 18623485821,
+   "non_temporal": false,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 3357902174
+  },
+  {
+   "operation": "copy",
+   "threads": 16,
+   "bytes_per_second": 24361739106,
+   "non_temporal": false,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 3522608811
+  },
+  {
+   "operation": "write",
+   "threads": 16,
+   "bytes_per_second": 25387571745,
+   "non_temporal": true,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 3753269527
+  },
+  {
+   "operation": "copy",
+   "threads": 16,
+   "bytes_per_second": 38549502452,
+   "non_temporal": true,
+   "isa": "avx2",
+   "noisy": false,
+   "frequency_hz": 3901891941
+  }
+ ],
+ "huge_fraction": 1.0,
+ "frequency_source": "cycles",
+ "ram_block": 1073741824,
+ "ram_block_limited": false,
+ "caches": [
+  [
+   "L1",
+   32768
+  ],
+  [
+   "L2",
+   524288
+  ],
+  [
+   "L3",
+   100663296
+  ]
+ ],
+ "governor": "performance",
+ "energy_preference": "performance",
+ "theoretical_bytes_per_second": null,
+ "seconds": 15.5,
+ "reason": null,
+ "detail": ""
+}

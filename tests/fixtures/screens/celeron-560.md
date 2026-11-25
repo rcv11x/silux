@@ -257,9 +257,9 @@ El SPD de una DDR2 no tiene campo para el fabricante de los chips.
 
 Lo que cada módulo declara en su chip SPD; a cuánto va de verdad lo decide la BIOS.
 
-### Ancho de banda y latencia
+### Última prueba de memoria
 
-Mide cuánto se mueve la memoria de verdad, leyendo un bloque más grande que la caché. Tarda una décima de segundo.
+Sin medir todavía.
 
 ### Lo que falta necesita permisos
 

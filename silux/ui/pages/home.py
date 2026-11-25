@@ -646,5 +646,5 @@ def _tipo_de_memoria(snapshot: Snapshot) -> Optional[str]:
     for modulo in snapshot.modules:
         if modulo.populated and modulo.type:
             tipo = render.memory_type(modulo.type)
-            return f"{tipo}-{modulo.speed_mts}" if modulo.speed_mts else tipo
+            return f"{tipo}-{render.memory_speed(modulo.speed_mts)}" if modulo.speed_mts else tipo
     return None

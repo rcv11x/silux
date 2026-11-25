@@ -354,6 +354,11 @@ def percent(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.1f} %"
 
 
+def whole_percent(value: Optional[float]) -> str:
+    """«32 %»: where a decimal would claim more than the figure knows."""
+    return DASH if _none(value) else f"{float(value):.0f} %"
+
+
 def multiplier(value: Optional[float]) -> str:
     return DASH if _none(value) else f"× {float(value):.1f}"
 
@@ -1101,11 +1106,29 @@ def possible_texts(formatter, top: float) -> list[str]:
     return texts
 
 
-def bandwidth(value: Optional[int]) -> str:
+def bandwidth(value: Optional[int], decimals: int = 0) -> str:
     """Memory bandwidth, in spec sheets' units."""
     if _none(value):
         return DASH
-    return f"{float(value) / 1e9:.0f} GB/s"
+    return f"{float(value) / 1e9:.{decimals}f} GB/s"
+
+
+def rate_figure(bytes_per_second: Optional[float], unit: float) -> str:
+    """A rate in a table whose unit is said once, at its foot: «6 592»,
+    «63.3». `unit` is the bytes per second one of them is (1e6 for MB/s,
+    1e9 for GB/s). From a hundred up, whole: a decimal there is noise."""
+    if _none(bytes_per_second):
+        return DASH
+    value = float(bytes_per_second) / unit
+    return thousands(round(value)) if value >= 100 else f"{value:.1f}"
+
+
+def core_cycles(nanoseconds: Optional[float], frequency_hz: Optional[float]) -> Optional[float]:
+    """How many of the core's cycles a latency is. A cache answers in
+    cycles, so this is the figure that doesn't move with the clock."""
+    if _none(nanoseconds) or not frequency_hz:
+        return None
+    return float(nanoseconds) * float(frequency_hz) / 1e9
 
 
 def vram_kind(memory: GpuMemory) -> str:
@@ -1236,9 +1259,19 @@ def spd_time(picoseconds: Optional[int]) -> str:
 
 
 def nanoseconds(value: Optional[float]) -> str:
-    """«0.9 ns». One decimal: any processor's L1 is around there, and with
-    no decimals all the fast caches would come out the same."""
-    return DASH if _none(value) else f"{float(value):.1f} ns"
+    """«0.96 ns», «9.24 ns», «64.9 ns», «123 ns»: three figures from one
+    nanosecond up, two decimals below. Every L1 is around one nanosecond,
+    and with a single decimal 0.96 and 1.04 both read «1.0»."""
+    if _none(value):
+        return DASH
+    value = float(value)
+    decimals = 2 if value < 10 else 1 if value < 100 else 0
+    return f"{value:.{decimals}f} ns"
+
+
+def nanoseconds_mark(value: float) -> str:
+    """A mark on a scale of nanoseconds: «0.1 ns», «1 ns», «100 ns»."""
+    return f"{float(value):g} ns"
 
 
 def memory_theoretical_bandwidth(modules) -> Optional[int]:
@@ -1253,6 +1286,15 @@ def memory_theoretical_bandwidth(modules) -> Optional[int]:
     that once gave a wrong warning: in single channel memory performs half,
     and this would show a percentage double the real one.
     """
+    parts = memory_theoretical_parts(modules)
+    if parts is None:
+        return None
+    channels, mts = parts
+    return mts * 1_000_000 * 8 * channels
+
+
+def memory_theoretical_parts(modules) -> Optional[tuple[int, int]]:
+    """The populated channels and the MT/s the theoretical figure is made of."""
     channels = memory_channels(modules)
     if not channels:
         return None
@@ -1261,7 +1303,7 @@ def memory_theoretical_bandwidth(modules) -> Optional[int]:
     if not speeds:
         return None
     # The slowest: the controller runs everything at the lowest it's given.
-    return min(speeds) * 1_000_000 * 8 * channels
+    return channels, min(speeds)
 
 
 def memory_bandwidth_share(measured_value: Optional[int], theoretical: Optional[int]) -> Optional[float]:

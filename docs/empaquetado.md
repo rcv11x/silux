@@ -37,6 +37,24 @@ y Debian 11 (glibc 2.31), y su Python y su Qt corren en un Core 2 emulado
 (`qemu-x86_64-static -cpu Conroe`), donde el Qt 6.12 del normal se cae con
 «Instrucción ilegal».
 
+## El módulo nativo
+
+Los dos AppImage llevan `silux_bench`, el módulo en Rust de las pruebas de
+memoria y de disco. Se compila en el mismo contenedor que lo demás, para el
+procesador de cada paquete: `x86-64-v2` el normal y `x86-64` a secas el
+compatible.
+
+- Las rutas con AVX2 y AVX-512 son funciones que se eligen después de
+  preguntar a la CPU, y su nombre lleva el juego (`read_avx2`). Así las
+  reconoce la comprobación de instrucciones.
+- Al módulo no se le quitan los símbolos: la comprobación lee su tabla
+  entera, no solo lo que exporta.
+- El CI pasa la suite con el módulo y sin él, y comprueba que cada paquete
+  mide con el suyo (`tools/native_check.py`, con el Python del paquete).
+
+Sin el módulo, como en una instalación con pip que no lo trae, las pruebas
+hacen su medida sencilla y la pestaña lo dice.
+
 ## El suelo del código: Python 3.10
 
 `requires-python = ">=3.10"`, porque el compat lleva el 3.10

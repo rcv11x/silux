@@ -316,16 +316,41 @@ la memoria) no va: está propuesto en las notas
     en Intel, y la hoja 2 en los viejos). `grabado.json` guarda solo las
     hojas que se leyeron, así que hay que volver a volcar los tres equipos.
 
-* `membench.py`, `ui/pages/memory.py` · media · con dos CCD de L3 distinta
-  (7950X3D) o núcleos P y E (Intel híbrido) salen dos niveles con el mismo
-  nombre («L3» de 16 y 48 MB): el proceso que mide no está fijado a ningún
-  núcleo, así que el bloque de 48 MB puede medirse en el CCD de 32 MB y dar
-  la RAM llamándola L3, y los resultados se guardan por nombre y el segundo
-  pisa al primero. Hace falta fijar el proceso a una CPU (la de la L3 mayor)
-  y medir los niveles de esa CPU. Sin un volcado de dos CCD delante.
-* `membench.py` · media · repetir el 5800X3D contra AIDA64 ahora que el
-  bloque tiene páginas grandes ([benchmark.md](benchmark.md)), y ver por qué
-  las primeras vueltas de la L3 salen ruidosas (20 ns frente a 12).
+* **La prueba de memoria nativa** (`memtest.py`, `native/silux_bench/`,
+  rama `memoria-nativa`; cómo mide, en
+  [prueba-de-memoria.md](prueba-de-memoria.md)). Antes de llevarla a
+  `master`:
+  - alta · validarla en un procesador con dos clases de núcleo y en uno
+    antiguo con el AppImage compatible. El contador de ciclos de un híbrido
+    está escrito sin probar.
+  - alta · el camino AVX-512 solo ha corrido en la máquina del CI, que lo
+    tiene: no se cae y da cifras, pero no se ha comparado con una
+    referencia. Hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
+  - media · en un Core i5-10400, la copia de un hilo sale un 8 a 12 % por
+    debajo de las referencias, y un 25 a 30 % la que no pasa por la caché.
+  - media · decir qué programa cambia el turbo o el gobernador según la
+    carga (auto-cpufreq, TLP, power-profiles-daemon, tuned, thermald), antes
+    de empezar y junto al aviso de la frecuencia; también en el disco y el
+    procesador.
+  - media · mide en una sola CPU, la segunda del primer tipo de núcleo. Con
+    dos CCD de L3 distinta (7950X3D), núcleos P y E o varios nodos NUMA
+    falta medir uno de cada clase y decir cuál es cuál.
+  - baja · la barra lateral no marca Rendimiento mientras corre una prueba.
+  - baja · el historial no se puede renombrar ni borrar fila a fila, como
+    el del procesador.
+  - baja · la copia sin pasar por la caché de un hilo cambia un 10 % entre
+    SSE2 y AVX2 según la separación de los dos bloques.
+  - baja · compararla con AIDA64 en el mismo equipo.
+  - media · con varios CCD (o varias L3), el ancho de banda de todos los
+    hilos solo deja atrás la L3 de la CPU medida: `make_plan` no conoce la
+    suma de las L3. Con doce CCD de 96 MiB, el GiB repartido cabría en ellas.
+  - baja · la lectura de un hilo varía hasta un 7 % entre pruebas (44 casi
+    siempre, 41–42 algunas veces) sin causa aislada; la mediana de tres
+    bloques no lo arregló. Detalle en
+    [prueba-de-memoria.md](prueba-de-memoria.md).
+* `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
+  el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
+  distinto tamaño el segundo pisa al primero.
 * `providers/cpuid_x86.py` · baja · la máquina virtual se reconoce solo por
   CPUID (el bit «hypervisor» y la hoja 0x40000000). Un anfitrión que lo
   esconde (KVM con `kvm=off`, típico al pasar una gráfica) no se ve; el
@@ -351,8 +376,10 @@ la memoria) no va: está propuesto en las notas
 * **F-M3 · `ui/sampler.py`** · media · cerrar la ventana durante un muestreo
   largo (con el diálogo de polkit abierto) aborta el proceso con código 134.
 * **F-M5 · `ui/pages/performance.py`** · media · cambiar tema, densidad,
-  letra, idioma o unidades durante una prueba la mata sin decirlo. Lo mismo a
-  la medida de memoria.
+  letra, idioma o unidades durante la prueba del procesador la mata sin
+  decirlo: la ventana reconstruye las páginas. La de memoria ya sigue
+  (`MemoryTestRun`, que vive en la ventana); la del procesador necesita lo
+  mismo.
 * **F-M7 · `ui/pages/performance.py`** · media · la carga de fondo máxima no
   se ve: `CONDITION_FIELDS` no incluye su fila.
 * **F-M8 · `benchmark.py`** · media · el nombre y la descripción de cada
@@ -369,8 +396,8 @@ la memoria) no va: está propuesto en las notas
 * `ui/widgets.py`, `ui/pages/storage.py` · media-baja · la temperatura de un
   disco SATA sigue con «—» en la tabla de unidades aunque su ficha lleve
   candado: `Table.set_cell_locked` existe y falta usarlo ahí.
-* `ui/widgets.py` · baja · el globo «copiado» se come el clic siguiente durante
-  1,4 s; y arrastrar para seleccionar parte de un valor copia el valor entero.
+* `ui/widgets.py` · baja · arrastrar para seleccionar parte de un valor copia
+  el valor entero.
 * `ui/widgets.py` · baja · `Table.set_rows` indexa fuera de rango si una fila
   trae más columnas que la anterior.
 * `ui/widgets.py` · baja · una gráfica transparente repinta su tarjeta y la
@@ -488,8 +515,7 @@ De la quinta auditoría, sin comprobar uno a uno si siguen igual:
   el nombre de equipo `(none)` llega crudo; las salidas de video no se
   actualizan al enchufar un monitor; `power_supply` no filtra por `scope`;
   `alarm_level` dice «alto» también por debajo del mínimo.
-* «DDR4-2667» en Inicio, la tarjeta y el informe frente a 2666 en Memoria; al
-  ordenar el árbol ascendente las celdas vacías salen primero; el CSV pierde
+* Al ordenar el árbol ascendente las celdas vacías salen primero; el CSV pierde
   precisión con `{v:g}`; un fallo al cargar un driver se titula «Se ha parado
   la grabación».
 * Cancelar no interrumpe una medida en curso (`time.sleep` de hasta 1800 s);

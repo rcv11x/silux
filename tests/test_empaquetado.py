@@ -95,22 +95,25 @@ class TestElCiPruebaLoQueSeReparte(unittest.TestCase):
         import pathlib
         flujo = (pathlib.Path(__file__).resolve().parent.parent
                  / ".github" / "workflows" / "appimage.yml").read_text()
-        bloque = flujo[flujo.index("include:"):flujo.index("steps:")]
+        inicio = flujo.index("include:")
+        bloque = flujo[inicio:flujo.index("steps:", inicio)]
         entradas = []
         for trozo in re.split(r"\n\s*- ", bloque)[1:]:
             campos = dict(re.findall(r'(\w+):\s*"?([^"\n]*)"?', trozo))
             entradas.append(campos)
         return entradas
 
-    def test_una_pareja_por_paquete_y_con_su_python(self):
+    def test_each_package_with_its_python_and_the_module_both_ways(self):
         import tools.build_appimage as build
         matriz = self._matriz()
-        self.assertEqual(sorted(e["paquete"] for e in matriz),
-                         ["compat", "normal"], matriz)
+        self.assertEqual(sorted({e["paquete"] for e in matriz}), ["compat", "normal"], matriz)
         for entrada in matriz:
             compat = entrada["paquete"] == "compat"
-            with self.subTest(paquete=entrada["paquete"]):
+            with self.subTest(paquete=entrada["paquete"], modulo=entrada.get("modulo")):
                 self.assertEqual(entrada["python"], build.PYTHON[compat])
+        # The suite with the native module, as both packages ship, and
+        # without it, as a pip install may run.
+        self.assertEqual({e.get("modulo") for e in matriz}, {"con", "sin"})
 
     def test_cada_pareja_instala_el_pyside_de_su_paquete(self):
         import pathlib
@@ -500,7 +503,7 @@ class TestUnPaqueteIncompletoNoSeEmpaqueta(unittest.TestCase):
         build = self.build
         vacio = mock.Mock(return_value=set())
         pasos = {nombre: vacio for nombre in (
-            "copiar_python", "copiar_silux", "copiar_pyside",
+            "copiar_python", "copiar_silux", "copy_native_module", "copiar_pyside",
             "copiar_plugins", "copiar_bibliotecas", "quitar_simbolos",
             "escribir_metadatos", "sellar_build", "avisar_de_compatibilidad")}
         pasos["comprobar_juego_de_instrucciones"] = mock.Mock(return_value=[])

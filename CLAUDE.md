@@ -45,6 +45,8 @@ python3 tools/build_appimage.py --container   # el AppImage que se reparte
 python3 tools/probar_en_minimo.py --container # la suite en el Python del suelo
 python3 tools/agitar_ventana.py --ventanas 6  # cierres de Qt con la ventana cambiando de forma
 python3 tools/probar_actualizador.py VIEJO NUEVO  # el actualizador contra un GitHub falso
+uv pip install ./native/silux_bench    # el módulo nativo de la prueba de memoria (pide Rust)
+(cd native/silux_bench && cargo test --release && cargo clippy --all-targets --features python -- -D warnings)
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
 QT_QPA_PLATFORM=offscreen uv run pytest -n auto -m "not a_solas"  # la suite, en paralelo (-n 4 si corre algo más)
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
@@ -273,7 +275,9 @@ silux/
 ├─ pciids.py       nombres de dispositivos PCI
 ├─ usbids.py       nombres de dispositivos USB (la tarjeta de red USB)
 ├─ benchmark.py    prueba de CPU que reporta en qué condiciones midió
-├─ membench.py     ancho de banda y latencia de la memoria, en otro proceso
+├─ membench.py     la medida sencilla de la memoria, sin el módulo nativo
+├─ memtest.py      la prueba de memoria: lanza el módulo nativo en otro
+│                  proceso y lee su curva (niveles, escalones, % del máximo)
 ├─ history.py      historial de pruebas de este equipo
 ├─ updates.py      lo único que sale a la red, y solo si se pide: la versión
 │                  nueva y la sustitución comprobada del AppImage
@@ -287,7 +291,9 @@ silux/
 │                  memory_limits.json (el máximo de memoria por modelo),
 │                  scores.json (la escala), lang/ (es.json, en.json) y
 │                  THIRD_PARTY_NOTICES.md, los avisos de lo que es de otros
-└─ ui/             tema, hilo de muestreo, una página por sección;
+└─ ui/             tema, hilo de muestreo, una página por sección
+                   (Rendimiento, `pages/benchmarks.py`, lleva una pestaña
+                   por prueba: `performance.py` y `pages/memtest.py`);
                    widgets.py son las primitivas que usan varias páginas,
                    y el widget de una sola página vive en su módulo;
                    icons.py dibuja los iconos de la barra lateral y la marca
@@ -365,7 +371,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-1968 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2020 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -536,6 +542,9 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
 - [docs/rendimiento.md](docs/rendimiento.md): lo que gasta Silux, cómo se
   mide y sus objetivos.
 - [docs/benchmark.md](docs/benchmark.md): la escala y la medida de la memoria.
+- [docs/prueba-de-memoria.md](docs/prueba-de-memoria.md): cómo mide la prueba
+  de memoria, cómo repetirla con multichase, lmbench y STREAM y sus tablas
+  de validación.
 - [docs/motores-de-graficas.md](docs/motores-de-graficas.md): qué motor de
   cada gráfica se puede medir y de dónde sale en cada driver.
 - [docs/comprobar.md](docs/comprobar.md): el comando equivalente a cada dato,

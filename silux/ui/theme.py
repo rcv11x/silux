@@ -52,6 +52,10 @@ class Palette:
     crit: str
     info: str
     disabled: str
+    # The second and third series of a chart beside the accent, apart from
+    # the status colours: a bar in amber or red reads as a warning.
+    series_b: str = "#6A47C8"
+    series_c: str = "#0E8077"
 
     def q(self, name: str, alpha: float = 1.0) -> QColor:
         color = QColor(getattr(self, name))
@@ -84,7 +88,7 @@ LIGHT = Palette(
     ink="#1B2028", ink_dim="#3A4250", muted="#667080",
     accent="#C2570C", accent_soft="#D46A1C", accent_wash="#FBEBDD",
     ok="#2A6E52", warn="#8A6408", crit="#93362E", info="#245F9E",
-    disabled="#A7AEBA",
+    disabled="#A7AEBA", series_b="#6A47C8", series_c="#0E8077",
 )
 
 DARK = Palette(
@@ -93,7 +97,7 @@ DARK = Palette(
     ink="#E8EBF0", ink_dim="#C2C8D2", muted="#8792A2",
     accent="#F2994A", accent_soft="#F7B77D", accent_wash="#2B2017",
     ok="#6FBF9A", warn="#D6AF4E", crit="#E0857D", info="#7FB2E5",
-    disabled="#525C6A",
+    disabled="#525C6A", series_b="#B49CFF", series_c="#47C1B6",
 )
 
 
@@ -443,8 +447,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.accent};
         background: {p.surface};
         border: 1px solid {p.accent};
-        border-radius: 5px;
-        padding: 3px 9px;
+        border-radius: 4px;
+        padding: 1px 6px;
     }}
 
     QLabel#Headline {{ color: {p.ink}; font-size: {m.headline_px}px; font-weight: 650; }}
@@ -507,8 +511,9 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     /* El aviso de la barra de estado. Va en azul por lo mismo que la banda
        de un Notice: es de lo que el usuario puede arreglar. Y con el subrayado
        puesto, que en una barra llena de texto apagado nada dice que se pueda
-       pulsar salvo que se note. */
-    QPushButton#StatusAction {{
+       pulsar salvo que se note. The same for a permissions link inside a
+       page's text (LinkAction). */
+    QPushButton#StatusAction, QPushButton#LinkAction {{
         background: transparent;
         border: none;
         padding: 0 6px;
@@ -522,7 +527,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         font-size: {m.base_pt}px;
         font-weight: 600;
     }}
-    QPushButton#StatusAction:hover {{ color: {p.ink}; }}
+    QPushButton#StatusAction:hover, QPushButton#LinkAction:hover {{ color: {p.ink}; }}
 
     QFrame#Divider {{ background: {p.line_soft}; max-height: 1px; border: none; }}
 
@@ -649,6 +654,24 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.muted};
     }}
     QPushButton#TextButton:hover {{ color: {p.ink}; text-decoration: underline; }}
+    /* A tab of a page (Performance's tests): its name, and a line of the
+       accent under the one shown. Not Qt's tab bar, whose frame doesn't
+       match the cards. */
+    QPushButton#Tab {{
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        padding: 6px 12px;
+        color: {p.muted};
+    }}
+    QPushButton#Tab:hover {{ color: {p.ink}; }}
+    QPushButton#Tab:checked {{
+        background: transparent;
+        color: {p.ink};
+        border-bottom: 2px solid {p.accent};
+        font-weight: 600;
+    }}
     /* Para lo que acompaña a la acción principal sin competir con ella: el
        de al lado es el que la gente ha venido a pulsar. */
     QPushButton#GhostButton {{
@@ -662,6 +685,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QPushButton#GhostButton:pressed {{ background: {p.accent_wash}; }}
     QPushButton:hover {{ border-color: {p.accent}; color: {p.accent}; }}
     QPushButton:pressed {{ background: {p.accent_wash}; }}
+    /* A sheet colour overrides the palette's disabled one, so without this a
+       button that can't be pressed looks like one that can. After the hover:
+       of two rules that weigh the same, the later wins. */
+    QPushButton:disabled, QPushButton#Danger:disabled, QPushButton#GhostButton:disabled {{
+        background: {p.surface_alt}; color: {p.disabled}; border-color: {p.line};
+    }}
     /* Los de una fila de una tabla (Renombrar y Borrar en Rendimiento): del
        alto del texto de la fila, no del de un botón suelto. */
     QPushButton[compacto="true"] {{

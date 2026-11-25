@@ -356,6 +356,8 @@ def main() -> int:
     bibliotecas = copiar_python()
     print("· silux")
     copiar_silux()
+    print("· the native module")
+    bibliotecas |= copy_native_module()
     print("· PySide6, solo", ", ".join(QT_MODULES))
     bibliotecas |= copiar_pyside()
     print("· plugins de Qt")
@@ -377,9 +379,10 @@ def main() -> int:
         print(f"No se empaqueta: el AppDir queda en {APPDIR} para mirarlo.",
               file=sys.stderr)
         return 1
-    # Antes de escribir el AppRun: lo que salga de aquí decide si lleva guarda
-    # y qué banderas busca. Después del strip porque `.dynsym`, que es lo que
-    # mira, no se toca, y así se mide lo que se reparte de verdad.
+    # Before the AppRun is written: what comes out decides whether it gets a
+    # guard and what flags it looks for. After the strip, so what ships is
+    # what is measured: a stripped library keeps `.dynsym`, and the native
+    # module, kept whole, the names of its functions.
     banderas = comprobar_juego_de_instrucciones()
     print("· metadatos")
     escribir_metadatos(banderas)
@@ -419,7 +422,7 @@ apt-get update -qq
 # esté en la imagen no aparece como dependencia y se queda fuera sin ruido.
 apt-get install -y -qq --no-install-recommends \
     python3 python3-pip python3-venv file binutils desktop-file-utils \
-    ca-certificates \
+    ca-certificates curl gcc libc6-dev \
     libgl1 libegl1 libdbus-1-3 libfontconfig1 \
     libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
     libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
@@ -449,6 +452,12 @@ apt-get install -y -qq --no-install-recommends \
 pip3 install --quiet "uv>=0.13,<0.14"
 uv venv --quiet --managed-python --python "$SILUX_PYTHON" /opt/silux-python
 uv pip install --quiet --python /opt/silux-python/bin/python "$PYSIDE"
+# The native module, compiled here for this build's processor level, with
+# its own target folder: the source's is the host's, of another glibc.
+curl -sSf https://sh.rustup.rs | sh -s -- -y -q --profile minimal --default-toolchain none
+. "$HOME/.cargo/env"
+CARGO_TARGET_DIR=/tmp/silux-bench-target RUSTFLAGS="-C target-cpu=$SILUX_TARGET_CPU" \
+    uv pip install --quiet --python /opt/silux-python/bin/python /fuente/native/silux_bench
 cd /fuente
 /opt/silux-python/bin/python tools/build_appimage.py "$@"
 """
@@ -496,6 +505,7 @@ def construir_en_contenedor(imagen: str, compat: bool = False) -> int:
         "-e", "SILUX_PYTHON=" + PYTHON_STANDALONE.format(version=PYTHON[compat]),
         "-e", f"SILUX_BUILD={_marca_de_construccion()}",
         "-e", f"{EN_CONTENEDOR}=1",
+        "-e", f"SILUX_TARGET_CPU={TARGET_CPU[compat]}",
         # Sin esto la salida sale desordenada y no se puede leer: dentro del
         # contenedor la stdout de Python no es un terminal, así que va por
         # bloques y se vuelca entera al final, mientras appimagetool y pip
@@ -691,6 +701,42 @@ def copiar_silux() -> None:
     shutil.copy2(ROOT / "LICENSE", doc / "LICENSE")
     shutil.copy2(ROOT / "silux" / "db" / "THIRD_PARTY_NOTICES.md",
                  doc / "THIRD_PARTY_NOTICES.md")
+
+
+# The native benchmarks' module, built in the container with the processor
+# level of the build: x86-64 for compat, x86-64-v2 for the normal one, as the
+# Qt each carries. Its AVX2 and AVX-512 paths are functions chosen after
+# asking the CPU, named for their set (`read_avx2`).
+NATIVE_MODULE = "silux_bench"
+TARGET_CPU = {False: "x86-64-v2", True: "x86-64"}
+
+
+def copy_native_module() -> set[str]:
+    """The native module, from the interpreter building this, into the
+    AppDir; and what it links to. Without it the tests run their simple
+    measure, and the build says so."""
+    import importlib.util
+
+    spec = importlib.util.find_spec(NATIVE_MODULE)
+    if spec is None or spec.origin is None:
+        print(f"  without {NATIVE_MODULE}: the memory and disk tests will be the simple ones",
+              file=sys.stderr)
+        return set()
+    origin = pathlib.Path(spec.origin)
+    target = APPDIR / "usr" / "lib" / "python"
+    target.mkdir(parents=True, exist_ok=True)
+    if spec.submodule_search_locations:
+        package = origin.parent
+        shutil.copytree(package, target / package.name,
+                        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyi"))
+        objects = list((target / package.name).glob("*.so"))
+    else:
+        shutil.copy2(origin, target / origin.name)
+        objects = [target / origin.name]
+    found: set[str] = set()
+    for item in objects:
+        found |= set(dependencias(item))
+    return found
 
 
 def qt_propio() -> list[pathlib.Path]:
@@ -908,7 +954,9 @@ def _simbolos_sin_escapatoria(
     `/proc/cpuinfo`: es lo que la guarda del AppRun va a buscar allí.
     """
     try:
-        tabla = subprocess.run(["readelf", "-sW", "--dyn-syms", str(objeto)],
+        # Every symbol table: a stripped library has `.dynsym` alone, and the
+        # native module, kept whole, its own functions in `.symtab`.
+        tabla = subprocess.run(["readelf", "-sW", str(objeto)],
                                capture_output=True, text=True,
                                timeout=300).stdout
         codigo = subprocess.run(["objdump", "-d", "--no-show-raw-insn",
@@ -1192,6 +1240,10 @@ def quitar_simbolos() -> None:
     binarios = list((APPDIR / "usr" / "lib").rglob("*.so*"))
     binarios.append(APPDIR / "usr" / "bin" / "python3")
     for binario in binarios:
+        # The native module keeps its function names: they are how the
+        # instruction check knows its AVX2 paths are chosen at run time.
+        if binario.name.startswith(NATIVE_MODULE):
+            continue
         if binario.is_file() and not binario.is_symlink():
             subprocess.run(["strip", "--strip-unneeded", str(binario)],
                            capture_output=True, check=False)
