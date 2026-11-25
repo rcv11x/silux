@@ -58,11 +58,13 @@ temporales.
 ## Cómo repetirlo con otras herramientas
 
 Con el equipo en reposo y en la misma CPU que dice la línea del método (aquí,
-la 1). Otro programa usando la caché compartida mueve los escalones. Y con
-la frecuencia quieta: un programa que enciende y apaga el turbo según la
-carga (auto-cpufreq, por ejemplo) lo cambia a mitad de una prueba, y las
-referencias no dicen a qué frecuencia midieron. `perf stat -e cycles:u,task-clock`
-delante de cada orden lo dice: ciclos entre milisegundos.
+la 1). Otro programa usando la caché compartida mueve los escalones.
+
+Con la frecuencia quieta, también. Un programa que enciende y apaga el turbo
+según la carga, como auto-cpufreq, la cambia a mitad de una prueba. Para
+saber a qué frecuencia midió una referencia, pon
+`perf stat -e cycles:u,task-clock` delante de la orden: son los ciclos entre
+los milisegundos.
 
 **multichase** (latencia, páginas grandes, al azar por todo el bloque):
 
@@ -99,17 +101,17 @@ OMP_NUM_THREADS=1 taskset -c 1 ./stream                            # un hilo
 OMP_PROC_BIND=spread OMP_PLACES=cores ./stream                     # todos
 ```
 
-Su «Copy» se compara con la «copia sin pasar por la caché»: gcc cambia ese
-bucle por una llamada a `memcpy`, y la de la glibc, con bloques tan grandes,
-escribe sin pasar por la caché y recorre cuatro páginas a la vez. Es la
-mejor copia que sabe hacer la glibc, no un bucle sencillo.
+Su «Copy» se compara con la «copia sin pasar por la caché». gcc cambia ese
+bucle por una llamada a `memcpy`. La de la glibc, con bloques tan grandes,
+escribe sin pasar por la caché y recorre cuatro páginas a la vez: es su
+mejor copia, no un bucle sencillo.
 
 **Intel MLC** (latencia y ancho de banda; la referencia en Intel). Es un
-binario de Intel con su propia licencia: se descarga de
+binario de Intel con su propia licencia. Se descarga de
 <https://www.intel.com/content/www/us/en/download/736633/intel-memory-latency-checker-intel-mlc.html>.
-Sin root no puede apagar los prefetchers ni usar páginas grandes (pide
-reservarlas antes en `vm.nr_hugepages`), así que se le dice que no los toque
-(`-e`) y que salte al azar (`-r`):
+
+Sin root no puede apagar los prefetchers ni usar páginas grandes. Por eso
+se le pide que no toque los prefetchers (`-e`) y que salte al azar (`-r`):
 
 ```bash
 mlc --idle_latency -e -r -l64 -c1 -i1 -b1g -D16777216   # la RAM, al azar por todo 1 GiB
@@ -117,16 +119,20 @@ mlc --max_bandwidth -e -k1 -b1g                         # un hilo
 mlc --max_bandwidth -e -b84m                            # todos
 ```
 
-`-D` es cuántas líneas de 64 bytes entran en el salto al azar: por defecto
-8192 (512 KiB), y con eso da 31 ns donde todo el bloque da 85. Para
-comparar con Silux, todas las líneas del bloque (`-b` entre 64) y la curva
-de Silux con páginas de 4 KiB. En el ancho de banda, MLC cuenta cada
-escritura dos veces (la lectura que la precede para traer la línea, y la
-escritura), como la ve el controlador de memoria: su «1:1» son solo
-escrituras y se compara con el doble de la escritura de Silux, y su «2:1»
-es una copia contada tres veces por línea donde Silux cuenta dos.
+`-D` dice cuántas líneas de 64 bytes entran en cada salto al azar. Por
+defecto son 8192 (512 KiB): así, en un Core i5-10400, da 31 ns donde el
+bloque entero da 85. Para compararlo con Silux, pon todas las líneas del
+bloque (`-b` entre 64) y mira la curva de Silux con páginas de 4 KiB.
+
+MLC cuenta cada escritura dos veces, como la ve el controlador de memoria:
+la lectura que trae la línea y la escritura. Su «1:1» son solo escrituras:
+se compara con el doble de la escritura de Silux. Su «2:1» es una copia
+contada tres veces por línea, donde Silux cuenta dos.
 
 ## Validación
+
+El Ryzen 7 5800X3D, aquí abajo. El Core i5-10400, con sus condiciones y sus
+cifras, en [prueba-de-memoria-cifras.md](prueba-de-memoria-cifras.md).
 
 ### Ryzen 7 5800X3D, DDR4-3200 en doble canal
 
@@ -213,130 +219,10 @@ más), así que no es solo qué memoria física le toca a cada bloque. Con todos
 los hilos varía un 1 %. Comparar dos lecturas de un hilo con menos de un 7 %
 de diferencia no dice nada.
 
-### Core i5-10400, DDR4-2666 en doble canal
-
-El 25 de noviembre de 2026; los módulos son DDR4-3200 y van a 2666 MT/s.
-Kernel 7.3, páginas grandes en el 100 % del bloque, CPU 1. Cada
-referencia, con su frecuencia medida con `perf`.
-
-**El gestor de energía: auto-cpufreq.** Corría como servicio y enciende o
-apaga el turbo según la carga, también a mitad de una prueba: una empezó la
-curva a 2,89 GHz y la acabó a 4,2. Explica lo que se vio con la versión
-anterior (de la L3 hacia arriba, un 5 a un 25 % por encima de multichase, y
-la L1 a 1,40 ns): 1,38 ns a 2,89 GHz son los mismos 4,0 ciclos que 0,95 ns
-a 4,2. Las tablas siguientes son con el servicio parado, el turbo fijo
-encendido y el gobernador `performance` con preferencia `performance`. Lo
-que no pasa por la caché, por la tarde, con tuned (abajo).
-
-La latencia, en tres rondas, cada una con la prueba tal como la lanza la
-ventana y justo después multichase en la misma CPU:
-
-| Bloque | Silux, ns | GHz | multichase `-H`, ns | GHz |
-|---|---|---|---|---|
-| 16 KiB | 0,98 · 0,96 · 0,94 | 4,08–4,25 | 0,95 · 0,95 · 0,95 | 4,15–4,16 |
-| 128 KiB | 2,98 · 2,88 · 2,82 | 4,05–4,26 | 2,88 · 2,87 · 3,74 | 4,14–4,16 |
-| 4 MiB | 9,55 · 9,62 · 9,66 | 4,14–4,17 | 9,50 · 10,16 · 9,62 | 4,14–4,16 |
-| 16 MiB | 49,67 · 49,28 · 48,95 | 4,08–4,22 | 48,08 · 47,46 · 46,71 | 4,15–4,17 |
-| 48 MiB | 60,76 · 59,52 · 60,17 | 4,12–4,19 | 62,04 · 61,61 · 61,84 | 4,15–4,17 |
-| 192 MiB | 64,01 · 66,39 · 63,60 | 4,05–4,18 | 65,53 · 66,02 · 65,42 | 4,13–4,14 |
-| 1 GiB | 64,64 · 64,66 · 64,24 | 4,18–4,25 | 66,78 · 66,77 · 66,16 | 4,07–4,08 |
-
-| Nivel | ns | Ciclos |
-|---|---|---|
-| L1 | 0,97 · 0,96 · 0,96 | 4,0 · 4,0 · 4,0 |
-| L2 | 2,98 · 2,85 · 2,86 | 12,1 · 12,0 · 12,0 |
-| L3 | 9,25 · 9,04 · 9,06 | 38,5 · 37,8 · 37,9 |
-| RAM | 64,64 · 64,66 · 64,24 | 274 · 275 · 269 |
-
-Dentro de las cachés coincide al 2 %, y en ciclos es lo mismo que
-multichase (0,95 ns a 4,15 GHz son 3,9 ciclos; 2,87 ns, 11,9). En la RAM
-los nanosegundos se separan un 3 %, pero multichase midió el GiB a 4,07 GHz
-y Silux a 4,2: en ciclos son 269–272 y 269–275, al 1 % (a 192 MiB, 270–273
-y 266–269). Los ciclos no lo prueban del todo, porque la parte que pone la
-memoria no va con el reloj del núcleo, pero el 3 % cabe en la diferencia de
-reloj. 16 MiB es la transición (la L3 es de 12 MiB) y no se usa para ningún
-nivel. El veredicto de la curva cuadró en las seis pruebas: la L1 sube
-entre 32 y 48 KiB, la L2 entre 256 y 384 KiB y la L3 entre 8 y 16 MiB.
-
-Intel MLC sin root no tiene páginas grandes, así que se compara con la
-curva de Silux con páginas de 4 KiB, las dos al azar por todo el bloque:
-
-| Bloque | Silux con 4 KiB, ns | MLC `-e -r`, ns |
-|---|---|---|
-| 4 MiB | 12,52 · 11,36 · 11,55 | 12,0 · 12,0 · 12,0 |
-| 16 MiB | 51,75 · 51,61 · 49,11 | 55,0 · 54,6 · 55,3 |
-| 48 MiB | 68,74 · 67,86 · 67,86 | 71,6 · 71,5 · 71,7 |
-| 192 MiB | 75,78 · 75,87 · 76,52 | 79,4 · 79,3 · 78,9 |
-| 1 GiB | 78,96 · 78,87 · 78,77 | 84,7 · 85,0 · 84,7 |
-
-En nanosegundos MLC sale entre un 4 y un 7 % por encima; en ciclos (MLC a
-4,11–4,18 GHz, Silux a 4,2–4,27), entre un 2 y un 4 % (1 GiB: 348–349
-frente a 334–336; 192 MiB: 328 frente a 321–323), y un 7 % en la
-transición de 16 MiB. Lo que queda no está explicado: la frecuencia de MLC
-es la media de sus hilos, y uno de ellos lo lanza en la CPU 0 para que el
-procesador no se duerma. En la primera pasada de la mañana coincidían al
-1 % en nanosegundos (1 GiB: 79,0 frente a 79,2–79,5), sin frecuencia
-apuntada. Con sus opciones por defecto (saltos al azar dentro de trozos de
-512 KiB) MLC da 31 ns sobre 192 MiB y sobre 1 GiB.
-
-El ancho de banda (12 hilos en total):
-
-| Medida, GB/s | Silux | Referencia |
-|---|---|---|
-| Lectura, 1 hilo (AVX2) | 20,4 · 21,5 · 22,1 | `bw_mem rd` 18,1 · 18,1 · 18,2; MLC ALL Reads 18,5 · 17,3 · 20,1 |
-| Escritura, 1 hilo | 12,5 · 13,6 · 13,4 | `bw_mem wr` 12,5 · 12,5 · 12,5; MLC 1:1 ÷ 2: 13,0 · 13,1 · 13,2 |
-| Copia, 1 hilo | 14,3 · 14,8 · 14,8 | `bw_mem cp` × 2: 16,0 · 16,0 · 15,9; MLC 2:1 × ⅔: 16,9 · 16,5 · 16,8 |
-| Copia sin caché, 1 hilo | 18,8 · 19,8 · 19,7 | STREAM Copy 27,9 · 27,8 · 27,8 |
-| Lectura, 12 hilos | 30,5 · 31,6 · 31,9 | MLC ALL Reads 32,3 · 33,9 · 31,1 |
-| Escritura, 12 hilos | 12,1 · 12,2 · 12,1 | MLC 1:1 ÷ 2: 11,8 · 11,9 · 10,9 |
-| Copia, 12 hilos | 16,9 · 16,9 · 16,7 | MLC 2:1 × ⅔: 17,1 · 18,1 · 16,4 |
-| Copia sin caché, 12 hilos | 25,3 · 25,5 · 25,4 | STREAM Copy 25,0 · 25,1 · 25,1 |
-
-Lo que no pasa por la caché, otra vez por la tarde con tuned en `balanced`,
-y contra MLC en la misma tanda (`--loaded_latency -T -d0`: `-W6` son solo escrituras sin caché y `-W8`,
-una lectura y una escritura sin caché, que es la copia; las dos cuentan lo
-mismo que Silux):
-
-| Medida, GB/s | Silux | MLC |
-|---|---|---|
-| Escritura sin caché, 1 hilo | 37,3 · 36,9 · 36,2 | `-W6` 34,9 · 35,4 · 35,4 |
-| Escritura sin caché, 12 hilos | 33,7 · 34,2 · 33,1 | `-W6` 31,9 · 32,1 · 31,6 |
-| Copia sin caché, 1 hilo | 19,8 · 19,9 · 19,9 | `-W8` 26,2 · 24,4 · 26,2 |
-| Copia sin caché, 12 hilos | 25,4 · 25,5 · 25,4 | `-W8` 25,2 · 25,2 · 25,2 |
-
-- Con todos los hilos, y la escritura de uno, cuadra a un 5 %.
-- **La escritura sin caché va más deprisa que la lectura, también en
-  MLC**: no necesita traer la línea antes de escribirla. Silux da un 3 a
-  un 6 % más que MLC.
-- La lectura de un hilo sale por encima, como en el 5800X3D, y en parte es
-  el bucle: alternando, AVX2 da 20,2–21,1 y SSE2 18,9–19,9. Aun con SSE2
-  queda entre un 4 y un 10 % por encima de `bw_mem`, cuando en el 5800X3D
-  quedaba al 2 %.
-- **La copia de un hilo sale por debajo en este Intel**: un 8 a un 12 %
-  la normal, y la que no pasa por la caché un 25 % frente a MLC y un 30 %
-  frente a STREAM (que es el `memcpy` de la glibc, arriba). Con doce hilos
-  cuadra, y en el 5800X3D cuadraban todas. Falta ver qué hacen distinto de
-  nuestro bucle.
-
-**La frecuencia, con cada gestor de energía.** Con auto-cpufreq, una
-prueba fue de 2,89 a 4,25 GHz (un 32 %). Con el turbo fijo, los puntos van
-de 4,05 a 4,27 GHz; lo más probable es que sea el turbo bajando de escalón
-según cuántos núcleos están despiertos, sin medirlo. Con lo que trae Fedora
-de serie (tuned con tuned-ppd, perfil `balanced`: gobernador `powersave` y
-preferencia `balance_performance`), tres pruebas fueron de 4,13 a 4,27 GHz
-y dieron la RAM en 64,2–65,2 ns: el turbo no se apaga a mitad. La prueba
-avisa desde un 10 % de diferencia, así que con tuned no avisa y con
-auto-cpufreq sí.
-
-**El porcentaje del máximo**, en la ventana con permisos: la lectura más
-rápida, 33,2 GB/s con 12 hilos, es el 78 % de 2 canales × 2666 MT/s × 8 B
-= 42,7 GB/s.
-
 ### Lo que falta por validar
 
-- **El i5-10400 con páginas grandes en MLC** (`-L`, con `vm.nr_hugepages`
-  reservadas por root), para comparar con la curva de verdad y no con la de
-  4 KiB.
+- **MLC con páginas grandes** (`-L`, que pide reservarlas como root), para
+  compararlo con la curva de Silux en páginas de 2 MiB.
 - **Un procesador con dos clases de núcleo.** El contador de ciclos se pide
   para la clase del núcleo donde se mide, sin haberlo probado en uno.
 - **Un equipo antiguo**, con el AppImage compatible, y uno con poca memoria.

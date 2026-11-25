@@ -322,24 +322,13 @@ la memoria) no va: está propuesto en las notas
   `master`:
   - alta · validarla en un procesador con dos clases de núcleo y en uno
     antiguo con el AppImage compatible. El contador de ciclos de un híbrido
-    está escrito sin probar. (El Intel de sobremesa, un i5-10400, ya está:
-    tablas en [prueba-de-memoria.md](prueba-de-memoria.md).)
-  - media · en el i5-10400 la copia de un hilo sale por debajo de las
-    referencias: un 8 a un 12 % la normal (`bw_mem cp`, MLC) y un 25 a un
-    30 % la que no pasa por la caché (MLC `-W8`, y STREAM, que es el
-    `memcpy` de la glibc). Con doce hilos cuadra, y en el 5800X3D
-    cuadraban. Ver qué hace distinto la glibc (cuatro páginas a la
-    vez, prefetch) antes de enseñar la copia por niveles.
-  - media · un programa que cambia el turbo o el gobernador según la carga
-    (auto-cpufreq, TLP, power-profiles-daemon, tuned o tuned-ppd, thermald)
-    puede mover la frecuencia a mitad de la prueba: en un i5-10400, auto-cpufreq empezó una
-    curva a 2,89 GHz y la acabó a 4,2. Vale también para la del disco y la
-    del procesador. Detectarlo sin root (servicio activo, proceso en marcha)
-    y decirlo con su nombre en dos sitios: antes de empezar, en una línea
-    («auto-cpufreq está activo: puede cambiar el turbo durante la prueba»),
-    y en el resultado junto a «La frecuencia cambió durante la prueba», como
-    causa probable. Solo que está y lo que hace, sin pedir que se desactive.
-    Con su test.
+    está escrito sin probar.
+  - media · en un Core i5-10400, la copia de un hilo sale un 8 a 12 % por
+    debajo de las referencias, y un 25 a 30 % la que no pasa por la caché.
+  - media · decir qué programa cambia el turbo o el gobernador según la
+    carga (auto-cpufreq, TLP, power-profiles-daemon, tuned, thermald), antes
+    de empezar y junto al aviso de la frecuencia; también en el disco y el
+    procesador.
   - media · mide en una sola CPU, la segunda del primer tipo de núcleo. Con
     dos CCD de L3 distinta (7950X3D), núcleos P y E o varios nodos NUMA
     falta medir uno de cada clase y decir cuál es cuál.
