@@ -335,6 +335,10 @@ la memoria) no va: está propuesto en las notas
   - media · mide en una sola CPU, la segunda del primer tipo de núcleo. Con
     dos CCD de L3 distinta (7950X3D), núcleos P y E o varios nodos NUMA
     falta medir uno de cada clase y decir cuál es cuál.
+  - media · en inglés la pestaña no cabe en la ventana más estrecha: pide
+    483 px de 480 (521 con «non-temporal» en la rejilla, que no se parte
+    como «no cache»). En español cabe. `test_it_fits_the_narrowest_window`
+    solo lo mira en español: cuando quepa, que lo mire en los dos.
   - baja · la barra lateral no marca Rendimiento mientras corre una prueba.
   - baja · el historial no se puede renombrar ni borrar fila a fila, como
     el del procesador.
