@@ -334,21 +334,28 @@ class TestWhatAResultShows(TabCase):
         for _heading, table in tab.history_tables:
             self.assertEqual(table.horizontalScrollBar().maximum(), 0)
 
-    def test_the_axis_never_sets_one_figure_on_another(self):
-        """Reading only, a column took the whole width and «10 000» met
-        «100 000»."""
+    def test_the_axis_says_the_same_figures_or_none(self):
+        """Reading only, «10 000» met «100 000»; and each screenshot showed
+        the figures it had room for."""
         from silux.ui import theme
         from silux.ui.pages.disktest import Axis
 
         axis = Axis(theme.palette_for(self.app, "dark"))
         self.addCleanup(axis.deleteLater)
-        for width in range(120, 1600, 7):
-            boxes = [box for box, _text in axis.labels(width)]
+        seen = set()
+        for width in range(40, 1600, 7):
+            labels = axis.labels(width)
+            texts = tuple(text.replace("\u202f", " ") for _box, text in labels)
             with self.subTest(width=width):
-                self.assertTrue(boxes)
+                self.assertIn(texts, {(), ("1", "100", "10 000")})
+                boxes = [box for box, _text in labels]
                 for left, right in zip(boxes, boxes[1:]):
                     self.assertGreaterEqual(right.left() - left.right(), Axis.GAP)
-                self.assertLessEqual(boxes[-1].right(), width)
+                if boxes:
+                    self.assertLessEqual(boxes[-1].right(), width)
+                    self.assertGreaterEqual(boxes[0].left(), 0)
+            seen.add(texts)
+        self.assertEqual(seen, {(), ("1", "100", "10 000")})
 
     def test_a_run_through_threads_is_named_for_what_it_is_and_says_why(self):
         disktest.save_history([recorded("sn850x-btrfs-threads")])

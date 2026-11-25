@@ -198,23 +198,21 @@ class Axis(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
 
     def labels(self, width: float) -> list[tuple[QRectF, str]]:
-        """Where each figure goes at `width`: none over another. The ends are
-        pulled in to fit, so the spacing between marks isn't enough to know
-        whether two figures meet."""
+        """Where each figure goes at `width`: always the same ones (1, 100,
+        10 000: one power of ten in two), or none if they don't all fit.
+        Fitting as many as there was room for gave each screenshot its own."""
         metrics = self.fontMetrics()
+        first = next(decade for decade in range(self._decades + 1)
+                     if self._first * 10 ** decade >= 1)
         placed: list[tuple[QRectF, str]] = []
-        for decade in range(self._decades + 1):
-            value = self._first * 10 ** decade
-            # Below one, the figure is left out: «0.1» says little and crowds.
-            if value < 1:
-                continue
-            text = render.thousands(round(value))
+        for decade in range(first, self._decades + 1, 2):
+            text = render.thousands(round(self._first * 10 ** decade))
             text_width = metrics.horizontalAdvance(text)
-            x = min(width * decade / self._decades, width - 1)
-            left = max(0.0, min(x - text_width / 2, width - text_width))
-            box = QRectF(left, 4, text_width, metrics.height())
-            if placed and box.left() < placed[-1][0].right() + self.GAP:
-                continue
+            x = width * decade / self._decades
+            box = QRectF(x - text_width / 2, 4, text_width, metrics.height())
+            if box.left() < 0 or box.right() > width or (
+                    placed and box.left() < placed[-1][0].right() + self.GAP):
+                return []
             placed.append((box, text))
         return placed
 
