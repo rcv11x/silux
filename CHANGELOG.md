@@ -12,6 +12,9 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: una Radeon cuyo driver da 0 °C en lo que no mide (la memoria y
+  los reguladores de una RX 5500 XT) ya no enseña esos 0.0 °C: las filas se
+  esconden y el pie dice que su driver no los publica.
 - Gráficos: una integrada de AMD que nadie nombra (una base de dispositivos
   PCI antigua y un procesador cuya marca no dice su Radeon) ya no se titula
   con el nombre en clave del procesador («Raphael»): sale como «AMD, gráfica

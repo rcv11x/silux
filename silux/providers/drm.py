@@ -1308,7 +1308,9 @@ def _sensors(gpu: dict, device: pathlib.Path) -> None:
         return
 
     temperatures = _labelled(hwmon, "temp")
-    milli = lambda v: round(v / 1000, 1) if v is not None else None
+    # A GPU never reads 0 °C: amdgpu gives 0 for a sensor the card lacks
+    # (the memory's on some Navi 14).
+    milli = lambda v: round(v / 1000, 1) if v is not None and v > 0 else None
     # «edge» on amdgpu; «pkg» on xe, the GPU package's (xe_hwmon.c labels the
     # package channel so, and «vram» the memory's).
     gpu["temp_c"] = milli(_first(temperatures.get("edge"), temperatures.get("pkg")))
