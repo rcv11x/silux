@@ -112,19 +112,44 @@ class TestAwakeWithNothingOnIt(unittest.TestCase):
         self.assertEqual(draft.gpus[0]["temp_c"], 44.0)
 
 
+class TestTheDisplayServerOnIt(unittest.TestCase):
+    """On a hybrid laptop Xorg, or the Wayland compositor, shows up as a
+    graphics process of a few MiB on the NVIDIA while nothing uses it, and
+    the driver switches the card off all the same."""
+
+    def test_does_not_keep_it_awake(self):
+        laptop = Laptop(dataclasses.replace(idle_laptop_card(),
+                                            graphics_processes=fake_nvml.IDLE_XORG))
+        laptop.sample()
+        self.assertEqual(laptop.fake.shutdowns, 1)
+        self.assertTrue(laptop.sample().gpus[0]["left_to_sleep"])
+        self.assertTrue(laptop.sample("suspended", after_s=9.0).gpus[0]["suspended"])
+        self.assertEqual(laptop.fake.inits, 1)
+
+
 class TestAwakeAndInUse(unittest.TestCase):
 
-    def test_a_program_on_it_keeps_the_session(self):
-        laptop = Laptop(dataclasses.replace(idle_laptop_card(), processes=1))
+    def test_a_game_on_it_keeps_the_session(self):
+        laptop = Laptop(dataclasses.replace(idle_laptop_card(), busy=37, memory_busy=12,
+                                            graphics_processes=fake_nvml.IDLE_XORG
+                                            + [("game", 1800)]))
         for _sample in range(3):
             draft = laptop.sample()
             self.assertEqual(draft.gpus[0]["temp_c"], 44.0)
         self.assertEqual((laptop.fake.inits, laptop.fake.shutdowns), (1, 0))
 
-    def test_once_it_ends_the_session_is_let_go(self):
-        laptop = Laptop(dataclasses.replace(idle_laptop_card(), processes=1))
+    def test_so_does_a_compute_program_while_it_waits(self):
+        # The driver keeps the card on while a CUDA program runs.
+        laptop = Laptop(dataclasses.replace(idle_laptop_card(), compute_processes=1))
+        for _sample in range(3):
+            laptop.sample()
+        self.assertEqual((laptop.fake.inits, laptop.fake.shutdowns), (1, 0))
+
+    def test_once_it_stops_working_the_session_is_let_go(self):
+        laptop = Laptop(dataclasses.replace(idle_laptop_card(), busy=37,
+                                            graphics_processes=fake_nvml.IDLE_XORG))
         laptop.sample()
-        laptop.fake.card.processes = 0
+        laptop.fake.card.busy = 0
         laptop.sample()
         self.assertEqual(laptop.fake.shutdowns, 1)
 

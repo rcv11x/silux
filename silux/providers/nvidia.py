@@ -112,8 +112,8 @@ class NvidiaGpus(Provider):
                 _say_left_to_sleep(draft, index)
 
     def _let_go_if_unused(self, cards: list[nvml.NvidiaGpu]) -> None:
-        """Close NVML when a card that can sleep has nothing else on it."""
-        if any(self._can_sleep.get(card.pci_slot) and not card.processes for card in cards):
+        """Close NVML when a card that can sleep is not working."""
+        if any(self._can_sleep.get(card.pci_slot) and not _working(card) for card in cards):
             self.client.close()
             self._let_go_at = self._clock()
 
@@ -174,6 +174,21 @@ class NvidiaGpus(Provider):
         self._slept -= {card.pci_slot for card in cards}
         if live:
             self._let_go_if_unused(cards)
+
+
+def _working(card: nvml.NvidiaGpu) -> bool:
+    """Whether the card does work that reading it does not stop it sleeping:
+    a compute process (the driver keeps the card on while one runs), or an
+    engine busy over the last reading. That is what the driver itself
+    checks before switching a card off: whether its engines are idle.
+
+    Not the graphics processes: on a hybrid laptop the display server is
+    one, with a few MiB, on a card the driver switches off all the same.
+    Nor its memory: what counts as used at idle changes with the driver.
+    """
+    return bool(card.compute_processes) or any(
+        (card.busy_percent, card.memory_busy_percent,
+         card.encode_busy_percent, card.decode_busy_percent))
 
 
 def _say_left_to_sleep(draft: Draft, index: int) -> None:

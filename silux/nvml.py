@@ -174,9 +174,9 @@ class NvidiaGpu:
     # (way, answer) for each way of reading the power, the energy counter
     # included: only for the report.
     power_answers: tuple[tuple[str, str], ...] = ()
-    # Graphics and compute processes running on the card. Only to decide
-    # whether something besides Silux keeps it awake; never shown.
-    processes: Optional[int] = None
+    # Compute processes running on the card. Only to decide whether Silux
+    # keeps reading it; never shown.
+    compute_processes: Optional[int] = None
     power_cap_w: Optional[float] = None
     power_cap_default_w: Optional[float] = None
     power_cap_min_w: Optional[float] = None
@@ -478,32 +478,27 @@ class Nvml:
                 "power_estimate_window_s": round(window_s, 2),
                 "power_estimate_samples": len(kept)}
 
-    def _processes(self, handle) -> Optional[int]:
-        """How many graphics and compute processes run on the card.
+    def _compute_processes(self, handle) -> Optional[int]:
+        """How many compute processes run on the card.
 
         Asked with an empty list: NVML then answers success when there are
         none, or INSUFFICIENT_SIZE with how many there are. No structure is
-        read, so its version does not matter.
+        read, so its version does not matter. Graphics processes are not
+        asked: a hybrid laptop's display server is one, idle on the card.
         """
-        total, answered = 0, False
-        for names in (("nvmlDeviceGetGraphicsRunningProcesses_v3",
-                       "nvmlDeviceGetGraphicsRunningProcesses_v2",
-                       "nvmlDeviceGetGraphicsRunningProcesses"),
-                      ("nvmlDeviceGetComputeRunningProcesses_v3",
-                       "nvmlDeviceGetComputeRunningProcesses_v2",
-                       "nvmlDeviceGetComputeRunningProcesses")):
-            function = self._symbol(*names)
-            if function is None:
-                continue
-            count = ctypes.c_uint(0)
-            try:
-                code = function(handle, ctypes.byref(count), None)
-            except (ctypes.ArgumentError, OSError):
-                continue
-            if code in (NVML_SUCCESS, NVML_ERROR_INSUFFICIENT_SIZE):
-                total += count.value
-                answered = True
-        return total if answered else None
+        function = self._symbol("nvmlDeviceGetComputeRunningProcesses_v3",
+                                "nvmlDeviceGetComputeRunningProcesses_v2",
+                                "nvmlDeviceGetComputeRunningProcesses")
+        if function is None:
+            return None
+        count = ctypes.c_uint(0)
+        try:
+            code = function(handle, ctypes.byref(count), None)
+        except (ctypes.ArgumentError, OSError):
+            return None
+        if code in (NVML_SUCCESS, NVML_ERROR_INSUFFICIENT_SIZE):
+            return count.value
+        return None
 
     def _limits(self, handle) -> dict[str, Optional[float]]:
         """The factory power limit and the range the card accepts, in watts."""
@@ -594,7 +589,7 @@ class Nvml:
             decode_busy_percent=self._utilization("nvmlDeviceGetDecoderUtilization", handle),
             temp_c=self._temperature(handle),
             **power,
-            processes=self._processes(handle),
+            compute_processes=self._compute_processes(handle),
             power_cap_w=enforced,
             **limits,
             fan_percent=(lambda v: float(v) if v is not None else None)(

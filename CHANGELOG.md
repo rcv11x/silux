@@ -15,8 +15,10 @@ que hace falta.
 - Gráficos: en un portátil con dos gráficas, Silux ya no mantiene
   despierta la NVIDIA. Mientras nada más la usa, deja de preguntarle y el
   driver la apaga como con Silux cerrado; la página dice que no se le
-  pregunta y, cuando se apaga, que está dormida. Con un juego o una
-  pantalla en ella, se lee como siempre. Una NVIDIA de sobremesa no cambia.
+  pregunta y, cuando se apaga, que está dormida. Mientras trabaja (un
+  juego, un video, CUDA), se lee como siempre; el servidor gráfico, que
+  suele salir en ella con unos pocos MiB, no cuenta. Una NVIDIA de
+  sobremesa no cambia.
 - Gráficos: una NVIDIA sin sensor de consumo, como la RTX 4060 de
   sobremesa, enseña el consumo que calcula su driver con ese nombre y en su
   propia fila: «Consumo estimado: 53 W · media de las muestras del driver,

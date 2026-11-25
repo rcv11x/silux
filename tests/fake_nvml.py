@@ -42,7 +42,13 @@ class Card:
     default_mw: Optional[int] = None
     constraints_mw: Optional[tuple] = None
     temp_c: int = 40
-    processes: int = 0
+    # nvmlDeviceGetUtilizationRates: the GPU's and the memory's, in %.
+    busy: int = 0
+    memory_busy: int = 0
+    # Graphics processes as (name, MiB), as nvidia-smi lists them, and how
+    # many compute processes.
+    graphics_processes: list = dataclasses.field(default_factory=list)
+    compute_processes: int = 0
 
 
 def rtx_4060_desktop() -> Card:
@@ -61,6 +67,11 @@ def rtx_4070() -> Card:
                 fields={185: 110500, 186: 112000}, samples=[110400] * 49,
                 energy_mj=812_345_678, enforced_mw=200000, default_mw=200000,
                 constraints_mw=(100000, 220000), temp_c=54)
+
+
+# What a hybrid laptop's display server leaves on its NVIDIA while nothing
+# uses it: nvidia-smi lists it as a graphics process of a few MiB.
+IDLE_XORG = [("/usr/lib/Xorg", 4)]
 
 
 def rtx_4050_laptop() -> Card:
@@ -114,6 +125,11 @@ class FakeNvml:
 
     def nvmlDeviceGetName(self, handle, buffer, size):
         buffer.value = self.card.name.encode()
+        return 0
+
+    def nvmlDeviceGetUtilizationRates(self, handle, utilization):
+        utilization._obj.gpu = self.card.busy
+        utilization._obj.memory = self.card.memory_busy
         return 0
 
     def nvmlDeviceGetTemperature(self, handle, sensor, value):
@@ -185,12 +201,12 @@ class FakeNvml:
 
     def nvmlDeviceGetGraphicsRunningProcesses_v3(self, handle, count, infos):
         """With room for none, how many: INSUFFICIENT_SIZE if there are any."""
-        count._obj.value = self.card.processes
-        return INSUFFICIENT_SIZE if self.card.processes else 0
+        count._obj.value = len(self.card.graphics_processes)
+        return INSUFFICIENT_SIZE if self.card.graphics_processes else 0
 
     def nvmlDeviceGetComputeRunningProcesses_v3(self, handle, count, infos):
-        count._obj.value = 0
-        return 0
+        count._obj.value = self.card.compute_processes
+        return INSUFFICIENT_SIZE if self.card.compute_processes else 0
 
 
 def power_file(status: str) -> str:

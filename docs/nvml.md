@@ -25,7 +25,7 @@ va al informe.
 | Consumo | `nvmlDeviceGetPowerUsage` | 270 | Fermi o posterior, con gestión de energía | SYM, DQ |
 | | si no, los campos 185 y 186 con `nvmlDeviceGetFieldValues` | campos R535 (la función, R384) | 185: Ampere o posterior, menos GA100; 186: todas | H, CL |
 | Consumo estimado | `nvmlDeviceGetSamples` con `NVML_TOTAL_POWER_SAMPLES`; se enseña solo si ninguna de las de arriba contesta | R340 | Kepler o posterior | SYM, H |
-| Procesos en la tarjeta (solo para dejarla dormir) | `nvmlDeviceGetGraphicsRunningProcesses_v3` y `nvmlDeviceGetComputeRunningProcesses_v3`; si no, `_v2` o sin versión | R510; 450.66; 346 y 285 | no comprobado | SYM |
+| Procesos de cómputo (solo para dejarla dormir) | `nvmlDeviceGetComputeRunningProcesses_v3`; si no, `_v2` o sin versión | R510; 450.66; 285 | no comprobado | SYM |
 | Energía gastada (solo al informe) | `nvmlDeviceGetTotalEnergyConsumption` | R384 | Volta o posterior | SYM, H |
 | Límite de potencia actual | `nvmlDeviceGetEnforcedPowerLimit` | R331 | Kepler o posterior | SYM, CL, DQ |
 | Límite de fábrica y rango | `nvmlDeviceGetPowerManagementDefaultLimit`, `nvmlDeviceGetPowerManagementLimitConstraints` | R304 | Kepler o posterior | SYM, CL, DQ |
@@ -187,13 +187,12 @@ Con una NVIDIA que el driver puede apagar, Silux hace esto:
 
 - En cada muestra lee `power/runtime_status`, que no la despierta.
   Suspendida, no llama a NVML y la tarjeta sale dormida.
-- Despierta, la lee. Si NVML no ve en ella ningún proceso gráfico ni de
-  cómputo, cierra la sesión (`nvmlShutdown`) y no vuelve a preguntarle en
-  15 s, lo que tarda el driver en apagarla. Mientras tanto sale «sin
-  preguntarle».
+- Despierta, la lee. Si no está trabajando, cierra la sesión
+  (`nvmlShutdown`) y no vuelve a preguntarle en 15 s, lo que tarda el
+  driver en apagarla. Mientras tanto sale «sin preguntarle».
 - Si a los 15 s sigue despierta, algo más la mantiene así, y se lee otra vez.
-- Con un proceso en ella (un juego, una pantalla externa), la sesión sigue
-  abierta y se lee en cada muestra.
+- Mientras trabaja (un juego, un video, un programa de CUDA), la sesión
+  sigue abierta y se lee en cada muestra.
 
 Que el driver la puede apagar lo dice `/proc/driver/nvidia/gpus/<ranura>/power`
 («Runtime D3 status: Enabled»), que se lee sin tomar referencia
@@ -202,9 +201,30 @@ lee. Una tarjeta vista suspendida también cuenta. Una NVIDIA de sobremesa, o
 una portátil sin RTD3, sigue como siempre: la sesión abierta y una lectura
 por muestra.
 
-Los procesos se cuentan con `nvmlDeviceGetGraphicsRunningProcesses` y
-`nvmlDeviceGetComputeRunningProcesses` con la lista vacía: contestan cuántos
-hay sin leer ninguna estructura. Solo deciden; no se enseñan.
+Trabajar es tener algún motor ocupado en la última lectura (el gráfico, el
+controlador de memoria, NVENC o NVDEC) o un proceso de cómputo en ella. Es
+lo mismo que mira el driver antes de apagarla: si sus motores están
+parados. Con un proceso de CUDA no la apaga, así que leerla no cambia nada.
+
+Lo que no cuenta, y por qué:
+
+- **Los procesos gráficos.** En un portátil híbrido, Xorg, o el compositor
+  de Wayland, sale como proceso gráfico de la NVIDIA con 4 MiB aunque no la
+  use, y en modo fino el driver la apaga igual. Excluirlos por su nombre
+  pide una lista que no se acaba (Xorg, Xwayland, gnome-shell, kwin, sway,
+  Hyprland…), y gamescope es un compositor que lleva juegos dentro.
+- **La memoria por encima de la de base.** Lo que se da como usado en
+  reposo cambia con el driver y con la tarjeta, y un umbral fijo acertaría
+  en unas y no en otras.
+
+Cuando se equivoca, se equivoca hacia la batería: un programa que usa la
+tarjeta y en una lectura no la ocupa pierde 15 s de datos y se vuelve a
+leer. Al revés, la tarjeta se quedaría despierta, que es el fallo que esto
+arregla.
+
+Los procesos de cómputo se cuentan con `nvmlDeviceGetComputeRunningProcesses`
+con la lista vacía: contesta cuántos hay sin leer ninguna estructura. Solo
+deciden; no se enseñan.
 
 OpenGL, Vulkan y OpenCL se preguntan al arrancar, en otro proceso que muere
 al contestar. Para enumerar las tarjetas abren todas, así que preguntarles

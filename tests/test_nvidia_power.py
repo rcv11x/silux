@@ -151,7 +151,7 @@ class TestAnImpossibleReading(unittest.TestCase):
     def test_once_read_it_is_no_longer_just_awake(self):
         # Woken by a program that keeps using it: read every sample.
         fake = fake_nvml.FakeNvml(dataclasses.replace(fake_nvml.rtx_4050_laptop(),
-                                                      power_mw=[588210], processes=1))
+                                                      power_mw=[588210], busy=37))
         provider = nvidia.NvidiaGpus()
         collect(fake, "suspended", provider=provider)
         collect(fake, provider=provider)
