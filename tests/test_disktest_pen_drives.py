@@ -240,6 +240,16 @@ class TestASlowPenDrive(TabCase):
         text = visible_texts(tab)
         self.assertIn("0.024", text)
         self.assertNotIn("\n0.0\n", text)
+        # Below where the scale starts, a dot at its start, never nothing;
+        # the rest as they were.
+        bars = {key: bar for key, (bar, _figure) in tab.rows._cells.items()}
+        dot = bars["RND4K Q1T1", "write"]
+        self.assertEqual(dot.filled_width(), dot.height() - 2)
+        self.assertGreater(dot.filled_width(), 0)
+        wide = bars["SEQ1M Q8T1", "read"]
+        self.assertAlmostEqual(wide.filled_width(), wide.width() * wide.fraction)
+        dot.set_rate(None)
+        self.assertEqual(dot.filled_width(), 0)
 
     def test_another_pen_drive_that_came_up_under_its_name_isnt_it(self):
         """sdb is whatever was plugged in first: its last result is only its

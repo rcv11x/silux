@@ -2420,7 +2420,8 @@ class RateBar(QWidget):
 
     Fixed, so that two screenshots of two machines compare by eye. A bar too
     narrow to read isn't drawn: in a narrow window the figures stay and the
-    bars go first.
+    bars go first. A rate that was measured is never an empty bar: at the
+    scale's start, or below it, it is a dot as long as the bar is tall.
     """
 
     NARROWEST = 40
@@ -2440,6 +2441,7 @@ class RateBar(QWidget):
         self._tone = tone
         self._fraction: Optional[float] = None
         self._live = False
+        self._measured = False
         self._round = 3 if height <= 12 else 5
         self.setFixedHeight(height)
         self.setMinimumWidth(0)
@@ -2455,15 +2457,22 @@ class RateBar(QWidget):
         if bytes_per_second:
             decades = math.log10(max(bytes_per_second, self._from) / self._from)
             fraction = decades / self._decades
-        self.set_fraction(fraction, live)
+        self.set_fraction(fraction, live, measured=bool(bytes_per_second))
 
-    def set_fraction(self, fraction: Optional[float], live: bool = False) -> None:
-        """How full, from 0 to 1, on a scale of the caller's."""
+    def set_fraction(self, fraction: Optional[float], live: bool = False,
+                     measured: bool = False) -> None:
+        """How full, from 0 to 1, on a scale of the caller's. `measured`:
+        there is a figure, however small, and it is drawn."""
         if fraction is not None:
             fraction = min(max(fraction, 0.0), 1.0)
-        if (fraction, live) != (self._fraction, self._live):
-            self._fraction, self._live = fraction, live
+        if (fraction, live, measured) != (self._fraction, self._live, self._measured):
+            self._fraction, self._live, self._measured = fraction, live, measured
             self.update()
+
+    def filled_width(self) -> float:
+        """How much of the bar is filled, in pixels."""
+        width = self.width() * (self._fraction or 0.0)
+        return max(width, self.height() - 2.0) if self._measured else width
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         if self.width() < self.NARROWEST:
@@ -2474,11 +2483,12 @@ class RateBar(QWidget):
         box = QRectF(0, 1, self.width(), self.height() - 2)
         painter.setBrush(self._p.q("line_soft"))
         painter.drawRoundedRect(box, self._round, self._round)
-        if self._fraction:
+        filled = self.filled_width()
+        if filled:
             colour = self._p.q("muted") if self._live else self._p.q(self._colour, self._tone)
             painter.setBrush(colour)
-            painter.drawRoundedRect(QRectF(0, 1, self.width() * self._fraction,
-                                           self.height() - 2), self._round, self._round)
+            painter.drawRoundedRect(QRectF(0, 1, filled, self.height() - 2),
+                                    self._round, self._round)
         painter.end()
 
 
