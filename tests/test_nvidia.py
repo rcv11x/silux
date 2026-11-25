@@ -372,7 +372,7 @@ class TestThePowerOfANewDriver(unittest.TestCase):
     def _leer(self, lib):
         sesion = nvml.Nvml()
         sesion._lib = lib
-        power = sesion._power(nvml.ctypes.c_void_p(1), 0)
+        power = sesion._power(nvml.ctypes.c_void_p(1), 0, None)
         return power["power_w"], power["power_source"], power["power_error"]
 
     def _potencia(self, lib):

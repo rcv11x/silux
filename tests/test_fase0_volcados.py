@@ -32,7 +32,7 @@ RTX = nvml.NvidiaGpu(pci_slot="0000:01:00.0", name="GeForce RTX 3060",
 
 class TestNvmlSeGraba(unittest.TestCase):
     def proveedor(self, cliente):
-        p = nvidia.NvidiaGpus.__new__(nvidia.NvidiaGpus)
+        p = nvidia.NvidiaGpus()
         p.client = cliente
         return p
 

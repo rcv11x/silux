@@ -1387,6 +1387,8 @@
   "prov.msr.nox86.hint": "En esta arquitectura lo publica el sensor de la placa o no lo publica nadie.",
   "prov.msr.oldintel": "Este procesador no publica el voltaje del núcleo.",
   "prov.msr.oldintel.hint": "Intel lo pone en el registro que se lee a partir de los Core de segunda generación (Sandy Bridge); en uno anterior no está, con permisos o sin ellos.",
+  "prov.nvml.discarded": "Se descartó una lectura imposible del consumo: más de una vez y media el mayor límite de la tarjeta.",
+  "prov.nvml.discarded.woke": "La tarjeta estaba en reposo justo antes, y la primera lectura al despertar puede salir así.",
   "prov.nvml.estimate": "El driver no mide el consumo de esta tarjeta: lo calcula. En reposo puede marcar más de lo que gasta.",
   "prov.nvml.nopower": "El driver de NVIDIA no da el consumo de esta tarjeta.",
   "prov.procfs.nostat": "El sistema no publica el uso del procesador.",

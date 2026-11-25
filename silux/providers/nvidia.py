@@ -35,13 +35,17 @@ class NvidiaGpus(Provider):
     def __init__(self) -> None:
         # Called `client` on purpose: the collector closes by that name.
         self.client = nvml.Nvml()
+        # The cards seen suspended since NVML last read them: the first
+        # reading after waking can be impossible (docs/nvml.md).
+        self._slept: set[str] = set()
 
     def available(self) -> bool:
         # With a dump, what was recorded answers: open or not, and which cards
         # it gave (`sysroot.recorded`). Never this machine's NVML.
         if sysroot.active():
             return bool(sysroot.recorded("nvml", "abierta", self.client.open))
-        if sleeping_nvidias():
+        if sleeping := sleeping_nvidias():
+            self._slept.update(sleeping)
             # NVML talks to every card at once: opening it, or asking with it
             # open, wakes the one that sleeps. It is closed while one is
             # suspended and opened again when it wakes.
@@ -99,15 +103,27 @@ class NvidiaGpus(Provider):
                     continue
                 gpu["runtime_status"] = read_text(f"{PCI}/{card.pci_slot}/power/runtime_status")
                 if gpu.get("power_w") is None:
-                    _say_why_no_power(draft, index, card)
+                    _say_why_no_power(draft, index, card, woke=card.pci_slot in self._slept)
+        self._slept -= {card.pci_slot for card in cards}
 
 
-def _say_why_no_power(draft: Draft, index: int, card: nvml.NvidiaGpu) -> None:
+def _say_why_no_power(draft: Draft, index: int, card: nvml.NvidiaGpu, woke: bool) -> None:
     """A dash with no reason breaks rule 5: say the driver did not give it,
-    or that what it gives is its own estimate. What NVML answered to each way
-    goes in the report."""
+    that what it gave was impossible, or that what it gives is its own
+    estimate. What NVML answered to each way goes in the report.
+
+    `woke`: the card was seen suspended since it was last read, the probable
+    cause of an impossible reading."""
     path = f"gpus.{index}.power_w"
-    if card.power_estimate_w is not None:
+    if card.power_discarded_w is not None:
+        ceiling = dict(card.power_answers).get("ceiling", "")
+        draft.note(path, Need.HARDWARE, _("prov.nvml.discarded"),
+                   _("prov.nvml.discarded.woke") if woke else "",
+                   detail=f"{card.power_discarded_w} W from {card.power_discarded_source}, "
+                          f"over the ceiling of {ceiling}"
+                          + ("; suspended before this reading" if woke else ""),
+                   key="nvml.discarded")
+    elif card.power_estimate_w is not None:
         draft.note(path, Need.HARDWARE, _("prov.nvml.estimate"),
                    detail=card.power_error or "", key="nvml.estimate")
     else:

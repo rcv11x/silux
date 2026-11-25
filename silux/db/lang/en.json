@@ -1387,6 +1387,8 @@
   "prov.msr.nox86.hint": "On this architecture either the board sensor publishes it or nobody does.",
   "prov.msr.oldintel": "This processor does not publish its core voltage.",
   "prov.msr.oldintel.hint": "Intel puts it in the register that is read from the second-generation Core (Sandy Bridge) on; an earlier one does not have it, with permissions or without.",
+  "prov.nvml.discarded": "An impossible power reading was thrown away: over one and a half times the card's highest limit.",
+  "prov.nvml.discarded.woke": "The card was asleep just before, and the first reading after it wakes can come out like this.",
   "prov.nvml.estimate": "The driver does not measure this card's power: it calculates it. At idle it can read more than the card draws.",
   "prov.nvml.nopower": "The NVIDIA driver does not give this card's power draw.",
   "prov.procfs.nostat": "The system does not publish the processor's usage.",

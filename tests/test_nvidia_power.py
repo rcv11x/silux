@@ -91,6 +91,78 @@ class TestTheDriversEstimate(unittest.TestCase):
         self.assertIn("NOT_SUPPORTED", notes[0].detail)
 
 
+class TestAnImpossibleReading(unittest.TestCase):
+    """A laptop RTX 4050 read 588.21 W on waking, with 95 W as its highest
+    limit. Over 1.5 times that, a reading is thrown away, and the next way
+    is not tried: the card answered, with something impossible."""
+
+    def test_thrown_away_and_the_next_one_kept(self):
+        session, _fake, first = read_once(fake_nvml.rtx_4050_laptop())
+        self.assertIsNone(first.power_w)
+        self.assertEqual((first.power_discarded_w, first.power_discarded_source),
+                         (588.21, "nvmlDeviceGetPowerUsage"))
+        answers = dict(first.power_answers)
+        self.assertEqual(answers["field 185"], "not asked")
+        self.assertIsNone(first.power_estimate_w)
+        self.assertEqual(answers["ceiling"], "142.5 W, 1.5 x 95.0 W")
+        self.assertEqual(session.devices()[0].power_w, 1.3)
+
+    def test_a_card_on_its_limit_is_not(self):
+        # A card at full load passes its limit by a little: an RTX 3060's
+        # maximum is its factory 170 W.
+        card = fake_nvml.Card(name="NVIDIA GeForce RTX 3060", power_mw=171000,
+                              enforced_mw=170000, default_mw=170000,
+                              constraints_mw=(100000, 170000))
+        self.assertEqual(read_once(card)[2].power_w, 171.0)
+
+    def test_without_a_declared_limit_only_the_general_ceiling(self):
+        card = read_once(fake_nvml.Card(name="NVIDIA", power_mw=588210))[2]
+        self.assertEqual(card.power_w, 588.2)
+        self.assertEqual(dict(card.power_answers)["ceiling"], "5000 W, no declared limit")
+
+    def test_impossible_samples_are_left_out_of_the_estimate(self):
+        card = fake_nvml.Card(name="NVIDIA", samples=[588210] + [12000] * 48,
+                              constraints_mw=(5000, 95000))
+        read = read_once(card)[2]
+        self.assertEqual((read.power_estimate_w, read.power_estimate_samples), (12.0, 48))
+        self.assertIn("1 over the ceiling left out",
+                      dict(read.power_answers)["nvmlDeviceGetSamples"])
+
+    def _woken(self, asleep_first):
+        fake = fake_nvml.FakeNvml(fake_nvml.rtx_4050_laptop())
+        provider = nvidia.NvidiaGpus()
+        if asleep_first:
+            collect(fake, "suspended", provider=provider)
+        return collect(fake, provider=provider)[0]
+
+    def test_its_note_gives_the_sleep_as_the_probable_cause(self):
+        note = next(n for n in self._woken(True).notes if n.path == "gpus.0.power_w")
+        self.assertEqual((note.key, note.message, note.hint),
+                         ("nvml.discarded", _("prov.nvml.discarded"),
+                          _("prov.nvml.discarded.woke")))
+        self.assertEqual(note.detail, "588.21 W from nvmlDeviceGetPowerUsage, over the "
+                                      "ceiling of 142.5 W, 1.5 x 95.0 W; suspended before "
+                                      "this reading")
+
+    def test_not_if_it_was_not_asleep(self):
+        note = next(n for n in self._woken(False).notes if n.path == "gpus.0.power_w")
+        self.assertEqual((note.key, note.hint), ("nvml.discarded", ""))
+
+    def test_once_read_it_is_no_longer_just_awake(self):
+        fake = fake_nvml.FakeNvml(dataclasses.replace(fake_nvml.rtx_4050_laptop(),
+                                                      power_mw=[588210]))
+        provider = nvidia.NvidiaGpus()
+        collect(fake, "suspended", provider=provider)
+        collect(fake, provider=provider)
+        later = collect(fake, provider=provider)[0]
+        note = next(n for n in later.notes if n.path == "gpus.0.power_w")
+        self.assertEqual((note.key, note.hint), ("nvml.discarded", ""))
+
+    def test_its_numbers_in_the_report(self):
+        text = report.build(snapshot_of(self._woken(True)), anonymous=True)
+        self.assertIn("588.21 W from nvmlDeviceGetPowerUsage", text)
+
+
 class TestACardWithASensor(unittest.TestCase):
     """An RTX 4070 answers nvmlDeviceGetPowerUsage: its power, as always."""
 

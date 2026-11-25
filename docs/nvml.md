@@ -153,6 +153,17 @@ Una lectura de 588,21 W seguida de 1,28 W unos segundos después, en una RTX
 tarjeta. La misma cifra, 588,21 W, sale en el caso publicado de otra tarjeta
 con el mismo driver.
 
+Por eso Silux descarta toda lectura por encima de 1,5 veces el mayor límite
+que declara la tarjeta (el vigente, el de fábrica o el máximo), venga de la
+vía que venga. No pasa a la vía siguiente: esa muestra sale sin consumo, con
+una nota, y el informe dice la cifra, la vía y el techo. Si la tarjeta
+estaba suspendida desde la lectura anterior, la nota lo da como causa
+probable. El margen hace falta: una tarjeta a tope va pegada a su límite y
+lo pasa por poco (una RTX 3060 tiene el máximo igual al de fábrica, 170 W).
+Las imposibles vistas van de 4 a 16 veces el máximo. Sin ningún límite
+declarado queda el techo general de 5000 W, y el informe lo dice. Del búfer
+de muestras se apartan las que pasan el techo.
+
 Los módulos abiertos enseñan de dónde puede salir una cifra vieja: el driver
 copia la potencia cada 250 ms a una página de memoria compartida, con su
 marca de tiempo, para que NVML la lea de ahí. Con la tarjeta dormida nadie
