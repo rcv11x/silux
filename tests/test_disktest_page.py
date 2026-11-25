@@ -310,6 +310,11 @@ class TestWhatAResultShows(TabCase):
         self.assertIn(_("disktest.note.varied"), inside)
         self.assertIn("SEQ1M Q8T1 (" + _("disktest.dir.write") + ")", inside)
         self.assertEqual(tab._notices.count(), 0)
+        # The figure that varied and the note that says why carry the same
+        # mark, so that they are read together.
+        mark = disktest_page().VARIED_MARK
+        self.assertIn("\n3 946" + mark + "\n", inside)
+        self.assertIn("\n" + mark + " " + _("disktest.note.varied") + "\n", inside)
         self.pick(tab, "unidad2")
         self.assertNotIn(_("disktest.note.varied"), visible_texts(tab))
 

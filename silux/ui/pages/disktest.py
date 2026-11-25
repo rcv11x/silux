@@ -85,6 +85,8 @@ ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.small
 # From how long writing the file is said before starting, with the way to a
 # smaller one.
 SLOW_FILL_SECONDS = 30
+# What marks a figure that varied between laps, and the note that says so.
+VARIED_MARK = "*"
 # The notes that put a figure in doubt; the rest of those that aren't
 # errors are facts to read the figures with.
 DOUBTFUL = frozenset({"copy_on_write", "through_the_cache", "disk_moved_less", "disk_was_busy",
@@ -366,7 +368,7 @@ class TestRows(QWidget):
             return
         bar, figure = cell
         bar.set_rate(bytes_per_second, live)
-        figure.setText(megabytes(bytes_per_second) + ("*" if note else ""))
+        figure.setText(megabytes(bytes_per_second) + (VARIED_MARK if note else ""))
         figure.setToolTip(note)
         self._tint(figure, live)
 
@@ -938,14 +940,17 @@ class DiskTestTab(ScrollPage):
             found.append("removable")
         return found
 
-    def _note(self, key: str, action: Optional[str] = None, **values) -> Notice:
+    def _note(self, key: str, action: Optional[str] = None, mark: str = "",
+              **values) -> Notice:
         """What a key of the test means: what happened, why, and what can be
         done about it, with its button when there is something to do. An
         error, a doubt about the figures and a plain fact each have their
-        colour, as everywhere else."""
+        colour, as everywhere else. `mark`: what the figures it speaks of
+        carry, before its title."""
         title, body = NOTES[key]
         tone = "bad" if key in ERRORS else "warn" if key in DOUBTFUL else "idle"
-        note = Notice(_(title).format(**values), _(body).format(**values), tone=tone,
+        title = _(title).format(**values)
+        note = Notice(f"{mark} {title}" if mark else title, _(body).format(**values), tone=tone,
                       action=_(ACTIONS[action]).format(**values) if action else None)
         if action == "folder":
             note.action_clicked.connect(
@@ -1212,8 +1217,9 @@ class DiskTestTab(ScrollPage):
                     f"placement_unknown.{why or 'unsaid'}", filesystem=result.filesystem or ""))
         varied = [m for m in result.measures if m.noisy]
         if varied:
-            self._result_notes.addWidget(self._note("varied", tests=", ".join(
-                f"{m.name} ({_(DIRECTIONS[m.direction])})" for m in varied)))
+            self._result_notes.addWidget(self._note(
+                "varied", mark=VARIED_MARK, tests=", ".join(
+                    f"{m.name} ({_(DIRECTIONS[m.direction])})" for m in varied)))
 
         rows = []
         for measure in result.measures:
