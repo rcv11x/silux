@@ -74,6 +74,18 @@ class TestClockChange(unittest.TestCase):
         self.assertIsNone(memtest.clock_change(bare))
 
 
+class TestSteps(unittest.TestCase):
+    def test_the_curve_then_one_thread_then_every_one(self):
+        caches = (("L1", 32 * KIB), ("L2", 256 * KIB), ("L3", 12 * MIB))
+        plan = memtest.make_plan(caches, tuple(range(12)), cpu=1, available=16 * GIB)
+        self.assertEqual(memtest.steps(plan), ("latency", "single", "multi"))
+
+    def test_a_single_cpu_has_no_step_with_every_thread(self):
+        caches = (("L1", 32 * KIB), ("L2", 1 * MIB))
+        plan = memtest.make_plan(caches, (0,), cpu=0, available=4 * GIB)
+        self.assertEqual(memtest.steps(plan), ("latency", "single"))
+
+
 class TestPlan(unittest.TestCase):
     def plan(self, available, l3=12 * MIB, cpus=(0, 1, 2, 3)):
         caches = (("L1", 32 * KIB), ("L2", 256 * KIB), ("L3", l3))
@@ -232,6 +244,9 @@ class TestNativeRun(unittest.TestCase):
         self.assertEqual(bool(with_frequency), result.frequency_source is not None)
         self.assertEqual(phases[0][0], "latency")
         self.assertEqual([d for _p, d in phases], sorted(d for _p, d in phases))
+        # Only the plan's steps, each once and in its order.
+        said = list(dict.fromkeys(step for step, _d in phases))
+        self.assertEqual(said, list(memtest.steps(plan)))
         self.assertIsNotNone(memtest.share_of_theoretical(result))
 
     def test_stopping_it_says_cancelled(self):

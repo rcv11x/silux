@@ -341,6 +341,14 @@ def share_of_theoretical(result: Result) -> Optional[float]:
     return round(read.bytes_per_second / result.theoretical_bytes_per_second * 100, 1)
 
 
+def steps(plan: Plan) -> tuple[str, ...]:
+    """What a test goes through, in order: "latency" (the curve), then
+    "single" and "multi", the passes with one thread and with every one."""
+    wanted = (("latency", plan.sizes), ("single", plan.single_bytes),
+              ("multi", plan.multi_bytes))
+    return tuple(step for step, there in wanted if there)
+
+
 def clock_change(result: Result) -> Optional[tuple[int, int]]:
     """The lowest and highest clock the measured CPU ran at, when they are
     far enough apart to move its figures; None otherwise.
@@ -384,7 +392,8 @@ def run(plan: Plan, on_progress: Optional[Callable[[str, float], None]] = None,
         memory: Memory = Memory()) -> Result:
     """Measure in a child process and wait for it. Call from a thread.
 
-    `on_progress` gets the phase's key and the fraction done; setting `stop`
+    `on_progress` gets the step's key (see `steps`) and the fraction done of
+    the whole test; setting `stop`
     kills the child and the result says it was cancelled.
     """
     started = time.time()
@@ -522,8 +531,7 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
             for p in curve["points"]]
 
     for index, (operation, non_temporal, threads) in enumerate(passes):
-        emit({"phase": operation + ("_nt" if non_temporal else ""),
-              "done": curve_part + (1 - curve_part) * index / len(passes)})
+        emit({"phase": threads, "done": curve_part + (1 - curve_part) * index / len(passes)})
         cpus = [cpu if cpu is not None else plan["cpus"][0]] if threads == "single" \
             else list(plan["cpus"])
         try:

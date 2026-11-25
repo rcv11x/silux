@@ -44,9 +44,10 @@ from ..widgets import (
 )
 
 LEVELS = ("L1", "L2", "L3", "RAM")
-PHASES = {"latency": "memtest.phase.latency", "read": "memtest.phase.read",
-          "write": "memtest.phase.write", "copy": "memtest.phase.copy",
-          "write_nt": "memtest.phase.write", "copy_nt": "memtest.phase.copy"}
+# What each step of a test is called while it runs; the one with every
+# thread says how many (`render.counted`).
+STEPS = {"latency": "memtest.step.latency", "single": "memtest.step.single",
+         "multi": "memtest.step.multi"}
 REASONS = {"cancelled": "memtest.reason.cancelled", "no_memory": "memtest.reason.nomemory",
            "bad_cpu": "memtest.reason.badcpu", "clock": "memtest.reason.clock",
            "sin_memoria": "memtest.reason.nomemory", "not_started": "memtest.reason.failed"}
@@ -201,8 +202,10 @@ class MemoryTestRun(QObject):
         super().__init__(parent)
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
-        # The last step reported, for a tab that arrives half way.
+        # The last step reported, for a tab that arrives half way, and the
+        # plan it belongs to.
         self.last: tuple[str, float] = ("", 0.0)
+        self.plan: Optional[memtest.Plan] = None
         self._done.connect(self._on_done)
 
     _done = Signal(object)
@@ -220,6 +223,7 @@ class MemoryTestRun(QObject):
             return False
         self._stop.clear()
         self.last = ("", 0.0)
+        self.plan = plan
 
         def step(phase: str, done: float) -> None:
             self.last = (phase, done)
@@ -465,10 +469,15 @@ class MemoryTestTab(ScrollPage):
         self.cancel_button.setEnabled(False)
         self.progress.set_state(_("bench.state.cancelling"))
 
-    def _on_progress(self, phase: str, done: float) -> None:
-        if self._run.cancelling:
+    def _on_progress(self, step: str, done: float) -> None:
+        plan = self._run.plan
+        order = memtest.steps(plan) if plan is not None else ()
+        if self._run.cancelling or step not in order:
             return
-        self.progress.set_state(_(PHASES.get(phase, "memtest.phase.latency")), done)
+        what = (render.counted(STEPS[step], len(plan.cpus)) if step == "multi"
+                else _(STEPS[step]))
+        self.progress.set_state(_("memtest.step").format(
+            what=what, n=order.index(step) + 1, of=len(order)), done, percent=False)
 
     def _drop_failure(self) -> None:
         if self._failure is not None:

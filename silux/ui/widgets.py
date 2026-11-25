@@ -2392,13 +2392,16 @@ class ProgressLine(QWidget):
         self.bar.setValue(0)
         self.label.setText(text)
 
-    def set_state(self, text: str, fraction: Optional[float] = None) -> None:
+    def set_state(self, text: str, fraction: Optional[float] = None,
+                  percent: bool = True) -> None:
         """`text`, and how far along as a fraction. Without one (cancelling)
-        the bar stays where it was."""
+        the bar stays where it was. `percent`: whether the text says it too;
+        a text that says its step («2 of 3») leaves it to the bar."""
         if fraction is not None:
-            percent = round(min(max(fraction, 0.0), 1.0) * 100)
-            self.bar.setValue(percent)
-            text = f"{text}  ·  {percent} %"
+            value = round(min(max(fraction, 0.0), 1.0) * 100)
+            self.bar.setValue(value)
+            if percent:
+                text = f"{text}  ·  {value} %"
         self.label.setText(text)
 
     def value(self) -> int:

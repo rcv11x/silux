@@ -439,12 +439,21 @@ class TestRunningIt(TabCase):
         self.assertTrue(tab.result_card.isVisibleTo(tab))
         self.assertIn("77.4 ns", visible_texts(tab))
 
-    def test_the_progress_is_said_beside_the_bar_and_not_on_it(self):
+    def test_the_progress_says_its_step_beside_the_bar(self):
+        """«Measuring latency (1 of 3)», not «Latency · 12 %»."""
         tab = self.tab()
-        tab._on_progress("write", 0.55)
+        caches = (("L1", 32 * KIB), ("L2", 256 * KIB), ("L3", 12 * MIB))
+        tab._run.plan = memtest.make_plan(caches, tuple(range(12)), cpu=1,
+                                          available=16 * 1024 * MIB)
+        tab._on_progress("single", 0.55)
         self.assertFalse(tab.progress.bar.isTextVisible())
-        self.assertEqual(tab.progress.label.text(), f"{_('memtest.phase.write')}  ·  55 %")
+        self.assertEqual(tab.progress.label.text(), _("memtest.step").format(
+            what=_("memtest.step.single"), n=2, of=3))
         self.assertEqual(tab.progress.value(), 55)
+        tab._on_progress("multi", 0.8)
+        self.assertEqual(tab.progress.label.text(), _("memtest.step").format(
+            what=render.counted("memtest.step.multi", 12), n=3, of=3))
+        self.assertNotIn("%", tab.progress.label.text())
 
     def test_cancelling_leaves_no_result_and_no_notice(self):
         tab = self.tab()
