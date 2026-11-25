@@ -10,7 +10,7 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 0.4-prueba13 (sin publicar)
 
 Dos pruebas nuevas en Rendimiento, la de memoria y la de disco, que los dos
 AppImage hacen con un módulo propio (desde el código, se instala aparte);
