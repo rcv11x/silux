@@ -325,9 +325,8 @@ la memoria) no va: está propuesto en las notas
     está escrito sin probar.
   - alta · el camino AVX-512 no ha corrido nunca en una pieza de verdad:
     hace falta un Ryzen 7000/9000 o un Intel con AVX-512.
-  - alta · el CI (`cargo fmt`, `clippy`, `cargo test`, y la suite con el
-    módulo y sin él) y el módulo dentro de los dos AppImage, con AVX2 solo
-    en las funciones que lo comprueban.
+  - alta · ver en GitHub el CI nuevo (Rust, la suite con el módulo y sin
+    él, y el módulo de cada AppImage); en local, los dos AppImage pasan.
   - media · en un Core i5-10400, la copia de un hilo sale un 8 a 12 % por
     debajo de las referencias, y un 25 a 30 % la que no pasa por la caché.
   - media · decir qué programa cambia el turbo o el gobernador según la

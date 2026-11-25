@@ -60,8 +60,31 @@ jobs:
   # 22.04 en las dos porque es donde se construye el AppImage; el intérprete lo
   # pone `setup-python` para que quede escrito cuál se prueba y no dependa de
   # cuál traiga el runner ese mes.
+  # The native benchmarks' crate on its own: format, lints and its tests,
+  # with the toolchain `rust-toolchain.toml` names.
+  rust:
+    name: rust (fmt, clippy, tests)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: native/silux_bench
+    steps:
+      - uses: actions/checkout@v5
+      # The `python` feature builds against an interpreter.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Toolchain
+        run: rustup show
+      - name: cargo fmt
+        run: cargo fmt --check
+      - name: cargo clippy
+        run: cargo clippy --all-targets --features python -- -D warnings
+      - name: cargo test
+        run: cargo test --release
+
   tests:
-    name: tests (${{ matrix.paquete }}, Python ${{ matrix.python }})
+    name: tests (${{ matrix.paquete }}, Python ${{ matrix.python }}, ${{ matrix.modulo }} módulo)
     runs-on: ubuntu-22.04
 
     strategy:
@@ -69,11 +92,19 @@ jobs:
       # en una es la mitad del diagnóstico.
       fail-fast: false
       matrix:
+        # Both packages carry the native module; a pip install may not have
+        # it, and then the tests run their simple measure: that path too,
+        # on the floor's Python.
         include:
           - paquete: normal
             python: "3.14"
+            modulo: con
           - paquete: compat
             python: "3.10"
+            modulo: con
+          - paquete: compat
+            python: "3.10"
+            modulo: sin
 
     steps:
       - uses: actions/checkout@v5
@@ -112,6 +143,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install --group dev "$(python tools/build_appimage.py --pyside-range ${{ matrix.paquete == 'compat' && '--compat' || '' }})"
           python -c 'import PySide6, sys; print("Python", sys.version.split()[0], "· PySide6", PySide6.__version__)'
+
+      # From its source, with the Rust the runner brings and the toolchain
+      # `rust-toolchain.toml` names.
+      - name: Instalar el módulo nativo
+        if: matrix.modulo == 'con'
+        run: |
+          pip install ./native/silux_bench
+          python -c 'import silux_bench; print("silux_bench", silux_bench.instruction_sets())'
 
       # Informative only: the code is not typed through yet. Its count says
       # whether a change made it better or worse.
@@ -197,6 +236,19 @@ jobs:
           chmod +x dist/silux-x86_64-compat.AppImage
           APPIMAGE_EXTRACT_AND_RUN=1 QT_QPA_PLATFORM=offscreen \
             ./dist/silux-x86_64-compat.AppImage --help
+
+      # Each package measures with its native module: a short test, with the
+      # package's own interpreter.
+      - name: Comprobar el módulo nativo de cada paquete
+        run: |
+          for ai in silux-x86_64.AppImage silux-x86_64-compat.AppImage; do
+            rm -rf /tmp/nativo && mkdir /tmp/nativo && cd /tmp/nativo
+            "$GITHUB_WORKSPACE/dist/$ai" --appimage-extract > /dev/null
+            PYTHONHOME=squashfs-root/usr PYTHONPATH=squashfs-root/usr/lib/python \
+              squashfs-root/usr/bin/python3 "$GITHUB_WORKSPACE/tools/native_check.py" \
+              || { echo "::error::$ai no mide con su módulo nativo"; exit 1; }
+            cd "$GITHUB_WORKSPACE"
+          done
 
       # The compat build is for old machines: its window, on the system its
       # glibc floor comes from, with only what any desktop has installed.
