@@ -299,6 +299,10 @@ class BoardPage(ScrollPage):
         # What a hypervisor emulates is not on a board or in a processor.
         virtual = snapshot.cpu.in_virtual_machine
         graficas = {g.pci_slot: g for g in snapshot.gpus}
+        # On an APU the processor's USB and sound share the integrated GPU's
+        # PCI device: they are the processor's, not the GPU's.
+        integrated_by_device = {slot.rsplit(".", 1)[0]: g for slot, g in graficas.items()
+                                if slot and g.built_in}
         filas, pistas = [], []
         for d in dispositivos:
             grafica = graficas.get(d.slot)
@@ -318,6 +322,8 @@ class BoardPage(ScrollPage):
                 donde = render.built_in(grafica.built_in)
             elif d.kind == "gpu":
                 donde = _("board.pci.onboard")
+            elif (integrated := integrated_by_device.get(d.slot.rsplit(".", 1)[0])) is not None:
+                donde = render.built_in(integrated.built_in)
             elif d.slot.rsplit(".", 1)[0] in de_graficas:
                 donde = _("board.pci.ongpu")
             else:
