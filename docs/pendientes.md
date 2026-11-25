@@ -360,8 +360,6 @@ la memoria) no va: está propuesto en las notas
   - media · dónde cae el archivo en un disco de platos solo se ha probado
     en btrfs (que no lo dice) y contra `filefrag`; falta un disco de platos
     con ext4 o XFS. Los volcados no guardan dónde empieza cada partición.
-  - baja · con los títulos en palabras, el historial pide 37 px más en la
-    ventana más estrecha (480 px); cabe desde 520.
 * `membench.py` · baja · la medida sencilla (sin el módulo nativo) no fija
   el proceso a ningún núcleo y guarda los niveles por nombre: con dos L3 de
   distinto tamaño el segundo pisa al primero.

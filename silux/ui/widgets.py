@@ -2540,14 +2540,20 @@ class Table(QScrollArea):
     locked_clicked = Signal()
 
     def __init__(self, headers: Sequence[str], numeric: Sequence[bool] = (),
-                 parent: Optional[QWidget] = None, cede: Sequence[int] = ()):
+                 parent: Optional[QWidget] = None, cede: Sequence[int] = (),
+                 spare: Sequence[int] = ()):
         """`cede`: las columnas de texto que pueden salir recortadas, con
-        puntos suspensivos, cuando la tabla no cabe (`_encajar`)."""
+        puntos suspensivos, cuando la tabla no cabe (`_encajar`).
+
+        `spare`: columns the table can do without, left out, the last first,
+        where nothing else makes it fit."""
         super().__init__(parent)
         self._headers = list(headers)
         # (fila, columna) → su candado, para las celdas que lo han tenido.
         self._candados: dict[tuple[int, int], "LockMark"] = {}
         self._cede = tuple(cede)
+        self._spare = tuple(spare)
+        self.left_out: frozenset[int] = frozenset()
         # How tall the titles are, broken as the widths leave them.
         self._titles_height = 0
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
@@ -2785,12 +2791,15 @@ class Table(QScrollArea):
         if not self._cells:
             return
         columnas = len(self._headers)
-        anchos = list(self._anchos)
+        if self._spare:
+            self._leave_out(self._spare_to_leave_out(self.viewport().width()))
+        out = self.left_out
+        anchos = [0 if c in out else ancho for c, ancho in enumerate(self._anchos)]
         # The gaps between columns narrow first, down to a floor, before a
         # column is cut: a few pixels of air cost less than a word.
         gap = theme.METRICS.grid_hspace
-        hueco = gap * (columnas - 1)
-        heads = [self._ancho_de_cabecera(c) for c in range(columnas)]
+        hueco = gap * (columnas - len(out) - 1)
+        heads = [0 if c in out else self._ancho_de_cabecera(c) for c in range(columnas)]
         # Lo que ocupa cada columna es su dato o su título, lo que más pida.
         ocupa = sum(max(ancho, heads[c]) for c, ancho in enumerate(anchos))
         sobra = ocupa + hueco - self.viewport().width()
@@ -2801,16 +2810,19 @@ class Table(QScrollArea):
             # del nombre con el que hay que compararla; lo que aún sobre
             # sigue yendo detrás de la última.
             tope = QFontMetrics(value_font()).averageCharWidth() * self.HOLGURA_MAXIMA
-            holgura = min(-sobra // columnas, tope)
-            anchos = [max(ancho, heads[c]) + holgura for c, ancho in enumerate(anchos)]
-        if sobra > 0 and columnas > 1 and self.viewport().width() > 0:
-            narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (columnas - 1))))
+            holgura = min(-sobra // (columnas - len(out)), tope)
+            anchos = [0 if c in out else max(ancho, heads[c]) + holgura
+                      for c, ancho in enumerate(anchos)]
+        shown = columnas - len(out)
+        if sobra > 0 and shown > 1 and self.viewport().width() > 0:
+            narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (shown - 1))))
             gap -= narrower
-            sobra -= narrower * (columnas - 1)
+            sobra -= narrower * (shown - 1)
         if sobra > 0 and self.viewport().width() > 0:
             # Then a title wider than its figures takes a second line, the
             # widest first and never narrower than its longest word.
-            floors = [max(anchos[c], self._palabra_mas_larga(c)) for c in range(columnas)]
+            floors = [0 if c in out else max(anchos[c], self._palabra_mas_larga(c))
+                      for c in range(columnas)]
             while sobra > 0:
                 longer = [c for c in range(columnas) if heads[c] > floors[c]]
                 if not longer:
@@ -2838,6 +2850,8 @@ class Table(QScrollArea):
             width = max(ancho, heads[columna])
             if self._grid.columnMinimumWidth(columna) != width:
                 self._grid.setColumnMinimumWidth(columna, width)
+            if columna in out:
+                continue
             titles = max(titles, self._title_height(columna, width))
             recortada = ancho < max(self._anchos[columna], 1) and columna in self._cede
             for fila in self._cells:
@@ -2853,6 +2867,47 @@ class Table(QScrollArea):
         if titles != self._titles_height:
             self._titles_height = titles
             self._fit_height()
+
+    def _narrowest(self, out: frozenset[int]) -> int:
+        """The least width the table fits in without the columns in `out`:
+        each title broken down to its longest word, the gaps at their least
+        and the columns that may cede cut to their floor, as `_encajar`
+        does it."""
+        suelo = QFontMetrics(value_font()).averageCharWidth() * 10
+        widths = []
+        for column, ancho in enumerate(self._anchos):
+            if column in out:
+                continue
+            word = self._palabra_mas_larga(column)
+            floor = max(ancho, word)
+            if column in self._cede:
+                floor = min(floor, max(suelo, word))
+            widths.append(floor)
+        return sum(widths) + self.MIN_COLUMN_GAP * max(0, len(widths) - 1)
+
+    def _spare_to_leave_out(self, width: int) -> frozenset[int]:
+        """The spare columns to leave out at `width`: none if it fits whole,
+        and one more, the last first, while it doesn't."""
+        out: frozenset[int] = frozenset()
+        if width <= 0:
+            return self.left_out
+        for column in reversed(self._spare):
+            if self._narrowest(out) <= width:
+                break
+            out |= {column}
+        return out
+
+    def _leave_out(self, out: frozenset[int]) -> None:
+        """Hide the columns in `out`, their titles and cells, and show the rest."""
+        self.left_out = out
+        for column in self._spare:
+            hidden = column in out
+            item = self._grid.itemAtPosition(0, column)
+            if item and item.widget() and item.widget().isHidden() != hidden:
+                item.widget().setHidden(hidden)
+            for fila in self._cells:
+                if column < len(fila) and fila[column].isHidden() != hidden:
+                    fila[column].setHidden(hidden)
 
     # Cuánto puede separarse como mucho cada columna, en anchos de letra.
     HOLGURA_MAXIMA = 14

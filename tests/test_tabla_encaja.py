@@ -143,6 +143,48 @@ class TestConSitioDeSobra(TestLaTablaSuelta):
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
+@unittest.skipIf(QApplication is None, "sin PySide6")
+class TestAColumnItCanDoWithout(unittest.TestCase):
+    """Where nothing else makes it fit, a table leaves out the columns it
+    was told it can do without, and takes them back when there is room."""
+
+    def test_it_leaves_it_out_only_where_nothing_else_fits(self):
+        from silux.ui.widgets import Table
+
+        app = qt.app()
+        box = QWidget()
+        self.addCleanup(box.close)
+        layout = QVBoxLayout(box)
+        layout.setContentsMargins(0, 0, 0, 0)
+        table = Table(["Unidad", "Modelo", "Tipo", "Capacidad", "Temperatura"],
+                      numeric=(False, False, False, True, True), spare=(4,))
+        layout.addWidget(table)
+        box.resize(900, 300)
+        box.show()
+        table.set_rows(FILAS)
+        _asentar(app)
+        whole = table._narrowest(frozenset())
+        # The width the viewport gets is the box's, and so is the threshold.
+        for width, out in ((whole, frozenset()), (whole - 1, frozenset({4})),
+                           (whole - 200, frozenset({4})), (900, frozenset())):
+            with self.subTest(width=width):
+                box.resize(width, 300)
+                _asentar(app)
+                self.assertEqual(table.viewport().width(), width)
+                self.assertEqual(table.left_out, out)
+                title = table._grid.itemAtPosition(0, 4).widget()
+                self.assertEqual(title.isVisibleTo(table), not out)
+                self.assertEqual(table._cells[0][4].isVisibleTo(table), not out)
+                if width >= table._narrowest(out):
+                    self.assertEqual(table.horizontalScrollBar().maximum(), 0)
+        # Rows that come while it is out come without it.
+        box.resize(whole - 1, 300)
+        _asentar(app)
+        table.set_rows(FILAS[:2])
+        _asentar(app)
+        self.assertFalse(table._cells[1][4].isVisibleTo(table))
+
+
 class TestLasPaginasCortasEnUnaVentanaGrande(unittest.TestCase):
     """A 2560×1440, Placa base y Sistema eran dos tarjetas a medio llenar y
     otra debajo, a todo lo ancho, con el resto de la ventana vacío."""

@@ -335,14 +335,27 @@ class TestWhatAResultShows(TabCase):
 
     def test_a_narrow_window_shows_the_history_whole(self):
         """It was cut at the right, behind a scroll bar. With its titles in
-        words it fits from 520 px; at the narrowest window, 480, it still
-        needs 37 more (docs/pendientes.md)."""
+        words it fits from 520 px; narrower, down to the narrowest window,
+        it leaves out the hottest temperature, and takes it back."""
         tab = self.tab()
-        tab.resize(520, 900)
-        for _turn in range(5):
-            self.app.processEvents()
-        for _heading, table in tab.history_tables:
-            self.assertEqual(table.horizontalScrollBar().maximum(), 0)
+        hottest = _("disktest.col.hottest").upper()
+
+        def at(width: int) -> str:
+            tab.resize(width, 900)
+            for _turn in range(5):
+                self.app.processEvents()
+            for _heading, table in tab.history_tables:
+                self.assertEqual(table.horizontalScrollBar().maximum(), 0, width)
+            return visible_texts(tab)
+
+        for width in (900, 520):
+            self.assertIn(hottest, at(width))
+            self.assertIn("62.9", at(width))
+        for width in (500, 480, 400):
+            text = at(width)
+            self.assertNotIn(hottest, text)
+            self.assertNotIn("62.9", text.split(_("memtest.card.history"))[-1])
+        self.assertIn(hottest, at(900))
 
     def test_the_axis_says_the_same_figures_or_none(self):
         """Reading only, «10 000» met «100 000»; and each screenshot showed

@@ -1251,7 +1251,9 @@ class DiskTestTab(ScrollPage):
                               test=test_words(tests[name]), direction=_(DIRECTIONS[direction]))
                              for name, direction in columns]
                           + [_("disktest.col.hottest")],
-                          numeric=(False,) + (True,) * (len(columns) + 1))
+                          numeric=(False,) + (True,) * (len(columns) + 1),
+                          # In a narrow window, rather than cut it.
+                          spare=(len(columns) + 1,))
             for column, (name, direction) in enumerate(columns, start=1):
                 table.set_header_tooltip(column, f"{ran[name]} · {_(DIRECTIONS[direction])}")
             rows = []
