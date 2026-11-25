@@ -9,6 +9,7 @@ from unittest import mock
 from silux import disktest, sysroot
 from silux.collector import Collector
 from silux.i18n import _
+from tests.test_disktest import recorded
 from tests.test_disktest_page import Running, TabCase, visible_texts
 
 PEN = "/media/unidad1"
@@ -86,6 +87,25 @@ class TestWhereFollowsTheMounts(TabCase):
         self.assertEqual(tab.place_box.currentIndex(), 0)
         self.assertNotIn(_("disktest.note.gone_disk"), visible_texts(tab))
         self.assert_as_if_opened_now(tab, snapshot)
+
+    def test_the_disk_it_falls_back_to_shows_its_own_last_result(self):
+        snapshot = self.sample()
+        hard_disk = next(disk for disk in snapshot.disks if disk.name == "sda")
+        pen = recorded("sn850x-btrfs")
+        disktest.save_history([
+            dataclasses.replace(pen, disks=("sdb",), model="DataTraveler 3.0"),
+            dataclasses.replace(recorded("970-evo-plus-ext4"), disks=("sda",),
+                                model=hard_disk.model)])
+        tab = self.on_the_pen()
+        self.assertIn("6 592", visible_texts(tab))
+        self.unplug()
+        tab.apply(self.sample())
+        self.assertEqual(tab.plan().disks, ("sda",))
+        text = visible_texts(tab)
+        self.assertEqual(tab.disk_name.text(), hard_disk.model)
+        self.assertNotIn(_("disktest.empty"), text)
+        self.assertEqual(tab.result.disks, ("sda",))
+        self.assertIn("3 579", text)
 
     def test_one_unmounted_but_still_there_says_that(self):
         tab = self.on_the_pen()
