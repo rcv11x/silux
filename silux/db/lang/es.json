@@ -704,7 +704,7 @@
   "gpu.na.nvidia.card": "NVML no cuenta ROPs ni motores de sombreado: el recuento de NVIDIA son los núcleos CUDA.",
   "gpu.na.nvidia.clocks": "Una NVIDIA no tiene reloj de SoC ni perfil de rendimiento, y NVML no da la frecuencia efectiva de la memoria.",
   "gpu.na.nvidia.memory": "El driver de NVIDIA no publica el tipo de memoria, su ancho de banda, cuánta ve el procesador ni de quién son los chips.",
-  "gpu.na.nvidia.sensors": "En una GeForce, NVML no publica el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes; el uso del video está en «Ahora mismo».",
+  "gpu.na.nvidia.sensors": "NVML no publica el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes de esta tarjeta; el uso del video está en «Ahora mismo».",
   "gpu.na.piece.fan": "ventilador",
   "gpu.na.piece.hotspot": "su punto caliente",
   "gpu.na.piece.memtemp": "la temperatura de su memoria",

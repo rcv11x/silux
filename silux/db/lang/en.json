@@ -704,7 +704,7 @@
   "gpu.na.nvidia.card": "NVML does not count ROPs or shader engines: NVIDIA's count is CUDA cores.",
   "gpu.na.nvidia.clocks": "An NVIDIA has no SoC clock or performance profile, and NVML does not give the memory's effective clock.",
   "gpu.na.nvidia.memory": "NVIDIA's driver does not publish the memory type, its bandwidth, how much the processor sees or who made the chips.",
-  "gpu.na.nvidia.sensors": "On a GeForce, NVML does not publish the hotspot, the memory temperature, the regulators or the voltages; video usage is in «Right now».",
+  "gpu.na.nvidia.sensors": "NVML does not publish this card's hotspot, memory temperature, regulators or voltages; video usage is in «Right now».",
   "gpu.na.piece.fan": "fan",
   "gpu.na.piece.hotspot": "its hotspot",
   "gpu.na.piece.memtemp": "its memory's temperature",

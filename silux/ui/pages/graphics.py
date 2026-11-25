@@ -159,7 +159,7 @@ NA_VIRTUAL = {
     "sensors": ((*SENSOR_FIELDS, "gpu.tile.power"), "gpu.na.virtual.sensors"),
 }
 
-# What NVML does not publish on a GeForce, or NVIDIA does not have (a SoC
+# What NVML does not publish for the card, or NVIDIA does not have (a SoC
 # clock, AMD's performance profile, rasterizer and shader engine counts,
 # which come from amdgpu's ioctl). A tester's RTX 4060 read about twenty
 # dashes; said at each card's foot, its driver is to blame and not the card.
