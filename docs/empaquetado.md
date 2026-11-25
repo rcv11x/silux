@@ -50,7 +50,8 @@ compatible.
 - Al módulo no se le quitan los símbolos: la comprobación lee su tabla
   entera, no solo lo que exporta.
 - El CI pasa la suite con el módulo y sin él, y comprueba que cada paquete
-  mide con el suyo (`tools/native_check.py`, con el Python del paquete).
+  mide con el suyo una prueba corta de memoria y otra de disco
+  (`tools/native_check.py`, con el Python del paquete).
 
 Sin el módulo, como en una instalación con pip que no lo trae, las pruebas
 hacen su medida sencilla y la pestaña lo dice.
