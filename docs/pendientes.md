@@ -147,7 +147,7 @@ la memoria) no va: está propuesto en las notas
 * **De los informes de la prueba9** (volcados `i5-5200u`, `i7-4710hq`,
   `celeron-560`, `i5-8350u` y `core2-p8400`, rehechos; el informe del E6400
   con Mint en sesión live es el mismo equipo y no se vuelca):
-  - Gráficos · baja · con una tarjeta en reposo no se pregunta a OpenGL,
+  - Gráficos · baja · con una tarjeta dormida no se pregunta a OpenGL,
     Vulkan ni OpenCL hasta que despierte, y la integrada se queda sin su
     versión del driver mientras tanto. OpenGL abre solo la gráfica de la
     pantalla: medir si `glxinfo` o EGL despiertan a la dormida

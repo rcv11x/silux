@@ -378,7 +378,7 @@ class HomePage(ScrollPage):
         fahrenheit = self._prefs.fahrenheit
         if gpu.resting:
             # Only when all rest: the one that works is the one awake.
-            piezas.append(_("gpu.asleep.short"))
+            piezas.append(render.gpu_rest(gpu))
             moldes.append((piezas[-1],))
         elif gpu.busy_percent is not None:
             piezas.append(render.percent(gpu.busy_percent))
@@ -436,7 +436,7 @@ class HomePage(ScrollPage):
                          (usage_locked, power_locked), "")
         # The card sums up the one that works; a hybrid laptop's other one,
         # asleep or without a driver, is still the machine's and is named.
-        otras = [render.gpu_name(g) + (f" ({_('gpu.asleep.short')})" if g.resting else "")
+        otras = [render.gpu_name(g) + (f" ({render.gpu_rest(g)})" if g.resting else "")
                  for i, g in enumerate(snapshot.gpus) if i != indice]
         tambien = _("home.gpu.also").format(tarjetas=" · ".join(otras)) if otras else ""
         pie = " ".join(p for p in (tambien, bloqueada) if p)

@@ -186,7 +186,7 @@ sesión abierta no llegaba a dormirse.
 Con una NVIDIA que el driver puede apagar, Silux hace esto:
 
 - En cada muestra lee `power/runtime_status`, que no la despierta.
-  Suspendida, no llama a NVML y la tarjeta sale en reposo.
+  Suspendida, no llama a NVML y la tarjeta sale dormida.
 - Despierta, la lee. Si NVML no ve en ella ningún proceso gráfico ni de
   cómputo, cierra la sesión (`nvmlShutdown`) y no vuelve a preguntarle en
   15 s, lo que tarda el driver en apagarla. Mientras tanto sale «sin
@@ -208,7 +208,7 @@ hay sin leer ninguna estructura. Solo deciden; no se enseñan.
 
 OpenGL, Vulkan y OpenCL se preguntan al arrancar, en otro proceso que muere
 al contestar. Para enumerar las tarjetas abren todas, así que preguntarles
-con una dormida la despertaría. Si hay alguna en reposo, Silux no les
+con una dormida la despertaría. Si hay alguna dormida, Silux no les
 pregunta hasta que despierte.
 
 ### Con root y sin root

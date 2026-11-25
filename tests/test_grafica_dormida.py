@@ -174,11 +174,34 @@ class TestNvmlNoLaDespierta(unittest.TestCase):
         proveedor.client.close.assert_called_once()
 
 
+class TestAsleepIsNotResting(unittest.TestCase):
+    """«En reposo» reads as awake with nothing to do, which a switched-off
+    card is not: every text that names one says it sleeps."""
+
+    ASLEEP = ("gpu.asleep", "gpu.asleep.short", "board.pci.asleep", "prov.drm.asleep.title",
+              "prov.apis.asleep", "gpu.apis.notasked", "gpu.na.noapi.notasked",
+              "prov.nvml.discarded.woke")
+
+    def test_in_spanish(self):
+        from silux.i18n import in_spanish
+        for key in self.ASLEEP:
+            with self.subTest(key=key):
+                self.assertNotIn("reposo", in_spanish(key).lower())
+                self.assertIn("dormida", in_spanish(key).lower())
+
+    def test_in_a_word_asleep_or_left_alone(self):
+        from silux.i18n import in_spanish
+        self.assertEqual(render.gpu_rest(Gpu(suspended=True)), in_spanish("gpu.asleep.short"))
+        self.assertEqual(render.gpu_rest(Gpu(left_to_sleep=True)),
+                         in_spanish("gpu.lefttosleep.short"))
+        self.assertEqual(render.gpu_rest(Gpu()), "")
+
+
 class TestSeDiceEnPantalla(unittest.TestCase):
     def test_en_reposo_con_lo_ultimo_que_se_supo(self):
         gpu = Gpu(suspended=True, last_awake_s=0.0, last_temp_c=41.0)
         texto = render.gpu_asleep(gpu)
-        self.assertIn("reposo", texto)
+        self.assertIn("Dormida (apagada para ahorrar)", texto)
         self.assertIn("41.0 °C", texto)
 
     def test_despierta_no_dice_nada(self):
@@ -195,7 +218,7 @@ class TestSeDiceEnPantalla(unittest.TestCase):
         borrador.gpu(0).update(name="RX 6600M", integrated=False, suspended=True)
         pagina.apply(borrador.freeze())
         seccion = pagina._sections[0]
-        self.assertIn("reposo", seccion.recorte.text())
+        self.assertIn("Dormida (apagada para ahorrar)", seccion.recorte.text())
         self.assertFalse(seccion.recorte.isHidden())
 
 

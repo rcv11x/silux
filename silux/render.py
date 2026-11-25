@@ -2164,6 +2164,16 @@ def engine_gaps(gpu) -> list[str]:
     return [key for key in expected if key not in measured]
 
 
+def gpu_rest(gpu) -> str:
+    """Why nothing was read from a card, in a word: asleep, or left alone
+    while nothing uses it so that it can fall asleep. "" when it was read."""
+    if getattr(gpu, "suspended", False):
+        return _("gpu.asleep.short")
+    if getattr(gpu, "left_to_sleep", False):
+        return _("gpu.lefttosleep.short")
+    return ""
+
+
 def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
     """What's said of a suspended card, or "" if it's awake.
 
