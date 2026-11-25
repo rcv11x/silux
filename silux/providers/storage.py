@@ -220,6 +220,7 @@ class Disks(Provider):
             removable=removable,
             pci_slot=_pci_slot(base) if transport == "nvme" else None,
             link=_link(base) if transport == "nvme" else None,
+            **_sata_or_usb(base, transport),
             temp_c=temp_c,
             temp_high_c=temp_high_c,
             temp_critical_c=temp_critical_c,
@@ -264,29 +265,90 @@ class Disks(Provider):
 
 # -- single readings --------------------------------------------------------
 
-def _ata_model(base: pathlib.Path) -> Optional[str]:
-    """The whole model, from the ATA IDENTIFY the kernel publishes.
-
-    sysfs's `model` is the SCSI one, cut to 16 characters («KINGSTON
-    SA400S3»), and smartmontools' patterns need the whole one to know the
-    unit of the counters. `ata_device/*/id` is the IDENTIFY in hex words,
-    readable by anyone; the model is words 27 to 46, two characters each.
-    """
+def _ata_port(base: pathlib.Path) -> Optional[pathlib.Path]:
+    """The `ataN` folder of the port a disk hangs from, or None."""
     try:
         real = (base / "device").resolve()
     except OSError:
         return None
-    port = next((p for p in (real, *real.parents) if re.fullmatch(r"ata\d+", p.name)), None)
-    if port is None:
-        return None
+    return next((p for p in (real, *real.parents) if re.fullmatch(r"ata\d+", p.name)), None)
+
+
+def _identify(port: pathlib.Path) -> Optional[list[int]]:
+    """The disk's ATA IDENTIFY, as the kernel publishes it in hex words,
+    readable by anyone."""
     for path in sorted(port.glob("link*/dev*/ata_device/dev*/id")):
         try:
             words = [int(p, 16) for p in (read_text(str(path)) or "").split()]
         except ValueError:
             continue
-        if len(words) >= 47:
-            raw = b"".join(p.to_bytes(2, "big") for p in words[27:47])
-            return raw.decode("ascii", "replace").strip() or None
+        if len(words) >= 78:
+            return words
+    return None
+
+
+def _ata_model(base: pathlib.Path) -> Optional[str]:
+    """The whole model, from the ATA IDENTIFY.
+
+    sysfs's `model` is the SCSI one, cut to 16 characters («KINGSTON
+    SA400S3»), and smartmontools' patterns need the whole one to know the
+    unit of the counters. The model is words 27 to 46, two characters each.
+    """
+    port = _ata_port(base)
+    words = _identify(port) if port is not None else None
+    if words is None:
+        return None
+    raw = b"".join(p.to_bytes(2, "big") for p in words[27:47])
+    return raw.decode("ascii", "replace").strip() or None
+
+
+# A SATA generation's speed, in Gb/s, by its bit in IDENTIFY's word 76 and
+# its code in word 77 (ATA8-ACS).
+SATA_GENERATIONS = {1: 1.5, 2: 3.0, 3: 6.0}
+
+
+def _sata_link(base: pathlib.Path) -> tuple[Optional[float], Optional[float]]:
+    """The speed a SATA disk's link negotiated and the fastest the disk
+    supports, in Gb/s. Each port has its own link: `sata_spd` says what it
+    runs at, and the disk's IDENTIFY what it could."""
+    port = _ata_port(base)
+    if port is None:
+        return None, None
+    current = None
+    for path in sorted(port.glob("link*/ata_link/link*/sata_spd")):
+        found = re.match(r"([\d.]+)\s*Gbps", read_text(str(path)) or "")
+        if found:
+            current = float(found.group(1))
+            break
+    words = _identify(port)
+    maximum = None
+    # 0 and 0xFFFF: a word nobody filled, not a disk that supports nothing.
+    if words is not None and words[76] not in (0, 0xFFFF):
+        supported = [gbps for bit, gbps in SATA_GENERATIONS.items() if words[76] >> bit & 1]
+        maximum = max(supported, default=None)
+        if current is None and words[77] not in (0, 0xFFFF):
+            current = SATA_GENERATIONS.get(words[77] >> 1 & 0b111)
+    return current, maximum
+
+
+_USB_DEVICE = re.compile(r"\d+-[\d.]+")
+
+
+def _usb_speed(base: pathlib.Path) -> Optional[float]:
+    """The speed of the USB port a disk behind a bridge runs at, in Mb/s:
+    the nearest USB device up its path, not the hub's."""
+    try:
+        real = (base / "device").resolve()
+    except OSError:
+        return None
+    for folder in (real, *real.parents):
+        # A device is named by its bus and ports («2-2», «1-9.4»): not an
+        # interface of it («2-2:1.0»), nor the root hub («usb2»).
+        if _USB_DEVICE.fullmatch(folder.name) and (folder / "speed").is_file():
+            try:
+                return float(read_text(str(folder / "speed")) or "")
+            except ValueError:
+                return None
     return None
 
 
@@ -405,6 +467,16 @@ def _vendor(base: pathlib.Path, model: Optional[str] = None) -> Optional[str]:
     if value is not None and value not in DISK_VENDOR_FILLERS:
         return value
     return _maker_from_model(model)
+
+
+def _sata_or_usb(base: pathlib.Path, transport: Optional[str]) -> dict:
+    """The link fields of a disk that isn't NVMe."""
+    if transport == "sata":
+        current, maximum = _sata_link(base)
+        return {"sata_gbps": current, "sata_max_gbps": maximum}
+    if transport == "usb":
+        return {"usb_mbps": _usb_speed(base)}
+    return {}
 
 
 def _transport(base: pathlib.Path, name: str) -> Optional[str]:

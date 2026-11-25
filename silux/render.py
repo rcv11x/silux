@@ -1373,13 +1373,66 @@ USB_KINDS = {
 }
 
 
+def usb_figure(mbps: float) -> str:
+    """«480 Mb/s», «5 Gb/s»."""
+    return f"{mbps / 1000:g} Gb/s" if mbps >= 1000 else f"{mbps:g} Mb/s"
+
+
 def usb_speed(mbps: Optional[float]) -> str:
     """«Full speed · 12 Mb/s», «SuperSpeed · 5 Gb/s»."""
     if _none(mbps):
         return DASH
-    figure = f"{mbps / 1000:g} Gb/s" if mbps >= 1000 else f"{mbps:g} Mb/s"
+    figure = usb_figure(mbps)
     key = _USB_SPEEDS.get(float(mbps))
     return f"{_(key)} · {figure}" if key else figure
+
+
+def disk_link(disk) -> str:
+    """«PCIe 4.0 × 4», «SATA 6 Gb/s», «USB 5 Gb/s»: the link a disk runs
+    over now."""
+    if disk.link:
+        return pcie_link(disk.link)
+    if disk.sata_gbps:
+        return f"SATA {disk.sata_gbps:g} Gb/s"
+    if disk.usb_mbps:
+        return f"USB {usb_figure(disk.usb_mbps)}"
+    return DASH
+
+
+def disk_link_note(disk) -> Optional[str]:
+    """Why a SATA disk's link runs slower than the disk supports, when it
+    does: the port, the cable or the controller. A PCIe one, as a card's."""
+    if disk.link:
+        return pcie_note(disk.link)
+    if disk.sata_gbps and disk.sata_max_gbps and disk.sata_gbps < disk.sata_max_gbps:
+        return _("storage.sata.below").format(actual=f"{disk.sata_gbps:g} Gb/s",
+                                               max=f"{disk.sata_max_gbps:g} Gb/s")
+    return None
+
+
+# What each PCIe generation's lane carries, in bits per second: its rate and
+# what its line code leaves of it (8b/10b up to 2.0, 128b/130b since).
+_PCIE_LANE = {2.5: 2.5e9 * 8 / 10, 5.0: 5e9 * 8 / 10, 8.0: 8e9 * 128 / 130,
+              16.0: 16e9 * 128 / 130, 32.0: 32e9 * 128 / 130}
+
+
+def link_bytes_per_second(disk) -> Optional[float]:
+    """The most a disk's link carries, in bytes per second: its line rate
+    less its line code. SATA and USB 3.0 lose 2 bits in 10, USB 3.1 and 3.2
+    4 in 132; USB 2.0's 480 Mb/s is given as it is. None without a link."""
+    if disk.link and disk.link.current_width:
+        bits = _PCIE_LANE.get(disk.link.current_speed_gts)
+        return None if bits is None else bits / 8 * disk.link.current_width
+    if disk.sata_gbps:
+        return disk.sata_gbps * 1e9 * 8 / 10 / 8
+    if disk.usb_mbps:
+        bits = disk.usb_mbps * 1e6
+        if disk.usb_mbps >= 10000:
+            bits *= 128 / 132
+        elif disk.usb_mbps >= 5000:
+            bits *= 8 / 10
+        return bits / 8
+    return None
 
 
 def usb_kind(device) -> str:

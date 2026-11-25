@@ -421,6 +421,7 @@ Ocupado 35.4 GB · Libre 67.4 GB · Reservado 7.2 GB · Intercambio 4.9 GB · Si
 - Fabricante: Kingston
 - Tipo: Memoria flash
 - Conexión: USB
+- Enlace: USB 5 Gb/s
 - Capacidad: 124 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)

@@ -558,11 +558,15 @@ class StoragePage(ScrollPage):
         grid.set_visible(_("storage.field.bridge"), bool(disco.usb_bridge))
         f(_("storage.col.size"), render.decimal_size(disco.size_bytes),
           tooltip=render.size(disco.size_bytes))
-        # El enlace PCIe es del NVMe. Un SATA no tiene uno propio —negocia su
-        # controladora, que comparte con los demás—, así que ahí la fila no
-        # es un dato que falte: no existe, y no sale.
-        f(_("gpu.clock.link"), render.pcie_link(disco.link) if disco.link else d)
-        grid.set_visible(_("gpu.clock.link"), bool(disco.link))
+        # The link the disk runs over: an NVMe's PCIe one, a SATA port's own,
+        # or the USB port's of a bridge. Without one (eMMC, a virtual disk)
+        # the row doesn't exist, and doesn't show.
+        link = render.disk_link(disco)
+        note = render.disk_link_note(disco)
+        if note and disco.sata_max_gbps:
+            link += " · " + _("storage.sata.supports").format(max=f"{disco.sata_max_gbps:g} Gb/s")
+        f(_("gpu.clock.link"), link, tooltip=note)
+        grid.set_visible(_("gpu.clock.link"), link != d)
         t = self._details[disco.name].set
         t(_("storage.field.firmware"), disco.firmware or d)
         t(_("storage.field.logical"), f"{disco.logical_sector} B" if disco.logical_sector else d)

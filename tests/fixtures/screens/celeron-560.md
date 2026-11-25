@@ -382,6 +382,7 @@ Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
 - Fabricante: SanDisk
 - Tipo: SSD
 - Conexión: USB
+- Enlace: USB 480 Mb/s
 - Capacidad: 240 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
@@ -420,6 +421,7 @@ El disco no dice su fabricante, ni en su modelo ni en lo que publica el kernel. 
 - Fabricante: SanDisk
 - Tipo: Memoria flash
 - Conexión: USB
+- Enlace: USB 480 Mb/s
 - Capacidad: 8.0 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)

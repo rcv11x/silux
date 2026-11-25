@@ -1952,6 +1952,8 @@
   "storage.nomounted": "None mounted",
   "storage.none": "No drives",
   "storage.notemp": "no drive publishes its temperature",
+  "storage.sata.below": "It runs at {actual}, and the disk supports {max}: the port, the cable or the controller holds it back.",
+  "storage.sata.supports": "the disk supports {max}",
   "storage.subtitle": "{tam} used across {n} mounted partitions",
   "storage.subtitle.one": "{tam} used in {n} mounted partition",
   "storage.tile.free": "Free space",

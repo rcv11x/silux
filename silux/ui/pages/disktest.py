@@ -167,17 +167,6 @@ def test_tip(test: disktest.Test) -> str:
         code=test.name, block=render.size(test.block), depth=test.depth, threads=test.threads)
 
 
-def link_bytes_per_second(link) -> Optional[float]:
-    """The most a PCIe link carries: its lanes, their speed and what the
-    line code leaves of it."""
-    per_lane = {2.5: 2.5e9 * 8 / 10, 5.0: 5e9 * 8 / 10, 8.0: 8e9 * 128 / 130,
-                16.0: 16e9 * 128 / 130, 32.0: 32e9 * 128 / 130}
-    if link is None or not link.current_width:
-        return None
-    bits = per_lane.get(link.current_speed_gts)
-    return None if bits is None else bits / 8 * link.current_width
-
-
 class Axis(QWidget):
     """What the bars above it are measured against: a mark at each power of
     ten, with its figure where there is room."""
@@ -903,12 +892,12 @@ class DiskTestTab(ScrollPage):
         self.empty.hide()
         disk = self._disks.get(result.disks[0]) if len(result.disks) == 1 else None
         same_disk = disk is not None and (result.model is None or disk.model == result.model)
-        link = disk.link if same_disk else None
+        link = render.disk_link(disk) if same_disk else render.DASH
         filesystem = result.filesystem or ""
         if result.no_cow:
             filesystem = _("disktest.conditions.nocow").format(filesystem=filesystem)
         self.disk_name.setText(result.label or result.model or " + ".join(result.disks))
-        parts = [result.model if result.label else "", render.pcie_link(link) if link else "",
+        parts = [result.model if result.label else "", link if link != render.DASH else "",
                  filesystem, _(ENGINES[result.engine]) if result.engine in ENGINES else "",
                  when(result.timestamp)]
         self.conditions.setText(" · ".join(part for part in parts if part))
@@ -931,7 +920,9 @@ class DiskTestTab(ScrollPage):
                                    if m.direction == direction and m.pattern == "sequential"
                                    and m.median is not None), default=None)
                    for direction in ("read", "write")}
-        most = link_bytes_per_second(link)
+        # A disk of platters is held back by them, not by its cable: no share.
+        most = (render.link_bytes_per_second(disk)
+                if same_disk and disk.kind != "HDD" else None)
         best = max((rate for rate in fastest.values() if rate), default=None)
         share = best / most * 100 if best and most else None
 
@@ -951,9 +942,10 @@ class DiskTestTab(ScrollPage):
                 for direction, lap in single.items()))
         self.facts["link"].setVisible(share is not None)
         if share is not None:
-            self.facts["link"].show_fact(render.whole_percent(share),
-                                         _("disktest.fact.link.detail").format(
-                                             link=render.pcie_link(link), most=megabytes(most)))
+            note = render.disk_link_note(disk)
+            self.facts["link"].show_fact(render.whole_percent(share), " ".join(
+                part for part in (_("disktest.fact.link.detail").format(
+                    link=link, most=megabytes(most)), note) if part))
         fahrenheit = self._prefs.fahrenheit
         hot = result.temperature_peak_c
         heat = self.facts["heat"]

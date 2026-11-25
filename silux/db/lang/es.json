@@ -1952,6 +1952,8 @@
   "storage.nomounted": "Ninguna montada",
   "storage.none": "Sin unidades",
   "storage.notemp": "ningún disco publica su temperatura",
+  "storage.sata.below": "Va a {actual}, y el disco admite {max}: lo frena el puerto, el cable o la controladora.",
+  "storage.sata.supports": "el disco admite {max}",
   "storage.subtitle": "{tam} ocupados en {n} particiones montadas",
   "storage.subtitle.one": "{tam} ocupados en {n} partición montada",
   "storage.tile.free": "Espacio libre",

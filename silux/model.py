@@ -1894,6 +1894,12 @@ class Disk:
     removable: bool = False
     pci_slot: Optional[str] = None
     link: Optional[PcieLink] = None            # NVMe only
+    # A SATA disk's own link: the speed it negotiated and the fastest its
+    # IDENTIFY says it supports, in Gb/s (1.5, 3, 6).
+    sata_gbps: Optional[float] = None
+    sata_max_gbps: Optional[float] = None
+    # The speed of the USB port a disk behind a bridge runs at, in Mb/s.
+    usb_mbps: Optional[float] = None
     temp_c: Optional[float] = None
     # The limits the drive declares (an NVMe's WCTEMP and CCTEMP, a SATA
     # disk's SCT ones through drivetemp), or None.
