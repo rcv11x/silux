@@ -830,6 +830,7 @@ class DiskTestTab(ScrollPage):
         refused = place.refusal if place is not None else None
         self.about.setVisible(not refused)
         free = self._free_of(plan)
+        fill = self._fill_estimate(plan, disk)
         limit = None if refused else disktest.largest_that_fits(plan, free)
         too_big = limit is not None and plan.bytes_ > limit
         if refused:
@@ -839,9 +840,8 @@ class DiskTestTab(ScrollPage):
                 self._notices.addWidget(self._too_big(plan, limit, free))
             for warning in self._warnings(place, disk):
                 self._notices.addWidget(self._note(warning))
-            slow = self._slow_fill(plan, disk)
-            if slow is not None:
-                self._notices.addWidget(slow)
+            if fill is not None and fill[0] >= SLOW_FILL_SECONDS:
+                self._notices.addWidget(self._slow_fill(plan, disk, fill))
         model = self._model_of(plan.disks)
         last = next((r for r in self._history if r.is_of(plan.disks, model)
                      and r.bytes_ == plan.bytes_ and r.laps == plan.laps
@@ -849,7 +849,8 @@ class DiskTestTab(ScrollPage):
                      and any(m.direction == "write" for m in r.measures)), None)
         values = dict(size=render.file_size(plan.bytes_), folder=render.home_path(plan.folder),
                       writing=render.duration(disktest.writing_seconds(plan)),
-                      total=render.duration(disktest.seconds_estimate(plan)))
+                      total=render.duration(disktest.seconds_estimate(
+                          plan, fill[0] if fill is not None else 0.0)))
         if not plan.write:
             text = _("disktest.about.read").format(**values)
         elif last is not None:
@@ -885,14 +886,15 @@ class DiskTestTab(ScrollPage):
         return self._note("no_space", "fits", size=offer, free=render.decimal_size(free),
                           needed=render.decimal_size(plan.bytes_ + disktest.FREE_MARGIN))
 
-    def _slow_fill(self, plan: disktest.Plan, disk) -> Optional[Notice]:
-        """How long writing the file takes, where it is long enough to say:
-        at what this disk wrote last time, or at least what its link takes."""
+    def _fill_estimate(self, plan: disktest.Plan, disk) -> Optional[tuple[float, str]]:
+        """How long writing the file takes, and what that comes from."""
         model = disk.model if disk is not None else None
         link = render.link_bytes_per_second(disk) if disk is not None else None
-        estimate = disktest.fill_estimate(plan, self._history, model, link)
-        if estimate is None or estimate[0] < SLOW_FILL_SECONDS:
-            return None
+        return disktest.fill_estimate(plan, self._history, model, link)
+
+    def _slow_fill(self, plan: disktest.Plan, disk, estimate: tuple[float, str]) -> Notice:
+        """How long writing the file takes, where it is long enough to say:
+        at what this disk wrote last time, or at least what its link takes."""
         seconds, source = estimate
         rate = plan.bytes_ / seconds
         if source == "last":

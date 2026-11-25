@@ -267,6 +267,8 @@ class TestFigures(unittest.TestCase):
         plan = disktest.make_plan("/nowhere", place=Place("/", "ext4", "/dev/sda1"))
         # Four tests, read and written: a pause and six laps of five seconds.
         self.assertEqual(disktest.seconds_estimate(plan), 4 * 2 * (5 + 6 * 5))
+        # And writing the file first, where how long that takes is known.
+        self.assertEqual(disktest.seconds_estimate(plan, 107.5), 107.5 + 4 * 2 * (5 + 6 * 5))
         self.assertEqual(disktest.written_estimate(plan, 1e9), disktest.GIB + 4 * 6 * 5 * 10**9)
         reading = dataclasses.replace(plan, write=False)
         self.assertEqual(disktest.seconds_estimate(reading), 4 * (5 + 6 * 5))

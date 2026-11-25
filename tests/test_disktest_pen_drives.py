@@ -156,6 +156,10 @@ class TestASlowPenDrive(TabCase):
         self.pen(tab)
         text = visible_texts(tab)
         self.assertIn(_("disktest.note.slow_fill").format(fill="1 min 47 s"), text)
+        # And the whole test, with it: 4 min 40 s of tests and 1 min 47 s.
+        total = render.duration(disktest.seconds_estimate(tab.plan()) + GIB / 10_000_000)
+        self.assertEqual(plain(total), "6 min 27 s")
+        self.assertIn(total, tab.about.text())
         self.assertIn(render.disk_rate(10_000_000).replace(" ", " "), text)
 
     def test_another_pen_drive_that_came_up_under_its_name_isnt_it(self):

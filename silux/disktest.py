@@ -584,10 +584,11 @@ def writing_seconds(plan: Plan) -> float:
     return len(plan.tests) * (plan.laps + 1) * plan.lap_seconds
 
 
-def seconds_estimate(plan: Plan) -> float:
-    """How long a run of `plan` takes, without writing the file."""
+def seconds_estimate(plan: Plan, fill_seconds: float = 0.0) -> float:
+    """How long a run of `plan` takes: its tests, and writing the file
+    first, for as long as `fill_seconds` says that takes."""
     directions = 2 if plan.write else 1
-    return len(plan.tests) * directions * (
+    return fill_seconds + len(plan.tests) * directions * (
         plan.pause_seconds + (plan.laps + 1) * plan.lap_seconds)
 
 
