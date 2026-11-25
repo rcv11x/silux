@@ -1,5 +1,6 @@
-"""A table a little too wide narrows the air between its columns before it
-hides any behind a scroll bar, and takes the air back when there is room."""
+"""A table a little too wide narrows the air between its columns, then
+breaks its widest titles between words, before it hides anything behind a
+scroll bar; and takes it all back when there is room."""
 
 import unittest
 
@@ -46,6 +47,40 @@ class TestTheGapsGiveWayFirst(unittest.TestCase):
         self.assertGreaterEqual(table._grid.horizontalSpacing(), Table.MIN_COLUMN_GAP)
         self.settle(table, 2000)
         self.assertEqual(table._grid.horizontalSpacing(), wide)
+
+
+class TestTitlesBreakOnlyWhenNeeded(unittest.TestCase):
+    """«OF / THE MAXIMUM»: a title broken where it didn't need to be, and
+    one that widened the table past the window."""
+
+    @classmethod
+    def setUpClass(cls):
+        from silux.ui import theme
+
+        cls.app = app()
+        theme.apply(cls.app, "dark", "normal")
+
+    def test_one_line_with_room_and_whole_words_without(self):
+        from silux.ui.widgets import Table
+
+        table = Table(["Fecha", "Lectura, todos los hilos", "Del máximo de tu memoria", "RAM"],
+                      numeric=(False, True, True, True))
+        self.addCleanup(table.deleteLater)
+        table.set_rows([["25/11/2026 10:41", "33.2 GB/s", "78 %", "64.9 ns"]])
+        table.show()
+        title = table._grid.itemAtPosition(0, 1).widget()
+        line = title.fontMetrics().height()
+        for width, broken in ((2000, False), (360, True)):
+            with self.subTest(width=width):
+                table.resize(width, 300)
+                for _turn in range(4):
+                    self.app.processEvents()
+                self.assertEqual(table.horizontalScrollBar().maximum(), 0)
+                lines = round(title.heightForWidth(title.width()) / line)
+                self.assertEqual(lines > 1, broken, lines)
+                words = title.text().split()
+                self.assertGreaterEqual(title.width(),
+                                        max(title.fontMetrics().horizontalAdvance(w) for w in words))
 
 
 if __name__ == "__main__":

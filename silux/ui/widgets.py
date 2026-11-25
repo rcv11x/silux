@@ -2563,6 +2563,11 @@ class Table(QScrollArea):
         for column, title in enumerate(self._headers):
             label = QLabel(title.upper())
             label.setObjectName("ColumnTitle")
+            # On one line while the table fits; in a narrow one it breaks
+            # between words to its column's width (`_encajar`), which it
+            # doesn't widen.
+            label.setWordWrap(True)
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
             # Abajo de su celda, pegado a las filas que titula. La celda mide
             # lo que una fila y la letra es pequeña: con el texto arriba
             # quedaba un hueco de fila vacía entre los títulos y los datos.
@@ -2773,8 +2778,9 @@ class Table(QScrollArea):
         # column is cut: a few pixels of air cost less than a word.
         gap = theme.METRICS.grid_hspace
         hueco = gap * (columnas - 1)
+        heads = [self._ancho_de_cabecera(c) for c in range(columnas)]
         # Lo que ocupa cada columna es su dato o su título, lo que más pida.
-        ocupa = sum(max(ancho, self._ancho_de_cabecera(c)) for c, ancho in enumerate(anchos))
+        ocupa = sum(max(ancho, heads[c]) for c, ancho in enumerate(anchos))
         sobra = ocupa + hueco - self.viewport().width()
         if sobra < 0 and self.viewport().width() > 0:
             # Con sitio de sobra, las columnas se separan: en una ventana
@@ -2784,16 +2790,26 @@ class Table(QScrollArea):
             # sigue yendo detrás de la última.
             tope = QFontMetrics(value_font()).averageCharWidth() * self.HOLGURA_MAXIMA
             holgura = min(-sobra // columnas, tope)
-            anchos = [max(ancho, self._ancho_de_cabecera(c)) + holgura
-                      for c, ancho in enumerate(anchos)]
+            anchos = [max(ancho, heads[c]) + holgura for c, ancho in enumerate(anchos)]
         if sobra > 0 and columnas > 1 and self.viewport().width() > 0:
             narrower = max(0, min(gap - self.MIN_COLUMN_GAP, -(-sobra // (columnas - 1))))
             gap -= narrower
             sobra -= narrower * (columnas - 1)
         if sobra > 0 and self.viewport().width() > 0:
+            # Then a title wider than its figures takes a second line, the
+            # widest first and never narrower than its longest word.
+            floors = [max(anchos[c], self._palabra_mas_larga(c)) for c in range(columnas)]
+            while sobra > 0:
+                longer = [c for c in range(columnas) if heads[c] > floors[c]]
+                if not longer:
+                    break
+                widest = max(longer, key=lambda c: heads[c])
+                taken = min(sobra, heads[widest] - floors[widest], 8)
+                heads[widest] -= taken
+                sobra -= taken
+        if sobra > 0 and self.viewport().width() > 0:
             suelo = QFontMetrics(value_font()).averageCharWidth() * 10
-            suelos = {c: max(suelo, self._ancho_de_cabecera(c))
-                      for c in self._cede if c < columnas}
+            suelos = {c: max(suelo, heads[c]) for c in self._cede if c < columnas}
             while sobra > 0:
                 cedibles = [c for c, minimo in suelos.items() if anchos[c] > minimo]
                 if not cedibles:
@@ -2805,8 +2821,10 @@ class Table(QScrollArea):
         if self._grid.horizontalSpacing() != gap:
             self._grid.setHorizontalSpacing(gap)
         for columna, ancho in enumerate(anchos):
-            if self._grid.columnMinimumWidth(columna) != ancho:
-                self._grid.setColumnMinimumWidth(columna, ancho)
+            # The title doesn't ask for its width any more: its column does.
+            width = max(ancho, heads[columna])
+            if self._grid.columnMinimumWidth(columna) != width:
+                self._grid.setColumnMinimumWidth(columna, width)
             recortada = ancho < max(self._anchos[columna], 1) and columna in self._cede
             for fila in self._cells:
                 if columna < len(fila):
@@ -2838,8 +2856,25 @@ class Table(QScrollArea):
             item.widget().setToolTip(text)
 
     def _ancho_de_cabecera(self, columna: int) -> int:
-        item = self._grid.itemAtPosition(0, columna)
-        return item.widget().sizeHint().width() if item and item.widget() else 0
+        """What the column's title takes on one line (a line of its own
+        for each break written in it)."""
+        return self._title_width(columna, lambda text: text.split("\n"))
+
+    def _palabra_mas_larga(self, columna: int) -> int:
+        """The narrowest the title can go: its longest word."""
+        return self._title_width(columna, str.split)
+
+    def _title_width(self, column: int, pieces) -> int:
+        item = self._grid.itemAtPosition(0, column)
+        label = item.widget() if item else None
+        if label is None:
+            return 0
+        label.ensurePolished()
+        metrics = label.fontMetrics()
+        margins = label.contentsMargins()
+        widest = max((metrics.horizontalAdvance(piece) for piece in pieces(label.text())),
+                     default=0)
+        return widest + margins.left() + margins.right() + 2 * label.margin() + 2
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
