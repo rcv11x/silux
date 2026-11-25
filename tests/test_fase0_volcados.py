@@ -40,7 +40,7 @@ class TestNvmlSeGraba(unittest.TestCase):
         sysroot.start_recording()
         try:
             vivo = self.proveedor(mock.Mock(open=lambda: True, devices=lambda: [RTX]))
-            with mock.patch.object(nvidia, "sleeping_nvidias", return_value=[]):
+            with mock.patch.object(nvidia, "runtime_states", return_value={}):
                 self.assertTrue(vivo.available())
             vivo.collect(Draft())
         finally:

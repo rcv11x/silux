@@ -2116,9 +2116,9 @@ def engine_levels(gpu) -> list[tuple[str, Optional[float]]]:
     - NVIDIA has NVENC and NVDEC apart, and NVML measures them apart: two
       bars.
 
-    A sleeping card has no bars: nothing was read from it.
+    A resting card has no bars: nothing was read from it.
     """
-    if getattr(gpu, "suspended", False):
+    if getattr(gpu, "resting", False):
         return []
     if gpu.engines:
         by_type: dict[str, list] = {}
@@ -2151,7 +2151,7 @@ def engine_gaps(gpu) -> list[str]:
     foot, so it doesn't disappear silently. What's there and held by a
     permission isn't this: it carries a padlock (`engine_levels` with None).
     """
-    if getattr(gpu, "suspended", False):
+    if getattr(gpu, "resting", False):
         return []
     if gpu.driver == "xe":
         # xe does publish its engines' usage, with a PMU silux doesn't read
@@ -2171,6 +2171,8 @@ def gpu_asleep(gpu, fahrenheit: bool = False) -> str:
     and when, if it was seen awake: a temperature without its time would
     read as the current one.
     """
+    if getattr(gpu, "left_to_sleep", False):
+        return _("gpu.lefttosleep")
     if not getattr(gpu, "suspended", False):
         return ""
     text = _("gpu.asleep")

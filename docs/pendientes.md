@@ -200,6 +200,19 @@ la memoria) no va: está propuesto en las notas
     Abierto desde su entrada de menú sale con nombre. Arreglo posible: al
     arrancar en un `app-@…`, pedir a systemd (por D-Bus, sin permisos) un
     *scope* `app-silux@…` para el propio proceso, como hace Plasma.
+* **De la RTX A1000 de portátil** (sin volcado; driver 580.178.04):
+  - Gráficos · alta · con Silux abierto la tarjeta no se dormía. Ahora se
+    cierra NVML cuando nada más la usa ([nvml.md](nvml.md#que-silux-no-la-mantenga-despierta)),
+    pero que fuera la sesión abierta sale del código, no de la tarjeta:
+    falta verlo en ella.
+  - Gráficos · media · si algo que NVML no cuenta como proceso la mantiene
+    despierta (otro programa con NVML abierta), se lee cada unos 16 s y
+    entre medias sale «sin preguntarle».
+  - Gráficos · baja · mientras reposa, la tarjeta pierde lo que solo da NVML
+    (su nombre comercial, su memoria): no se guarda de la última lectura.
+  - Gráficos · baja · NVML es una sesión para todas las NVIDIA: con una que
+    se puede dormir y otra que no, la segunda también deja de leerse
+    mientras se espera.
 * **Sin volcado, sin hacer todavía:**
   - SMART · baja · atributos conocidos (4, 192, 193, 196…) salen «propio del
     fabricante», y la temperatura en crudo sale empaquetada (64 427 589 655).

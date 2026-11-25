@@ -61,6 +61,9 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # Hasta dónde llega el eje de la gráfica de frecuencia: el mayor de
         # `max_hz` y `max_turbo_hz`, que ya van los dos en el JSON.
         ("Clocks", "highest_hz"),
+        # Whether nothing was read from a card: `suspended` or
+        # `left_to_sleep`, both already in the JSON.
+        ("Gpu", "resting"),
     }
 
     def test_ninguna_propiedad_se_queda_fuera(self):

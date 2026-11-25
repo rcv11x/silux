@@ -873,12 +873,12 @@ class GpuSection(QWidget):
         # or emulated, the rule below doesn't run.
         escondidos["card"].update(c for c in ONLY_SOME
                                   if grid_of(grupos[0][1], c).is_blank(_(c)))
-        if gpu.suspended:
-            # Asleep, what only an awake card says isn't asked: its rows go,
-            # and the notice says why, once.
+        if gpu.resting:
+            # Asleep or left alone, what only a card that is read says isn't
+            # asked: its rows go, and the notice says why, once.
             for nombre, grids, campos, _pie in grupos:
                 escondidos[nombre].update(c for c in campos if grid_of(grids, c).is_blank(_(c)))
-        if not (gpu.suspended or gpu.virtual):
+        if not (gpu.resting or gpu.virtual):
             for nombre, grids, campos, _pie in grupos:
                 mudos = [c for c in campos if c not in escondidos[nombre]
                          and grid_of(grids, c).is_blank(_(c))]
@@ -912,7 +912,7 @@ class GpuSection(QWidget):
         # ficha grande con un guion para siempre era el hueco más visible de
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
-        asleep = gpu.suspended
+        asleep = gpu.resting
         self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual or asleep)
                                        and gpu.temp_c is None and gpu.package_temp_c is None))
         # nouveau gives no usage, clock or power, and the notice above the

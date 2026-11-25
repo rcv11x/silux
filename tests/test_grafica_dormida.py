@@ -162,14 +162,14 @@ class TestNvmlNoLaDespierta(unittest.TestCase):
 
     def test_encuentra_la_nvidia_dormida(self):
         with arbol(self.ARBOL):
-            self.assertEqual(nvidia.sleeping_nvidias(), ["0000:01:00.0"])
+            self.assertEqual(nvidia.runtime_states(), {"0000:01:00.0": "suspended"})
 
     def test_no_se_abre_nvml_y_se_suelta_si_estaba_abierta(self):
         proveedor = nvidia.NvidiaGpus()
         proveedor.client = mock.Mock()
-        with mock.patch.object(nvidia.sysroot, "active", return_value=False), \
-                mock.patch.object(nvidia, "sleeping_nvidias", return_value=["0000:01:00.0"]):
-            self.assertFalse(proveedor.available())
+        with arbol(self.ARBOL), mock.patch.object(nvidia.sysroot, "active", return_value=False):
+            # Available all the same: the card is said to sleep.
+            self.assertTrue(proveedor.available())
         proveedor.client.open.assert_not_called()
         proveedor.client.close.assert_called_once()
 

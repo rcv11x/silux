@@ -181,6 +181,18 @@ class FakeNvml:
         return 0
 
 
+    # -- who uses it ---------------------------------------------------------
+
+    def nvmlDeviceGetGraphicsRunningProcesses_v3(self, handle, count, infos):
+        """With room for none, how many: INSUFFICIENT_SIZE if there are any."""
+        count._obj.value = self.card.processes
+        return INSUFFICIENT_SIZE if self.card.processes else 0
+
+    def nvmlDeviceGetComputeRunningProcesses_v3(self, handle, count, infos):
+        count._obj.value = 0
+        return 0
+
+
 def power_file(status: str) -> str:
     """`/proc/driver/nvidia/gpus/<slot>/power` as nv-procfs.c writes it."""
     return (f"Runtime D3 status:          {status}\n"

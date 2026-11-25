@@ -1462,6 +1462,9 @@ class Gpu:
     suspended: bool = False
     last_awake_s: Optional[float] = None
     last_temp_c: Optional[float] = None
+    # Awake and left alone on purpose: nothing else uses it, and an open NVML
+    # session would keep it from sleeping (docs/nvml.md). Nothing is read.
+    left_to_sleep: bool = False
     # The kernel's runtime PM state when it was read.
     runtime_status: Optional[str] = field(default=None, metadata=REPORT_ONLY)
 
@@ -1555,6 +1558,11 @@ class Gpu:
     def display_name(self) -> Optional[str]:
         """Its name; `render.gpu_name` says it when there is none."""
         return self.name or self.codename
+
+    @property
+    def resting(self) -> bool:
+        """Nothing was asked of it: suspended, or left alone to fall asleep."""
+        return self.suspended or self.left_to_sleep
 
     @property
     def temp_level(self) -> str:
@@ -2339,7 +2347,7 @@ class Snapshot:
         if not self.gpus:
             return None
         awake = [i for i, g in enumerate(self.gpus)
-                 if not g.suspended and (g.driver or g.drm_node)]
+                 if not g.resting and (g.driver or g.drm_node)]
         for i in awake:
             if self.gpus[i].integrated is False:
                 return i
