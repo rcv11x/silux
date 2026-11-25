@@ -666,6 +666,8 @@
   "disktest.note.several_disks.body": "Lo que se mide es el conjunto (un RAID, un volumen o un btrfs de varios discos), no cada disco. Por eso no se compara con el máximo de una conexión.",
   "disktest.note.through_the_cache": "Parte de la prueba pasó por la memoria del sistema",
   "disktest.note.through_the_cache.body": "El sistema de archivos aceptó leer y escribir directamente y luego usó su caché. Las cifras no son las del disco.",
+  "disktest.note.too_big": "El archivo es demasiado grande para esta carpeta",
+  "disktest.note.too_big.body": "Su sistema de archivos no admite un archivo de {size}. Prueba con uno más pequeño.",
   "disktest.note.too_big_for_fat": "El archivo no cabe en FAT32",
   "disktest.note.too_big_for_fat.body": "Esta carpeta está en FAT32, que no guarda archivos de 4 GiB o más. El mayor que cabe es de {largest}.",
   "disktest.note.varied": "Algunas pruebas variaron entre vueltas",

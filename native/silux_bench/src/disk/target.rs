@@ -426,6 +426,10 @@ fn refused(
             needed: len as u64,
             free,
         },
+        // Past the largest file the file system takes: not a failing disk.
+        (libc::EFBIG, _) => Error::TooBig {
+            bytes: offset + len as u64,
+        },
         _ => Error::Io { call, errno },
     }
 }
@@ -632,16 +636,19 @@ fn reserve(file: &File, bytes: u64) -> Result<()> {
             if unsafe { libc::ftruncate64(fd, bytes as i64) } == 0 {
                 Ok(())
             } else {
-                Err(Error::Io {
-                    call: "ftruncate",
-                    errno: errno(),
-                })
+                Err(not_reserved("ftruncate", errno(), bytes))
             }
         }
-        other => Err(Error::Io {
-            call: "fallocate",
-            errno: other,
-        }),
+        other => Err(not_reserved("fallocate", other, bytes)),
+    }
+}
+
+/// What a refusal to give the file its size means, other than no space.
+fn not_reserved(call: &'static str, errno: i32, bytes: u64) -> Error {
+    match errno {
+        // Past the largest file the file system takes (`s_maxbytes`).
+        libc::EFBIG => Error::TooBig { bytes },
+        _ => Error::Io { call, errno },
     }
 }
 
@@ -1109,6 +1116,24 @@ mod tests {
     }
 
     #[test]
+    fn a_file_too_large_for_its_file_system_is_not_a_failing_disk() {
+        for call in ["fallocate", "ftruncate"] {
+            assert_eq!(
+                not_reserved(call, libc::EFBIG, 4 << 30),
+                Error::TooBig { bytes: 4 << 30 }
+            );
+            assert_eq!(
+                not_reserved(call, libc::EIO, 4 << 30),
+                Error::Io {
+                    call,
+                    errno: libc::EIO
+                }
+            );
+        }
+        assert_eq!(Error::TooBig { bytes: 1 }.key(), "too_big");
+    }
+
+    #[test]
     fn a_refused_request_says_whose_fault_it_is() {
         let declared = Align {
             memory: 4096,
@@ -1162,6 +1187,12 @@ mod tests {
                 call: "pread",
                 errno: libc::EIO
             }
+        );
+        // Past the largest file the file system takes: the size it would
+        // have had, not a failing disk.
+        assert_eq!(
+            refused("pwrite", libc::EFBIG, declared, 4096, 8192, Some(5)),
+            Error::TooBig { bytes: 12288 }
         );
     }
 

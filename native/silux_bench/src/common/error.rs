@@ -29,6 +29,8 @@ pub enum Error {
     NoWrite { errno: i32 },
     /// The file doesn't fit: what it needs, margin included, and what is free.
     NoSpace { needed: u64, free: u64 },
+    /// The file system takes no file this large (FAT32 stops below 4 GiB).
+    TooBig { bytes: u64 },
     /// The file system won't read or write past the page cache here.
     NoDirect { errno: i32 },
     /// A call on the file failed; errno 0 is a read or a write cut short.
@@ -58,6 +60,7 @@ impl Error {
             Error::Network => "network",
             Error::NoWrite { .. } => "no_write",
             Error::NoSpace { .. } => "no_space",
+            Error::TooBig { .. } => "too_big",
             Error::NoDirect { .. } => "no_direct",
             Error::Io { .. } => "io",
             Error::NoUring { .. } => "no_uring",
@@ -87,6 +90,9 @@ impl fmt::Display for Error {
             }
             Error::NoSpace { needed, free } => {
                 write!(f, "the file needs {needed} bytes and {free} are free")
+            }
+            Error::TooBig { bytes } => {
+                write!(f, "the file system takes no file of {bytes} bytes")
             }
             Error::NoDirect { errno } => {
                 write!(

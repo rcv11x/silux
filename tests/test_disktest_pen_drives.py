@@ -48,3 +48,16 @@ class TestFat32(TabCase):
         tab._describe()
         self.assertNotIn(_("disktest.note.too_big_for_fat"), visible_texts(tab))
         self.assertTrue(tab.run_button.isEnabled())
+
+    def test_a_file_the_engine_finds_too_large_is_not_a_failing_disk(self):
+        from silux.ui.pages.disktest import DiskTestRun
+
+        run = DiskTestRun()
+        tab = self.tab(run=run)
+        run._on_done(disktest.Result(reason="too_big", bytes_=16 * GIB,
+                                     figures=(("bytes", 16 * GIB),)))
+        text = visible_texts(tab)
+        self.assertIn(_("disktest.note.too_big"), text)
+        self.assertIn("16 GiB", text)
+        self.assertIn(_("disktest.action.smaller"), text)
+        self.assertNotIn(_("disktest.note.io"), text)

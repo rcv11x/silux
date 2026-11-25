@@ -91,6 +91,7 @@ fn details<'py>(py: Python<'py>, error: &Error) -> PyResult<Bound<'py, PyDict>> 
             details.set_item("needed", needed)?;
             details.set_item("free", free)?;
         }
+        Error::TooBig { bytes } => details.set_item("bytes", bytes)?,
         Error::Io { call, errno } => {
             details.set_item("call", call)?;
             details.set_item("errno", errno)?;

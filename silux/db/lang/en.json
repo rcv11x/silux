@@ -666,6 +666,8 @@
   "disktest.note.several_disks.body": "What is measured is the set (a RAID, a volume or a btrfs over several disks), not each disk. That is why it isn't compared with the most one link carries.",
   "disktest.note.through_the_cache": "Part of the test went through the system's memory",
   "disktest.note.through_the_cache.body": "The file system agreed to read and write directly and then used its cache. The figures aren't the disk's.",
+  "disktest.note.too_big": "The file is too large for this folder",
+  "disktest.note.too_big.body": "Its file system can't hold a file of {size}. Try a smaller one.",
   "disktest.note.too_big_for_fat": "The file doesn't fit in FAT32",
   "disktest.note.too_big_for_fat.body": "This folder is on FAT32, which can't hold files of 4 GiB or more. The largest that fits is {largest}.",
   "disktest.note.varied": "Some tests varied between runs",
