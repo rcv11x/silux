@@ -325,9 +325,10 @@ la memoria) no va: está propuesto en las notas
     está escrito sin probar. (El Intel de sobremesa, un i5-10400, ya está:
     tablas en [prueba-de-memoria.md](prueba-de-memoria.md).)
   - media · en el i5-10400 la copia de un hilo sale por debajo de las
-    referencias: un 8 a un 12 % la normal (`bw_mem cp`, MLC) y un 30 % la
-    que no pasa por la caché (STREAM, que es el `memcpy` de la glibc). En el
-    5800X3D cuadraban. Ver qué hace distinto la glibc (cuatro páginas a la
+    referencias: un 8 a un 12 % la normal (`bw_mem cp`, MLC) y un 25 a un
+    30 % la que no pasa por la caché (MLC `-W8`, y STREAM, que es el
+    `memcpy` de la glibc). Con doce hilos cuadra, y en el 5800X3D
+    cuadraban. Ver qué hace distinto la glibc (cuatro páginas a la
     vez, prefetch) antes de enseñar la copia por niveles.
   - media · el aviso «La frecuencia cambió durante la prueba» sale en todas
     las del i5-10400 con el turbo fijo: los puntos van de 4,05 a 4,27 GHz y
@@ -341,8 +342,8 @@ la memoria) no va: está propuesto en las notas
     módulo y sin él) y el módulo dentro de los dos AppImage, con AVX2 solo
     en las funciones que lo comprueban.
   - media · un programa que cambia el turbo o el gobernador según la carga
-    (auto-cpufreq, TLP, power-profiles-daemon, tuned, thermald…) mueve la
-    frecuencia a mitad de la prueba: en un i5-10400, auto-cpufreq empezó una
+    (auto-cpufreq, TLP, power-profiles-daemon, tuned o tuned-ppd, thermald)
+    puede mover la frecuencia a mitad de la prueba: en un i5-10400, auto-cpufreq empezó una
     curva a 2,89 GHz y la acabó a 4,2. Vale también para la del disco y la
     del procesador. Detectarlo sin root (servicio activo, proceso en marcha)
     y decirlo con su nombre en dos sitios: antes de empezar, en una línea
