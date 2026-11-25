@@ -57,6 +57,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
         _sensors(snapshot),
         _benchmark(),
         _memory_test(),
+        _disk_test(),
         _diagnosis(snapshot),
     ]
     return "\n".join(part for part in parts if part).strip() + "\n"
@@ -543,6 +544,74 @@ def _sensors(snapshot: Snapshot) -> str:
                 for s in sensors)
             lines.append(f"  - {in_spanish(name).lower()}: {values}")
     return "\n".join(lines)
+
+
+def _disk_test() -> str:
+    """The latest disk test, whole: every lap of every test, the engine and
+    why, what the checks after each test found, and what went wrong with
+    its code, which the screen never shows."""
+    from . import disktest
+
+    result = next(iter(disktest.load_history()), None)
+    if result is None:
+        return ""
+    megabytes = lambda rate: f"{rate / 1e6:.1f}"  # noqa: E731
+    lines = ["\n## Prueba de disco\n"]
+    if result.measures:
+        lines += ["| Prueba | Sentido | Del medio MB/s | Mejor | Peor | Previa | Vueltas | IOPS | "
+                  "Media µs | p99 µs | En caché | Disco/contado | °C |",
+                  "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for measure in result.measures:
+        middle = measure.median
+        first = next((lap for lap in measure.laps if lap.number == 0), None)
+        name = measure.name + (f" (por {measure.stands_for})" if measure.stands_for else "")
+        ratio = (render.DASH if measure.disk_bytes is None or not measure.moved_bytes
+                 else f"{measure.disk_bytes / measure.moved_bytes:.2f}")
+        cells = [
+            name, measure.direction,
+            megabytes(middle.bytes_per_second) + (" (varió)" if measure.noisy else ""),
+            megabytes(measure.best.bytes_per_second), megabytes(measure.worst.bytes_per_second),
+            megabytes(first.bytes_per_second) if first else render.DASH,
+            " ".join(megabytes(lap.bytes_per_second) for lap in measure.counted),
+            f"{middle.requests_per_second:.0f}",
+            render.DASH if middle.latency_mean_ns is None else f"{middle.latency_mean_ns / 1e3:.1f}",
+            render.DASH if middle.latency_p99_ns is None else f"{middle.latency_p99_ns / 1e3:.1f}",
+            render.DASH if measure.cached_bytes is None else str(measure.cached_bytes),
+            ratio, render.DASH if measure.temperature_c is None else f"{measure.temperature_c:.1f}",
+        ] if middle is not None else [name, measure.direction] + [render.DASH] * 11
+        lines.append("| " + " | ".join(cells) + " |")
+    facts = [f"perfil {result.profile}", f"motor: {result.engine or 'ninguno'}"]
+    if result.uring_errno is not None:
+        facts.append(f"io_uring_setup: errno {result.uring_errno}")
+    if result.model:
+        facts.append(result.model)
+    if result.mountpoint:
+        facts.append(f"{result.mountpoint} ({result.filesystem})")
+    if result.disks:
+        facts.append("sobre " + " + ".join(result.disks))
+    if result.layers:
+        facts.append("capas: " + ", ".join(result.layers))
+    if result.bytes_:
+        facts.append(f"archivo de {render.size(result.bytes_)} ({result.creation or '?'})")
+    if result.no_cow is not None:
+        facts.append(f"+C {'sí' if result.no_cow else 'no'}")
+    if result.align_declared is not None:
+        facts.append("alineación " + ("declarada" if result.align_declared else "supuesta"))
+    if result.laps:
+        facts.append(f"{result.laps} vueltas de {result.lap_seconds:g} s, "
+                     f"pausa {result.pause_seconds:g} s")
+    facts.append(f"escribió {result.written_bytes / 1e9:.1f} GB en {result.seconds:.1f} s")
+    if result.temperature_peak_c is not None:
+        facts.append(f"temperatura {result.temperature_start_c} → {result.temperature_peak_c} "
+                     f"→ {result.temperature_end_c} °C")
+    if result.warnings:
+        facts.append("avisos: " + ", ".join(result.warnings))
+    lines += ["", " · ".join(facts)]
+    if result.reason:
+        figures = ", ".join(f"{name}={value}" for name, value in result.figures)
+        lines += ["", f"No terminó: {result.reason}. {result.detail}"
+                  + (f" ({figures})" if figures else "")]
+    return "\n".join(lines) + "\n"
 
 
 def _memory_test() -> str:

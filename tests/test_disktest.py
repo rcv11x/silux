@@ -452,6 +452,43 @@ class TestHistory(unittest.TestCase):
         self.assertEqual(disktest.load_history()[0].measures[0].laps[1].samples,
                          ((250_000_000, 1750),))
 
+    def test_the_report_carries_the_latest_whole_and_the_code_of_what_failed(self):
+        from silux import report
+        from tests.test_equipos import EQUIPOS
+
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
+        self.assertNotIn("## Prueba de disco", report.build(snapshot))
+        disktest.append_history(recorded("sn850x-btrfs"))
+        text = report.build(snapshot)
+        for expected in (
+                "## Prueba de disco",
+                "| SEQ1M Q8T1 | read | 6592.5 | 6616.4 | 6583.7 | 6248.3 | "
+                "6583.7 6585.6 6608.0 6616.4 6592.5 | 6287 | 1272.2 | 1785.9 | 0 | 1.00 | 59.9 |",
+                "| SEQ1M Q8T1 | write | 3946.1 (varió) | 5041.9 |",
+                "| RND4K Q1T1 | read | 63.3 |",
+                "| 15464 | 64.5 | 85.0 | 0 | 1.03 | 55.9 |",
+                "perfil standard · motor: uring · WD_BLACK SN850X HS 1000GB · /home (btrfs) · "
+                "sobre nvme0n1 · archivo de 1 GiB (unnamed) · +C sí · alineación supuesta · "
+                "5 vueltas de 5 s, pausa 5 s · escribió 241.7 GB en 280.6 s · "
+                "temperatura 50.85 → 62.85 → 53.85 °C"):
+            self.assertIn(expected, text)
+        self.assertNotIn("No terminó", text)
+
+        # A run through threads says what ran, in place of what, and why;
+        # and one that broke, its key, the module's words and its figures.
+        threads = dataclasses.replace(recorded("sn850x-btrfs-threads"), uring_errno=1,
+                                      timestamp=1_900_000_000.0)
+        disktest.append_history(threads)
+        text = report.build(snapshot)
+        for expected in ("| RND4K Q1T32 (por RND4K Q32T1) | read |", "motor: threads",
+                         "io_uring_setup: errno 1", "avisos: queue_of_threads"):
+            self.assertIn(expected, text)
+        disktest.append_history(disktest.Result(
+            timestamp=1_900_000_100.0, reason="io", detail="pwrite failed (errno 5)",
+            figures=(("call", "pwrite"), ("errno", 5)), engine="uring"))
+        text = report.build(snapshot)
+        self.assertIn("No terminó: io. pwrite failed (errno 5) (call=pwrite, errno=5)", text)
+
     def test_what_a_newer_version_saved_is_read_and_kept_down_to_each_lap(self):
         disktest.append_history(self.result())
         path = disktest.history_path()
