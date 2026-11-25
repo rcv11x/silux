@@ -637,8 +637,8 @@ def run(plan: Plan, on_progress: Optional[Callable[[dict], None]] = None,
         stop: Optional[threading.Event] = None) -> Result:
     """Measure in a child process and wait for it. Call from a thread.
 
-    `on_progress` gets each of the child's messages: its `phase` ("fill",
-    "pause", "lap" or "lapped"), the fraction `done` and, for a lap, which
+    `on_progress` gets each of the child's messages: its `phase` ("reserve",
+    "fill", "pause", "lap" or "lapped"), the fraction `done` and, for a lap, which
     test, direction and lap. Setting `stop` kills the child, and the file
     goes with it.
     """
@@ -763,6 +763,38 @@ class _ThroughTheCache(Exception):
     what comes after would be the memory's figures."""
 
 
+def _reserved(silux_bench, plan: dict, emit: Callable[[dict], None]):
+    """The test's file, made and its space reserved.
+
+    FAT32 reserves a file by writing all of it with zeros, in one call that
+    can take as long as filling it. Meanwhile what the kernel counts written
+    to the disk says how far it has got. Elsewhere reserving takes no time
+    and nothing is said.
+    """
+    disks = plan["disks"]
+    start = _disk_bytes(disks, "write")
+    made = threading.Event()
+    began = time.monotonic()
+
+    def report() -> None:
+        while not made.wait(0.25):
+            now = _disk_bytes(disks, "write")
+            if start is None or now is None or now <= start:
+                continue
+            done = min((now - start) / plan["bytes_"], 0.99)
+            left = fill_left(time.monotonic() - began, done)
+            emit({"phase": "reserve", "done": done,
+                  **({} if left is None else {"left_seconds": round(left)})})
+
+    reporter = threading.Thread(target=report, daemon=True)
+    reporter.start()
+    try:
+        return silux_bench.DiskFile(plan["folder"], bytes=plan["bytes_"], margin=plan["margin"])
+    finally:
+        made.set()
+        reporter.join()
+
+
 def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
     """Everything the plan asks for, in this process."""
     import silux_bench
@@ -778,8 +810,7 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
         return now if peak is None else peak if now is None else max(peak, now)
 
     try:
-        file = silux_bench.DiskFile(plan["folder"], bytes=plan["bytes_"],
-                                    margin=plan["margin"])
+        file = _reserved(silux_bench, plan, emit)
         answer.update(creation=file.creation, no_cow=file.no_cow, align_declared=file.align[2])
 
         control = silux_bench.Control()

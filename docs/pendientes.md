@@ -355,12 +355,13 @@ la memoria) no va: está propuesto en las notas
     leyendo el código del kernel y probados con un sustituto.
   - alta · desconectar un USB de verdad a mitad de la prueba: tiene que
     salir «el disco se desconectó» y nada más. Probado con el volcado.
-  - **alta, antes de la prueba13** · en FAT32, reservar el archivo ya
-    escribe ceros: se escribe dos veces, y mientras reserva la barra no
-    avanza ni llega ningún aviso de progreso. En un pendrive USB 2.0
-    (SanDisk Cruzer Blade) fueron 40 s parados con un archivo de 64 MiB:
-    parece colgada. Medido: el kernel cuenta 64 MiB más que lo que dice
-    Silux, los ceros de la reserva.
+  - media · en FAT32, reservar el archivo ya escribe ceros: se escribe dos
+    veces (el kernel cuenta 64 MiB más que Silux con un archivo de 64 MiB).
+    Mientras reserva, la barra avanza con lo que el kernel cuenta escrito
+    en el disco y dice «Reservando el espacio del archivo»; antes se quedaba
+    parada en «preparando…» (40 s en un pendrive USB 2.0). Probado con el
+    constructor del archivo bloqueado y el contador subiendo; falta verlo en
+    un pendrive de verdad.
   - media · el tiempo de escribir el archivo en un pendrive se estima con lo
     que escribió la última vez, y en uno recién usado se queda corto: el
     mismo pendrive tardó 83,5 s en vez de unos 31 justo después de una tanda

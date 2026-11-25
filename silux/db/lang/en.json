@@ -707,6 +707,8 @@
   "disktest.step": "{what} ({n} of {of})",
   "disktest.step.fill": "Writing the file",
   "disktest.step.fill.left": "Writing the file, about {left} left",
+  "disktest.step.reserve": "Reserving the file's space",
+  "disktest.step.reserve.left": "Reserving the file's space, about {left} left",
   "disktest.step.test": "Measuring {test}, {direction}",
   "disktest.tip.test": "{code}: requests of {block}. Q{depth} is how many requests are kept in the queue at a time, and T{threads}, the threads making them.",
   "disktest.title": "Disk test",

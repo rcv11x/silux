@@ -158,6 +158,10 @@ NOTES = {
 }
 DIRECTIONS = {"read": "disktest.dir.read", "write": "disktest.dir.write"}
 COLUMNS = {"read": "disktest.col.read", "write": "disktest.col.write"}
+# What the first step says while the file is made: reserving it, which on
+# FAT32 writes it whole, and writing it.
+FILE_STEPS = {"reserve": ("disktest.step.reserve", "disktest.step.reserve.left"),
+              "fill": ("disktest.step.fill", "disktest.step.fill.left")}
 ENGINES = {"uring": "disktest.engine.uring", "threads": "disktest.engine.threads"}
 PROFILE_NAMES = {"standard": "disktest.profile.standard", "real": "disktest.profile.real"}
 PROFILE_TIPS = {"standard": "disktest.profile.standard.tip", "real": "disktest.profile.real.tip"}
@@ -392,6 +396,9 @@ class DiskTestRun(QObject):
         # arrives half way.
         self.last: dict = {}
         self.laps: dict[tuple[str, str], int] = {}
+        # Whether reserving the file wrote it (FAT32): writing it is then
+        # the second half of its step.
+        self.reserved = False
         self._done.connect(self._on_done)
 
     @property
@@ -407,9 +414,12 @@ class DiskTestRun(QObject):
             return False
         self._stop.clear()
         self.plan, self.model, self.last, self.laps = plan, model, {}, {}
+        self.reserved = False
 
         def step(message: dict) -> None:
             self.last = message
+            if message.get("phase") == "reserve":
+                self.reserved = True
             if message.get("phase") == "lapped":
                 self.laps[message["test"], message["direction"]] = message["bytes_per_second"]
             self.progressed.emit(message)
@@ -1081,12 +1091,15 @@ class DiskTestTab(ScrollPage):
         total = 1 + len(order)
         done = float(message.get("done") or 0.0)
         phase = message.get("phase")
-        if phase == "fill":
+        if phase in FILE_STEPS:
             left = message.get("left_seconds")
-            what = (_("disktest.step.fill") if left is None else
-                    _("disktest.step.fill.left").format(left=render.duration(left)))
+            words, with_left = FILE_STEPS[phase]
+            what = (_(words) if left is None else
+                    _(with_left).format(left=render.duration(left)))
+            share = (done / 2 if phase == "reserve"
+                     else 0.5 + done / 2 if self._run.reserved else done)
             self.progress.set_state(_("disktest.step").format(what=what, n=1, of=total),
-                                    done / total, percent=False)
+                                    share / total, percent=False)
             return
         name, direction = message.get("test"), message.get("direction", "read")
         # The test that runs may be another than asked (a queue of threads

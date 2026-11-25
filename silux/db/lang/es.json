@@ -707,6 +707,8 @@
   "disktest.step": "{what} ({n} de {of})",
   "disktest.step.fill": "Escribiendo el archivo",
   "disktest.step.fill.left": "Escribiendo el archivo, quedan unos {left}",
+  "disktest.step.reserve": "Reservando el espacio del archivo",
+  "disktest.step.reserve.left": "Reservando el espacio del archivo, quedan unos {left}",
   "disktest.step.test": "Midiendo {test}, {direction}",
   "disktest.tip.test": "{code}: peticiones de {block}. Q{depth} son las peticiones que se mantienen a la vez en cola, y T{threads}, los hilos que las hacen.",
   "disktest.title": "Prueba de disco",

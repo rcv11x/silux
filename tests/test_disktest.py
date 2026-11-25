@@ -490,6 +490,37 @@ class TestThroughTheCache(unittest.TestCase):
 
 
 class TestPenDrives(unittest.TestCase):
+    def reserve(self, seconds: float, written_per_second: float) -> list[dict]:
+        """What the child says while making a file of 64 MiB that takes
+        `seconds` to make, with the disk writing at that pace meanwhile."""
+        began = time.monotonic()
+
+        def counted(_disks, _direction):
+            return int((time.monotonic() - began) * written_per_second)
+
+        class Slow:
+            def __init__(self, *_args, **_kwargs):
+                time.sleep(seconds)
+
+        plan = {"folder": "/media/pen", "bytes_": 64 * MIB, "margin": 32 * MIB, "disks": ["sdb"]}
+        said: list[dict] = []
+        with mock.patch.object(disktest, "_disk_bytes", counted):
+            disktest._reserved(mock.Mock(DiskFile=Slow), plan, said.append)
+        return said
+
+    def test_while_fat32_reserves_the_file_it_says_how_far_it_has_got(self):
+        # FAT32 reserves by writing the whole file with zeros: 40 s for
+        # 64 MiB on a USB 2.0 pen drive, with nothing said.
+        said = self.reserve(1.2, 32 * MIB)
+        self.assertGreaterEqual(len(said), 3)
+        self.assertEqual({m["phase"] for m in said}, {"reserve"})
+        done = [m["done"] for m in said]
+        self.assertEqual(done, sorted(done))
+        self.assertTrue(0 < done[0] and done[-1] <= 0.99)
+
+    def test_where_reserving_takes_no_time_nothing_is_said(self):
+        self.assertEqual(self.reserve(0.0, 32 * MIB), [])
+
     def test_fat32_takes_files_below_4_gib_and_it_is_known_before_starting(self):
         self.assertEqual(disktest.largest_file("vfat"), 4095 * MIB)
         self.assertEqual(disktest.largest_file("msdos"), 4095 * MIB)

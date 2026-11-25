@@ -280,6 +280,26 @@ class TestASlowPenDrive(TabCase):
             tab._on_progress({"phase": "fill", "done": 0.01})
             self.assertTrue(tab.progress.label.text().startswith(_("disktest.step.fill") + " ("))
 
+    def test_while_fat32_reserves_the_file_the_bar_moves_and_says_so(self):
+        from silux.ui.pages.disktest import DiskTestRun
+
+        run = DiskTestRun()
+        plan = disktest.make_plan("/media/unidad1")
+        total = 1 + 2 * len(plan.tests)
+        with Running(run, plan, {}):
+            run.last = {"phase": "reserve", "done": 0.5, "left_seconds": 30}
+            run.reserved = True
+            tab = self.tab(run=run)
+            self.assertEqual(tab.progress.label.text(), _("disktest.step").format(
+                what=_("disktest.step.reserve.left").format(left="30 s"), n=1, of=total))
+            reserving = tab.progress.bar.value()
+            self.assertEqual(reserving, round(0.25 / total * 100))
+            # Writing it is the second half of the step: the bar doesn't go back.
+            tab._on_progress({"phase": "fill", "done": 0.0})
+            self.assertGreaterEqual(tab.progress.bar.value(), reserving)
+            tab._on_progress({"phase": "fill", "done": 1.0})
+            self.assertEqual(tab.progress.bar.value(), round(1 / total * 100))
+
 
 class TestNtfsThroughTheCache(TabCase):
     """A hard disk with NTFS (ntfs3)."""
