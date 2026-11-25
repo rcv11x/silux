@@ -135,6 +135,28 @@ fn what_moved_is_noted_as_the_lap_goes() {
 }
 
 #[test]
+fn a_lap_that_ends_on_a_quarter_keeps_its_last_one() {
+    let folder = Folder::new("last-sample");
+    let Some(target) = filled(&folder, SMALL) else {
+        return;
+    };
+    for (engine, run) in engines() {
+        let job = Job {
+            seconds: 1.0,
+            ..job(Pattern::Random, Direction::Read, 4096, 2)
+        };
+        let lap = run(&target, &job, &Control::default()).unwrap();
+        let last = lap.samples.last().expect("samples");
+        assert!(
+            last.at_ns >= 4 * SAMPLE_NS,
+            "{engine}: the last quarter has no sample: {:?}",
+            lap.samples
+        );
+        assert!(last.bytes <= lap.bytes, "{engine}");
+    }
+}
+
+#[test]
 fn a_write_lands_where_its_stamp_says() {
     let folder = Folder::new("stamps");
     for (engine, run) in engines() {

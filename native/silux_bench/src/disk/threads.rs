@@ -196,20 +196,22 @@ fn watch(shared: &Shared<'_>, began_ns: u64, deadline_ns: u64, control: &Control
     let mut next_ns = began_ns + SAMPLE_NS;
     loop {
         let now = now_ns();
-        if now >= deadline_ns || shared.stop.load(Ordering::Relaxed) {
-            break;
-        }
-        if control.is_cancelled() {
+        let over = now >= deadline_ns || shared.stop.load(Ordering::Relaxed);
+        if !over && control.is_cancelled() {
             shared.stop.store(true, Ordering::Relaxed);
             break;
         }
+        // A lap that ends on a quarter is due its last sample right at the
+        // end, as the io_uring engine takes it.
         if now >= next_ns {
             samples.push(Sample {
                 at_ns: now - began_ns,
                 bytes: shared.moved(),
             });
             next_ns = next_sample(next_ns, now);
-            continue;
+        }
+        if over {
+            break;
         }
         let until = next_ns.min(deadline_ns) - now;
         std::thread::sleep(Duration::from_nanos(until.min(LOOK_NS)));
