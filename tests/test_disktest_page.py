@@ -364,6 +364,37 @@ class TestWhatAResultShows(TabCase):
             self.assertNotIn("62.9", text.split(_("memtest.card.history"))[-1])
         self.assertIn(hottest, at(900))
 
+    def test_on_a_wide_screen_both_tabs_keep_to_the_same_width(self):
+        """At 1920 px the cards went from side to side of the page."""
+        from silux.settings import Preferences
+        from silux.ui import theme
+        from silux.ui.pages.memtest import MemoryTestTab
+        from tests.test_memtest import recorded as memory_run
+
+        disktest.save_history([recorded("sn850x-btrfs")])
+        disk = self.tab()
+        memory = MemoryTestTab(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(memory.deleteLater)
+        memory.show()
+        memory.show_result(memory_run())
+        for tab in (disk, memory):
+            tab.resize(1690, 1100)
+        for _turn in range(5):
+            self.app.processEvents()
+        from PySide6.QtGui import QFontMetrics
+
+        character = QFontMetrics(theme.ui_font(theme.METRICS.base_pt)).averageCharWidth()
+        widths = []
+        for tab, card in ((disk, disk.result_card), (memory, memory.result_card)):
+            root = tab.widget()
+            self.assertLess(root.content_width(), 1690 - 2 * theme.METRICS.page_margin)
+            self.assertLessEqual(card.width(), root.content_width())
+            # No wider than a long line of text, whatever the letter.
+            self.assertLessEqual(card.width() / character, 120)
+            widths.append(card.width())
+        self.assertEqual(widths[0], widths[1])
+        self.assertLessEqual(disk.place_box.width(), disk.widget().content_width())
+
     def test_a_narrow_window_cuts_the_place_with_an_ellipsis(self):
         """It was cut halfway through a word: «457 GB fre»."""
         tab = self.tab()

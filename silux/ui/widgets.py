@@ -2367,9 +2367,11 @@ class ReadableRoot(QWidget):
     screen the cards stretched across it, four tiles of a number each took a
     quarter of two thousand pixels and the tables stayed on the left: beyond
     the cap the side margins grow and the column stays centred. The cap is in
-    characters of the interface font, so it follows the font size."""
+    characters of the interface font, so it follows the font size. At 190 a
+    1920 px window still stretched «Where» to 1500 px and set a cache's
+    figure at the far end of its name."""
 
-    CHARACTERS = 190
+    CHARACTERS = 120
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
