@@ -65,5 +65,25 @@ class TestTheComparisonNoticesADifference(unittest.TestCase):
                             [l for l, _x in sections(text)])
 
 
+RELEASE_NOTES = ".github/release-notes.md"
+GLIBC = re.compile(r"glibc (\d+\.\d+)")
+
+
+class TestTheReleaseNotesMatchTheReadme(unittest.TestCase):
+    """The release notes template repeats which glibc each AppImage needs.
+    It said 2.35 for the compat one long after the README said 2.30."""
+
+    def test_same_glibc_floors_in_the_same_order(self):
+        notes = GLIBC.findall((ROOT / RELEASE_NOTES).read_text(encoding="utf-8"))
+        for language in READMES:
+            with self.subTest(readme=READMES[language]):
+                self.assertEqual(notes, GLIBC.findall(read(language)))
+
+    def test_the_comparison_notices_a_different_floor(self):
+        notes = (ROOT / RELEASE_NOTES).read_text(encoding="utf-8")
+        changed = notes.replace("glibc 2.34", "glibc 2.36")
+        self.assertNotEqual(GLIBC.findall(changed), GLIBC.findall(read("es")))
+
+
 if __name__ == "__main__":
     unittest.main()
