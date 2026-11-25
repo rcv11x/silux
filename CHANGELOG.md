@@ -12,6 +12,8 @@ que hace falta.
 
 ## Sin publicar
 
+- Gráficos: un monitor cuyo modelo ya lleva la marca no la repite: «LG HDR
+  4K» y «HP 27wm», no «LG LG HDR 4K» ni «Hewlett Packard HP 27wm».
 - Placa base: con una base de dispositivos PCI antigua, que escribe el
   modelo al final («LPC Controller/eSPI Controller (H670)»), el chipset de
   Intel se reconoce: «Intel H670».

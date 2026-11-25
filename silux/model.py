@@ -953,6 +953,8 @@ VENDOR_ALIASES: dict[str, str] = {
     "lg electronics": "LG",
     "american megatrends": "AMI",
     "hewlett-packard": "HP",
+    # As pnp.ids names it, in its monitors' EDID.
+    "hewlett packard": "HP",
     "lenovo": "Lenovo",
     "positivo informatica": "Positivo",
     "dell inc.": "Dell",

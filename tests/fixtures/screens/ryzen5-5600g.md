@@ -407,7 +407,7 @@ NVML no publica el punto caliente, la temperatura de la memoria, los reguladores
 
 | SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
 |---|---|---|---|---|---|---|
-| DP-3 | LG LG ULTRAGEAR | 1920 × 1080 | 48–180 Hz | 23.8" | HDR10 (PQ) · BT.2020 RGB | semana 4 de 2024 |
+| DP-3 | LG ULTRAGEAR | 1920 × 1080 | 48–180 Hz | 23.8" | HDR10 (PQ) · BT.2020 RGB | semana 4 de 2024 |
 
 3 salidas libres: DP-1, DP-2, HDMI-A-1
 

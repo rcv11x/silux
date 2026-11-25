@@ -57,6 +57,19 @@ class TestElNombreDelMonitor(unittest.TestCase):
                                    model="QEMU Monitor")
         self.assertEqual(render.monitor_name(qemu), "Red Hat QEMU Monitor")
 
+    def test_the_brand_once(self):
+        # From reports: the model each monitor writes in its EDID, and its
+        # maker as pnp.ids names it. They read «ASUS ASUS VA24E».
+        import dataclasses
+
+        for manufacturer, model in (("ASUSTek COMPUTER INC", "ASUS VA24E"),
+                                    ("LG Electronics", "LG HDR 4K"),
+                                    ("Hewlett Packard", "HP 27wm")):
+            with self.subTest(model):
+                monitor = dataclasses.replace(self.monitores[0], manufacturer=manufacturer,
+                                              model=model)
+                self.assertEqual(render.monitor_name(monitor), model)
+
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestLaTabla(unittest.TestCase):

@@ -2294,9 +2294,10 @@ def monitor_name(monitor: Optional[Edid]) -> str:
     if monitor is None:
         return DASH
     # The brand, not the legal name: «GIGA-BYTE TECHNOLOGY CO., LTD. AORUS
-    # FO27Q2» ate up the outputs table's width.
-    parts = [p for p in (maker(monitor.manufacturer), monitor.model) if p]
-    return " ".join(parts) if parts else (monitor.manufacturer_id or DASH)
+    # FO27Q2» ate up the outputs table's width. And once: many models start
+    # with it («LG HDR 4K», «ASUS VA24E»).
+    return (with_maker(monitor.manufacturer, monitor.model)
+            or maker(monitor.manufacturer) or monitor.manufacturer_id or DASH)
 
 
 def monitor_diagonal(monitor: Optional[Edid]) -> Optional[str]:
