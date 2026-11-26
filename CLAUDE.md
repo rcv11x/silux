@@ -522,6 +522,25 @@ del repositorio.
   de desarrollo, unas 250. Si crece, se parte o se lleva el detalle a su
   sitio.
 
+**Las notas de una versión y su entrada del CHANGELOG** (desde la prueba13;
+las anteriores se quedan como están), como las de Waywallen o Heroic:
+
+- Cuatro apartados: Highlights, Improved, Fixed y Known issues (en español,
+  Novedades, Mejoras, Arreglos y Problemas conocidos).
+- Una idea por punto, en una línea. Sin punto y coma encadenando cosas.
+- Pueden ser largas: van todos los arreglos y mejoras que se notan, no solo
+  los principales. Un fallo de algo nuevo en esa versión no va en Fixed: nadie
+  lo vio publicado.
+- Algo técnico vale si ayuda a entender qué cambia (un modelo, un driver, un
+  sistema de archivos), sin el porqué interno: eso va en los commits.
+- Una cifra de validación dice contra qué y dónde («within 1 % on sequential,
+  on ext4»); lo que no cuadra va a Known issues.
+- Primero en inglés, y debajo en español dentro de
+  `<details><summary>Español</summary>`.
+- La tabla de descarga, solo dos filas: el normal («This one: works on almost
+  any PC») y el compat («Only if the normal one tells you it won't run on
+  your PC»). La plantilla está en `.github/release-notes.md`.
+
 El porqué de cada convención: [docs/convenciones.md](docs/convenciones.md).
 
 ## Lo que queda por arreglar
