@@ -6,15 +6,6 @@ How to open Silux, what it does in the terminal, how to send a report when
 something goes wrong, and which data need administrator rights. Which AppImage to
 pick is in [compatibility](compatibility.md).
 
-![Home](../capturas/en/inicio.png)
-
-<p>
-  <img src="../capturas/en/cpu.png" width="49%" alt="CPU">
-  <img src="../capturas/en/graficos.png" width="49%" alt="Graphics">
-  <img src="../capturas/en/memoria.png" width="49%" alt="Memory">
-  <img src="../capturas/en/sensores.png" width="49%" alt="Sensors">
-</p>
-
 ## Opening it
 
 ```

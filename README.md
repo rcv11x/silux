@@ -9,6 +9,16 @@ It does what CPU-Z, GPU-Z and HWMonitor do on Windows, in one program, and when 
 
 ![The disk test with its result](capturas/en/disco.png)
 
+| Home | CPU |
+|:---:|:---:|
+| ![Home](capturas/en/inicio.png) | ![CPU](capturas/en/cpu.png) |
+| **Caches** | **Motherboard** |
+| ![Caches](capturas/en/caches.png) | ![Motherboard](capturas/en/placa.png) |
+| **Graphics** | **Storage** |
+| ![Graphics](capturas/en/graficos.png) | ![Storage](capturas/en/almacenamiento.png) |
+| **Sensors** | **Memory test** |
+| ![Sensors](capturas/en/sensores.png) | ![Memory test](capturas/en/prueba-memoria.png) |
+
 ## Download
 
 Every [release](https://github.com/rcv11x/silux/releases) ships two AppImages:

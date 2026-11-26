@@ -96,10 +96,10 @@ class TestTheComparisonNoticesADifference(unittest.TestCase):
         self.assertEqual(english_target("../capturas/es/cpu.png"), "../capturas/en/cpu.png")
 
     def test_a_capture_in_the_other_language(self):
-        text = read("docs/uso.md").replace("capturas/es/cpu.png", "capturas/en/cpu.png")
-        self.assertEqual(sections(read("docs/usage.md")), sections(text, True))
-        text = read("docs/uso.md").replace("capturas/es/cpu.png", "capturas/es/memoria.png")
-        self.assertNotEqual(sections(read("docs/usage.md")), sections(text, True))
+        text = read("README.es.md").replace("capturas/es/cpu.png", "capturas/en/cpu.png")
+        self.assertEqual(sections(read("README.md")), sections(text, True))
+        text = read("README.es.md").replace("capturas/es/cpu.png", "capturas/es/placa.png")
+        self.assertNotEqual(sections(read("README.md")), sections(text, True))
 
     def test_a_missing_section(self):
         text = read("README.md").replace("## Roadmap", "Roadmap")
