@@ -46,9 +46,9 @@ from ..widgets import (
     Fact,
     FoldingRow,
     Notice,
+    PageRoot,
     ProgressLine,
     RateBar,
-    ReadableRoot,
     ResponsiveRow,
     ScrollPage,
     Table,
@@ -685,7 +685,7 @@ class DiskTestTab(ScrollPage):
 
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        root = ReadableRoot()
+        root = PageRoot()
         self.setWidget(root)
         layout = root.column
         layout.addWidget(self._build_header())

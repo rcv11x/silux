@@ -619,7 +619,9 @@ class TestTitlesOverTheirFigures(TabCase):
 
 
 class TestWideScreens(TabCase):
-    def test_the_content_keeps_to_a_readable_width_and_stays_centred(self):
+    def test_the_content_takes_the_width_as_every_page(self):
+        from silux.ui import theme
+
         tab = self.tab()
         tab.show_result(recorded())
         tab.resize(2560, 1300)
@@ -627,10 +629,9 @@ class TestWideScreens(TabCase):
             self.app.processEvents()
         root = tab.widget()
         card = tab.result_card
-        self.assertLessEqual(card.width(), root.content_width())
         left = card.mapTo(root, card.rect().topLeft()).x()
         right = root.width() - left - card.width()
-        self.assertLessEqual(abs(left - right), 2)
+        self.assertEqual((left, right), (theme.METRICS.page_margin,) * 2)
 
     def test_a_narrow_window_keeps_its_usual_margins(self):
         from silux.ui import theme

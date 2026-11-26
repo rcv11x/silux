@@ -35,8 +35,8 @@ from ..widgets import (
     FoldingRow,
     InfoGrid,
     Notice,
+    PageRoot,
     ProgressLine,
-    ReadableRoot,
     ResponsiveRow,
     ScrollPage,
     Table,
@@ -81,7 +81,7 @@ class PerformancePage(ScrollPage):
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        root = ReadableRoot()
+        root = PageRoot()
         self.setWidget(root)
         self._layout = root.column
 

@@ -621,8 +621,8 @@ class TestWhatAResultShows(TabCase):
                         self.assertIn(full, title.toolTip())
                     self.assertIn(SINGLE, title.toolTip())
 
-    def test_on_a_wide_screen_both_tabs_keep_to_the_same_width(self):
-        """At 1920 px the cards went from side to side of the page."""
+    def test_on_a_wide_screen_both_tabs_take_the_width_as_every_page(self):
+        """The cards go across the page, inside its margins, in both tabs."""
         from silux.settings import Preferences
         from silux.ui import theme
         from silux.ui.pages.memtest import MemoryTestTab
@@ -638,19 +638,13 @@ class TestWhatAResultShows(TabCase):
             tab.resize(1690, 1100)
         for _turn in range(5):
             self.app.processEvents()
-        from PySide6.QtGui import QFontMetrics
-
-        character = QFontMetrics(theme.ui_font(theme.METRICS.base_pt)).averageCharWidth()
         widths = []
         for tab, card in ((disk, disk.result_card), (memory, memory.result_card)):
             root = tab.widget()
-            self.assertLess(root.content_width(), 1690 - 2 * theme.METRICS.page_margin)
-            self.assertLessEqual(card.width(), root.content_width())
-            # No wider than a long line of text, whatever the letter.
-            self.assertLessEqual(card.width() / character, 120)
+            margins = root.column.contentsMargins()
+            self.assertEqual(card.width(), root.width() - margins.left() - margins.right())
             widths.append(card.width())
         self.assertEqual(widths[0], widths[1])
-        self.assertLessEqual(disk.place_box.width(), disk.widget().content_width())
 
     def test_on_a_wide_screen_the_tabs_start_where_the_column_does(self):
         from silux.settings import Preferences
@@ -670,7 +664,8 @@ class TestWhatAResultShows(TabCase):
                     root = page.stack.currentWidget().widget()
                     first = page.buttons["cpu"]
                     self.assertEqual(first.mapTo(page, first.rect().topLeft()).x(),
-                                     root.mapTo(page, root.rect().topLeft()).x() + root.side())
+                                     root.mapTo(page, root.rect().topLeft()).x()
+                                     + root.column.contentsMargins().left())
 
     def test_start_ends_the_row_of_choices_on_the_right_as_the_main_button(self):
         tab = self.tab()

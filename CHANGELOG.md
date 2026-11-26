@@ -26,6 +26,7 @@ que hace falta.
 - El anexo del informe ya no toma por dormida una gráfica que el sistema tiene para una máquina virtual, y dice que es suya
 - El anexo guarda dónde empieza cada partición, para saber en qué parte del plato se hizo una prueba de disco
 - `--json` dice a qué velocidad va cada módulo de memoria
+- Rendimiento ocupa todo el ancho de la ventana, como las demás páginas: en una pantalla ancha dejaba mucho hueco a los lados
 
 ### Arreglos
 

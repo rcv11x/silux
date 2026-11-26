@@ -60,53 +60,6 @@ class TestAfterTheQuickTest(unittest.TestCase):
                 settle(self.app)
             root = tab.widget()
             self.assertLessEqual(root.width(), tab.viewport().width())
-            self.assertLessEqual(root.side(), root.content_width())
-            # The tab buttons follow the column, inside the window too.
+            # The tab buttons inside the window too.
             self.assertLessEqual(page.buttons["cpu"].mapTo(window, page.buttons["cpu"].rect()
                                                            .topLeft()).x(), window.width())
-
-
-class TestReadableRoot(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        from silux.ui import theme
-
-        cls.app = app()
-        theme.apply(cls.app, "dark", "normal")
-
-    def area(self, text: str):
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QLabel, QScrollArea
-
-        from silux.ui.widgets import ReadableRoot
-
-        area = QScrollArea()
-        area.setWidgetResizable(True)
-        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        root = ReadableRoot()
-        area.setWidget(root)
-        label = QLabel(text)
-        root.column.addWidget(label)
-        area.resize(800, 400)
-        area.show()
-        self.addCleanup(area.deleteLater)
-        return area, root, label
-
-    def test_content_wider_than_the_column_does_not_feed_the_margins(self):
-        area, root, label = self.area("")
-        label.setText("x " * (root.content_width() // 4))
-        widths = []
-        for _turn in range(5):
-            # Another layout pass with nothing changed, as a sample brings.
-            label.updateGeometry()
-            settle(self.app)
-            widths.append(root.width())
-        self.assertEqual(len(set(widths)), 1, widths)
-        self.assertLessEqual(root.width(), label.minimumSizeHint().width()
-                             + 2 * root.column.contentsMargins().left() + 2)
-
-    def test_a_wide_window_still_centres_the_column(self):
-        area, root, _label = self.area("short")
-        area.resize(root.content_width() + 600, 400)
-        settle(self.app)
-        self.assertGreaterEqual(root.side(), 290)

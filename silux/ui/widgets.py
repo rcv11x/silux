@@ -2374,19 +2374,9 @@ class _CuerpoDeTabla(QWidget):
         return resultado
 
 
-class ReadableRoot(QWidget):
-    """A page's root that keeps its content to a readable width. On a wide
-    screen the cards stretched across it, four tiles of a number each took a
-    quarter of two thousand pixels and the tables stayed on the left: beyond
-    the cap the side margins grow and the column stays centred. The cap is in
-    characters of the interface font, so it follows the font size. At 190 a
-    1920 px window still stretched «Where» to 1500 px and set a cache's
-    figure at the far end of its name."""
-
-    CHARACTERS = 120
-
-    # The margin at each side changed: what sits above the column follows it.
-    side_changed = Signal(int)
+class PageRoot(QWidget):
+    """A page's root inside its scroll area: the page's margins and its
+    content in `column`, across the whole width, as every other page."""
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -2396,25 +2386,6 @@ class ReadableRoot(QWidget):
         self.column.setContentsMargins(m.page_margin, m.page_margin,
                                        m.page_margin, m.page_margin)
         self.column.setSpacing(m.section_gap)
-
-    def content_width(self) -> int:
-        return QFontMetrics(ui_font(theme.METRICS.base_pt)).averageCharWidth() * self.CHARACTERS
-
-    def side(self) -> int:
-        return self.column.contentsMargins().left()
-
-    def resizeEvent(self, event) -> None:  # noqa: N802
-        margin = theme.METRICS.page_margin
-        # The margins count towards this widget's minimum width. Centred on
-        # the cap alone, content wider than the cap made the page wider, the
-        # margins grew with it, and so on with every layout pass.
-        margins = self.column.contentsMargins()
-        content = self.column.minimumSize().width() - margins.left() - margins.right()
-        side = max(margin, (self.width() - max(self.content_width(), content)) // 2)
-        if self.side() != side:
-            self.column.setContentsMargins(side, margin, side, margin)
-            self.side_changed.emit(side)
-        super().resizeEvent(event)
 
 
 class ProgressLine(QWidget):
