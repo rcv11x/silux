@@ -889,11 +889,12 @@ class TestRunningAndFailing(TabCase):
             return disktest.Result(reason="cancelled")
 
         def say(message) -> None:
+            """Until the tab has taken it: on a loaded machine the thread
+            takes its time, and the step it notes comes before its signal."""
             steps.put(message)
-            # On a loaded machine the thread takes its time to say it.
             for _turn in range(500):
                 QTest.qWait(10)
-                if tab._run.last == message:
+                if message in heard:
                     break
             for _turn in range(3):
                 self.app.processEvents()
@@ -901,6 +902,9 @@ class TestRunningAndFailing(TabCase):
         tab = self.tab()
         tab.resize(1200, 900)
         rows = tab.rows
+        # After the tab's own: what is heard here, the tab has handled.
+        heard: list = []
+        tab._run.progressed.connect(heard.append)
         with mock.patch.object(disktest, "run", run):
             tab.start()
             self.addCleanup(lambda: tab._run._thread and tab._run._thread.join())
