@@ -45,6 +45,9 @@ PAUSE_SECONDS = 5.0
 # A test whose laps are scattered above this is flagged, as in the memory
 # test: the median absolute deviation over the median.
 NOISY_SPREAD = 0.05
+# A change from the test before smaller than this is within what the same
+# disk moves from one test to the next: noise.
+NOISE = 0.03
 
 HISTORY_VERSION = 1
 MAX_ENTRIES = 60
@@ -126,6 +129,25 @@ PROFILES = {
     # What almost every program asks of a disk: one request at a time.
     "real": (Test("sequential", MIB, 1), Test("random", 4 * KIB, 1)),
 }
+
+
+def previous(result: "Result", history: Sequence["Result"]) -> Optional["Result"]:
+    """The test before `result` of the same disk, engine and profile, the
+    only one its figures compare with; `history` newest first."""
+    return next((older for older in history
+                 if older.timestamp < result.timestamp and older.measured
+                 and (older.profile, older.engine) == (result.profile, result.engine)
+                 and older.is_of(result.disks, result.model)), None)
+
+
+def change(now: Optional["Measure"], before: Optional["Measure"]) -> Optional[float]:
+    """How much a figure moved from the same test before, as a fraction of
+    that one's; None without both."""
+    new = now.median if now is not None else None
+    old = before.median if before is not None else None
+    if new is None or old is None or not old.bytes_per_second:
+        return None
+    return new.bytes_per_second / old.bytes_per_second - 1
 
 
 def headline_test(profile: str) -> str:

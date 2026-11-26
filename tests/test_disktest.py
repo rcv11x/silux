@@ -776,3 +776,43 @@ class TestHistory(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAgainstTheTestBefore(unittest.TestCase):
+    """What each figure is compared with, and how its change is written."""
+
+    def test_the_test_before_is_the_last_of_the_same_disk_engine_and_profile(self):
+        newer = recorded("sn850x-btrfs")
+        at = newer.timestamp
+
+        def run(hours: float, **changes) -> disktest.Result:
+            return dataclasses.replace(newer, timestamp=at - hours * 3600, **changes)
+
+        same = run(48)
+        history = [newer,
+                   run(1, engine="threads"),
+                   run(2, profile="real"),
+                   run(3, disks=("nvme1n1",)),
+                   run(4, model="Another disk"),
+                   run(5, measures=()),
+                   same,
+                   run(72)]
+        self.assertIs(disktest.previous(newer, history), same)
+        self.assertIsNone(disktest.previous(run(96), history))
+
+    def test_a_change_is_against_the_figure_before(self):
+        now = recorded("sn850x-btrfs").measures[0]
+        before = dataclasses.replace(now, laps=tuple(
+            dataclasses.replace(lap, bytes_per_second=lap.bytes_per_second // 2)
+            for lap in now.laps))
+        self.assertAlmostEqual(disktest.change(now, before), 1.0, places=3)
+        self.assertAlmostEqual(disktest.change(before, now), -0.5, places=3)
+        self.assertIsNone(disktest.change(now, None))
+
+    def test_it_is_written_with_its_arrow_and_without_one_at_nothing(self):
+        from silux import render
+
+        self.assertEqual(render.change(0.10), "▲ 10 %")
+        self.assertEqual(render.change(-0.12), "▼ 12 %")
+        self.assertEqual(render.change(0.004), "0 %")
+        self.assertEqual(render.change(None), render.DASH)

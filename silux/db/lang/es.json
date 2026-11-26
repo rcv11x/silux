@@ -576,6 +576,8 @@
   "disktest.action.fits": "Probar con {size}",
   "disktest.action.folder": "Elegir otra carpeta",
   "disktest.action.smaller": "Probar con un archivo más pequeño",
+  "disktest.change.column": "Cuánto cambió cada cifra respecto a la prueba anterior del mismo disco y perfil; en gris, lo que está dentro del ruido (menos del {noise}).",
+  "disktest.change.tip": "Respecto a la prueba del {when}, del mismo disco y perfil.",
   "disktest.col.best": "Mejor",
   "disktest.col.first": "Previa",
   "disktest.col.history": "{test}, {direction}",

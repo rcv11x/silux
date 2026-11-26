@@ -947,6 +947,70 @@ class TestRunningAndFailing(TabCase):
         self.assertIn("6 592", visible_texts(tab))
 
 
+def moved(result: disktest.Result, factors: dict, timestamp: float) -> disktest.Result:
+    """The same run with some figures multiplied: another test of the same
+    disk, when the disk went faster or slower."""
+    measures = tuple(dataclasses.replace(measure, laps=tuple(
+        dataclasses.replace(lap, bytes_per_second=round(
+            lap.bytes_per_second * factors.get((measure.name, measure.direction), 1.0)))
+        for lap in measure.laps)) for measure in result.measures)
+    return dataclasses.replace(result, measures=measures, timestamp=timestamp)
+
+
+class TestAgainstTheTestBefore(TabCase):
+    """Each figure says how much it moved from the test before of the same
+    disk, engine and profile; in grey under 3 %, which is noise."""
+
+    def setUp(self):
+        super().setUp()
+        newer = recorded("sn850x-btrfs")
+        self.before = moved(newer, {("SEQ1M Q8T1", "read"): 1 / 1.10,
+                                    ("RND4K Q1T1", "read"): 1 / 1.01},
+                            newer.timestamp - 86_400)
+        # Between them, a run through threads: another engine, not compared.
+        threads = dataclasses.replace(recorded("sn850x-btrfs-threads"),
+                                      timestamp=newer.timestamp - 3_600)
+        disktest.save_history([newer, threads, self.before])
+
+    def test_the_result_says_it_under_each_figure(self):
+        tab = self.tab()
+        changes = tab.rows.changes
+        grown, noise = changes["SEQ1M Q8T1", "read"], changes["RND4K Q1T1", "read"]
+        self.assertTrue(grown.isVisibleTo(tab))
+        self.assertEqual(grown.text().replace("\u00a0", " "), "▲ 10 %")
+        self.assertEqual(grown.objectName(), "")
+        self.assertEqual(noise.text().replace("\u00a0", " "), "▲ 1 %")
+        self.assertEqual(noise.objectName(), "Muted")
+        self.assertEqual(changes["RND4K Q32T1", "write"].text(), "0 %")
+        self.assertIn(disktest_page().when(self.before.timestamp), grown.toolTip())
+        # Under its figure.
+        figure = tab.rows._cells["SEQ1M Q8T1", "read"][1]
+        self.assertGreaterEqual(grown.mapTo(tab, grown.rect().topLeft()).y(),
+                                figure.mapTo(tab, figure.rect().bottomLeft()).y())
+
+    def test_a_first_test_has_nothing_to_compare_with(self):
+        disktest.save_history([recorded("sn850x-btrfs")])
+        tab = self.tab()
+        self.assertFalse(any(change.isVisibleTo(tab) for change in tab.rows.changes.values()))
+        _heading, table = tab.history_tables[0]
+        self.assertNotIn("%", visible_texts(table))
+
+    def test_the_history_says_it_on_each_row(self):
+        tab = self.tab()
+        tab.resize(1690, 900)
+        for _turn in range(4):
+            self.app.processEvents()
+        tables = {heading.text(): table for heading, table in tab.history_tables}
+        table = next(t for heading, t in tables.items()
+                     if _(disktest_page().ENGINES["uring"]) in heading)
+        newer, older = table._cells
+        texts = [cell.text().replace("\u00a0", " ") for cell in newer]
+        self.assertIn("▲ 10 %", texts)
+        self.assertTrue(all(cell.text() == "" for cell in older[2:-1:2]))
+        quiet = next(cell for cell in newer if cell.text().replace("\u00a0", " ") == "▲ 1 %")
+        self.assertEqual(quiet.property("tone"), "muted")
+
+
 class TestWhereTheFileLay(TabCase):
     """A hard disk with ext4 on a partition, as the home's."""
 

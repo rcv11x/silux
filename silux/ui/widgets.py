@@ -2772,11 +2772,12 @@ class Table(QScrollArea):
         self._anchos = [0] * len(self._headers)
 
     def set_cell_tone(self, fila: int, columna: int, tono: str) -> None:
-        """El tono de una celda: «yes», «no» o ninguno.
+        """A cell's tone: «yes», «no», «muted» or none.
 
-        Para un sí o un no que se lee de un vistazo. El color lo pone la hoja
-        de estilos; el símbolo lo pone quien llama, porque el color solo no
-        puede ser lo único que distinga una cosa de la otra.
+        A yes or a no is read at a glance: the style sheet gives its colour
+        and the caller its symbol, as colour alone can't be all that tells
+        them apart. «muted» greys a figure that doesn't weigh, such as a
+        change within the noise.
         """
         if fila < len(self._cells) and columna < len(self._cells[fila]):
             celda = self._cells[fila][columna]
@@ -2785,7 +2786,7 @@ class Table(QScrollArea):
                 # Un símbolo suelto en la letra de las cifras es un trazo fino
                 # que se pierde: va en la de la interfaz, más grande y gruesa.
                 celda.setFont(ui_font(theme.METRICS.base_pt + 2, QFont.Weight.Bold)
-                              if tono else value_font())
+                              if tono in ("yes", "no") else value_font())
                 celda.setMinimumHeight(celda.fontMetrics().height())
                 celda.style().unpolish(celda)
                 celda.style().polish(celda)

@@ -380,6 +380,17 @@ def whole_percent(value: Optional[float]) -> str:
     return DASH if _none(value) else f"{float(value):.0f} %"
 
 
+def change(fraction: Optional[float]) -> str:
+    """«▲ 3 %», «▼ 12 %»: how much a figure moved, as a fraction of the one
+    before; without an arrow where it rounds to nothing."""
+    if _none(fraction):
+        return DASH
+    percent = whole_percent(abs(fraction) * 100)
+    if percent == whole_percent(0):
+        return percent
+    return f"{'▲' if fraction > 0 else '▼'}\u00a0{percent}"
+
+
 def multiplier(value: Optional[float]) -> str:
     return DASH if _none(value) else f"× {float(value):.1f}"
 

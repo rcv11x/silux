@@ -372,6 +372,7 @@ class TestRows(QWidget):
         self._tests: tuple = ()
         self._writes: Optional[bool] = None
         self._cells: dict[tuple[str, str], tuple[RateBar, QLabel]] = {}
+        self.changes: dict[tuple[str, str], QLabel] = {}
         self.names: list[QWidget] = []
         self._axes: list[QWidget] = []
         self._barred = True
@@ -434,9 +435,21 @@ class TestRows(QWidget):
             for index, direction in enumerate(directions):
                 bar = RateBar(self._p, SCALE, tone=TONES[direction], height=self.BAR)
                 figure = self._figure()
+                # Under the figure, how much it moved from the test before.
+                change = QLabel("")
+                change.setFont(ui_font(theme.METRICS.small_pt - 1))
+                change.setAlignment(Qt.AlignmentFlag.AlignRight)
+                change.hide()
+                stack = QWidget()
+                inside = QVBoxLayout(stack)
+                inside.setContentsMargins(0, 0, 0, 0)
+                inside.setSpacing(0)
+                inside.addWidget(figure)
+                inside.addWidget(change)
                 self._grid.addWidget(bar, row, 1 + 2 * index)
-                self._grid.addWidget(figure, row, 2 + 2 * index)
+                self._grid.addWidget(stack, row, 2 + 2 * index)
                 self._cells[test.name, direction] = (bar, figure)
+                self.changes[test.name, direction] = change
         # Every row as tall as the tallest: a name never takes two lines,
         # and the figures line up whatever the test.
         tallest = max((name.sizeHint().height() for name in self.names), default=0)
@@ -482,7 +495,7 @@ class TestRows(QWidget):
         """The tests to show, each with nothing measured yet."""
         if (tests, writes) != (self._tests, self._writes):
             clear_layout(self._grid)
-            self._cells = {}
+            self._cells, self.changes = {}, {}
             self._build(tests, writes)
             self._tests, self._writes = tests, writes
             # New bars are shown: whether they fit is decided again.
@@ -493,8 +506,24 @@ class TestRows(QWidget):
             figure.setText(render.DASH)
             figure.setToolTip("")
             self._tint(figure, False)
+        for change in self.changes.values():
+            change.hide()
         self.set_running(None)
         self._fit_gaps()
+
+    def set_change(self, name: str, direction: str, fraction: Optional[float],
+                   tip: str = "") -> None:
+        """How much a figure moved from the test before; in grey where that
+        is within the noise, and nothing without one."""
+        change = self.changes.get((name, direction))
+        if change is None:
+            return
+        change.setVisible(fraction is not None)
+        if fraction is None:
+            return
+        change.setText(render.change(fraction))
+        change.setToolTip(tip)
+        self._tint(change, abs(fraction) < disktest.NOISE)
 
     def set_running(self, name: Optional[str]) -> None:
         """The test under way, or none."""
@@ -1344,6 +1373,12 @@ class DiskTestTab(ScrollPage):
                 best=megabytes(measure.best.bytes_per_second)) if measure.noisy else ""
             self.rows.set_cell(measure.name, measure.direction,
                                middle.bytes_per_second if middle else None, note=note)
+        before = disktest.previous(result, self._history)
+        if before is not None:
+            tip = _("disktest.change.tip").format(when=when(before.timestamp))
+            for measure in result.measures:
+                self.rows.set_change(measure.name, measure.direction, disktest.change(
+                    measure, before.measure(measure.name, measure.direction)), tip)
 
         fastest = {direction: max((m.median.bytes_per_second for m in result.measures
                                    if m.direction == direction and m.pattern == "sequential"
@@ -1471,30 +1506,52 @@ class DiskTestTab(ScrollPage):
             writes = any(m.direction == "write" for r in results for m in r.measures)
             columns = [(sequential, "read")] + ([(sequential, "write")] if writes else []) \
                 + [(SINGLE, "read")]
-            # Each test in words, as the table above names it, with its code
-            # on hovering: «Sequential, read». In a narrow window, without
-            # how many requests at a time: it took four lines.
-            table = Table([_("memtest.col.date")]
-                          + [history_title(tests[name], direction) for name, direction in columns]
-                          + [_("disktest.col.hottest")],
-                          numeric=(False,) + (True,) * (len(columns) + 1),
+            # With more than one test, each figure with how much it moved from
+            # the one before, in a column of its own: in grey where that is
+            # noise. In a narrow window those go first.
+            compared = len(results) > 1
+            step = 2 if compared else 1
+            figures = [1 + step * index for index in range(len(columns))]
+            changes = [column + 1 for column in figures] if compared else []
+            hottest = 1 + step * len(columns)
+            titles = [_("memtest.col.date")]
+            for name, direction in columns:
+                # Each test in words, as the table above names it, with its
+                # code on hovering: «Sequential, read».
+                titles += [history_title(tests[name], direction)] + ([""] if compared else [])
+            table = Table(titles + [_("disktest.col.hottest")],
+                          numeric=(False,) + (True,) * (len(titles)),
                           # In a narrow window, rather than cut it.
-                          spare=(len(columns) + 1,),
-                          short={index: history_title(tests[name], direction, kind_words)
-                                 for index, (name, direction) in enumerate(columns, start=1)
+                          spare=(hottest, *changes),
+                          # In a narrow window, without how many requests at
+                          # a time: it took four lines.
+                          short={column: history_title(tests[name], direction, kind_words)
+                                 for column, (name, direction) in zip(figures, columns)
                                  if kind_words(tests[name]) != test_words(tests[name])})
-            for column, (name, direction) in enumerate(columns, start=1):
+            for column, (name, direction) in zip(figures, columns):
                 table.set_header_tooltip(column, f"{ran[name]} · {_(DIRECTIONS[direction])}")
-            rows = []
-            for result in results:
+            for column in changes:
+                table.set_header_tooltip(column, _("disktest.change.column").format(
+                    noise=render.whole_percent(disktest.NOISE * 100)))
+            rows, noise = [], []
+            for row, result in enumerate(results):
+                before = disktest.previous(result, results)
                 cells = [result.label or when(result.timestamp)]
                 for name, direction in columns:
                     measure = result.measure(name, direction)
                     middle = measure.median if measure is not None else None
                     cells.append(megabytes(middle.bytes_per_second) if middle else render.DASH)
+                    if compared:
+                        moved = disktest.change(measure, before.measure(name, direction)) \
+                            if before is not None else None
+                        cells.append(render.change(moved) if moved is not None else "")
+                        if moved is not None and abs(moved) < disktest.NOISE:
+                            noise.append((row, len(cells) - 1))
                 cells.append(render.temperature(result.temperature_peak_c, fahrenheit))
                 rows.append(cells)
             table.set_rows(rows)
+            for row, column in noise:
+                table.set_cell_tone(row, column, "muted")
             heading = QLabel(" · ".join(part for part in (
                 disk, _(ENGINES[engine]) if engine in ENGINES else "",
                 _(PROFILE_NAMES[profile]) if profile in PROFILE_NAMES else profile) if part))
