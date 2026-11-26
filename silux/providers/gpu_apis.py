@@ -352,13 +352,15 @@ def _driver_version(device: dict) -> Optional[str]:
     """Vulkan gives the driver version in 32 bits, not packed the same by all.
 
     Almost all follow the API's own split (10, 10 and 12 bits), which gives
-    Mesa as 26.2.1. NVIDIA uses its own, and read the standard way it gives a
-    number that looks like nothing.
+    Mesa as 26.2.1. NVIDIA's driver uses its own, and read the standard way it
+    gives a number that looks like nothing. Mesa's driver for NVIDIA cards
+    (NVK) packs Mesa's: the card's maker does not decide it, the driver does.
     """
     raw = device.get("driver_version")
     if not raw:
         return None
-    if device.get("vendor_id") == 0x10DE:
+    if (device.get("vendor_id") == 0x10DE
+            and not _VULKAN_IMPLEMENTATION.search(device.get("name") or "")):
         # Two digits in the last part, as NVIDIA writes it: 595.104.02.
         return f"{(raw >> 22) & 0x3FF}.{(raw >> 14) & 0xFF}.{(raw >> 6) & 0xFF:02d}"
     return f"{(raw >> 22) & 0x7F}.{(raw >> 12) & 0x3FF}.{raw & 0xFFF}"

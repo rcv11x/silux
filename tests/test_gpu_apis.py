@@ -95,11 +95,24 @@ class TestVersiones(unittest.TestCase):
     def test_nvidia_empaqueta_la_suya_de_otra_forma(self):
         # Con el reparto de Vulkan, 0x23DFC0C0 daría un número sin sentido.
         nvidia = dict(VULKAN_AMD, vendor_id=0x10DE, device_id=0x2684,
+                      name="NVIDIA GeForce RTX 4090",
                       driver_version=(580 << 22) | (65 << 14) | (6 << 6))
         draft = _recolectar([{"vendor_id": 0x10DE, "device_id": 0x2684}], vulkan=[nvidia])
         # Its last part has two digits: the driver is 580.65.06. A tester's
         # report read «595.104.2» where nvidia-smi says 595.104.02.
         self.assertEqual(draft.gpus[0]["apis"][0].driver, "580.65.06")
+
+    def test_nvk_packs_hers_as_mesa(self):
+        # Mesa's Vulkan driver for NVIDIA cards: an NVIDIA card, Mesa's
+        # version. Read NVIDIA's way, Mesa 26.2.7 came out as «26.0.128».
+        nvk = dict(VULKAN_AMD, vendor_id=0x10DE, device_id=0x1C03,
+                   name="NVIDIA GeForce GTX 1060 6GB (NVK GP106)",
+                   driver_version=(26 << 22) | (2 << 12) | 7)
+        draft = _recolectar([{"vendor_id": 0x10DE, "device_id": 0x1C03, "driver": "nouveau"}],
+                            vulkan=[nvk])
+        vulkan = draft.gpus[0]["apis"][0]
+        self.assertEqual(vulkan.implementation, "nvk")
+        self.assertEqual(vulkan.driver, "26.2.7")
 
     def test_llvmpipe_is_not_the_cards_driver(self):
         # A tester's QEMU guest: Mesa's llvmpipe answered OpenGL, and its
