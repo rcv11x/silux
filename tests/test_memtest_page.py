@@ -103,11 +103,21 @@ class TestWhatAResultShows(TabCase):
             header = header.parentWidget()
         bottom = header.height() - tab.run_button.mapTo(header, tab.run_button.rect().bottomLeft()).y()
         self.assertLessEqual(bottom, theme.METRICS.card_pad_v + 2)
+        from silux.ui.widgets import Divider
+
+        # Twice the air it had; and the progress, under a line that goes with it.
+        self.assertGreaterEqual(vertical_gap(tab, tab.intro, tab.run_button) - inside,
+                                2 * theme.METRICS.card_gap)
+        self.assertFalse(any(d.isVisibleTo(tab) for d in tab.progress.findChildren(Divider)))
         tab.progress.show()
         for _turn in range(3):
             self.app.processEvents()
         self.assertGreaterEqual(vertical_gap(tab, tab.run_button, tab.progress.label) - inside,
                                 theme.METRICS.card_gap)
+        line = tab.progress.findChildren(Divider)[0]
+        self.assertTrue(line.isVisibleTo(tab))
+        self.assertGreater(vertical_gap(tab, tab.run_button, line), 0)
+        self.assertGreater(vertical_gap(tab, line, tab.progress.label), 0)
 
     def test_each_level_with_its_cycles_and_the_clock_it_ran_at(self):
         tab = self.tab()

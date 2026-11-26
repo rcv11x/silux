@@ -2417,18 +2417,27 @@ class ProgressLine(QWidget):
     of their own, over a thin bar. Written on the bar, the text fell half on
     the fill and half off it, and the percentage read badly at the edge."""
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    # How thick the bar is; its ends are round (the style sheet).
+    BAR = 6
+
+    def __init__(self, parent: Optional[QWidget] = None, divided: bool = False,
+                 air: int = 0):
+        """`divided`: a thin line over it, `air` away above and below, that
+        goes with it when it is hidden."""
         super().__init__(parent)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, air if divided else 0, 0, 0)
         layout.setSpacing(4)
+        if divided:
+            layout.addWidget(Divider())
+            layout.addSpacing(max(0, air - layout.spacing()))
         self.label = QLabel("")
         self.label.setObjectName("Muted")
         self.label.setWordWrap(True)
         self.bar = QProgressBar()
         self.bar.setRange(0, 100)
         self.bar.setTextVisible(False)
-        self.bar.setFixedHeight(6)
+        self.bar.setFixedHeight(self.BAR)
         layout.addWidget(self.label)
         layout.addWidget(self.bar)
 

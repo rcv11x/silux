@@ -605,6 +605,8 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QScrollArea {{ background: transparent; border: none; }}
     QScrollArea > QWidget > QWidget {{ background: transparent; }}
     QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}
+    QProgressBar {{ background: {p.track}; border: none; border-radius: 3px; }}
+    QProgressBar::chunk {{ background: {p.accent}; border-radius: 3px; }}
     QScrollBar::handle:vertical {{ background: {p.line}; border-radius: 4px; min-height: 28px; }}
     QScrollBar::handle:vertical:hover {{ background: {p.muted}; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}

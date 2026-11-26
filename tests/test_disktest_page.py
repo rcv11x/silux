@@ -181,10 +181,43 @@ class TestBeforeAnyTest(TabCase):
         intro = next(label for label in tab.findChildren(QLabel)
                      if label.text() == _("disktest.intro"))
         inside = vertical_gap(tab, title, intro)
+        # Twice the air they had.
         self.assertGreaterEqual(vertical_gap(tab, intro, tab.place_box) - inside,
-                                theme.METRICS.card_gap)
+                                2 * theme.METRICS.card_gap)
         self.assertGreaterEqual(vertical_gap(tab, tab.run_button, tab.about) - inside,
-                                theme.METRICS.card_gap)
+                                2 * theme.METRICS.card_gap)
+        # How long it takes and how far, under a line of their own.
+        from silux.ui.widgets import Divider
+
+        line = next(d for d in tab.findChildren(Divider) if d.isVisibleTo(tab))
+        self.assertGreater(vertical_gap(tab, tab.run_button, line), 0)
+        self.assertGreater(vertical_gap(tab, line, tab.about), 0)
+
+    def test_every_control_of_the_header_is_as_tall_as_start(self):
+        """The lists and «Where» were lower than the button."""
+        tab = self.tab()
+        for _turn in range(3):
+            self.app.processEvents()
+        for control in (tab.place_box, tab.profile_box, tab.size_box, tab.laps_box):
+            with self.subTest(control=type(control).__name__):
+                self.assertEqual(control.height(), tab.run_button.height())
+
+    def test_the_progress_bar_is_thick_with_round_ends(self):
+        from PySide6.QtCore import QPoint
+
+        tab = self.tab()
+        bar = tab.progress.bar
+        tab.progress.show()
+        bar.setValue(50)
+        for _turn in range(3):
+            self.app.processEvents()
+        self.assertGreaterEqual(bar.height(), 6)
+        image = tab.grab().toImage()
+        corner = bar.mapTo(tab, QPoint(0, 0))
+        middle = bar.mapTo(tab, QPoint(bar.height(), bar.height() // 2))
+        accent = tab._p.q("accent").rgb()
+        self.assertEqual(image.pixelColor(middle).rgb(), accent)
+        self.assertNotEqual(image.pixelColor(corner).rgb(), accent)
 
     def test_a_table_of_dashes_has_no_bars_where_figures_would_leave_none(self):
         """Before the figures came (a run under way, a disk not yet

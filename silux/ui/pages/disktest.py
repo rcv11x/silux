@@ -41,6 +41,7 @@ from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
+    Divider,
     ElidingComboBox,
     Fact,
     FoldingRow,
@@ -776,8 +777,8 @@ class DiskTestTab(ScrollPage):
         self.cancel_button.hide()
         options.add_widget(self.run_button)
         options.add_widget(self.cancel_button)
-        same_height(self.profile_box, self.size_box, self.laps_box, self.run_button,
-                    self.cancel_button)
+        same_height(self.place_box, self.profile_box, self.size_box, self.laps_box,
+                    self.run_button, self.cancel_button)
 
         self.about = QLabel("")
         self.about.setObjectName("Muted")
@@ -787,13 +788,19 @@ class DiskTestTab(ScrollPage):
         self.blocked_note.hide()
         self.progress = ProgressLine()
         self.progress.hide()
-        # Three groups, with air between them: what it is, the choices, and
-        # how long it takes with how far it has got.
+        # Three groups, apart: what it is, where with the choices, and under
+        # a line, how long it takes with how far it has got.
+        air = card.body.spacing()
         card.body.addWidget(title)
         card.body.addWidget(intro)
+        card.body.addSpacing(2 * (theme.METRICS.card_gap + air))
+        choices = QVBoxLayout()
+        choices.setSpacing(2 * air)
+        choices.addLayout(where)
+        choices.addWidget(options)
+        card.body.addLayout(choices)
         card.body.addSpacing(theme.METRICS.card_gap)
-        card.body.addLayout(where)
-        card.body.addWidget(options)
+        card.body.addWidget(Divider())
         card.body.addSpacing(theme.METRICS.card_gap)
         for widget in (self.about, self.blocked_note, self.progress):
             card.body.addWidget(widget)
