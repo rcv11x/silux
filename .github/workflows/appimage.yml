@@ -206,7 +206,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgl1 libegl1 libxkbcommon-x11-0 libdbus-1-3 \
-            libfontconfig1 libfreetype6 libglib2.0-0
+            libfontconfig1 libfreetype6 libglib2.0-0 squashfs-tools
 
       # Dentro del contenedor y no en el runner. Construido aquí, el paquete
       # se llevaba lo que trajera el runner ese día y no la receta: el de la
@@ -267,16 +267,17 @@ jobs:
               test -s /tmp/s.png || { echo '::error::el compatible no hizo la captura en su suelo'; exit 1; }"
 
       # The file's own icon: file managers read `.DirIcon` (KDE's kio-extras
-      # thumbnailer, AppImageLauncher). Without it Dolphin showed a generic one.
+      # thumbnailer, AppImageLauncher). Read here as one that doesn't follow
+      # links would, straight from the squashfs: the logo itself, 256 px.
       - name: Comprobar el icono del archivo
         run: |
           for ai in silux-x86_64.AppImage silux-x86_64-compat.AppImage; do
-            rm -rf /tmp/icono && mkdir /tmp/icono && cd /tmp/icono
-            "$GITHUB_WORKSPACE/dist/$ai" --appimage-extract .DirIcon > /dev/null
-            "$GITHUB_WORKSPACE/dist/$ai" --appimage-extract silux.png > /dev/null
-            file -L squashfs-root/.DirIcon | grep -q "PNG image data, 256 x 256" \
+            offset=$("dist/$ai" --appimage-offset)
+            unsquashfs -o "$offset" -cat "dist/$ai" silux.png > /tmp/logo.png
+            unsquashfs -o "$offset" -cat "dist/$ai" .DirIcon > /tmp/diricon.png 2> /dev/null \
+              && file /tmp/diricon.png | grep -q "PNG image data, 256 x 256" \
+              && cmp -s /tmp/diricon.png /tmp/logo.png \
               || { echo "::error::$ai: .DirIcon no es el logo en PNG de 256 px"; exit 1; }
-            cd "$GITHUB_WORKSPACE"
           done
 
       # La ventana en una distribución al día, sin un solo aviso: un
