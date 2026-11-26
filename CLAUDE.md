@@ -48,17 +48,17 @@ python3 tools/probar_actualizador.py VIEJO NUEVO  # el actualizador contra un Gi
 uv pip install ./native/silux_bench    # el módulo nativo de las pruebas de memoria y de disco (pide Rust)
 (cd native/silux_bench && cargo test --release && cargo clippy --all-targets --features python -- -D warnings)
 uv sync --extra gui                    # el entorno de desarrollo: pytest y PySide6
-QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"  # la suite, en paralelo: -n 4 como mucho
+QT_QPA_PLATFORM=offscreen uv run pytest -n 4 -m "not a_solas"  # la suite, en paralelo (-n 4 o -n auto: abajo)
 QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas  # los tres que miden, solos
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -t .  # sin instalar nada
 ```
 
 En paralelo, el tiempo es el trabajo total de la suite, no el del test más
-largo. **Una sola suite a la vez, y con `-n 4`
-como mucho**, aunque sea lo único que corre: cada proceso carga Qt, y con
-dos suites a la vez el equipo de la oficina (16 GB) se quedó congelado.
-Nada de agentes en paralelo ni de un contenedor con la suite mientras
-tanto. Las dos pasadas son las del CI: tres tests comparan dos medidas de
+largo. **Una sola suite a la vez**: cada proceso carga Qt, y con dos
+suites a la vez el equipo de la oficina (16 GB) se quedó congelado. Con
+`-n 4` como mucho si otro chat puede estar pasando tests; con `-n auto`
+solo si el autor dice que ese día trabaja uno solo en el equipo. Nada de
+agentes en paralelo ni de un contenedor con la suite mientras tanto. Las dos pasadas son las del CI: tres tests comparan dos medidas de
 rendimiento y van solos (`tests/conftest.py`). Cuántos son lo dice la suite al
 terminar; no se apunta aquí a mano. Si sale bastante menos que en la
 última ejecución, falta algo por recoger. Corren en una carpeta temporal propia
