@@ -1,0 +1,642 @@
+{
+ "amdgpu": {
+  "/dev/dri/renderD128": {
+   "arrays_per_engine": 1,
+   "compute_units": 8,
+   "device_id": 27039,
+   "enabled_rb_mask": 15,
+   "external_rev": 100,
+   "family": 130,
+   "infinity_cache_bytes": null,
+   "is_apu": false,
+   "l2_cache_bytes": null,
+   "max_engine_hz": 1206000000,
+   "max_memory_hz": 1750000000,
+   "render_backends": 4,
+   "shader_engines": 2,
+   "vram_bits": 128,
+   "vram_type": "GDDR5"
+  },
+  "/dev/dri/renderD129": {
+   "arrays_per_engine": 1,
+   "compute_units": 2,
+   "device_id": 5710,
+   "enabled_rb_mask": 1,
+   "external_rev": 2,
+   "family": 149,
+   "infinity_cache_bytes": null,
+   "is_apu": true,
+   "l2_cache_bytes": null,
+   "max_engine_hz": 2200000000,
+   "max_memory_hz": 2400000000,
+   "render_backends": 1,
+   "shader_engines": 1,
+   "vram_bits": 128,
+   "vram_type": "DDR5"
+  }
+ },
+ "amdgpu_vbios": {
+  "/dev/dri/renderD128": {
+   "date": "2019-12-26",
+   "version": "015.050.000.001.000000"
+  },
+  "/dev/dri/renderD129": {
+   "date": "2022-09-26",
+   "version": "032.019.000.008.000000"
+  }
+ },
+ "cpuid": {
+  "*:0:0": [
+   16,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483688,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   10882834,
+   1574912,
+   2128097803,
+   395049983
+  ],
+  "0:2147483649:0": [
+   10882834,
+   0,
+   1975662591,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1702525266,
+   540614766,
+   808466743
+  ],
+  "0:2147483651:0": [
+   758264096,
+   1701998403,
+   1869762592,
+   1936942435
+  ],
+  "0:2147483652:0": [
+   538997359,
+   538976288,
+   538976288,
+   2105376
+  ],
+  "0:7:0": [
+   1,
+   4055865257,
+   4218846,
+   268435472
+  ],
+  "0:7:1": [
+   32,
+   0,
+   0,
+   0
+  ]
+ },
+ "drm_modes": {
+  "card1": {
+   "DP-1": {
+    "height": 2160,
+    "refresh_hz": 60.0,
+    "width": 3840
+   }
+  }
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.60",
+    "renderer": "AMD Ryzen 9 7900 12-Core Processor (radeonsi, raphael_mendocino, ACO, DRM 3.64, 7.0.0-38-generic)",
+    "vendor": "AMD",
+    "version": "4.6 (Compatibility Profile) Mesa 26.0.8-1ubuntu0.3"
+   },
+   "vaapi": [
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Constrained Baseline",
+        "Main",
+        "High"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "MPEG-2",
+       "profiles": [
+        "Simple",
+        "Main"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "VC-1",
+       "profiles": [
+        "Simple",
+        "Main",
+        "Advanced"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Mesa Gallium driver 26.0.8-1ubuntu0.3 for AMD Radeon RX 550 / 550 Series (radeonsi, polaris12, ACO, DRM 3.64, 7.0.0-38-generic)",
+     "node": "renderD128",
+     "version": "1.23"
+    },
+    {
+     "codecs": [
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "AV1",
+       "profiles": [
+        "Profile 0"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": true,
+       "name": "HEVC",
+       "profiles": [
+        "Main",
+        "Main 10"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": true,
+       "name": "H.264",
+       "profiles": [
+        "Constrained Baseline",
+        "Main",
+        "High"
+       ]
+      },
+      {
+       "bits": 10,
+       "decode": true,
+       "encode": false,
+       "name": "VP9",
+       "profiles": [
+        "Profile 0",
+        "Profile 2"
+       ]
+      },
+      {
+       "bits": 8,
+       "decode": true,
+       "encode": false,
+       "name": "JPEG",
+       "profiles": [
+        "Baseline"
+       ]
+      }
+     ],
+     "driver": "Mesa Gallium driver 26.0.8-1ubuntu0.3 for AMD Ryzen 9 7900 12-Core Processor (radeonsi, raphael_mendocino, ACO, DRM 3.64, 7.0.0-38-generic)",
+     "node": "renderD129",
+     "version": "1.23"
+    }
+   ],
+   "vulkan": [
+    {
+     "api_version": "1.4.335",
+     "device_id": 27039,
+     "device_memory_bytes": 4294967296,
+     "driver_version": 109051912,
+     "instance_version": "1.4.341",
+     "kind": "dedicada",
+     "name": "AMD Radeon RX 550 / 550 Series (RADV POLARIS12)",
+     "vendor_id": 4098
+    },
+    {
+     "api_version": "1.4.335",
+     "device_id": 5710,
+     "device_memory_bytes": 22172430336,
+     "driver_version": 109051912,
+     "instance_version": "1.4.341",
+     "kind": "integrada",
+     "name": "AMD Ryzen 9 7900 12-Core Processor (RADV RAPHAEL_MENDOCINO)",
+     "vendor_id": 4098
+    },
+    {
+     "api_version": "1.4.335",
+     "device_id": 0,
+     "device_memory_bytes": 65443549184,
+     "driver_version": 109051912,
+     "instance_version": "1.4.341",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 21.1.8, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "eno1:0x8915": "192.168.1.120",
+  "eno1:0x891b": "255.255.255.0",
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0"
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1002:1640|1002:164e|1002:699f|1002:aae0|1022:15b6|1022:15b7|1022:15b8|1022:15e3|1022:43f6|1022:43fc|10ec:8125|15b7:5006": {
+   "1002:1640": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Radeon High Definition Audio Controller"
+   ],
+   "1002:164e": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Raphael"
+   ],
+   "1002:699f": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Lexa PRO [Radeon 540/540X/550/550X / RX 540X/550/550X]"
+   ],
+   "1002:aae0": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Baffin HDMI/DP Audio [Radeon RX 550 640SP / RX 560/560X]"
+   ],
+   "1022:15b6": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Raphael/Granite Ridge USB 3.1 xHCI"
+   ],
+   "1022:15b7": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Raphael/Granite Ridge USB 3.1 xHCI"
+   ],
+   "1022:15b8": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Raphael/Granite Ridge USB 2.0 xHCI"
+   ],
+   "1022:15e3": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Ryzen HD Audio Controller"
+   ],
+   "1022:43f6": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "600 Series Chipset SATA Controller"
+   ],
+   "1022:43fc": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "800 Series Chipset USB 3.x XHCI Controller"
+   ],
+   "10ec:8125": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8125 2.5GbE Controller"
+   ],
+   "15b7:5006": [
+    "Sandisk Corp",
+    "SanDisk Extreme Pro / WD Black SN750 / PC SN730 / Red SN700 NVMe SSD"
+   ]
+  },
+  "1002:164e|1002:164e:1043:8877": {
+   "1002:164e": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Raphael"
+   ]
+  },
+  "1002:699f|1002:699f:1da2:e367": {
+   "1002:699f": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Lexa PRO [Radeon 540/540X/550/550X / RX 540X/550/550X]"
+   ],
+   "1002:699f:1da2:e367": [
+    "Sapphire Technology Limited",
+    "Lexa PRO [Radeon RX 550]"
+   ]
+  },
+  "1022:14d8|1022:790e": {
+   "1022:14d8": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Raphael/Granite Ridge Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "10ec:8125": {
+   "10ec:8125": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8125 2.5GbE Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1043": "ASUSTeK Computer Inc."
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "ubuntu",
+   "DISPLAY": ":0",
+   "GDMSESSION": "ubuntu",
+   "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": "wayland-0",
+   "XDG_CURRENT_DESKTOP": "ubuntu:GNOME",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 503,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "7.0.0-38-generic",
+   "system": "Linux",
+   "version": "#38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2",
+  "/dev/nvme0n1p3": "/dev/nvme0n1p3",
+  "/dev/sda1": "/dev/sda1",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo:  107193    1197    0    0    0     0          0         0   107193    1197    0    0    0     0       0          0\n  eno1: 82856591   66438    0    0    0     0          0        38  2009473   16299    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  12397 215 9181 1853917 11091 0 185 0 0 0\ncpu0 425 7 397 77326 333 0 147 0 0 0\ncpu1 2452 48 1150 70773 3899 0 10 0 0 0\ncpu2 2518 52 1217 72764 1912 0 7 0 0 0\ncpu3 889 3 572 76157 892 0 9 0 0 0\ncpu4 381 1 355 77541 334 0 1 0 0 0\ncpu5 450 7 377 77488 271 0 1 0 0 0\ncpu6 277 5 278 77890 187 0 0 0 0 0\ncpu7 327 9 327 77754 223 0 0 0 0 0\ncpu8 181 0 245 78097 147 0 0 0 0 0\ncpu9 185 1 244 78051 192 0 0 0 0 0\ncpu10 159 0 215 78187 119 0 0 0 0 0\ncpu11 127 0 205 78232 119 0 0 0 0 0\ncpu12 263 4 278 77910 187 0 0 0 0 0\ncpu13 1047 25 604 76365 588 0 0 0 0 0\ncpu14 864 18 496 76930 253 0 2 0 0 0\ncpu15 425 14 348 77636 186 0 0 0 0 0\ncpu16 239 1 264 78022 116 0 0 0 0 0\ncpu17 256 5 278 77964 145 0 0 0 0 0\ncpu18 154 0 211 78184 137 0 0 0 0 0\ncpu19 204 0 238 78076 142 0 1 0 0 0\ncpu20 153 1 238 77962 295 0 1 0 0 0\ncpu21 151 1 221 78115 195 0 0 0 0 0\ncpu22 131 1 209 78231 103 0 0 0 0 0\ncpu23 126 1 204 78250 106 0 0 0 0 0\nintr 4712399 132 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 806 1 1 1 1 0 0 0 0 1 0 0 0 12765 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 13287 0 25450 0 0 0 0 0 0 0 0 0 0 0 0 0 0 14536 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 6384 10854 2999 5712 2575 3175 1983 3049 2282 2067 1352 2327 1559 1528 1442 2018 1209 1212 1587 1202 1449 9614 3608 2905 2141 0 0 1738 1013 25190 0 137396 1085 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 5354987\nbtime 1795705106\nprocesses 26599\nprocs_running 1\nprocs_blocked 0\nsoftirq 1439521 12681 158905 25 49320 49779 0 688 617213 29 550881\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/gpu_busy_percent": "0\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/hwmon/hwmon7/fan1_input": "1725\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/hwmon/hwmon7/freq1_input": "215850000\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/hwmon/hwmon7/freq2_input": "300000000\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/hwmon/hwmon7/in0_input": "800\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/hwmon/hwmon7/power1_input": "2247000\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0/hwmon/hwmon7/temp1_input": "45000\n",
+  "/sys/devices/pci0000:00/0000:00:02.1/0000:03:00.0/0000:04:0d.0/0000:0b:00.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/stat": "   10933    47724   510234   228749        6        0       24       42        0    39207   228831        0        0        0        0        4       39\n",
+  "/sys/devices/pci0000:00/0000:00:02.1/0000:03:00.0/0000:04:0d.0/0000:0b:00.0/ata1/host0/target0:0:0/0:0:0:0/hwmon/hwmon3/temp1_input": "21000\n",
+  "/sys/devices/pci0000:00/0000:00:02.1/0000:03:00.0/0000:04:0d.0/0000:0b:00.0/ata4/host3/target3:0:0/3:0:0:0/block/sdb/stat": "    6530    15049   186986   162834        6        0       24       44        0    29046   162912        0        0        0        0        4       34\n",
+  "/sys/devices/pci0000:00/0000:00:02.1/0000:03:00.0/0000:04:0d.0/0000:0b:00.0/ata4/host3/target3:0:0/3:0:0:0/hwmon/hwmon4/temp1_input": "21000\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0c:00.0/gpu_busy_percent": "0\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0c:00.0/hwmon/hwmon8/freq1_input": "600000000\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0c:00.0/hwmon/hwmon8/in0_input": "924\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0c:00.0/hwmon/hwmon8/in1_input": "1020\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0c:00.0/hwmon/hwmon8/power1_input": "22050000\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0c:00.0/hwmon/hwmon8/temp1_input": "30000\n",
+  "/sys/devices/pci0000:00/0000:00:14.0/i2c-0/0-0051/hwmon/hwmon5/temp1_input": "24750\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon0/temp1_input": "35625\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon0/temp3_input": "23750\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon0/temp4_input": "24625\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/fan1_input": "836\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/fan2_input": "1327\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/fan3_input": "853\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/fan4_input": "733\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in0_input": "928\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in10_input": "1120\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in11_input": "1120\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in12_input": "1032\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in13_input": "1000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in14_input": "1032\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in15_input": "1016\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in16_input": "1824\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in17_input": "1032\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in1_input": "992\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in2_input": "3392\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in3_input": "3392\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in4_input": "1000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in5_input": "1016\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in6_input": "992\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in7_input": "3392\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in8_input": "3232\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/in9_input": "3392\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp10_input": "0\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp11_input": "0\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp12_input": "0\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp13_input": "35750\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp1_input": "25000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp2_input": "24500\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp3_input": "26000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp4_input": "19000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp5_input": "19000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp6_input": "24000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp7_input": "25000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp8_input": "28000\n",
+  "/sys/devices/platform/nct6775.656/hwmon/hwmon1/temp9_input": "24000\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state0/time": "43166\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state1/time": "2851049\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state2/time": "44337579\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state3/time": "729320861\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state0/time": "78429\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state1/time": "5996808\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state2/time": "87388865\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state3/time": "652679831\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state0/time": "31070\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state1/time": "676355\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state2/time": "13816950\n",
+  "/sys/devices/system/cpu/cpu10/cpuidle/state3/time": "768010415\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state0/time": "34152\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state1/time": "734727\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state2/time": "12064172\n",
+  "/sys/devices/system/cpu/cpu11/cpuidle/state3/time": "770875608\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state0/time": "35568\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state1/time": "2414973\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state2/time": "29953660\n",
+  "/sys/devices/system/cpu/cpu12/cpuidle/state3/time": "748642331\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state0/time": "41588\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state1/time": "1961111\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state2/time": "20935211\n",
+  "/sys/devices/system/cpu/cpu13/cpuidle/state3/time": "746497577\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state0/time": "28557\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state1/time": "2699579\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state2/time": "29499816\n",
+  "/sys/devices/system/cpu/cpu14/cpuidle/state3/time": "739507556\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state0/time": "35551\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state1/time": "2421783\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state2/time": "23996984\n",
+  "/sys/devices/system/cpu/cpu15/cpuidle/state3/time": "751798363\n",
+  "/sys/devices/system/cpu/cpu16/cpuidle/state0/time": "40195\n",
+  "/sys/devices/system/cpu/cpu16/cpuidle/state1/time": "2083825\n",
+  "/sys/devices/system/cpu/cpu16/cpuidle/state2/time": "22820507\n",
+  "/sys/devices/system/cpu/cpu16/cpuidle/state3/time": "756563225\n",
+  "/sys/devices/system/cpu/cpu17/cpuidle/state0/time": "33179\n",
+  "/sys/devices/system/cpu/cpu17/cpuidle/state1/time": "1983987\n",
+  "/sys/devices/system/cpu/cpu17/cpuidle/state2/time": "20109662\n",
+  "/sys/devices/system/cpu/cpu17/cpuidle/state3/time": "759034202\n",
+  "/sys/devices/system/cpu/cpu18/cpuidle/state0/time": "29283\n",
+  "/sys/devices/system/cpu/cpu18/cpuidle/state1/time": "736246\n",
+  "/sys/devices/system/cpu/cpu18/cpuidle/state2/time": "11243715\n",
+  "/sys/devices/system/cpu/cpu18/cpuidle/state3/time": "770807072\n",
+  "/sys/devices/system/cpu/cpu19/cpuidle/state0/time": "29740\n",
+  "/sys/devices/system/cpu/cpu19/cpuidle/state1/time": "746850\n",
+  "/sys/devices/system/cpu/cpu19/cpuidle/state2/time": "13447303\n",
+  "/sys/devices/system/cpu/cpu19/cpuidle/state3/time": "768062746\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state0/time": "54721\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state1/time": "3458147\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state2/time": "66817930\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state3/time": "676093454\n",
+  "/sys/devices/system/cpu/cpu20/cpuidle/state0/time": "33405\n",
+  "/sys/devices/system/cpu/cpu20/cpuidle/state1/time": "716130\n",
+  "/sys/devices/system/cpu/cpu20/cpuidle/state2/time": "14032269\n",
+  "/sys/devices/system/cpu/cpu20/cpuidle/state3/time": "767876218\n",
+  "/sys/devices/system/cpu/cpu21/cpuidle/state0/time": "28441\n",
+  "/sys/devices/system/cpu/cpu21/cpuidle/state1/time": "752443\n",
+  "/sys/devices/system/cpu/cpu21/cpuidle/state2/time": "11493563\n",
+  "/sys/devices/system/cpu/cpu21/cpuidle/state3/time": "771041256\n",
+  "/sys/devices/system/cpu/cpu22/cpuidle/state0/time": "32232\n",
+  "/sys/devices/system/cpu/cpu22/cpuidle/state1/time": "951649\n",
+  "/sys/devices/system/cpu/cpu22/cpuidle/state2/time": "11593097\n",
+  "/sys/devices/system/cpu/cpu22/cpuidle/state3/time": "771045488\n",
+  "/sys/devices/system/cpu/cpu23/cpuidle/state0/time": "28416\n",
+  "/sys/devices/system/cpu/cpu23/cpuidle/state1/time": "920544\n",
+  "/sys/devices/system/cpu/cpu23/cpuidle/state2/time": "11971267\n",
+  "/sys/devices/system/cpu/cpu23/cpuidle/state3/time": "770908397\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state0/time": "60628\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state1/time": "3621784\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state2/time": "54306101\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state3/time": "712296552\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state0/time": "43589\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state1/time": "2710978\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state2/time": "46623161\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state3/time": "729352680\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state0/time": "43367\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state1/time": "2698357\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state2/time": "38138137\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state3/time": "736712487\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state0/time": "32847\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state1/time": "1082016\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state2/time": "18507678\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state3/time": "760624456\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state0/time": "36459\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state1/time": "1150591\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state2/time": "17864253\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state3/time": "760932493\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state0/time": "36740\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state1/time": "999337\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state2/time": "15943112\n",
+  "/sys/devices/system/cpu/cpu8/cpuidle/state3/time": "764992667\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state0/time": "36017\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state1/time": "996964\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state2/time": "14310881\n",
+  "/sys/devices/system/cpu/cpu9/cpuidle/state3/time": "767212185\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "4352760\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "4341161\n",
+  "/sys/devices/system/cpu/cpufreq/policy10/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy11/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy12/scaling_cur_freq": "3466056\n",
+  "/sys/devices/system/cpu/cpufreq/policy13/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy14/scaling_cur_freq": "3470783\n",
+  "/sys/devices/system/cpu/cpufreq/policy15/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy16/scaling_cur_freq": "4338906\n",
+  "/sys/devices/system/cpu/cpufreq/policy17/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy18/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy19/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "4340538\n",
+  "/sys/devices/system/cpu/cpufreq/policy20/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy21/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy22/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy23/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq": "4340523\n",
+  "/sys/devices/system/cpu/cpufreq/policy5/scaling_cur_freq": "3468255\n",
+  "/sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy7/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy8/scaling_cur_freq": "3007063\n",
+  "/sys/devices/system/cpu/cpufreq/policy9/scaling_cur_freq": "3007063\n"
+ },
+ "statfs": {
+  "/": [
+   12359728,
+   4610712,
+   3974784,
+   4096
+  ],
+  "/boot/efi": [
+   121614,
+   120001,
+   120001,
+   4096
+  ],
+  "/home": [
+   467873198,
+   321674629,
+   297889541,
+   4096
+  ],
+  "/media/unidad45": [
+   2906366824,
+   1393257330,
+   1393253234,
+   4096
+  ],
+  "/media/unidad46": [
+   4372574125,
+   2214997185,
+   1995477774,
+   4096
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 20897554,
+   "InitRDTimestampMonotonic": 609804,
+   "UserspaceTimestampMonotonic": 13980451
+  }
+ }
+}

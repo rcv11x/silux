@@ -42,6 +42,17 @@ def foto(carpeta: pathlib.Path):
 
 
 # `shared_snapshot`'s, by dump and language.
+def _rapl_avanza(carpeta: pathlib.Path) -> bool:
+    """Si la segunda lectura del volcado mueve el contador de energía del
+    paquete: lo grabó un sistema que lo deja leer sin permisos."""
+    segunda = json.loads((carpeta / "grabado.json").read_text()).get("segunda_lectura") or {}
+    for ruta, texto in segunda.items():
+        if ruta.endswith("/intel-rapl:0/energy_uj"):
+            archivo = carpeta / ruta.lstrip("/")
+            return archivo.is_file() and archivo.read_text().strip() != texto.strip()
+    return False
+
+
 _SHARED: dict = {}
 
 
@@ -204,13 +215,19 @@ class TestEquiposVolcados(unittest.TestCase):
 
     def test_un_contador_de_energia_parado_no_da_cero_vatios(self):
         # El consumo sale de restar dos lecturas del contador de RAPL. En un
-        # volcado no avanza, y un paquete encendido siempre gasta: 0 W ahí es
-        # un dato que parece bueno y no lo es. Que falte, y que se diga.
+        # volcado no avanza, salvo que su segunda lectura lo grabara (un
+        # sistema que lo deja leer sin permisos), y un paquete encendido
+        # siempre gasta: 0 W ahí es un dato que parece bueno y no lo es. Que
+        # falte, y que se diga.
         for nombre, (carpeta, f, _tocados) in self.equipos.items():
             with self.subTest(equipo=nombre):
                 self.assertNotEqual(f.cpu.power.package_w, 0.0)
                 vatios = [s.key for s in f.sensors
                           if s.kind == SensorKind.POWER and s.key.startswith("rapl/")]
+                if _rapl_avanza(carpeta):
+                    self.assertGreater(f.cpu.power.package_w, 0.0)
+                    self.assertIn("rapl/package_w", vatios)
+                    continue
                 self.assertEqual(vatios, [])
                 rapl = carpeta / "sys" / "class" / "powercap"
                 if f.cpu.power.package_w is None and rapl.is_dir():

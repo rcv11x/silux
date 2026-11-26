@@ -1,0 +1,6 @@
+ 0 [HDMI           ]: HDA-Intel - HDA ATI HDMI
+                      HDA ATI HDMI at 0xef220000 irq 162
+ 1 [T60            ]: USB-Audio - 
+                      Audio USB at usb-0000:0c:00.0-1, full speed
+ 2 [NVidia         ]: HDA-Intel - HDA NVidia
+                      HDA NVidia at 0xef080000 irq 18

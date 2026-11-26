@@ -22,7 +22,7 @@ from unittest import mock
 
 from silux.model import SensorKind
 from silux.providers.base import Draft
-from silux.providers.hwmon import HwmonSensors
+from silux.providers.hwmon import GPU_CHIP, SUPERIO_CHIPS, HwmonSensors
 from tests import qt
 from tests.test_equipos import EQUIPOS, foto, volcados
 from tests.test_volcar_equipo import _herramienta
@@ -57,7 +57,9 @@ FILLER = {"5800x3d": True, "i5-10400": True, "i5-10400-turbo": True,
           # 27.8 and 10.0 °C, with the package at 49.
           "i3-1115g4": True,
           # 16.8 and 27.8 °C, with the package at 85.
-          "i7-12700kf": True}
+          "i7-12700kf": True,
+          # 27.8 and 29.8 °C, with the package at 23.
+          "i7-6700k": True}
 
 
 class TestLasZonasQueNoMiden(unittest.TestCase):
@@ -78,8 +80,13 @@ class TestLasZonasQueNoMiden(unittest.TestCase):
                 if zonas:
                     self.assertIn(nombre, FILLER, "a new dump with acpitz: say if it measures")
                     self.assertEqual({s.placeholder for s in zonas}, {FILLER[nombre]})
+                # Besides the zones, only what a Super I/O or a card gives for
+                # an input with nothing on it: zero or below.
                 self.assertFalse([s.key for s in f.sensors
-                                  if s.placeholder and s.chip != "acpitz"])
+                                  if s.placeholder and s.chip != "acpitz"
+                                  and not (SUPERIO_CHIPS.match(s.chip) or GPU_CHIP.match(s.chip))])
+                self.assertFalse([s.key for s in f.sensors
+                                  if s.placeholder and s.chip != "acpitz" and s.value > 0])
 
     def test_el_informe_lo_dice_al_lado_del_numero(self):
         from silux import report

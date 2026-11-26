@@ -1,0 +1,348 @@
+{
+ "amdgpu": {
+  "/dev/dri/renderD129": {
+   "arrays_per_engine": 2,
+   "compute_units": 32,
+   "device_id": 29824,
+   "enabled_rb_mask": 255,
+   "external_rev": 16,
+   "family": 145,
+   "infinity_cache_bytes": null,
+   "is_apu": false,
+   "l2_cache_bytes": 2097152,
+   "max_engine_hz": 2356000000,
+   "max_memory_hz": 1124000000,
+   "render_backends": 8,
+   "shader_engines": 2,
+   "vram_bits": 128,
+   "vram_type": "GDDR6"
+  }
+ },
+ "amdgpu_vbios": {
+  "/dev/dri/renderD129": {
+   "date": "2023-10-31",
+   "version": "022.003.001.030.000001"
+  }
+ },
+ "cpuid": {
+  "*:0:0": [
+   22,
+   1970169159,
+   1818588270,
+   1231384169
+  ],
+  "*:2147483648:0": [
+   2147483656,
+   0,
+   0,
+   0
+  ],
+  "0:1:0": [
+   329443,
+   1050624,
+   2147154879,
+   3219913727
+  ],
+  "0:2147483649:0": [
+   0,
+   0,
+   289,
+   739248128
+  ],
+  "0:2147483650:0": [
+   1702129225,
+   693250156,
+   1919894304,
+   1297360997
+  ],
+  "0:2147483651:0": [
+   929636393,
+   808924717,
+   1126189872,
+   1075860816
+  ],
+  "0:2147483652:0": [
+   808334368,
+   2051557168,
+   0,
+   0
+  ],
+  "0:22:0": [
+   4000,
+   4200,
+   100,
+   0
+  ],
+  "0:7:0": [
+   0,
+   43804591,
+   0,
+   3154128384
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "drm_modes": {
+  "card2": {
+   "DP-4": {
+    "height": 1080,
+    "refresh_hz": 99.94,
+    "width": 2560
+   }
+  }
+ },
+ "gpuapi": {
+  "consultar": {}
+ },
+ "ioctl_red": {
+  "br0:0x8915": "192.168.1.120",
+  "br0:0x891b": "255.255.255.0",
+  "enp14s0:0x8915": null,
+  "enp14s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0"
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1002:7480|1002:7480:1da2:e452": {
+   "1002:7480": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Navi 33 [Radeon RX 7600/7600 XT/7600M XT/7600S/7700S / PRO W7600]"
+   ]
+  },
+  "1002:7480|1002:ab30|10de:10f1|10de:1c03|144d:a80a|1969:e0a1|8086:15b6|8086:1912|8086:a102|8086:a12f|8086:a170": {
+   "1002:7480": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Navi 33 [Radeon RX 7600/7600 XT/7600M XT/7600S/7700S / PRO W7600]"
+   ],
+   "1002:ab30": [
+    "Advanced Micro Devices, Inc. [AMD/ATI]",
+    "Navi 31 HDMI/DP Audio"
+   ],
+   "10de:10f1": [
+    "NVIDIA Corporation",
+    "GP106 High Definition Audio Controller"
+   ],
+   "10de:1c03": [
+    "NVIDIA Corporation",
+    "GP106 [GeForce GTX 1060 6GB]"
+   ],
+   "144d:a80a": [
+    "Samsung Electronics Co Ltd",
+    "NVMe SSD Controller PM9A1/PM9A3/980PRO"
+   ],
+   "1969:e0a1": [
+    "Qualcomm Atheros",
+    "Killer E2400 Gigabit Ethernet Controller"
+   ],
+   "8086:15b6": [
+    "Intel Corporation",
+    "DSL6540 USB 3.1 Controller [Alpine Ridge]"
+   ],
+   "8086:1912": [
+    "Intel Corporation",
+    "Skylake-S GT2 [HD Graphics 530]"
+   ],
+   "8086:a102": [
+    "Intel Corporation",
+    "Q170/Q150/B150/H170/H110/Z170/CM236 Chipset SATA Controller [AHCI Mode]"
+   ],
+   "8086:a12f": [
+    "Intel Corporation",
+    "100/C230 Series Chipset Family USB 3.0 xHCI Controller"
+   ],
+   "8086:a170": [
+    "Intel Corporation",
+    "100/C230 Series Chipset Family HD Audio"
+   ]
+  },
+  "10de:1c03|10de:1c03:1458:3716": {
+   "10de:1c03": [
+    "NVIDIA Corporation",
+    "GP106 [GeForce GTX 1060 6GB]"
+   ]
+  },
+  "1969:e0a1": {
+   "1969:e0a1": [
+    "Qualcomm Atheros",
+    "Killer E2400 Gigabit Ethernet Controller"
+   ]
+  },
+  "8086:191f|8086:a145": {
+   "8086:191f": [
+    "Intel Corporation",
+    "Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor Host Bridge/DRAM Registers"
+   ],
+   "8086:a145": [
+    "Intel Corporation",
+    "Z170 Chipset LPC/eSPI Controller"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1458": "Gigabyte Technology Co., Ltd",
+  "1da2": "Sapphire Technology Limited"
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "/usr/share/wayland-sessions/plasma.desktop",
+   "DISPLAY": ":0",
+   "GDMSESSION": null,
+   "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": "wayland-1",
+   "XDG_CURRENT_DESKTOP": "KDE",
+   "XDG_SESSION_TYPE": "wayland"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 465,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "7.3.5-200.fc44.x86_64",
+   "system": "Linux",
+   "version": "#1 SMP PREEMPT_DYNAMIC Tue Nov 17 16:08:01 UTC 2026"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2",
+  "/dev/nvme0n1p3": "/dev/nvme0n1p3",
+  "/dev/sda1": "/dev/sda1"
+ },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo:  451227    4300    0    0    0     0          0         0   451227    4300    0    0    0     0       0          0\nenp14s0: 573096304  565837    0    0    0     0          0     11708 94965235  243347    0    0    0     0       0          0\n   br0: 560001182  465991    0 13706    0     0          0     11708 94916660  243345    0    2    0     0       0          0\n",
+  "/proc/stat": "cpu  417500 20228 98941 10979429 29239 24829 10529 0 0 0\ncpu0 50784 2488 11574 1372191 3751 2909 1627 0 0 0\ncpu1 51878 2669 12299 1371011 3741 4273 1417 0 0 0\ncpu2 52998 2541 12241 1371342 3835 3199 1645 0 0 0\ncpu3 53968 2602 12460 1371339 3312 3065 1107 0 0 0\ncpu4 52595 2265 12848 1372928 3404 2844 1085 0 0 0\ncpu5 52927 2405 12666 1372880 3461 2780 1197 0 0 0\ncpu6 50103 2717 11893 1375714 4024 2610 945 0 0 0\ncpu7 52242 2537 12957 1372021 3707 3147 1503 0 0 0\nintr 39261389 37 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 61064 0 27458 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 1 1 0 0 1 0 1028915 274411 0 0 0 0 0 0 0 39580 0 0 0 0 0 0 0 77126 15423 18357 18593 18605 14632 14859 12681 14007 14536 1553638 45 4181 25246 242535 32891 32014 68907 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 78650724\nbtime 1795687818\nprocesses 33792\nprocs_running 2\nprocs_blocked 0\nsoftirq 21358781 297721 2754704 217 373027 1104462 0 33783 9447433 1453 7345981\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/gpu_busy_percent": "1\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/fan1_input": "0\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/freq1_input": "469000000\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/freq2_input": "96000000\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/in0_input": "448\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/power1_average": "4000000\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/temp1_input": "31000\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/temp2_input": "32000\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/0000:02:00.0/0000:03:00.0/hwmon/hwmon3/temp3_input": "28000\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:04:00.0/hwmon/hwmon2/fan1_input": "0\n",
+  "/sys/devices/pci0000:00/0000:00:01.1/0000:04:00.0/hwmon/hwmon2/temp1_input": "42000\n",
+  "/sys/devices/pci0000:00/0000:00:17.0/ata5/host4/target4:0:0/4:0:0:0/block/sda/stat": "  310736     2784  7568920   115201   512437    97538 18858336   738783        0   177586   923019   208074        0 107297680    31391    36012    37643\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon4/temp1_input": "23000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon4/temp2_input": "19000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon4/temp3_input": "20000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon4/temp4_input": "17000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon4/temp5_input": "17000\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state0/time": "183798\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state1/time": "47209724\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state2/time": "103855014\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state3/time": "63842433\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state4/time": "1356069814\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state6/time": "12109914728\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state0/time": "232883\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state1/time": "53231532\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state2/time": "113876981\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state3/time": "85295421\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state4/time": "1426003203\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state6/time": "11969381426\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state0/time": "206642\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state1/time": "39634349\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state2/time": "90177012\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state3/time": "66227056\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state4/time": "1362419854\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state6/time": "12089852892\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state0/time": "186117\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state1/time": "40349217\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state2/time": "87287249\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state3/time": "61330448\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state4/time": "1318280038\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state6/time": "12137129013\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state0/time": "192167\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state1/time": "39581211\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state2/time": "85833494\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state3/time": "61621167\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state4/time": "1266285275\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu4/cpuidle/state6/time": "12208771743\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state0/time": "205998\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state1/time": "37648972\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state2/time": "84050615\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state3/time": "61415558\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state4/time": "1240796633\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu5/cpuidle/state6/time": "12237401305\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state0/time": "196121\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state1/time": "42363353\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state2/time": "87501816\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state3/time": "57441978\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state4/time": "1278634155\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu6/cpuidle/state6/time": "12229923686\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state0/time": "219687\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state1/time": "38985500\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state2/time": "88552753\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state3/time": "63759948\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state4/time": "1275785475\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state5/time": "0\n",
+  "/sys/devices/system/cpu/cpu7/cpuidle/state6/time": "12186019358\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "4200000\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "4201058\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "4200000\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "4200000\n",
+  "/sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq": "4200000\n",
+  "/sys/devices/system/cpu/cpufreq/policy5/scaling_cur_freq": "4200202\n",
+  "/sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq": "4200000\n",
+  "/sys/devices/system/cpu/cpufreq/policy7/scaling_cur_freq": "4100379\n",
+  "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/energy_uj": "214258442707\n",
+  "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/intel-rapl:0:0/energy_uj": "104847243980\n",
+  "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/intel-rapl:0:1/energy_uj": "65490\n",
+  "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:0/intel-rapl:0:2/energy_uj": "28304276295\n"
+ },
+ "statfs": {
+  "/": [
+   243774464,
+   171784970,
+   171120434,
+   4096
+  ],
+  "/boot": [
+   249195,
+   91155,
+   73952,
+   4096
+  ],
+  "/boot/efi": [
+   153296,
+   148156,
+   148156,
+   4096
+  ],
+  "/home": [
+   488378368,
+   221707563,
+   221375451,
+   4096
+  ]
+ }
+}

@@ -1,0 +1,6 @@
+ 0 [Device         ]: USB-Audio - 
+                      Audio USB at usb-0000:0c:00.0-1, full speed
+ 1 [HDMI           ]: HDA-Intel - HDA ATI HDMI
+                      HDA ATI HDMI at 0xf6ba0000 irq 111
+ 2 [Generic        ]: HDA-Intel - HD-Audio Generic
+                      HD-Audio Generic at 0xf6600000 irq 112

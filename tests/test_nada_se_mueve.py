@@ -86,6 +86,12 @@ def avanzar(raiz, ocupadas: int, octetos: int) -> None:
     for contador in (*raiz.glob("sys/class/net/*/statistics/rx_packets"),
                      *raiz.glob("sys/class/net/*/statistics/tx_packets")):
         contador.write_text(f"{int(contador.read_text()) + paquetes}\n")
+    # RAPL's energy, where it reads without permissions: 20 W for a second.
+    for contador in raiz.glob("sys/devices/virtual/powercap/**/energy_uj"):
+        try:
+            contador.write_text(f"{int(contador.read_text()) + 20_000_000}\n")
+        except (OSError, ValueError):
+            continue
     for disco in raiz.glob("sys/block/*/stat"):
         campos = disco.read_text().split()
         if len(campos) >= 7:
@@ -106,7 +112,8 @@ def _without_their_second_reading(raiz) -> None:
     segunda = datos.get("segunda_lectura")
     if not isinstance(segunda, dict):
         return
-    movidos = ("/proc/stat", "/net/dev", "/statistics/rx_", "/statistics/tx_", "/stat")
+    movidos = ("/proc/stat", "/net/dev", "/statistics/rx_", "/statistics/tx_", "/stat",
+               "/energy_uj")
     datos["segunda_lectura"] = {ruta: texto for ruta, texto in segunda.items()
                                 if not ruta.endswith(movidos) and "/statistics/" not in ruta}
     grabado.write_text(json.dumps(datos))
