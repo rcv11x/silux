@@ -1146,6 +1146,8 @@
   "memory.elev.nopkexec.hint": "Se instala con el paquete polkit de la distribución. También funciona lanzando el programa entero como root.",
   "memory.elev.smbios": "El detalle de los módulos está en la tabla SMBIOS, que el kernel reserva al administrador porque junto a esos campos van los números de serie del equipo.",
   "memory.elev.spd.many": "Los {n} módulos de arriba salen de su propio chip SPD, que se lee sin permisos. En qué zócalo va cada uno, cuántos quedan libres y a qué velocidad los ha puesto la BIOS están en la tabla SMBIOS, que el kernel reserva al administrador.",
+  "memory.elev.spd.notall.many": "Los {n} módulos de arriba salen de su propio chip SPD, que se lee sin permisos, y suman {read} de los {total} que ve el sistema: el resto no se ha podido leer. Qué módulos hay en cada zócalo y a qué velocidad los ha puesto la BIOS está en la tabla SMBIOS, que el kernel reserva al administrador.",
+  "memory.elev.spd.notall.one": "El módulo de arriba sale de su propio chip SPD, que se lee sin permisos, y suma {read} de los {total} que ve el sistema: el resto no se ha podido leer. Qué módulos hay en cada zócalo y a qué velocidad los ha puesto la BIOS está en la tabla SMBIOS, que el kernel reserva al administrador.",
   "memory.elev.spd.one": "El módulo de arriba sale de su propio chip SPD, que se lee sin permisos. En qué zócalo va, cuántos quedan libres y a qué velocidad lo ha puesto la BIOS están en la tabla SMBIOS, que el kernel reserva al administrador.",
   "memory.field.bank": "Banco",
   "memory.field.chips": "Chips",

@@ -1146,6 +1146,8 @@
   "memory.elev.nopkexec.hint": "It comes with the distribution's polkit package. Running the whole program as root works too.",
   "memory.elev.smbios": "Module detail lives in the SMBIOS table, which the kernel reserves for the administrator because the machine serial numbers sit alongside those fields.",
   "memory.elev.spd.many": "The {n} modules above come from their own SPD chip, which reads without permissions. Which slot each is in, how many are free and the speed the BIOS set them to are in the SMBIOS table, which the kernel keeps for the administrator.",
+  "memory.elev.spd.notall.many": "The {n} modules above come from their own SPD chips, which read without permissions, and add up to {read} of the {total} the system sees: the rest could not be read. Which modules sit in each slot and the speed the BIOS set them to are in the SMBIOS table, which the kernel keeps for the administrator.",
+  "memory.elev.spd.notall.one": "The module above comes from its own SPD chip, which reads without permissions, and adds up to {read} of the {total} the system sees: the rest could not be read. Which modules sit in each slot and the speed the BIOS set them to are in the SMBIOS table, which the kernel keeps for the administrator.",
   "memory.elev.spd.one": "The module above comes from its own SPD chip, which reads without permissions. Which slot it is in, how many are free and the speed the BIOS set it to are in the SMBIOS table, which the kernel keeps for the administrator.",
   "memory.field.bank": "Bank",
   "memory.field.chips": "Chips",

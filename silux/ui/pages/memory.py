@@ -621,7 +621,16 @@ class MemoryPage(ScrollPage):
             self.elevation_button.hide()
         else:
             leidos = len(snapshot.spd)
-            if leidos:
+            sized = sum(m.capacity_bytes or 0 for m in snapshot.spd)
+            if sized and not snapshot.spd_accounts_for_all_memory:
+                # The chips read add up to less than the system sees: a
+                # module the kernel did not register, or soldered memory.
+                self.elevation_text.setText(
+                    _("memory.elev.spd.notall.one" if leidos == 1
+                      else "memory.elev.spd.notall.many").format(
+                        n=leidos, read=render.size(sized),
+                        total=render.size(snapshot.system.memory.total_bytes)))
+            elif leidos:
                 self.elevation_text.setText(
                     _("memory.elev.spd.one" if leidos == 1
                       else "memory.elev.spd.many").format(n=leidos))
