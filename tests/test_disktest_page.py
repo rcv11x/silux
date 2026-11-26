@@ -402,6 +402,39 @@ class TestWhatAResultShows(TabCase):
             self.assertNotIn("62.9", text.split(_("memtest.card.history"))[-1])
         self.assertIn(hottest, at(900))
 
+    def test_a_history_title_takes_the_lines_its_column_was_given(self):
+        """Measured in whole pixels, «4K, LECTURA» (73.3 px, with the titles'
+        letter spacing) got a 73 px column and broke into a third line."""
+        from PySide6.QtGui import QTextLayout
+        from PySide6.QtWidgets import QLabel
+
+        from silux import i18n
+        from silux.ui import theme
+
+        def lines(label) -> int:
+            layout = QTextLayout(label.text(), label.font())
+            layout.beginLayout()
+            count = 0
+            while (line := layout.createLine()).isValid():
+                line.setLineWidth(label.contentsRect().width())
+                count += 1
+            layout.endLayout()
+            return count
+
+        before = i18n.current()
+        self.addCleanup(i18n.set_language, before)
+        for language in ("es", "en"):
+            i18n.set_language(language)
+            tab = self.tab()
+            for width in range(theme.METRICS.min_window_w, 700, 3):
+                tab.resize(width, 900)
+                self.app.processEvents()
+                _heading, table = tab.history_tables[0]
+                for title in table.findChildren(QLabel, "ColumnTitle"):
+                    if title.isVisibleTo(table):
+                        with self.subTest(language=language, width=width, title=title.text()):
+                            self.assertLessEqual(lines(title), 2)
+
     def test_a_narrow_history_shortens_a_long_title_and_tells_it_whole(self):
         """«Random 4K, one at a time, read» took four lines of titles."""
         from PySide6.QtWidgets import QLabel

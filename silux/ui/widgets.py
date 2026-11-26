@@ -3090,7 +3090,7 @@ class Table(QScrollArea):
         # Every title is in the same letter.
         title = self._grid.itemAtPosition(0, 0).widget()
         title.ensurePolished()
-        metrics = title.fontMetrics()
+        metrics = QFontMetricsF(title.font())
         return min(([" ".join(words[:at]), " ".join(words[at:])] for at in range(1, len(words))),
                    key=lambda lines: max(metrics.horizontalAdvance(line) for line in lines))
 
@@ -3121,26 +3121,29 @@ class Table(QScrollArea):
         # count, and a title once broken never came back to one line.
         margins = label.contentsMargins()
         inner = max(1, width - margins.left() - margins.right() - 2 * label.margin())
-        box = label.fontMetrics().boundingRect(QRect(0, 0, inner, 100000),
-                                               int(Qt.TextFlag.TextWordWrap), label.text())
-        return box.height() + margins.top() + margins.bottom() + 2 * label.margin()
+        box = QFontMetricsF(label.font()).boundingRect(
+            QRectF(0, 0, inner, 100000), int(Qt.TextFlag.TextWordWrap), label.text())
+        return math.ceil(box.height()) + margins.top() + margins.bottom() + 2 * label.margin()
 
     def _palabra_mas_larga(self, columna: int) -> int:
         """The narrowest the title can go: its longest word."""
         return self._title_width(columna, str.split)
 
     def _title_width(self, column: int, pieces, text: Optional[str] = None) -> int:
-        """The widest of the `pieces` of the column's title, or of `text`."""
+        """The widest of the `pieces` of the column's title, or of `text`.
+        In whole pixels rounded up: with the titles' letter spacing a piece
+        measures fractions of one, and rounded to the nearest it got a
+        column it doesn't fit in."""
         item = self._grid.itemAtPosition(0, column)
         label = item.widget() if item else None
         if label is None:
             return 0
         label.ensurePolished()
-        metrics = label.fontMetrics()
+        metrics = QFontMetricsF(label.font())
         margins = label.contentsMargins()
-        widest = max((metrics.horizontalAdvance(piece)
-                      for piece in pieces(label.text() if text is None else text)),
-                     default=0)
+        widest = math.ceil(max((metrics.horizontalAdvance(piece)
+                                for piece in pieces(label.text() if text is None else text)),
+                               default=0))
         return widest + margins.left() + margins.right() + 2 * label.margin()
 
     def resizeEvent(self, event) -> None:  # noqa: N802
