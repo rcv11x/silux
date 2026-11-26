@@ -501,3 +501,20 @@ class TestARefusalInWords(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWhereEachPartitionStarts(unittest.TestCase):
+    """The disk test places its file on a platter from its partition's
+    start, which the Collector doesn't read: the dump has to copy it."""
+
+    def test_the_dump_copies_it(self):
+        with _machine("5800x3d") as (root, out):
+            partition = root / "sys" / "block" / "sda" / "sda1"
+            self.assertTrue((partition / "partition").is_file())
+            # Every partition in a real /sys carries it, in sectors.
+            (partition / "start").write_text("2048\n")
+            folder, _manifest, _bytes = _dump(out, propios={
+                privacidad.IPV4: "una dirección IPv4 de este equipo"})
+            copied = folder / "sys" / "block" / "sda" / "sda1" / "start"
+            self.assertTrue(copied.is_file())
+            self.assertEqual(copied.read_text(), "2048\n")

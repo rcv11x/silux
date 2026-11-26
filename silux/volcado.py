@@ -438,6 +438,18 @@ BRIDGE_EXTRAS = ("vendor", "device", "class", "current_link_speed",
 EVENT_SOURCE = "/sys/bus/event_source/devices"
 
 
+def _partition_starts(paths: set[str]) -> set[str]:
+    """Where each partition read starts on its disk. The disk test places its
+    file on a platter from it, and the Collector doesn't read it."""
+    starts = set()
+    for path in paths:
+        if path.endswith("/partition"):
+            start = path[: -len("partition")] + "start"
+            if os.path.isfile(sysroot.path(start)):
+                starts.add(start)
+    return starts
+
+
 def _gpu_extras() -> set[str]:
     """The paths of `GPU_EXTRAS`, of the bridges and of event_source."""
     import glob
@@ -1414,7 +1426,8 @@ def dump(name: str, base: pathlib.Path,
     # First, before anything wakes it: how each card is.
     sleeping = _SleepingCards()
     read_paths, listed, checked, recording = _collect(sleeping)
-    read_paths |= _alternatives(read_paths) | sleeping.power_files() | _gpu_extras()
+    read_paths |= (_alternatives(read_paths) | sleeping.power_files() | _gpu_extras()
+                   | _partition_starts(read_paths | checked))
     read_paths = _to_copy(read_paths, sleeping)
     checked = {c for c in checked if not sleeping.forbidden(c) and not never_copied(c)}
     with tempfile.TemporaryDirectory(prefix="silux-volcado-") as tmp:
