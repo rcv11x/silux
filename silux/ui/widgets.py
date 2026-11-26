@@ -2578,6 +2578,15 @@ class ElidingComboBox(QComboBox):
         painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option)
 
 
+def log_fraction(bytes_per_second: Optional[float], start: float,
+                 decades: int) -> Optional[float]:
+    """How full a bar is on a logarithmic scale: 0 at `start` or below it,
+    1 `decades` powers of ten above; None without a figure."""
+    if not bytes_per_second:
+        return None
+    return math.log10(max(bytes_per_second, start) / start) / decades
+
+
 class RateBar(QWidget):
     """A rate as a bar on a fixed logarithmic scale, shared by a whole table.
 
@@ -2623,11 +2632,8 @@ class RateBar(QWidget):
                  glide: bool = False) -> None:
         """`live`: a figure still under way, drawn muted. `glide`: the bar
         grows or shrinks to it smoothly instead of jumping."""
-        fraction = None
-        if bytes_per_second:
-            decades = math.log10(max(bytes_per_second, self._from) / self._from)
-            fraction = decades / self._decades
-        self.set_fraction(fraction, live, measured=bool(bytes_per_second), glide=glide)
+        self.set_fraction(log_fraction(bytes_per_second, self._from, self._decades), live,
+                          measured=bool(bytes_per_second), glide=glide)
 
     def set_fraction(self, fraction: Optional[float], live: bool = False,
                      measured: bool = False, glide: bool = False) -> None:
