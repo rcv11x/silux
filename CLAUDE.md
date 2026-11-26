@@ -321,10 +321,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay veintidós
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay veintiséis
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y dieciocho importados del anexo de un
+  (`qemu-kvm`, hecha aquí con QEMU), y veintidós importados del anexo de un
   informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`), un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`), un portátil con un Celeron N4000 (`celeron-n4000`),
@@ -341,8 +341,12 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   5600G con la integrada desactivada y una RTX 4060 (`ryzen5-5600g`), un
   Lenovo con un A8-6410, el primer AMD anterior a Zen, acpi-cpufreq con
   turbo y el AppImage compatible (`a8-6410`), un FX-8150 con una GeForce
-  210 y nouveau (`fx-8150`) y un i7-12700KF híbrido sin integrada y con
-  diez unidades (`i7-12700kf`).
+  210 y nouveau (`fx-8150`), un i7-12700KF híbrido sin integrada y con
+  diez unidades (`i7-12700kf`), un Ryzen 5 9600X con dos NVMe del mismo
+  modelo (`ryzen5-9600x`), un i7-6700K con dos gráficas dedicadas y la
+  integrada para una máquina virtual (`i7-6700k`), un Ryzen 9 7900 con su
+  integrada y un solo SPD de dos (`ryzen9-7900`) y un i7-12700 con su UHD
+  770 (`i7-12700`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con
@@ -377,7 +381,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2221 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2260 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
