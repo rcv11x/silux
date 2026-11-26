@@ -84,6 +84,11 @@ def when(timestamp: float) -> str:
     return time.strftime("%d/%m/%Y %H:%M", time.localtime(timestamp))
 
 
+def level_name(level: str) -> str:
+    """«Memoria (RAM)», «Caché L2»."""
+    return _("memtest.level.ram") if level == "RAM" else _("memtest.level.cache").format(level=level)
+
+
 class CurveChart(QWidget):
     """Latency against block size, both on a logarithmic scale, with a mark
     where each cache ends."""
@@ -320,8 +325,7 @@ class LevelGrid(QWidget):
 
     @staticmethod
     def _name(level: str) -> tuple[QLabel, QLabel]:
-        name = QLabel(_("memtest.level.ram") if level == "RAM"
-                      else _("memtest.level.cache").format(level=level))
+        name = QLabel(level_name(level))
         name.setFont(ui_font(theme.METRICS.base_pt + 1))
         name.setWordWrap(True)
         size = QLabel("")
@@ -359,7 +363,7 @@ class LevelGrid(QWidget):
         most = result.theoretical_bytes_per_second
         for level in GRID_LEVELS:
             found = result.level(level)
-            figures = {operation: self._fastest(result, level, operation, threads)
+            figures = {operation: result.fastest(operation, threads, level)
                        for operation, _key, _colour in GRID_COLUMNS}
             shown = found is not None or any(every for every, _one in figures.values())
             for widget in self.rows[level]:
@@ -409,18 +413,6 @@ class LevelGrid(QWidget):
         self._barred = True
         self._arrange()
         self._fit_bars()
-
-    @staticmethod
-    def _fastest(result: memtest.Result, level: str, operation: str, threads: int):
-        """The fastest kind of `operation` with every thread, and the same kind
-        with one: (every, one), None where it wasn't measured."""
-        kinds = [result.rate(operation, threads, non_temporal, level)
-                 for non_temporal in (False, True)]
-        every = max((r for r in kinds if r is not None),
-                    key=lambda r: r.bytes_per_second, default=None)
-        if every is None:
-            return None, None
-        return every, result.rate(operation, 1, every.non_temporal, level)
 
 
 class MemoryTestRun(QObject):

@@ -171,6 +171,18 @@ class Result:
                  and r.level == level and threads in (None, r.threads)]
         return max(found, key=lambda r: r.bytes_per_second, default=None)
 
+    def fastest(self, operation: str, threads: int,
+                level: str = "RAM") -> tuple[Optional[Rate], Optional[Rate]]:
+        """The fastest kind of `operation` with every thread, and the same kind
+        with one: (every, one), None where it wasn't measured."""
+        kinds = [self.rate(operation, threads, non_temporal, level)
+                 for non_temporal in (False, True)]
+        every = max((r for r in kinds if r is not None),
+                    key=lambda r: r.bytes_per_second, default=None)
+        if every is None:
+            return None, None
+        return every, self.rate(operation, 1, every.non_temporal, level)
+
     @property
     def measured(self) -> bool:
         return bool(self.levels or self.rates)
