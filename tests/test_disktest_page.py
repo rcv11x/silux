@@ -186,6 +186,21 @@ class TestBeforeAnyTest(TabCase):
         self.assertGreaterEqual(vertical_gap(tab, tab.run_button, tab.about) - inside,
                                 theme.METRICS.card_gap)
 
+    def test_a_table_of_dashes_has_no_bars_where_figures_would_leave_none(self):
+        """Before the figures came (a run under way, a disk not yet
+        measured), a narrow window had room for tiny bars and a scale with
+        no numbers, which went when the figures came."""
+        from silux.ui import theme
+
+        tab = self.tab()
+        tab.resize(theme.METRICS.min_window_w, 900)
+        for _turn in range(4):
+            self.app.processEvents()
+        self.assertTrue(all(figure.text() == render.DASH
+                            for _bar, figure in tab.rows._cells.values()))
+        bars = [bar for bar, _figure in tab.rows._cells.values()] + tab.rows._axes
+        self.assertFalse(any(bar.isVisibleTo(tab) for bar in bars))
+
     def test_the_options_change_the_plan_and_what_is_said_of_it(self):
         tab = self.tab()
         tab.write_box.setChecked(False)

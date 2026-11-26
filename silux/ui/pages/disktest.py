@@ -89,6 +89,8 @@ ACTIONS = {"folder": "disktest.action.folder", "smaller": "disktest.action.small
 SLOW_FILL_SECONDS = 30
 # What marks a figure that varied between laps, and the note that says so.
 VARIED_MARK = "*"
+# The widest figure a test is written with, in MB/s.
+WIDEST_FIGURE = "00 000" + VARIED_MARK
 # The notes that put a figure in doubt; the rest of those that aren't
 # errors are facts to read the figures with.
 DOUBTFUL = frozenset({"copy_on_write", "through_the_cache", "disk_moved_less", "disk_was_busy",
@@ -477,9 +479,12 @@ class TestRows(QWidget):
             return
         directions = 2 if self._writes else 1
         names = max((name.sizeHint().width() for name in self.names), default=0)
-        figures = sum(max((figure.sizeHint().width() for (_name, way), (_bar, figure)
-                           in self._cells.items() if way == direction), default=0)
-                      for direction in (("read", "write") if self._writes else ("read",)))
+        # With the widest figure a test can have and not the one written: a
+        # run under way, all dashes, had room for tiny bars that went when
+        # its figures came.
+        _bar, figure = next(iter(self._cells.values()))
+        figures = directions * max(figure.sizeHint().width(),
+                                   figure.fontMetrics().horizontalAdvance(WIDEST_FIGURE))
         gaps = self.GAP * 2 * directions
         margins = self._grid.contentsMargins()
         usable = self.width() - margins.left() - margins.right()
