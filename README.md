@@ -1,71 +1,49 @@
-**Español** · [English](README.en.md)
+**English** · [Español](README.es.md)
 
 # <img src="silux/ui/assets/silux.svg" width="40" align="top" alt=""> Silux
 
 [![CI](https://github.com/rcv11x/silux/actions/workflows/appimage.yml/badge.svg)](https://github.com/rcv11x/silux/actions/workflows/appimage.yml)
 
-Silux enseña qué hardware tiene un equipo con Linux y qué está haciendo: procesador, memoria, gráficas, discos, red, batería y sensores. Hace lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa, en español o en inglés. Cuando no puede leer un dato, dice por qué.
+Silux shows what hardware a Linux PC has and what it is doing: processor, memory, graphics, disks, network, battery and sensors.
+It does what CPU-Z, GPU-Z and HWMonitor do on Windows, in one program, and when it can't read something it tells you why.
 
-![Inicio](capturas/inicio.png)
+![The disk test with its result](capturas/disco.png)
 
-<p>
-  <img src="capturas/cpu.png" width="49%" alt="CPU">
-  <img src="capturas/graficos.png" width="49%" alt="Gráficos">
-  <img src="capturas/memoria.png" width="49%" alt="Memoria">
-  <img src="capturas/sensores.png" width="49%" alt="Sensores">
-</p>
+## Download
 
-## Descargar
+Every [release](https://github.com/rcv11x/silux/releases) ships two AppImages:
 
-Cada [versión](https://github.com/rcv11x/silux/releases) trae dos AppImage. Los dos funcionan en casi cualquier distribución de 2022 en adelante.
-
-| Archivo | Para quién |
+| File | Which one |
 |---|---|
-| `silux-x86_64.AppImage` | El normal: casi cualquier PC desde 2010. Intel Core i, Pentium y Celeron desde Nehalem; Atom desde 2013; AMD FX, Ryzen, y las A-series y E-series desde Trinity y Kabini (A4/A6/A8/A10-5xxx en adelante, E1/E2 desde 2013). |
-| `silux-x86_64-compat.AppImage` | Solo si el normal no arranca: Core 2, Atom anteriores a 2013, Athlon II, Phenom II, A-series Llano (A4/A6/A8-3xxx) y E/C-series Bobcat (E-350, E-450, E1-1200, E2-1800, C-60). Si no sabes cuál, prueba primero el normal: si no vale para tu procesador, te lo dice al abrirlo. |
-
-<sub>Para quien lo necesite: el normal pide glibc 2.34 o posterior (RHEL 9, Ubuntu 22.04, Debian 12 y posteriores) y un procesador x86-64-v2; el compat, glibc 2.30 o posterior (Ubuntu 20.04, Debian 11 y posteriores) y cualquier procesador de 64 bits.</sub>
+| `silux-x86_64.AppImage` | This one: works on almost any PC. |
+| `silux-x86_64-compat.AppImage` | Only if the normal one tells you it won't run on your PC. |
 
 ```
 chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
-<sub>En KDE, el archivo enseña el logo de Silux si está instalada libappimage (en Arch y derivadas, `sudo pacman -S libappimage`).</sub>
+<sub>The normal one needs glibc 2.34 or later and the compat one glibc 2.30 or later, both with [Linux 5.15](docs/kernel.md) or later. Which processors each one runs on: [compatibility](docs/compatibility.md). The terminal, reports and running from source: [usage](docs/usage.md).</sub>
 
-Funciona con [Linux 5.15](docs/kernel.md) o posterior. Algunos datos, como los módulos de memoria, la salud de los discos o el voltaje, solo los puede leer el administrador: Silux los pide al pulsar un candado y explica antes qué va a leer. Leer no cambia nada; lo que sí cambia el sistema (cargar un módulo del kernel, dejar los permisos instalados) lo dice antes de hacerlo.
+## Roadmap
 
-Desde el código, con [uv](https://docs.astral.sh/uv/), que trae Python 3.10 o posterior y PySide6:
+- [x] Identify the hardware: processor, caches, motherboard, memory, graphics, storage, network, devices, battery and system
+- [x] Sensors with their minimum, maximum and average, and a log to CSV
+- [x] Processor benchmark, with a score that compares between PCs
+- [x] Memory benchmark: latency of each cache level and the RAM, and bandwidth (experimental)
+- [x] Disk benchmark, checked against fio (experimental)
+- [x] English and Spanish, and the terminal: a dump, JSON, the sensors and a report
+- [ ] Share a disk result as an image
+- [ ] Choose one disk in Storage's reading and writing charts
+- [ ] Record a session: start, pause and stop
+- [ ] The last hour of each sensor, and a tray mode
+- [ ] A graphics benchmark
+- [ ] AMD power limits (PPT, TDC, EDC)
+- [ ] ARM processors, tested on real hardware (written, never run on one)
 
-```
-git clone https://github.com/rcv11x/silux.git && cd silux
-uv run --extra gui python -m silux.ui.app
-```
+## Thanks
 
-## En la terminal
-
-```
-./silux-x86_64.AppImage --cli                 # todo el hardware, por pantalla
-./silux-x86_64.AppImage --sensors --watch     # los sensores, cada segundo
-./silux-x86_64.AppImage --json                # todo en JSON
-./silux-x86_64.AppImage --cli --help          # todas las opciones
-```
-
-Desde el código, lo mismo con `uv run python -m silux.cli`.
-
-## Si algo falla
-
-```
-./silux-x86_64.AppImage --report informe.md
-```
-
-O desde la ventana: Ajustes → «Ver y guardar el informe…», que te lo enseña antes de guardarlo.
-
-Pide la contraseña para leer también lo que solo ve el administrador. Al final lleva los datos en crudo que ha leído, que sirven para reproducir tu equipo en las pruebas de Silux. El informe no lleva el nombre del equipo, ni direcciones, ni números de serie: revísalo y adjúntalo en un [issue](https://github.com/rcv11x/silux/issues) (para que Silux reconozca mejor tu equipo, con la plantilla [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml)) o en el canal #silux-pruebas del Discord de UniversoLinux.
-
-## Gracias
-
-A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nuestro. Aquí sale quien ha dado permiso, y lo mismo en Ajustes → Acerca de.
+To everyone who sends reports: with them Silux is tested on machines that are not ours. Whoever has said so is named here, and in Settings → About.
 
 <!-- thanks:start -->
 - Anianin27
@@ -75,17 +53,15 @@ A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nu
 - widecoocaa23_
 <!-- thanks:end -->
 
-## Más
+## More
 
-- [Arquitectura](docs/arquitectura.md): cómo está hecho y cómo ejecutar cada cosa.
-- [Convenciones](docs/convenciones.md): cómo contribuir.
-- [Equipos probados](docs/equipos-probados.md) y [lo que falta](docs/pendientes.md).
-- [Lo que usa del sistema](docs/dependencias.md): qué paquete trae cada cosa en Debian, Ubuntu, Fedora, Arch y Gentoo, y qué pasa si falta.
-- [Cambios de cada versión](CHANGELOG.md).
-- En inglés: [la arquitectura en corto](ARCHITECTURE.md), [cómo contribuir](CONTRIBUTING.md) y [cómo avisar de un problema de seguridad](SECURITY.md).
+- [Usage](docs/usage.md): the terminal, the report for a bug, running from source and what needs the administrator.
+- [Compatibility](docs/compatibility.md): which AppImage, and the hardware Silux has been tested on.
+- [What it uses from the system](docs/dependencias.md), [what's still missing](docs/pendientes.md) and [what changed in each release](CHANGELOG.md).
+- [A short architecture](ARCHITECTURE.md), [how to contribute](CONTRIBUTING.md) and [how to report a security problem](SECURITY.md). The rest of `docs/` is in Spanish, starting with the [architecture](docs/arquitectura.md).
 
-Silux se escribe con ayuda de Claude, el asistente de IA de Anthropic.
+Silux is written with the help of Claude, Anthropic's AI assistant.
 
-## Licencia
+## License
 
-GPL-3.0 o posterior: [LICENSE](LICENSE). La tabla de procesadores lleva datos de libcpuid y CPU-X; sus avisos, en [THIRD_PARTY_NOTICES.md](silux/db/THIRD_PARTY_NOTICES.md).
+GPL-3.0 or later: [LICENSE](LICENSE). The processor table includes data from libcpuid and CPU-X; their notices are in [THIRD_PARTY_NOTICES.md](silux/db/THIRD_PARTY_NOTICES.md).

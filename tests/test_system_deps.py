@@ -91,7 +91,7 @@ class TestTheTable(unittest.TestCase):
                                     f"{dep.key} in {fam}: {celdas}")
 
     def test_both_readmes_point_to_them(self):
-        for readme in ("README.md", "README.en.md"):
+        for readme in ("README.md", "README.es.md"):
             self.assertIn("(docs/dependencias.md)", (ROOT / readme).read_text(encoding="utf-8"))
 
 

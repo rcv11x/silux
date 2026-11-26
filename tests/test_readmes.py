@@ -1,8 +1,9 @@
-"""README.md and README.en.md say the same thing in two languages.
+"""The README and the documents for users say the same thing in two languages.
 
 Whoever edits one tends to forget the other. This compares what can be
 compared without reading either language: the sections, in order and at the
-same level, and the links and images each one carries.
+same level, and the links and images each one carries, a document in one
+language linking to its pair in the other.
 """
 
 import pathlib
@@ -10,58 +11,89 @@ import re
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-READMES = {"es": "README.md", "en": "README.en.md"}
+# Each document for users in English and in Spanish, the English first: the
+# README opens in English.
+PAIRS = (("README.md", "README.es.md"),
+         ("docs/usage.md", "docs/uso.md"),
+         ("docs/compatibility.md", "docs/compatibilidad.md"))
+READMES = {"en": "README.md", "es": "README.es.md"}
 TARGET = re.compile(r"\]\(([^)\s]+)\)|\bsrc=\"([^\"]+)\"")
-SWITCHER = {"es": "**Español** · [English](README.en.md)",
-            "en": "[Español](README.md) · **English**"}
 
 
-def sections(text: str) -> list[tuple[int, list[str]]]:
+def switcher(english: str, spanish: str, language: str) -> str:
+    """The first line of each: the other language's link and its own name."""
+    other = pathlib.Path(spanish if language == "en" else english).name
+    return (f"**English** · [Español]({other})" if language == "en"
+            else f"[English]({other}) · **Español**")
+
+
+def english_target(target: str) -> str:
+    """A link of a Spanish document as its English pair would write it."""
+    for english, spanish in PAIRS:
+        for name_en, name_es in ((english, spanish),
+                                 (pathlib.Path(english).name, pathlib.Path(spanish).name)):
+            if target == name_es:
+                return name_en
+    return target
+
+
+def sections(text: str, spanish: bool = False) -> list[tuple[int, list[str]]]:
     """(heading level, link targets) per section; the part above the first
-    heading is level 0. Code blocks are left out: their comments are prose."""
+    heading is level 0. Code blocks are left out: their comments are prose,
+    and so is the first line, which links to the other language."""
     text = re.sub(r"^```.*?^```", "", text, flags=re.S | re.M)
     found: list[tuple[int, list[str]]] = [(0, [])]
-    for line in text.splitlines():
+    for line in text.splitlines()[1:]:
         if heading := re.match(r"(#+)\s", line):
             found.append((len(heading.group(1)), []))
-        found[-1][1].extend(a or b for a, b in TARGET.findall(line)
-                            if not (a or b).startswith("README"))
+        targets = [a or b for a, b in TARGET.findall(line)]
+        found[-1][1].extend(english_target(t) if spanish else t for t in targets)
     return found
 
 
-def read(language: str) -> str:
-    return (ROOT / READMES[language]).read_text(encoding="utf-8")
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
 
 
-class TestTheTwoReadmesMatch(unittest.TestCase):
+class TestEachPairMatches(unittest.TestCase):
 
     def test_same_sections_at_the_same_level(self):
-        self.assertEqual([level for level, _links in sections(read("es"))],
-                         [level for level, _links in sections(read("en"))])
+        for english, spanish in PAIRS:
+            with self.subTest(document=english):
+                self.assertEqual([level for level, _links in sections(read(english))],
+                                 [level for level, _links in sections(read(spanish), True)])
 
     def test_same_links_and_images_in_each_section(self):
-        spanish, english = sections(read("es")), sections(read("en"))
-        for number, ((_l1, es_links), (_l2, en_links)) in enumerate(zip(spanish, english)):
-            with self.subTest(section=number):
-                self.assertEqual(es_links, en_links)
+        for english, spanish in PAIRS:
+            pairs = zip(sections(read(english)), sections(read(spanish), True))
+            for number, ((_l1, en_links), (_l2, es_links)) in enumerate(pairs):
+                with self.subTest(document=english, section=number):
+                    self.assertEqual(en_links, es_links)
 
     def test_each_one_opens_with_the_language_switcher(self):
-        for language, line in SWITCHER.items():
-            with self.subTest(language=language):
-                first = next(l for l in read(language).splitlines() if l.strip())
-                self.assertEqual(first, line)
+        for english, spanish in PAIRS:
+            for language, path in (("en", english), ("es", spanish)):
+                with self.subTest(document=path):
+                    first = next(l for l in read(path).splitlines() if l.strip())
+                    self.assertEqual(first, switcher(english, spanish, language))
 
 
 class TestTheComparisonNoticesADifference(unittest.TestCase):
     """The check above, against the two kinds of drift it is there for."""
 
     def test_a_missing_link(self):
-        text = read("en").replace("[LICENSE](LICENSE)", "LICENSE")
-        self.assertNotEqual(sections(read("es")), sections(text))
+        text = read("README.md").replace("[LICENSE](LICENSE)", "LICENSE")
+        self.assertNotEqual(sections(read("README.es.md"), True), sections(text))
+
+    def test_a_link_to_the_other_language(self):
+        text = read("README.es.md").replace("(docs/uso.md)", "(docs/usage.md)", 1)
+        self.assertNotEqual(sections(read("README.md")), sections(text))
+        self.assertEqual(english_target("docs/uso.md"), "docs/usage.md")
+        self.assertEqual(english_target("docs/usage.md"), "docs/usage.md")
 
     def test_a_missing_section(self):
-        text = read("en").replace("## In the terminal", "In the terminal")
-        self.assertNotEqual([l for l, _x in sections(read("es"))],
+        text = read("README.md").replace("## Roadmap", "Roadmap")
+        self.assertNotEqual([l for l, _x in sections(read("README.es.md"), True)],
                             [l for l, _x in sections(text)])
 
 
@@ -75,14 +107,14 @@ class TestTheReleaseNotesMatchTheReadme(unittest.TestCase):
 
     def test_same_glibc_floors_in_the_same_order(self):
         notes = GLIBC.findall((ROOT / RELEASE_NOTES).read_text(encoding="utf-8"))
-        for language in READMES:
-            with self.subTest(readme=READMES[language]):
-                self.assertEqual(notes, GLIBC.findall(read(language)))
+        for language, path in READMES.items():
+            with self.subTest(readme=path):
+                self.assertEqual(notes, GLIBC.findall(read(path)))
 
     def test_the_comparison_notices_a_different_floor(self):
         notes = (ROOT / RELEASE_NOTES).read_text(encoding="utf-8")
         changed = notes.replace("glibc 2.34", "glibc 2.36")
-        self.assertNotEqual(GLIBC.findall(changed), GLIBC.findall(read("es")))
+        self.assertNotEqual(GLIBC.findall(changed), GLIBC.findall(read("README.md")))
 
 
 if __name__ == "__main__":

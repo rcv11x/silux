@@ -416,12 +416,14 @@ una en su rama, con herramientas que entienden el código (LibCST o rope, no
 buscar y reemplazar), la huella idéntica y los tests como red. En cada zona,
 sus comentarios y docstrings se rehacen con el criterio de arriba, y al
 acabarla se abren todas las páginas de todos los volcados en los dos
-idiomas, además de la suite: rope falla sin avisar. Sigue
-en español lo que lee la gente: la interfaz (`silux/db/lang/`, el original),
-el CHANGELOG y las notas de las versiones. El README va en los dos idiomas:
-`README.md` (español, el de por defecto) y `README.en.md`, con las mismas
-secciones y los mismos enlaces (`tests/test_readmes.py`); si cambia uno,
-cambia el otro.
+idiomas, además de la suite: rope falla sin avisar. La interfaz sigue
+teniendo el español como original (`silux/db/lang/`). El CHANGELOG y las
+notas de las versiones van en inglés, con el español debajo (abajo, «Cómo se
+escribe lo público»). El README y los documentos para usuarios van en los dos
+idiomas, con las mismas secciones y los mismos enlaces
+(`tests/test_readmes.py`): `README.md` (inglés, el de por defecto) y
+`README.es.md`, `docs/usage.md` y `docs/uso.md`, `docs/compatibility.md` y
+`docs/compatibilidad.md`. Si cambia uno, cambia el otro.
 
 **Tests.**
 - Una comprobación que nadie ha visto fallar no es una comprobación: todo test
@@ -539,6 +541,10 @@ en el mismo commit; lo que se encuentra y no se arregla, se apunta.
 - [docs/empaquetado.md](docs/empaquetado.md): el suelo, el AppImage, los
   techos de PySide6 y las guardas.
 - [docs/privilegios.md](docs/privilegios.md): el ayudante, pkexec y polkit.
+- [docs/uso.md](docs/uso.md): lo que salió del README para usuarios (la
+  terminal, el informe, desde el código, los permisos).
+- [docs/compatibilidad.md](docs/compatibilidad.md): qué AppImage, y el
+  hardware probado con ✅ ⚠️ ❌ ❔, para usuarios.
 - [docs/equipos-probados.md](docs/equipos-probados.md): qué se ha probado
   contra qué pieza, y los equipos volcados.
 - [docs/kernel.md](docs/kernel.md): desde qué versión del kernel existe cada

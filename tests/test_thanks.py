@@ -27,7 +27,7 @@ PUBLISHED = ROOT / "silux" / "db" / "thanks.json"
 # written twice.
 APPROVED: frozenset[str] = frozenset({
     "Anianin27", "Erziok", "Felix Lara", "jwpitr", "widecoocaa23_"})
-READMES = ("README.md", "README.en.md")
+READMES = ("README.md", "README.es.md")
 BETWEEN_MARKS = re.compile(r"<!-- thanks:start -->\n(.*?)<!-- thanks:end -->", re.S)
 WITH_REPORTS_FROM = re.compile(r"^Con informes de (.+?)\.?$", re.M)
 
