@@ -42,6 +42,7 @@ que hace falta.
 - Con el núcleo de una Radeon en sueño profundo, la fila de escalones decía «en reposo»: ahora dice a qué reloj está
 - El voltaje del núcleo de una Radeon salía «en reposo» por debajo de 0,1 V aunque el driver diera una cifra: ahora sale la cifra (como «0.006 V»), y «en reposo» solo cuando el driver da 0
 - Ctrl+C en la terminal no cerraba Silux, y SIGTERM lo mataba sin parar las pruebas en marcha: los dos lo cierran ya como el botón de cerrar
+- En un sistema que arranca sin initramfs, Almacenamiento no decía dónde está montada la raíz, y una prueba de disco en ella no enseñaba su resultado
 
 ### Problemas conocidos
 

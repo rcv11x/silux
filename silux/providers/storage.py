@@ -709,9 +709,7 @@ def _mounts() -> dict[str, tuple[str, str]]:
                 source, mountpoint, filesystem = fields[0], fields[1], fields[2]
                 if filesystem in VIRTUAL_FILESYSTEMS or not source.startswith("/dev/"):
                     continue
-                # A /dev/mapper/… ends in dm-N: recorded, as /dev is not dumped.
-                name = os.path.basename(
-                    sysroot.recorded("realpath", source, os.path.realpath, source) or source)
+                name = sysroot.block_device(source, _unescape(mountpoint))
                 # The first mount wins: with btrfs subvolumes the same partition
                 # shows many times, and the root is the one that matters.
                 found.setdefault(name, (filesystem, _unescape(mountpoint)))

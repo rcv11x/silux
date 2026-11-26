@@ -452,8 +452,7 @@ def where(folder: Union[str, os.PathLike]) -> Optional[Place]:
     layers: list[str] = []
     device = None
     if source.startswith("/dev/"):
-        real = sysroot.recorded("realpath", source, os.path.realpath, source) or source
-        device = os.path.basename(real)
+        device = sysroot.block_device(source, mountpoint)
         names = {device}
         # A btrfs over several devices only names one of them in its mount.
         for volume in _names(pathlib.Path(sysroot.path(SYS_BTRFS))):

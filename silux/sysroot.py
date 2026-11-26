@@ -134,6 +134,32 @@ def recorded(space: str, key: Any, function: Callable[..., T], *args,
     return value
 
 
+# What the kernel calls a root it mounted itself, without an initramfs. No
+# file has that name.
+KERNEL_ROOT = "/dev/root"
+
+
+def block_device(source: str, mountpoint: str) -> str:
+    """The block device a mount's `source` names: dm-0 for a /dev/mapper
+    name, and for /dev/root, the one whose number is that of what is mounted
+    at `mountpoint`, as findmnt finds it."""
+    real = recorded("realpath", source, os.path.realpath, source) or source
+    if real == KERNEL_ROOT:
+        found = recorded("mount_device", mountpoint, _numbered_device, mountpoint)
+        if found:
+            return found
+    return os.path.basename(real)
+
+
+def _numbered_device(mountpoint: str) -> Optional[str]:
+    try:
+        number = os.stat(mountpoint).st_dev
+    except OSError:
+        return None
+    block = f"/sys/dev/block/{os.major(number)}:{os.minor(number)}"
+    return os.path.basename(os.path.realpath(block)) if os.path.exists(block) else None
+
+
 def uname() -> dict:
     """The kernel's uname, recorded with the dump; {} where it wasn't.
 

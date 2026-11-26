@@ -129,7 +129,7 @@ class TestTheDiskBenchmark(Case):
         # A result, or what stopped it, on the page.
         failure = tab._failure
         if tab.result is None:
-            self.assertIsNotNone(failure, "no result and nothing said")
+            self.assertIsNotNone(failure, f"no result and nothing said, on {disktest.where(folder)}")
             self.assertTrue(failure.isVisibleTo(tab))
         else:
             self.assertTrue(tab.result.measures)
