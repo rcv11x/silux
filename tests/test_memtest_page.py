@@ -253,18 +253,51 @@ class TestDesignA(TabCase):
             self.app.processEvents()
         self.assertEqual(tab.history.horizontalScrollBar().maximum(), 0)
 
-    def test_it_fits_the_narrowest_window(self):
-        """With «non-temporal» beside the large figures the grid outgrew it."""
+    def narrowest(self, language: str):
+        from silux import i18n
         from silux.ui import theme
 
-        narrowest = theme.METRICS.min_window_w
+        before = i18n.current()
+        self.addCleanup(i18n.set_language, before)
+        i18n.set_language(language)
         tab = self.tab()
         tab.show_result(recorded("i5-10400-window"))
-        tab.resize(narrowest, 900)
+        tab.resize(theme.METRICS.min_window_w, 900)
         for _turn in range(4):
             self.app.processEvents()
-        self.assertLessEqual(tab.widget().width(), tab.viewport().width())
-        self.assertLessEqual(tab.widget().minimumSizeHint().width(), narrowest)
+        return tab
+
+    def test_it_fits_the_narrowest_window(self):
+        """With «non-temporal» beside the large figures the grid outgrew it,
+        and in English it asked for 483 px of 480."""
+        from silux.ui import theme
+
+        for language in ("es", "en"):
+            with self.subTest(language=language):
+                tab = self.narrowest(language)
+                self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+                self.assertLessEqual(tab.widget().minimumSizeHint().width(),
+                                     theme.METRICS.min_window_w)
+
+    def test_in_the_narrowest_window_no_cache_goes_whole_under_its_figure(self):
+        """Beside the figure it broke into two lines."""
+        for language in ("es", "en"):
+            tab = self.narrowest(language)
+            for operation in ("write", "copy"):
+                with self.subTest(language=language, operation=operation):
+                    kind = tab.grid.kinds["RAM", operation]
+                    _bar, figure, under = tab.grid.cells["RAM", operation]
+                    self.assertTrue(kind.isVisibleTo(tab))
+                    self.assertLessEqual(kind.fontMetrics().horizontalAdvance(kind.text()),
+                                         kind.contentsRect().width())
+                    # Under the figure, ending where it ends, and over the
+                    # one-thread figure it also speaks for.
+                    self.assertGreaterEqual(kind.mapTo(tab, kind.rect().topLeft()).y(),
+                                            figure.mapTo(tab, figure.rect().bottomLeft()).y())
+                    self.assertEqual(kind.mapTo(tab, kind.rect().topRight()).x(),
+                                     figure.mapTo(tab, figure.rect().topRight()).x())
+                    self.assertGreaterEqual(under.mapTo(tab, under.rect().topLeft()).y(),
+                                            kind.mapTo(tab, kind.rect().bottomLeft()).y())
 
     def test_the_processor_is_named_over_the_result(self):
         tab = self.tab()

@@ -49,6 +49,10 @@ from ..widgets import (
 
 # The grid's rows, the RAM first: it's what the test is mostly run for.
 GRID_LEVELS = ("RAM", "L1", "L2", "L3")
+# Each level's rows: its figures; the core's cycles and the one-thread
+# figures, or «no cache» when there is no room beside the figures (and the
+# one-thread figures a row lower); and the air before the next.
+LEVEL_ROWS = 4
 # Its bandwidth columns, each with its colour: the accent and the chart's
 # two others, never the status colours, which would make a bar a warning.
 GRID_COLUMNS = (("read", "memtest.op.read", "accent"), ("write", "memtest.op.write", "series_b"),
@@ -203,6 +207,7 @@ class LevelGrid(QWidget):
         latency.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout.addWidget(latency, 0, LATENCY_COLUMN)
         self.names: dict[str, tuple[QLabel, QLabel]] = {}
+        self.blocks: dict[str, QWidget] = {}
         # Each operation's bar, figure and line under it, and the word that
         # says the figure skipped the cache, beside it.
         self.cells: dict[tuple[str, str], tuple[RateBar, QLabel, QLabel]] = {}
@@ -213,7 +218,7 @@ class LevelGrid(QWidget):
         self.latencies: dict[str, tuple[QLabel, QLabel]] = {}
         self.rows: dict[str, list[QWidget]] = {}
         for line, level in enumerate(GRID_LEVELS):
-            top = 1 + 3 * line
+            top = 1 + LEVEL_ROWS * line
             name, size = self._name(level)
             block = QWidget()
             inside = QVBoxLayout(block)
@@ -223,12 +228,16 @@ class LevelGrid(QWidget):
             inside.addWidget(size)
             layout.addWidget(block, top, 0, 2, 1, Qt.AlignmentFlag.AlignTop)
             self.names[level] = (name, size)
+            self.blocks[level] = block
             widgets: list[QWidget] = [block]
             for index, (operation, _key, colour) in enumerate(GRID_COLUMNS):
                 first = 1 + PER_OPERATION * index
                 bar = RateBar(palette, colour=colour, height=18)
                 kind = self._small()
                 kind.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                # Never on two lines: without room beside its figure it
+                # goes under it (`_arrange`).
+                kind.setWordWrap(False)
                 figure = self._big()
                 under = self._small()
                 layout.addWidget(bar, top, first)
@@ -243,13 +252,16 @@ class LevelGrid(QWidget):
             layout.addWidget(cycles, top + 1, LATENCY_COLUMN)
             self.latencies[level] = (nanoseconds, cycles)
             widgets += [nanoseconds, cycles]
-            layout.setRowMinimumHeight(top + 2, 8)
+            layout.setRowMinimumHeight(top + 3, 8)
             self.rows[level] = widgets
         self.unit = QLabel("")
         self.unit.setObjectName("Muted")
         self.unit.setFont(ui_font(theme.METRICS.small_pt))
         self.unit.setWordWrap(True)
-        layout.addWidget(self.unit, 1 + 3 * len(GRID_LEVELS), 0, 1, LATENCY_COLUMN + 1)
+        layout.addWidget(self.unit, 1 + LEVEL_ROWS * len(GRID_LEVELS), 0, 1, LATENCY_COLUMN + 1)
+        # The width the grid needs with its bars, measured while they are
+        # shown: leaving them and going back are decided on the same figure.
+        self._width_with_bars = 0
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -258,14 +270,39 @@ class LevelGrid(QWidget):
     def _fit_bars(self) -> None:
         """Bars too narrow to be drawn leave the layout, and the air around
         them with them: in a narrow window the figures need it."""
-        layout = self.layout()
-        spare = self.width() - self.minimumSizeHint().width()
-        room = spare >= RateBar.NARROWEST * len(GRID_COLUMNS) if self._barred else \
-            spare >= (RateBar.NARROWEST + layout.horizontalSpacing()) * len(GRID_COLUMNS)
+        if self._barred:
+            self._width_with_bars = (self.minimumSizeHint().width()
+                                     + RateBar.NARROWEST * len(GRID_COLUMNS))
+        room = self.width() >= self._width_with_bars
         if room != self._barred:
             self._barred = room
-            layout.setHorizontalSpacing(GRID_GAP if room else NARROW_GRID_GAP)
-            self._show_bars()
+            self._arrange()
+
+    def _arrange(self) -> None:
+        """With the bars, each «no cache» goes beside its figure. Without
+        them it goes under it, on a line of its own beside the core's cycles,
+        and the one-thread figure a line lower: beside the figure there is
+        only room for it on two lines."""
+        layout = self.layout()
+        layout.setHorizontalSpacing(GRID_GAP if self._barred else NARROW_GRID_GAP)
+        under_row = 1 if self._barred else 2
+        for line, level in enumerate(GRID_LEVELS):
+            top = 1 + LEVEL_ROWS * line
+            block = self.blocks[level]
+            layout.removeWidget(block)
+            layout.addWidget(block, top, 0, under_row + 1, 1, Qt.AlignmentFlag.AlignTop)
+            for index, (operation, _key, _colour) in enumerate(GRID_COLUMNS):
+                first = 1 + PER_OPERATION * index
+                kind = self.kinds[level, operation]
+                under = self.cells[level, operation][2]
+                layout.removeWidget(kind)
+                layout.removeWidget(under)
+                if self._barred:
+                    layout.addWidget(kind, top, first + 1)
+                else:
+                    layout.addWidget(kind, top + 1, first, 1, PER_OPERATION)
+                layout.addWidget(under, top + under_row, first, 1, PER_OPERATION)
+        self._show_bars()
 
     def _show_bars(self) -> None:
         for (level, _operation), (bar, _figure, _under) in self.cells.items():
@@ -350,9 +387,8 @@ class LevelGrid(QWidget):
                     continue
                 bar.set_fraction(every.bytes_per_second / most if most else None)
                 figure.setText(render.rate_figure(every.bytes_per_second, GB))
-                # Beside the large figure, which is the one that skipped the
+                # By the large figure, which is the one that skipped the
                 # cache; the one-thread figure under it is of the same kind.
-                # In a narrow window its two words go one over the other.
                 kind.setText(_("memtest.grid.nt"))
                 under.setText("" if threads == 1 or one is None else
                               f"{render.counted('memtest.threads', 1)} "
@@ -369,7 +405,10 @@ class LevelGrid(QWidget):
         if any(result.level(level) for level in ("L1", "L2", "L3")):
             unit.append(_("memtest.grid.caches"))
         self.unit.setText(" ".join(unit))
-        self._show_bars()
+        # Other figures need another width: it is measured again with the bars.
+        self._barred = True
+        self._arrange()
+        self._fit_bars()
 
     @staticmethod
     def _fastest(result: memtest.Result, level: str, operation: str, threads: int):
