@@ -85,3 +85,19 @@ def run(module: str, argument: str,
     if answer is None:
         return Outcome(detail=errors.strip()[-2000:] or f"exit {child.returncode}")
     return Outcome(answer=answer)
+
+
+def die_with_parent() -> None:
+    """In the child: ask the kernel to kill this process when the one that
+    started it ends, whatever the window died of."""
+    import ctypes
+    import signal
+
+    parent = os.getppid()
+    try:
+        ctypes.CDLL(None, use_errno=True).prctl(1, int(signal.SIGKILL), 0, 0, 0)  # PR_SET_PDEATHSIG
+    except (OSError, AttributeError):
+        return
+    if os.getppid() != parent:
+        # It ended before the kernel was asked.
+        os._exit(0)
