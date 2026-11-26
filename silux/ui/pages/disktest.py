@@ -437,19 +437,17 @@ class TestRows(QWidget):
             for index, direction in enumerate(directions):
                 bar = RateBar(self._p, SCALE, tone=TONES[direction], height=self.BAR)
                 figure = self._figure()
-                # Under the figure, how much it moved from the test before.
+                # How much it moved from the test before, at the foot of the
+                # figure's cell: the figure stays in the middle of its row,
+                # level with its bar and with the other direction's.
                 change = QLabel("")
                 change.setFont(ui_font(theme.METRICS.small_pt - 1))
-                change.setAlignment(Qt.AlignmentFlag.AlignRight)
                 change.hide()
-                stack = QWidget()
-                inside = QVBoxLayout(stack)
-                inside.setContentsMargins(0, 0, 0, 0)
-                inside.setSpacing(0)
-                inside.addWidget(figure)
-                inside.addWidget(change)
                 self._grid.addWidget(bar, row, 1 + 2 * index)
-                self._grid.addWidget(stack, row, 2 + 2 * index)
+                self._grid.addWidget(figure, row, 2 + 2 * index,
+                                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                self._grid.addWidget(change, row, 2 + 2 * index,
+                                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
                 self._cells[test.name, direction] = (bar, figure)
                 self.changes[test.name, direction] = change
         self._even_rows()
@@ -530,11 +528,13 @@ class TestRows(QWidget):
 
     def _even_rows(self) -> None:
         """Every row as tall as the tallest: a name never takes two lines,
-        and the figures line up whatever the test, with a change under its
-        figure or not."""
-        cells = [figure.parentWidget() for _bar, figure in self._cells.values()]
-        tallest = max((widget.sizeHint().height() for widget in self.names + cells
-                       if not widget.isHidden()), default=0)
+        and the figures line up whatever the test. With a change under a
+        figure, tall enough for it under a figure in the middle."""
+        tallest = max((name.sizeHint().height() for name in self.names), default=0)
+        figure = max((f.sizeHint().height() for _bar, f in self._cells.values()), default=0)
+        shown = [change for change in self.changes.values() if not change.isHidden()]
+        if shown:
+            tallest = max(tallest, figure + 2 * max(c.sizeHint().height() for c in shown))
         for row in range(1, len(self._tests or self.names) + 1):
             self._grid.setRowMinimumHeight(row, tallest)
 

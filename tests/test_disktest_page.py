@@ -1000,7 +1000,9 @@ class TestAgainstTheTestBefore(TabCase):
         self.assertFalse(noise.isVisibleTo(tab))
         self.assertFalse(changes["RND4K Q32T1", "write"].isVisibleTo(tab))
         self.assertIn(disktest_page().when(self.before.timestamp), grown.toolTip())
-        # Under its figure.
+        # Under its figure, once the row has made room for it.
+        for _turn in range(3):
+            self.app.processEvents()
         figure = tab.rows._cells["SEQ1M Q8T1", "read"][1]
         self.assertGreaterEqual(grown.mapTo(tab, grown.rect().topLeft()).y(),
                                 figure.mapTo(tab, figure.rect().bottomLeft()).y())
@@ -1011,6 +1013,25 @@ class TestAgainstTheTestBefore(TabCase):
             self.app.processEvents()
         self.assertEqual(len({name.height() for name in tab.rows.names}), 1,
                          [name.height() for name in tab.rows.names])
+
+    def test_the_figures_of_a_row_stay_level_with_a_change_under_one(self):
+        """With «▲ 8 %» under it, the read figure rose above the write one."""
+        tab = self.tab()
+        tab.resize(1690, 900)
+        for _turn in range(4):
+            self.app.processEvents()
+
+        def middle(widget) -> int:
+            return widget.mapTo(tab, widget.rect().center()).y()
+
+        cells, change = tab.rows._cells, tab.rows.changes["SEQ1M Q8T1", "read"]
+        read_bar, read = cells["SEQ1M Q8T1", "read"]
+        _write_bar, write = cells["SEQ1M Q8T1", "write"]
+        self.assertTrue(change.isVisibleTo(tab))
+        self.assertLessEqual(abs(middle(read) - middle(write)), 1)
+        self.assertLessEqual(abs(middle(read) - middle(read_bar)), 1)
+        self.assertGreaterEqual(change.mapTo(tab, change.rect().topLeft()).y(),
+                                read.mapTo(tab, read.rect().bottomLeft()).y())
 
     def test_a_first_test_has_nothing_to_compare_with(self):
         disktest.save_history([recorded("sn850x-btrfs")])
