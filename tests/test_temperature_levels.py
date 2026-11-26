@@ -253,5 +253,21 @@ class TestEverywhereItIsShown(unittest.TestCase):
                           cpu.live.tile_temp.toolTip())
 
 
+class TestTheSheetOfAZen5(unittest.TestCase):
+    """The sheet's Tjmax is the model's, not a register's: it covers Zen 5,
+    which the P-state registers (`msr_voltage.ZEN_FAMILIES`) leave out."""
+
+    def test_a_ryzen_7_9700x(self):
+        from silux.providers.base import Draft
+        from silux.providers.hwmon import HwmonSensors
+
+        # CPUID as libcpuid's dump of one gives it: family 1Ah, model 44h.
+        draft = Draft()
+        draft.type_for("general").update(
+            vendor_id="AuthenticAMD", disp_family=0x1A, disp_model=0x44,
+            brand="AMD Ryzen 7 9700X 8-Core Processor")
+        self.assertEqual(HwmonSensors._sheet_maximum(draft), 95.0)
+
+
 if __name__ == "__main__":
     unittest.main()

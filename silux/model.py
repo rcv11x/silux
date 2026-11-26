@@ -2178,10 +2178,11 @@ class Sensor:
 
     @property
     def gpu_core_rail(self) -> bool:
-        """Whether it is a GPU core's voltage (amdgpu's «vddgfx»), which reads
-        a few millivolts with the core switched off at rest."""
+        """Whether it is a GPU core's voltage («vddgfx», or «vddc», which
+        hwmon names the core too), which reads a few millivolts with the core
+        switched off at rest."""
         return (self.device_kind == DeviceKind.GPU and self.kind is SensorKind.VOLTAGE
-                and (self.chip_label or "").lower() == "vddgfx")
+                and (self.chip_label or "").lower() in ("vddgfx", "vddc"))
 
     @property
     def group(self) -> str:

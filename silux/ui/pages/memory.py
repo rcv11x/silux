@@ -464,7 +464,7 @@ class MemoryPage(ScrollPage):
                  if (n.path.startswith("spd") and not (told and n.path == "spd"))
                  or (n.path.startswith("modules") and snapshot.modules)
                  or (n.path == "memory.traffic" and n.need is not Need.ROOT)]
-        signature = tuple((n.path, n.need) for n in notes)
+        signature = tuple((n.path, n.need, n.title, n.message, n.hint) for n in notes)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature

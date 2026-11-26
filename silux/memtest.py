@@ -519,6 +519,8 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
 
 
 def main() -> int:
+    # What it holds goes with this process, whatever the window died of.
+    childrun.die_with_parent()
     plan = json.loads(sys.argv[1])
 
     def emit(message: dict) -> None:

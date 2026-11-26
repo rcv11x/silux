@@ -648,7 +648,8 @@ class GpuSection(QWidget):
         """`sin_permisos`: los avisos de permisos están apartados."""
         if sin_permisos:
             notes = [n for n in notes if n.need is not Need.ROOT]
-        signature = tuple((n.path, n.need, n.helper_outdated) for n in notes)
+        signature = tuple((n.path, n.need, n.title, n.message, n.hint, n.helper_outdated)
+                          for n in notes)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature
@@ -1424,7 +1425,7 @@ class GraphicsPage(ScrollPage):
             seccion.set_notes(por_seccion.get(indice, []),
                               sin_permisos=self._sin_avisos_de_permisos)
 
-        signature = tuple((n.path, n.need) for n in sueltos)
+        signature = tuple((n.path, n.need, n.title, n.message, n.hint) for n in sueltos)
         if signature == self._notice_signature:
             return
         self._notice_signature = signature

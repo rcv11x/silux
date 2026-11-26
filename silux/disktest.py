@@ -746,22 +746,6 @@ def _disk_bytes(disks: Sequence[str], direction: str) -> Optional[int]:
     return total if disks else None
 
 
-def die_with_parent() -> None:
-    """Ask the kernel to kill this process when the one that started it
-    ends: the file goes then, whatever the window died of."""
-    import ctypes
-    import signal
-
-    parent = os.getppid()
-    try:
-        ctypes.CDLL(None, use_errno=True).prctl(1, int(signal.SIGKILL), 0, 0, 0)  # PR_SET_PDEATHSIG
-    except (OSError, AttributeError):
-        return
-    if os.getppid() != parent:
-        # It ended before the kernel was asked.
-        os._exit(0)
-
-
 class _ThroughTheCache(Exception):
     """A file system that falls back to the page cache without a word did:
     what comes after would be the memory's figures."""
@@ -906,7 +890,8 @@ def _measure(plan: dict, emit: Callable[[dict], None]) -> dict:
 
 
 def main() -> int:
-    die_with_parent()
+    # The test file goes with this process, whatever the window died of.
+    childrun.die_with_parent()
     plan = json.loads(sys.argv[1])
 
     def emit(message: dict) -> None:
