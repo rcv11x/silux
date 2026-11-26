@@ -23,7 +23,8 @@ lo que trajeron los informes de la prueba12.
   L3 y la RAM) y cuántos GB/s mueve la RAM leyendo, escribiendo y copiando,
   con un hilo y con todos. Tarda unos 20 s. Con permisos dice además qué
   parte del máximo de tu memoria alcanza. Guarda un historial, y el informe
-  lleva la última prueba con su curva entera.
+  lleva la última prueba con su curva entera. Si Silux se cierra a mitad,
+  la prueba se para y suelta la memoria que tenía.
 - Rendimiento → Disco: las cuatro pruebas de siempre, secuencial y
   aleatoria 4K, con muchas peticiones a la vez y una a una, en lectura y, si
   quieres, en escritura. El perfil «Uso real» hace solo las dos una a una y
@@ -100,6 +101,9 @@ lo que trajeron los informes de la prueba12.
 
 ### Otros cambios
 
+- Un aviso que cambia de texto mientras miras su página (la lista de
+  bibliotecas gráficas que faltan, por ejemplo) se pone al día en ese
+  momento, sin salir y volver.
 - Gráficos: si el consumo de una integrada de Intel no se puede leer (sale
   del contador RAPL del procesador), su página dice por qué en vez de un
   guion a secas. Dentro de un contenedor, el aviso de RAPL culpa al
