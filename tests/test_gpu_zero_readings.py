@@ -152,7 +152,7 @@ class TestTheCoreVoltage(unittest.TestCase):
 class TestOnTheSensorsPage(unittest.TestCase):
     """Sensors read «Core · 0.006 V» while Graphics said at rest."""
 
-    def _row(self, millivolts: str) -> str:
+    def _row(self, millivolts: str, label: str = "vddgfx") -> str:
         import os
         import pathlib
         import tempfile
@@ -167,7 +167,8 @@ class TestOnTheSensorsPage(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         folder = pathlib.Path(tmp.name) / "sys/class/hwmon/hwmon3"
-        for name, value in {**RX_5500_XT_HWMON, "in0_input": millivolts}.items():
+        for name, value in {**RX_5500_XT_HWMON, "in0_input": millivolts,
+                            "in0_label": label}.items():
             _write(folder / name, value)
         draft = Draft()
         with mock.patch.dict(os.environ, {"SILUX_SYSROOT": tmp.name}):
@@ -188,6 +189,14 @@ class TestOnTheSensorsPage(unittest.TestCase):
 
     def test_a_working_one_shows_its_voltage(self):
         self.assertEqual(self._row("781").strip(), "0.781 V")
+
+    def test_whichever_label_names_the_core(self):
+        """hwmon names «vddc» the core as it does «vddgfx» (`GPU_LABELS`)."""
+        from silux.i18n import _
+
+        self.assertEqual(self._row("6", label="vddc"), _("gpu.clock.idle"))
+        # The northbridge's is not the core's.
+        self.assertEqual(self._row("6", label="vddnb").strip(), "0.006 V")
 
 
 if __name__ == "__main__":
