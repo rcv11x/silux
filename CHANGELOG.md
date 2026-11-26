@@ -10,6 +10,42 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Lo destacado
+
+- Una versión de arreglos, con lo que salió en los informes de la prueba13
+- La página de Rendimiento ya no se queda en blanco después de la prueba de procesador
+- El informe lleva enteras tus últimas pruebas de memoria y de disco
+
+### Mejoras
+
+- La cabecera del informe dice qué valores son de ejemplo: el nombre del equipo, las direcciones IP y MAC, las carpetas de los discos
+- La vista previa del informe y la terminal ya no dicen que esos datos se quitan: se cambian por otros de ejemplo
+- Sin permisos, Memoria dice cuánta memoria suman los módulos leídos cuando no es toda la del equipo
+- El anexo del informe ya no toma por dormida una gráfica que el sistema tiene para una máquina virtual, y dice que es suya
+- El anexo guarda dónde empieza cada partición, para saber en qué parte del plato se hizo una prueba de disco
+- `--json` dice a qué velocidad va cada módulo de memoria
+
+### Arreglos
+
+- La página de Rendimiento se quedaba en blanco tras una prueba de procesador, también la rápida
+- El informe no llevaba las pruebas de memoria y de disco, aunque la prueba13 decía que sí
+- En el informe corto, la carpeta de la prueba de disco salía sin tapar: en una memoria USB, con tu usuario y su etiqueta
+- Con dos gráficas dedicadas, Inicio enseñaba la que no tiene el monitor (la que se reserva para una máquina virtual)
+- Inicio decía la velocidad de catálogo de la memoria y no a la que va («DDR5-4800» con un perfil EXPO a 6000)
+- Dos discos del mismo modelo salían juntos en Sensores, con cada temperatura dos veces y «(nvme)» detrás
+- La versión del driver de Vulkan de NVK salía como «Mesa 26.0.128»
+
+### Problemas conocidos
+
+- En btrfs, la escritura aleatoria 4K con 32 peticiones sale un 12-15 % por debajo de fio
+- En btrfs, la lectura secuencial con 8 peticiones por io_uring sale un 5 % por debajo de fio
+- En procesadores con dos tipos de núcleo o dos CCD, la prueba de memoria mide solo uno
+- El camino AVX-512 de la prueba de memoria funciona, pero aún no se ha comparado con otras herramientas
+- Que una NVIDIA de portátil se quede dormida solo se ha probado en un modelo
+- En KDE, Dolphin puede no enseñar el icono del AppImage
+
 ## 0.4-prueba13 (26 de noviembre de 2026)
 
 ### Lo destacado
