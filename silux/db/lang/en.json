@@ -1274,7 +1274,7 @@
   "memtest.grid.bars": "The bars, against your memory's maximum ({total}).",
   "memtest.grid.caches": "Inside the caches only the latency is measured.",
   "memtest.grid.cycles": "{n} cycles",
-  "memtest.grid.nobars": "Without your memory's maximum there are no bars: why, below.",
+  "memtest.grid.nobars": "No bars without your memory's maximum; the reason is below.",
   "memtest.grid.nt": "no cache",
   "memtest.grid.unit": "GB/s with {threads}; under it, with one.",
   "memtest.grid.unit.single": "GB/s with one thread.",
