@@ -2194,6 +2194,13 @@ class Sensor:
                 and (self.chip_label or "").lower() in ("vddgfx", "vddc"))
 
     @property
+    def gpu_core_clock(self) -> bool:
+        """Whether it is a GPU core's clock (hwmon's «sclk»), which reads 0
+        with the core switched off."""
+        return (self.device_kind == DeviceKind.GPU and self.kind is SensorKind.CLOCK
+                and (self.chip_label or "").lower() == "sclk")
+
+    @property
     def group(self) -> str:
         """The device the tree hangs it from: its key, or its name without one."""
         return self.device_key or self.device

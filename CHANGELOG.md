@@ -38,6 +38,7 @@ que hace falta.
 - La versión del driver de Vulkan de NVK salía como «Mesa 26.0.128»
 - Los chips de memoria de una Radeon salían en minúscula («hynix», «samsung»): ahora con su marca (SK Hynix, Samsung)
 - El reloj del núcleo de una Radeon saltaba entre «en reposo» y cifras como 41 MHz: ahora es la media del segundo, y «en reposo» solo cuando el núcleo estuvo apagado todo ese tiempo
+- Sensores da el mismo reloj del núcleo de una Radeon que Gráficos, y «en reposo» en vez de «0.0 MHz»
 - Con el núcleo de una Radeon en sueño profundo, la fila de escalones decía «en reposo»: ahora dice a qué reloj está
 - El voltaje del núcleo de una Radeon salía «en reposo» por debajo de 0,1 V aunque el driver diera una cifra: ahora sale la cifra (como «0.006 V»), y «en reposo» solo cuando el driver da 0
 - Ctrl+C en la terminal no cerraba Silux, y SIGTERM lo mataba sin parar las pruebas en marcha: los dos lo cierran ya como el botón de cerrar

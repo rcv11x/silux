@@ -12,6 +12,7 @@ file.
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Optional
 
 from ..i18n import _
@@ -45,6 +46,7 @@ class DerivedSensors(Provider):
     def collect(self, draft: Draft) -> None:
         self._shared_package(draft)
         self._power_from_rapl(draft)
+        self._core_clock_over_the_interval(draft)
         if not draft.types:
             # The GPUs may have data even without an identified processor.
             draft.sensors.extend(self._graphics(draft))
@@ -57,6 +59,19 @@ class DerivedSensors(Provider):
         draft.sensors.extend(self._usage(draft, device))
         draft.sensors.extend(self._graphics(draft))
         draft.sensors.extend(self._network(draft))
+
+    @staticmethod
+    def _core_clock_over_the_interval(draft: Draft) -> None:
+        """A GPU core's clock in Sensors is the one Graphics shows: over the
+        interval, where it was read between samples, not hwmon's last
+        instant."""
+        clocks = {f"gpu:{gpu['pci_slot']}": gpu["clocks"].core_hz for gpu in draft.gpus
+                  if gpu.get("pci_slot") and gpu.get("clocks") is not None
+                  and gpu["clocks"].core_hz is not None}
+        draft.sensors[:] = [
+            dataclasses.replace(sensor, value=clocks[sensor.device_key] / 1e6)
+            if sensor.gpu_core_clock and sensor.device_key in clocks else sensor
+            for sensor in draft.sensors]
 
     @staticmethod
     def _power_from_rapl(draft: Draft) -> None:

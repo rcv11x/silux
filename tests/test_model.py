@@ -68,6 +68,7 @@ class TestPropiedadesExportadas(unittest.TestCase):
         # millivolts at rest: `device_kind`, `kind` and `chip_label`, all
         # already in the JSON.
         ("Sensor", "gpu_core_rail"),
+        ("Sensor", "gpu_core_clock"),
     }
 
     def test_ninguna_propiedad_se_queda_fuera(self):

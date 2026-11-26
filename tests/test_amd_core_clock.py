@@ -97,3 +97,22 @@ class TestTheClockOverTheInterval(unittest.TestCase):
             texts = pantalla.textos_de(window.graphics_page)
         self.assertIn(_("gpu.clock.idle"), texts)
         self.assertFalse([t for t in texts if t.startswith("0 MHz") or t == "0"])
+
+
+class TestSensorsSaysTheSame(unittest.TestCase):
+    """Graphics had the interval's clock and Sensors the last instant, and
+    with the core off one said «en reposo» and the other «0.0 MHz»."""
+
+    def row(self, snapshot) -> str:
+        qt.app()
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Sensores")
+            return window.monitor_page.tree._rows["amdgpu/freq1"].text(1)
+
+    def test_the_interval_mean(self):
+        snapshot = photo([731, 645, 403, 503])
+        sclk = next(s for s in snapshot.sensors if s.key == "amdgpu/freq1")
+        self.assertEqual(sclk.value * 1_000_000, radeon(snapshot).clocks.core_hz)
+
+    def test_off_the_whole_interval(self):
+        self.assertEqual(self.row(photo([0, 0, 0, 0])), _("gpu.clock.idle"))

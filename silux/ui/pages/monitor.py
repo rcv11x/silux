@@ -412,6 +412,9 @@ class MonitorPage(ScrollPage):
         if sensor.gpu_core_rail:
             # Said as on Graphics: switched off at rest is not a voltage.
             current = render.gpu_voltage(sensor.value)
+        elif sensor.gpu_core_clock and sensor.value == 0:
+            # Nor a clock.
+            current = render.gpu_clock(0)
 
         extremes = self._tracker.get(sensor.key)
         if extremes is None:
