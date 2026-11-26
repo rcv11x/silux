@@ -825,6 +825,58 @@ class TestRunningAndFailing(TabCase):
             tab.apply(self.snapshot)
             self.assertEqual(tab.disk_name.text(), "WD_BLACK SN850X HS 1000GB")
 
+    def test_the_row_under_way_stands_out_and_its_bar_glides(self):
+        """Nothing said which test was running, and each lap's bar jumped."""
+        import queue
+
+        from PySide6.QtTest import QTest
+
+        steps: queue.Queue = queue.Queue()
+
+        def run(_plan, step, _stop):
+            while (message := steps.get(timeout=10)) is not None:
+                step(message)
+            return disktest.Result(reason="cancelled")
+
+        def say(message) -> None:
+            steps.put(message)
+            for _turn in range(20):
+                QTest.qWait(10)
+                if tab._run.last == message:
+                    break
+            for _turn in range(3):
+                self.app.processEvents()
+
+        tab = self.tab()
+        tab.resize(1200, 900)
+        rows = tab.rows
+        with mock.patch.object(disktest, "run", run):
+            tab.start()
+            self.addCleanup(lambda: tab._run._thread and tab._run._thread.join())
+            self.addCleanup(steps.put, None)
+            say({"phase": "fill", "done": 0.5})
+            self.assertIsNone(rows.running)
+            say({"phase": "lap", "test": "SEQ1M Q8T1", "direction": "read", "lap": 1,
+                 "laps": 5, "done": 0.1})
+            self.assertEqual(rows.running, "SEQ1M Q8T1")
+            # Painted: the row's own edge in the accent, and none on another.
+            image = rows.grab().toImage()
+            row = rows.running_row()
+            accent = tab._p.q("accent").rgb()
+            self.assertEqual(image.pixelColor(1, int(row.center().y())).rgb(), accent)
+            other = rows.names[2].mapTo(rows, rows.names[2].rect().center()).y()
+            self.assertNotEqual(image.pixelColor(1, other).rgb(), accent)
+            bar = rows._cells["SEQ1M Q8T1", "read"][0]
+            say({"phase": "lapped", "test": "SEQ1M Q8T1", "direction": "read", "lap": 1,
+                 "laps": 5, "done": 0.2, "bytes_per_second": 6_500_000_000})
+            full = bar.width() * bar.fraction
+            self.assertLess(bar.filled_width(), full - 1)
+            QTest.qWait(bar.GLIDE_MS + 150)
+            self.assertAlmostEqual(bar.filled_width(), full, delta=0.5)
+            say({"phase": "lap", "test": "RND4K Q32T1", "direction": "write", "lap": 1,
+                 "laps": 5, "done": 0.7})
+            self.assertEqual(rows.running, "RND4K Q32T1")
+
     def test_a_run_that_ends_shows_its_result_and_joins_the_history(self):
         from silux.ui.pages.disktest import DiskTestRun
 

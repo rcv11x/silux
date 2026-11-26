@@ -20,6 +20,7 @@ from collections import deque
 from typing import Iterable, NamedTuple, Optional, Sequence
 
 from PySide6.QtCore import (
+    QEasingCurve,
     QEvent,
     QObject,
     QPoint,
@@ -29,6 +30,7 @@ from PySide6.QtCore import (
     QSize,
     Qt,
     QTimer,
+    QVariantAnimation,
     Signal,
 )
 from PySide6.QtGui import (
@@ -2538,6 +2540,8 @@ class RateBar(QWidget):
     """
 
     NARROWEST = 40
+    # How long a bar takes to glide to a new figure.
+    GLIDE_MS = 350
 
     def __init__(self, palette: Palette, scale: Optional[tuple[float, int]] = None,
                  tone: float = 1.0, height: int = 10, parent: Optional[QWidget] = None,
@@ -2553,6 +2557,9 @@ class RateBar(QWidget):
         self._colour = colour
         self._tone = tone
         self._fraction: Optional[float] = None
+        # What is drawn: the fraction, or on its way to it while gliding.
+        self._drawn: Optional[float] = None
+        self._glide: Optional[QVariantAnimation] = None
         self._live = False
         self._measured = False
         self._round = 3 if height <= 12 else 5
@@ -2564,27 +2571,52 @@ class RateBar(QWidget):
     def fraction(self) -> Optional[float]:
         return self._fraction
 
-    def set_rate(self, bytes_per_second: Optional[float], live: bool = False) -> None:
-        """`live`: a figure still under way, drawn muted."""
+    def set_rate(self, bytes_per_second: Optional[float], live: bool = False,
+                 glide: bool = False) -> None:
+        """`live`: a figure still under way, drawn muted. `glide`: the bar
+        grows or shrinks to it smoothly instead of jumping."""
         fraction = None
         if bytes_per_second:
             decades = math.log10(max(bytes_per_second, self._from) / self._from)
             fraction = decades / self._decades
-        self.set_fraction(fraction, live, measured=bool(bytes_per_second))
+        self.set_fraction(fraction, live, measured=bool(bytes_per_second), glide=glide)
 
     def set_fraction(self, fraction: Optional[float], live: bool = False,
-                     measured: bool = False) -> None:
+                     measured: bool = False, glide: bool = False) -> None:
         """How full, from 0 to 1, on a scale of the caller's. `measured`:
         there is a figure, however small, and it is drawn."""
         if fraction is not None:
             fraction = min(max(fraction, 0.0), 1.0)
-        if (fraction, live, measured) != (self._fraction, self._live, self._measured):
-            self._fraction, self._live, self._measured = fraction, live, measured
-            self.update()
+        if (fraction, live, measured) == (self._fraction, self._live, self._measured):
+            return
+        self._fraction, self._live, self._measured = fraction, live, measured
+        if glide and fraction is not None and self.isVisible():
+            self._glide_to(fraction)
+        else:
+            if self._glide is not None:
+                self._glide.stop()
+            self._drawn = fraction
+        self.update()
+
+    def _glide_to(self, fraction: float) -> None:
+        if self._glide is None:
+            self._glide = QVariantAnimation(self)
+            self._glide.setDuration(self.GLIDE_MS)
+            self._glide.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._glide.valueChanged.connect(self._on_glide)
+        self._glide.stop()
+        self._glide.setStartValue(float(self._drawn or 0.0))
+        self._glide.setEndValue(float(fraction))
+        self._glide.start()
+
+    def _on_glide(self, value: float) -> None:
+        self._drawn = float(value)
+        self.update()
 
     def filled_width(self) -> float:
-        """How much of the bar is filled, in pixels."""
-        width = self.width() * (self._fraction or 0.0)
+        """How much of the bar is filled, in pixels: what is drawn, which
+        while gliding is on its way to the fraction."""
+        width = self.width() * (self._drawn or 0.0)
         return max(width, self.height() - 2.0) if self._measured else width
 
     def paintEvent(self, _event) -> None:  # noqa: N802

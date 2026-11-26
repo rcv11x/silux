@@ -375,8 +375,12 @@ class TestRows(QWidget):
         self.names: list[QWidget] = []
         self._axes: list[QWidget] = []
         self._barred = True
+        # The test under way, whose row stands out: the air at the sides is
+        # where its highlight goes beyond the text.
+        self.running: Optional[str] = None
         self._grid = QGridLayout(self)
-        self._grid.setContentsMargins(0, 0, 0, 0)
+        side = theme.METRICS.card_gap
+        self._grid.setContentsMargins(side, 0, side, 0)
         self._grid.setHorizontalSpacing(self.GAP)
         self._grid.setVerticalSpacing(10)
         self._grid.setColumnStretch(1, 1)
@@ -464,7 +468,9 @@ class TestRows(QWidget):
                            in self._cells.items() if way == direction), default=0)
                       for direction in (("read", "write") if self._writes else ("read",)))
         gaps = self.GAP * 2 * directions
-        room = (self.width() - names - figures - gaps) / directions >= RateBar.NARROWEST
+        margins = self._grid.contentsMargins()
+        usable = self.width() - margins.left() - margins.right()
+        room = (usable - names - figures - gaps) / directions >= RateBar.NARROWEST
         if room == self._barred:
             return
         self._barred = room
@@ -487,7 +493,37 @@ class TestRows(QWidget):
             figure.setText(render.DASH)
             figure.setToolTip("")
             self._tint(figure, False)
+        self.set_running(None)
         self._fit_gaps()
+
+    def set_running(self, name: Optional[str]) -> None:
+        """The test under way, or none."""
+        if name != self.running:
+            self.running = name
+            self.update()
+
+    def running_row(self) -> Optional[QRectF]:
+        """Where the row of the test under way is drawn, if one is."""
+        index = next((i for i, test in enumerate(self._tests) if test.name == self.running), None)
+        if index is None:
+            return None
+        cell = self._grid.cellRect(index + 1, 0)
+        air = self._grid.verticalSpacing() / 2
+        return QRectF(0, cell.top() - air, self.width(), cell.height() + 2 * air)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        super().paintEvent(event)
+        row = self.running_row()
+        if row is None:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self._p.q("accent", 0.12))
+        painter.drawRoundedRect(row, 6, 6)
+        painter.setBrush(self._p.q("accent"))
+        painter.drawRoundedRect(QRectF(row.left(), row.top(), 3, row.height()), 1.5, 1.5)
+        painter.end()
 
     @staticmethod
     def _tint(figure: QLabel, live: bool) -> None:
@@ -503,7 +539,7 @@ class TestRows(QWidget):
         if cell is None:
             return
         bar, figure = cell
-        bar.set_rate(bytes_per_second, live)
+        bar.set_rate(bytes_per_second, live, glide=live)
         figure.setText(megabytes(bytes_per_second) + (VARIED_MARK if note else ""))
         figure.setToolTip(note)
         self._tint(figure, live)
@@ -1238,6 +1274,7 @@ class DiskTestTab(ScrollPage):
                      else 0.5 + done / 2 if self._run.reserved else done)
             self.progress.set_state(_("disktest.step").format(what=what, n=1, of=total),
                                     share / total, percent=False)
+            self.rows.set_running(None)
             return
         name, direction = message.get("test"), message.get("direction", "read")
         # The test that runs may be another than asked (a queue of threads
@@ -1246,6 +1283,7 @@ class DiskTestTab(ScrollPage):
                       and name in (test.name, test.as_run_by("threads").name)), None)
         if index is None:
             return
+        self.rows.set_running(order[index][0].name)
         words = test_words(order[index][0])
         what = _("disktest.step.test").format(test=words[:1].lower() + words[1:],
                                               direction=_(DIRECTIONS[direction]))
