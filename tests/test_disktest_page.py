@@ -181,11 +181,15 @@ class TestBeforeAnyTest(TabCase):
         intro = next(label for label in tab.findChildren(QLabel)
                      if label.text() == _("disktest.intro"))
         inside = vertical_gap(tab, title, intro)
-        # Twice the air they had.
-        self.assertGreaterEqual(vertical_gap(tab, intro, tab.place_box) - inside,
-                                2 * theme.METRICS.card_gap)
+        # The description, where and the choices, a row each with the same
+        # air; then twice as much before how long it takes.
+        rows = (vertical_gap(tab, intro, tab.place_box),
+                vertical_gap(tab, tab.place_box, tab.profile_box))
+        self.assertLessEqual(abs(rows[0] - rows[1]), 2, rows)
+        self.assertGreater(rows[0], inside)
         self.assertGreaterEqual(vertical_gap(tab, tab.run_button, tab.about) - inside,
                                 2 * theme.METRICS.card_gap)
+        self.assertLess(rows[0], vertical_gap(tab, tab.run_button, tab.about) / 2 + 1)
         # How long it takes and how far, under a line of their own.
         from silux.ui.widgets import Divider
 

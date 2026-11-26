@@ -96,8 +96,9 @@ class TestWhatAResultShows(TabCase):
         title = next(label for label in tab.findChildren(QLabel)
                      if label.text() == _("memtest.title"))
         inside = vertical_gap(tab, title, tab.intro)
-        self.assertGreaterEqual(vertical_gap(tab, tab.intro, tab.run_button) - inside,
-                                theme.METRICS.card_gap)
+        # «Start» right under the description: alone with a gap over it, it
+        # looked lost.
+        self.assertLessEqual(vertical_gap(tab, tab.intro, tab.run_button), inside + 4)
         header = tab.run_button.parentWidget()
         while header is not None and type(header).__name__ != "Card":
             header = header.parentWidget()
@@ -105,9 +106,7 @@ class TestWhatAResultShows(TabCase):
         self.assertLessEqual(bottom, theme.METRICS.card_pad_v + 2)
         from silux.ui.widgets import Divider
 
-        # Twice the air it had; and the progress, under a line that goes with it.
-        self.assertGreaterEqual(vertical_gap(tab, tab.intro, tab.run_button) - inside,
-                                2 * theme.METRICS.card_gap)
+        # The progress, under a line that goes with it.
         self.assertFalse(any(d.isVisibleTo(tab) for d in tab.progress.findChildren(Divider)))
         tab.progress.show()
         for _turn in range(3):

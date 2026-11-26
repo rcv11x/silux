@@ -788,17 +788,16 @@ class DiskTestTab(ScrollPage):
         self.blocked_note.hide()
         self.progress = ProgressLine()
         self.progress.hide()
-        # Three groups, apart: what it is, where with the choices, and under
-        # a line, how long it takes with how far it has got.
+        # What it is, where and the choices, a row each with the same air;
+        # and under a line, how long it takes with how far it has got.
         air = card.body.spacing()
         card.body.addWidget(title)
-        card.body.addWidget(intro)
-        card.body.addSpacing(2 * (theme.METRICS.card_gap + air))
-        choices = QVBoxLayout()
-        choices.setSpacing(2 * air)
-        choices.addLayout(where)
-        choices.addWidget(options)
-        card.body.addLayout(choices)
+        rows = QVBoxLayout()
+        rows.setSpacing(2 * air)
+        rows.addWidget(intro)
+        rows.addLayout(where)
+        rows.addWidget(options)
+        card.body.addLayout(rows)
         card.body.addSpacing(theme.METRICS.card_gap)
         card.body.addWidget(Divider())
         card.body.addSpacing(theme.METRICS.card_gap)

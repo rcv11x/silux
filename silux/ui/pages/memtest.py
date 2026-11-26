@@ -567,10 +567,9 @@ class MemoryTestTab(ScrollPage):
         # Apart from the button, under a line: they go with it when hidden.
         self.progress = ProgressLine(divided=True, air=theme.METRICS.card_gap + air)
         self.progress.hide()
-        # What it is, and apart, what to do.
+        # What it is, and right under it, on the right, what to do.
         card.body.addWidget(title)
         card.body.addWidget(self.intro)
-        card.body.addSpacing(2 * (theme.METRICS.card_gap + air))
         for widget in (buttons, self.progress):
             card.body.addWidget(widget)
         return card
