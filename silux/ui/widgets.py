@@ -2405,7 +2405,12 @@ class ReadableRoot(QWidget):
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         margin = theme.METRICS.page_margin
-        side = max(margin, (self.width() - self.content_width()) // 2)
+        # The margins count towards this widget's minimum width. Centred on
+        # the cap alone, content wider than the cap made the page wider, the
+        # margins grew with it, and so on with every layout pass.
+        margins = self.column.contentsMargins()
+        content = self.column.minimumSize().width() - margins.left() - margins.right()
+        side = max(margin, (self.width() - max(self.content_width(), content)) // 2)
         if self.side() != side:
             self.column.setContentsMargins(side, margin, side, margin)
             self.side_changed.emit(side)

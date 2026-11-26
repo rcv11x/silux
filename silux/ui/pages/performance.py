@@ -103,6 +103,7 @@ class PerformancePage(ScrollPage):
         self.score_card.body.addWidget(self.score_bar)
         self.score_range = QLabel("")
         self.score_range.setObjectName("Muted")
+        self.score_range.setWordWrap(True)
         self.score_range.setFont(ui_font(theme.METRICS.small_pt))
         self.score_card.body.addWidget(self.score_range)
         self.score_card.hide()
