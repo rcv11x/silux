@@ -1357,6 +1357,16 @@ def mounted(folder: pathlib.Path):
             sysroot.forget()
 
 
+def describe(folder: pathlib.Path, snapshot) -> None:
+    """What the dump's manifest says it shows: its processor, kernel, cards
+    and sources, which the suite checks every mount against."""
+    manifest = json.loads((folder / MANIFEST).read_text())
+    cpu = snapshot.cpu.types[0].brand if snapshot.cpu.types else None
+    manifest.update(cpu=cpu, kernel=snapshot.system.kernel if snapshot.system else None,
+                    gpus=[g.name for g in snapshot.gpus], fuentes=sorted(snapshot.capabilities))
+    (folder / MANIFEST).write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + "\n")
+
+
 def snapshot_of(folder: pathlib.Path):
     """The snapshot the Collector gives reading the dump: the second, one
     counter interval after the first, as the dump took its second reading.
@@ -1465,11 +1475,7 @@ def dump(name: str, base: pathlib.Path,
             raise SystemExit("El volcado delata a esta máquina; no se escribe nada:\n  "
                              + "\n  ".join(findings[:20]))
 
-        manifest = json.loads((work / MANIFEST).read_text())
-        cpu = snapshot.cpu.types[0].brand if snapshot.cpu.types else None
-        manifest.update(cpu=cpu, kernel=snapshot.system.kernel if snapshot.system else None,
-                          gpus=[g.name for g in snapshot.gpus], fuentes=sorted(snapshot.capabilities))
-        (work / MANIFEST).write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + "\n")
+        describe(work, snapshot)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(work, target, symlinks=True)
     return target

@@ -216,6 +216,24 @@ class TestImportingAReport(unittest.TestCase):
         self.assertEqual(imported[122:126], bytes(4))
         self.assertEqual(volcado._spd_without_serial(imported)[0], imported)
 
+    def test_the_manifest_says_what_this_version_reads(self):
+        """An older version took the snapshot back to back and left the
+        sources with a rate out: RAPL, on a machine that read it."""
+        import json
+        import shutil
+
+        copy = self.base / "5800x3d"
+        shutil.copytree(EQUIPOS / "5800x3d", copy, symlinks=True)
+        manifest = copy / "manifiesto.json"
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+        data["fuentes"] = [s for s in data["fuentes"] if s != "cppc"]
+        manifest.write_text(json.dumps(data), encoding="utf-8")
+        target, photo = self.tool.import_report(
+            self._report(annex.to_text(copy)), "x3d", self.base / "equipos")
+        written = json.loads((target / "manifiesto.json").read_text(encoding="utf-8"))
+        self.assertEqual(written["fuentes"], sorted(photo.capabilities))
+        self.assertIn("cppc", written["fuentes"])
+
     def test_nvml_reasons_an_older_version_wrote_become_keys(self):
         import json
         import shutil

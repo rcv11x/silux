@@ -56,6 +56,8 @@ def import_report(report: pathlib.Path, name: str, base: pathlib.Path = TARGET):
             raise SystemExit("El anexo lleva lo que un volcado no puede llevar; no se deja "
                              "nada:\n  " + "\n  ".join(found[:20]))
         photo = volcado.snapshot_of(work)
+        # What an older version wrote of it may not be what this one reads.
+        volcado.describe(work, photo)
         shutil.copytree(work, target, symlinks=True)
     return target, photo
 
