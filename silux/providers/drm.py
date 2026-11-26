@@ -551,12 +551,13 @@ class GpuState(Provider):
         # The Intel cards whose engine clock is read between samples too,
         # with their DRM node (`_intel_clock`).
         self._with_clock: list[tuple[pathlib.Path, pathlib.Path]] = []
+        self._with_amd_clock: list[tuple[pathlib.Path, pathlib.Path]] = []
 
     def available(self) -> bool:
         return os.path.isdir(sysroot.path(SYS_DRM))
 
     def wants_between_samples(self) -> bool:
-        return bool(self._with_instants or self._with_clock)
+        return bool(self._with_instants or self._with_clock or self._with_amd_clock)
 
     def between_samples(self) -> None:
         """Read the usage counters amdgpu gives as an instant.
@@ -574,6 +575,13 @@ class GpuState(Provider):
                 amount = _percent(device / file_name)
                 if amount is not None:
                     self._readings.setdefault((device, field), []).append(amount)
+        # An AMD core's clock in hwmon is an instant too.
+        for device, path in self._with_amd_clock:
+            if is_suspended(device):
+                continue
+            hz = read_int(str(path))
+            if hz is not None:
+                self._readings.setdefault((device, "core_hz"), []).append(hz)
         # Reading the actual frequency does not wake an Intel GPU (i915 reads
         # it only if the device is in use), but a suspended one is left alone.
         for device, root in self._with_clock:
@@ -598,6 +606,7 @@ class GpuState(Provider):
         self._discarded.note(draft)
         with_instants = []
         with_clock = []
+        with_amd_clock = []
         for index, gpu in enumerate(draft.gpus):
             node = gpu.get("drm_node")
             if not node:
@@ -622,6 +631,9 @@ class GpuState(Provider):
             gpu["memory"] = _used_memory(device, gpu.get("memory") or GpuMemory())
             gpu["link"] = _link(device, gpu.get("link") or PcieLink())
             gpu["clocks"] = _clocks(device, root)
+            if gpu.get("driver") == "amdgpu" and (sclk := _sclk_file(device)) is not None:
+                gpu["clocks"] = self._amd_clock(device, gpu["clocks"])
+                with_amd_clock.append((device, sclk))
             _sensors(gpu, device)
             _telemetry(gpu, device, draft, index)
             if gpu.get("vendor") == "AMD" and gpu.get("integrated"):
@@ -658,9 +670,11 @@ class GpuState(Provider):
                     self._intel_notices(draft, index, gpu)
         self._with_instants = with_instants
         self._with_clock = with_clock
+        self._with_amd_clock = with_amd_clock
         # Those of a card that went to sleep or vanished do not wait for it
         # to come back: they would be from another time.
-        current_ones = set(with_instants) | {pair[0] for pair in with_clock}
+        current_ones = (set(with_instants) | {pair[0] for pair in with_clock}
+                        | {pair[0] for pair in with_amd_clock})
         self._readings = {k: v for k, v in self._readings.items() if k[0] in current_ones}
 
     def _asleep(self, gpu: dict, node: str) -> None:
@@ -768,6 +782,23 @@ class GpuState(Provider):
             hz = _intel_hz(device, root, "req") or 0
         else:
             hz = 0
+        return dataclasses.replace(clocks, core_hz=hz)
+
+    def _amd_clock(self, device: pathlib.Path, clocks: GpuClocks) -> GpuClocks:
+        """The core's clock over the interval, not one reading.
+
+        hwmon's `sclk` is an instant: a quarter of a second apart it read 731,
+        645, 403 and 503 MHz, and 0 whenever the core switched off. Off is not
+        a 0 MHz clock: the figure is the mean of the readings that found it
+        on, and only off the whole interval is it at rest (0).
+        """
+        readings = self._readings.pop((device, "core_hz"), [])
+        if clocks.core_hz is not None:
+            readings.append(clocks.core_hz)
+        if not readings:
+            return clocks
+        on = [hz for hz in readings if hz]
+        hz = round(sum(on) / len(on) / 1e6) * 1_000_000 if on else 0
         return dataclasses.replace(clocks, core_hz=hz)
 
     def _idle(self, node: str, root: pathlib.Path, interval_s: float) -> Optional[float]:
@@ -1280,6 +1311,17 @@ def _hwmon(device: pathlib.Path) -> Optional[pathlib.Path]:
     if not folder_path.is_dir():
         return None
     return next(iter(sorted(folder_path.glob("hwmon*"))), None)
+
+
+def _sclk_file(device: pathlib.Path) -> Optional[pathlib.Path]:
+    """hwmon's file of an AMD core's clock, by its label."""
+    hwmon = _hwmon(device)
+    if hwmon is None:
+        return None
+    for label in sorted(hwmon.glob("freq*_label")):
+        if (read_text(str(label)) or "").lower() == "sclk":
+            return pathlib.Path(str(label).replace("_label", "_input"))
+    return None
 
 
 def _labelled(hwmon: Optional[pathlib.Path], prefix: str) -> dict[str, int]:

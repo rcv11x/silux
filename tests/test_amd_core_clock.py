@@ -6,6 +6,11 @@ half its lowest step: deep sleep, at that clock. Its line was skipped, no
 step was marked and the expert row said «en reposo» beside «Núcleo: 1.61
 GHz». «S: 0Mhz» is the core switched off (GFXOFF), and that is at rest
 (smu_cmn.c, `smu_cmn_print_dpm_clk_levels`).
+
+And `freq1_input` is an instant: on an RX 9070 XT it read 731, 645, 403 and
+503 MHz a quarter of a second apart, and 0 when the core switched off. The
+figure is the mean of the readings that found it on, read between samples;
+off the whole interval, «en reposo».
 """
 
 import pathlib
@@ -15,10 +20,12 @@ from unittest import mock
 from silux import render, volcado
 from silux.collector import Collector
 from silux.i18n import _
+from tests import pantalla, qt
 
 EQUIPOS = pathlib.Path(__file__).resolve().parent / "fixtures" / "equipos"
 CARD = "sys/devices/pci0000:00/0000:00:03.1/0000:0a:00.0/0000:0b:00.0/0000:0c:00.0"
 FREQ = f"{CARD}/hwmon/hwmon3/freq1_input"
+
 
 class _Clock:
     def __init__(self):
@@ -26,6 +33,7 @@ class _Clock:
 
     def __call__(self):
         return self.now
+
 
 def photo(readings_mhz, sclk=None):
     """Two samples a second apart; between them `readings_mhz` of the core
@@ -47,8 +55,10 @@ def photo(readings_mhz, sclk=None):
         finally:
             collector.close()
 
+
 def radeon(snapshot):
     return next(g for g in snapshot.gpus if g.driver == "amdgpu")
+
 
 class TestTheDeepSleepLine(unittest.TestCase):
     def test_the_dump_has_it(self):
@@ -67,3 +77,23 @@ class TestTheDeepSleepLine(unittest.TestCase):
     def test_at_zero_the_core_is_off(self):
         levels = radeon(photo([0], sclk="S: 0Mhz *\n1: 500Mhz \n2: 2520Mhz \n")).clocks.core_levels
         self.assertIn(_("gpu.expert.now.asleep"), render.dpm_levels(levels))
+
+
+class TestTheClockOverTheInterval(unittest.TestCase):
+    def test_the_mean_of_the_readings(self):
+        core = radeon(photo([731, 645, 403, 503])).clocks.core_hz
+        self.assertEqual(core, round((731 + 645 + 403 + 503) / 4) * 1_000_000)
+
+    def test_switched_off_part_of_the_interval_is_not_a_low_clock(self):
+        core = radeon(photo([0, 41, 0, 85])).clocks.core_hz
+        self.assertEqual(core, 63_000_000)
+
+    def test_off_the_whole_interval_is_at_rest(self):
+        snapshot = photo([0, 0, 0, 0])
+        self.assertEqual(radeon(snapshot).clocks.core_hz, 0)
+        qt.app()
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Gráficos")
+            texts = pantalla.textos_de(window.graphics_page)
+        self.assertIn(_("gpu.clock.idle"), texts)
+        self.assertFalse([t for t in texts if t.startswith("0 MHz") or t == "0"])
