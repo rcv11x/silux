@@ -588,10 +588,15 @@ class DiskTestTab(ScrollPage):
         self.blocked_note.hide()
         self.progress = ProgressLine()
         self.progress.hide()
+        # Three groups, with air between them: what it is, the choices, and
+        # how long it takes with how far it has got.
         card.body.addWidget(title)
         card.body.addWidget(intro)
+        card.body.addSpacing(theme.METRICS.card_gap)
         card.body.addLayout(where)
-        for widget in (options, self.about, self.blocked_note, self.progress):
+        card.body.addWidget(options)
+        card.body.addSpacing(theme.METRICS.card_gap)
+        for widget in (self.about, self.blocked_note, self.progress):
             card.body.addWidget(widget)
         return card
 

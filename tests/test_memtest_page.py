@@ -81,6 +81,34 @@ class TestWhatAResultShows(TabCase):
         row = tab.run_button.parentWidget()
         self.assertLessEqual(row.width() - tab.run_button.geometry().right(), 2)
 
+    def test_the_header_s_groups_have_air_between_them(self):
+        """What it is and what to do took the same few pixels apart; the
+        progress goes apart too, and its air with it when it is hidden."""
+        from PySide6.QtWidgets import QLabel
+
+        from silux.ui import theme
+        from tests.test_disktest_page import vertical_gap
+
+        tab = self.tab()
+        tab.resize(900, 700)
+        for _turn in range(3):
+            self.app.processEvents()
+        title = next(label for label in tab.findChildren(QLabel)
+                     if label.text() == _("memtest.title"))
+        inside = vertical_gap(tab, title, tab.intro)
+        self.assertGreaterEqual(vertical_gap(tab, tab.intro, tab.run_button) - inside,
+                                theme.METRICS.card_gap)
+        header = tab.run_button.parentWidget()
+        while header is not None and type(header).__name__ != "Card":
+            header = header.parentWidget()
+        bottom = header.height() - tab.run_button.mapTo(header, tab.run_button.rect().bottomLeft()).y()
+        self.assertLessEqual(bottom, theme.METRICS.card_pad_v + 2)
+        tab.progress.show()
+        for _turn in range(3):
+            self.app.processEvents()
+        self.assertGreaterEqual(vertical_gap(tab, tab.run_button, tab.progress.label) - inside,
+                                theme.METRICS.card_gap)
+
     def test_each_level_with_its_cycles_and_the_clock_it_ran_at(self):
         tab = self.tab()
         tab.show_result(recorded())

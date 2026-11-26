@@ -38,6 +38,14 @@ def visible_texts(widget) -> str:
     return text.replace("\u202f", " ").replace("\u00a0", " ").replace("\u2060", "")
 
 
+def vertical_gap(root, upper, lower) -> int:
+    """The pixels between the bottom of `upper` and the top of `lower`."""
+    from PySide6.QtCore import QPoint
+
+    return (lower.mapTo(root, QPoint(0, 0)).y()
+            - upper.mapTo(root, QPoint(0, upper.height())).y())
+
+
 class Running:
     """A run as a tab that arrives half way finds it."""
 
@@ -155,6 +163,26 @@ class TestBeforeAnyTest(TabCase):
         plan = tab.plan()
         self.assertEqual((plan.folder, plan.disks, plan.filesystem, plan.write, plan.laps),
                          (OURS, ("nvme0n1",), "btrfs", True, 5))
+
+    def test_the_header_s_three_groups_have_air_between_them(self):
+        """Title, description, where, the choices, how long and how far took
+        the same few pixels apart, all in one block."""
+        from PySide6.QtWidgets import QLabel
+
+        from silux.ui import theme
+
+        tab = self.tab()
+        for _turn in range(3):
+            self.app.processEvents()
+        title = next(label for label in tab.findChildren(QLabel)
+                     if label.text() == _("disktest.title"))
+        intro = next(label for label in tab.findChildren(QLabel)
+                     if label.text() == _("disktest.intro"))
+        inside = vertical_gap(tab, title, intro)
+        self.assertGreaterEqual(vertical_gap(tab, intro, tab.place_box) - inside,
+                                theme.METRICS.card_gap)
+        self.assertGreaterEqual(vertical_gap(tab, tab.run_button, tab.about) - inside,
+                                theme.METRICS.card_gap)
 
     def test_the_options_change_the_plan_and_what_is_said_of_it(self):
         tab = self.tab()
