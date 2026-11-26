@@ -1249,6 +1249,11 @@ def quitar_simbolos() -> None:
                            capture_output=True, check=False)
 
 
+def appimage_name(compat: bool) -> str:
+    """The file built, as it is published and as the updater asks for it."""
+    return f"{APP_ID}-x86_64{'-compat' if compat else ''}.AppImage"
+
+
 def empaquetar() -> pathlib.Path | None:
     herramienta = conseguir_appimagetool()
     if herramienta is None:
@@ -1256,8 +1261,7 @@ def empaquetar() -> pathlib.Path | None:
               "construye igualmente el árbol para empaquetarlo a mano.", file=sys.stderr)
         return None
 
-    sufijo = "-compat" if COMPAT else ""
-    destino = DIST / f"{APP_ID}-x86_64{sufijo}.AppImage"
+    destino = DIST / appimage_name(COMPAT)
     # appimagetool es a su vez un AppImage, así que necesita FUSE para
     # montarse a sí mismo. Dentro de un contenedor no lo hay, y en muchas
     # distribuciones modernas tampoco: ya solo traen FUSE 3 y estos piden el 2.

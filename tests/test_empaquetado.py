@@ -332,6 +332,26 @@ class TestTheCompatAsksForNoNewerGlibc(unittest.TestCase):
     def test_an_image_given_by_hand_is_kept(self):
         self.assertEqual(self._image_chosen("debian:11", "--compat"), "debian:11")
 
+    def test_what_is_published_is_what_is_built_and_ends_in_appimage(self):
+        """The CI uploads, the packager builds and the updater downloads the
+        same two files, each ending in «.AppImage»: file managers and
+        AppImage tools look for that ending."""
+        import tools.build_appimage as build
+        from silux import updates
+
+        built = {build.appimage_name(False), build.appimage_name(True)}
+        self.assertEqual(built, {updates.NORMAL, updates.COMPAT})
+        self.assertTrue(all(name.endswith(".AppImage") for name in built), built)
+        workflow = (pathlib.Path(__file__).resolve().parent.parent
+                    / ".github" / "workflows" / "appimage.yml").read_text()
+        for step in ("- uses: actions/upload-artifact", "- name: Publicarlos en la release"):
+            with self.subTest(step=step):
+                parts = workflow.split(step, 1)
+                self.assertEqual(len(parts), 2, "the CI step is gone")
+                files = re.findall(r"dist/(\S+)", parts[1].split("- name:", 1)[0]
+                                   .split("- uses:", 1)[0])
+                self.assertEqual({name for name in files if name != "SHA256SUMS"}, built)
+
     def test_the_ci_opens_its_window_on_that_base(self):
         import tools.build_appimage as build
 
