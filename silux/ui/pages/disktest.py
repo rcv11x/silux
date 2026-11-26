@@ -452,11 +452,7 @@ class TestRows(QWidget):
                 self._grid.addWidget(stack, row, 2 + 2 * index)
                 self._cells[test.name, direction] = (bar, figure)
                 self.changes[test.name, direction] = change
-        # Every row as tall as the tallest: a name never takes two lines,
-        # and the figures line up whatever the test.
-        tallest = max((name.sizeHint().height() for name in self.names), default=0)
-        for row in range(1, len(tests) + 1):
-            self._grid.setRowMinimumHeight(row, tallest)
+        self._even_rows()
         self._axes = []
         for index, _direction in enumerate(directions):
             axis = Axis(self._p)
@@ -513,6 +509,7 @@ class TestRows(QWidget):
             self._tint(figure, False)
         for change in self.changes.values():
             change.hide()
+        self._even_rows()
         self.set_running(None)
         self._fit_gaps()
 
@@ -524,10 +521,22 @@ class TestRows(QWidget):
         if change is None:
             return
         shown = disktest.noticeable(fraction)
-        change.setVisible(shown)
         if shown:
             change.setText(render.change(fraction))
             change.setToolTip(tip)
+        if shown != change.isVisibleTo(self):
+            change.setVisible(shown)
+            self._even_rows()
+
+    def _even_rows(self) -> None:
+        """Every row as tall as the tallest: a name never takes two lines,
+        and the figures line up whatever the test, with a change under its
+        figure or not."""
+        cells = [figure.parentWidget() for _bar, figure in self._cells.values()]
+        tallest = max((widget.sizeHint().height() for widget in self.names + cells
+                       if not widget.isHidden()), default=0)
+        for row in range(1, len(self._tests or self.names) + 1):
+            self._grid.setRowMinimumHeight(row, tallest)
 
     def set_running(self, name: Optional[str]) -> None:
         """The test under way, or none."""

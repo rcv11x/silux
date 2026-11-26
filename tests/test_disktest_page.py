@@ -1005,6 +1005,13 @@ class TestAgainstTheTestBefore(TabCase):
         self.assertGreaterEqual(grown.mapTo(tab, grown.rect().topLeft()).y(),
                                 figure.mapTo(tab, figure.rect().bottomLeft()).y())
 
+    def test_every_row_stays_as_tall_with_a_change_under_some_figures(self):
+        tab = self.tab()
+        for _turn in range(3):
+            self.app.processEvents()
+        self.assertEqual(len({name.height() for name in tab.rows.names}), 1,
+                         [name.height() for name in tab.rows.names])
+
     def test_a_first_test_has_nothing_to_compare_with(self):
         disktest.save_history([recorded("sn850x-btrfs")])
         tab = self.tab()
