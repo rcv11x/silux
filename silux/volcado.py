@@ -1358,13 +1358,16 @@ def mounted(folder: pathlib.Path):
 
 
 def snapshot_of(folder: pathlib.Path):
-    """The snapshot the Collector gives reading the dump."""
+    """The snapshot the Collector gives reading the dump: the second, one
+    counter interval after the first, as the dump took its second reading.
+    Back to back, every rate fell short of a valid window and was left out."""
     from silux.collector import Collector
 
     with mounted(folder):
         collector = Collector()
         try:
             collector.snapshot()
+            time.sleep(COUNTER_INTERVAL_S)
             return collector.snapshot()
         finally:
             collector.close()
