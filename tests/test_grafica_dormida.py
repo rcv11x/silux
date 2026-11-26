@@ -199,9 +199,10 @@ class TestAsleepIsNotResting(unittest.TestCase):
 
 class TestSeDiceEnPantalla(unittest.TestCase):
     def test_en_reposo_con_lo_ultimo_que_se_supo(self):
+        from silux.i18n import in_spanish
         gpu = Gpu(suspended=True, last_awake_s=0.0, last_temp_c=41.0)
         texto = render.gpu_asleep(gpu)
-        self.assertIn("Dormida (apagada para ahorrar)", texto)
+        self.assertIn(in_spanish("gpu.asleep"), texto)
         self.assertIn("41.0 °C", texto)
 
     def test_despierta_no_dice_nada(self):
@@ -218,7 +219,8 @@ class TestSeDiceEnPantalla(unittest.TestCase):
         borrador.gpu(0).update(name="RX 6600M", integrated=False, suspended=True)
         pagina.apply(borrador.freeze())
         seccion = pagina._sections[0]
-        self.assertIn("Dormida (apagada para ahorrar)", seccion.recorte.text())
+        from silux.i18n import in_spanish
+        self.assertIn(in_spanish("gpu.asleep"), seccion.recorte.text())
         self.assertFalse(seccion.recorte.isHidden())
 
 
