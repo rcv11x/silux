@@ -691,6 +691,7 @@
   "disktest.note.too_big_for_fat.body": "This folder is on FAT32, which can't hold files of 4 GiB or more. The largest that fits is {largest}.",
   "disktest.note.varied": "Some tests varied between runs",
   "disktest.note.varied.body": "{tests}. The figure is the middle run; the best and the worst are under «Details». It is usually another program using the disk, or the disk changing pace.",
+  "disktest.note.varied.many.body": "Those marked with {mark} varied between runs. The figure is the middle run; the best and the worst are under «Details». It is usually another program using the disk, or the disk changing pace.",
   "disktest.note.zfs": "ZFS has a cache of its own",
   "disktest.note.zfs.body": "It isn't the system's, and the test can't check whether it was bypassed. Take the result as a guide.",
   "disktest.option.choose": "Choose a folder…",

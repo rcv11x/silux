@@ -319,6 +319,18 @@ class TestWhatAResultShows(TabCase):
         self.pick(tab, "unidad2")
         self.assertNotIn(_("disktest.note.varied"), visible_texts(tab))
 
+    def test_more_than_two_figures_that_varied_are_left_to_their_marks(self):
+        """A pen drive's three, named, took three lines of codes."""
+        tab = self.tab()
+        tab.show_result(recorded("cruzer-blade-fat32"))
+        mark = disktest_page().VARIED_MARK
+        inside = visible_texts(tab.result_card)
+        self.assertIn(_("disktest.note.varied.many.body").format(mark=mark), inside)
+        self.assertNotIn("SEQ1M Q1T1 (", inside)
+        marked = [figure for _bar, figure in tab.rows._cells.values()
+                  if figure.text().endswith(mark)]
+        self.assertEqual(len(marked), 3)
+
     def test_the_details_are_folded_until_asked_for(self):
         tab = self.tab()
         self.assertFalse(tab.detail.isVisibleTo(tab))

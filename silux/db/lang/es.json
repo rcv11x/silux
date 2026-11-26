@@ -691,6 +691,7 @@
   "disktest.note.too_big_for_fat.body": "Esta carpeta está en FAT32, que no guarda archivos de 4 GiB o más. El mayor que cabe es de {largest}.",
   "disktest.note.varied": "Algunas pruebas variaron entre vueltas",
   "disktest.note.varied.body": "{tests}. La cifra es la vuelta del medio; la mejor y la peor están en «Detalles». Suele ser otro programa usando el disco, o el disco cambiando de ritmo.",
+  "disktest.note.varied.many.body": "Las marcadas con {mark} variaron entre vueltas. La cifra es la vuelta del medio; la mejor y la peor están en «Detalles». Suele ser otro programa usando el disco, o el disco cambiando de ritmo.",
   "disktest.note.zfs": "ZFS tiene su propia caché",
   "disktest.note.zfs.body": "No es la del sistema, y la prueba no puede comprobar si se la ha saltado. Toma el resultado como orientativo.",
   "disktest.option.choose": "Elegir carpeta…",

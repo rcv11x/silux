@@ -90,7 +90,10 @@ VARIED_MARK = "*"
 # The notes that put a figure in doubt; the rest of those that aren't
 # errors are facts to read the figures with.
 DOUBTFUL = frozenset({"copy_on_write", "through_the_cache", "disk_moved_less", "disk_was_busy",
-                      "varied"})
+                      "varied", "varied_many"})
+# From how many figures that varied the note stops naming them: the marks
+# say which, and the list stays under «Details».
+VARIED_NAMED = 2
 # What a result is read with, shown in its own card. What comes from the
 # folder is said above, before a test starts.
 RESULT_NOTES = frozenset({"copy_on_write", "through_the_cache", "disk_moved_less",
@@ -155,6 +158,7 @@ NOTES = {
     "queue_of_threads": ("disktest.note.queue_of_threads",
                          "disktest.note.queue_of_threads.body"),
     "varied": ("disktest.note.varied", "disktest.note.varied.body"),
+    "varied_many": ("disktest.note.varied", "disktest.note.varied.many.body"),
 }
 DIRECTIONS = {"read": "disktest.dir.read", "write": "disktest.dir.write"}
 COLUMNS = {"read": "disktest.col.read", "write": "disktest.col.write"}
@@ -968,7 +972,8 @@ class DiskTestTab(ScrollPage):
         title, body = NOTES[key]
         tone = "bad" if key in ERRORS else "warn" if key in DOUBTFUL else "idle"
         title = _(title).format(**values)
-        note = Notice(f"{mark} {title}" if mark else title, _(body).format(**values), tone=tone,
+        note = Notice(f"{mark} {title}" if mark else title, _(body).format(mark=mark, **values),
+                      tone=tone,
                       action=_(ACTIONS[action]).format(**values) if action else None)
         if action == "folder":
             note.action_clicked.connect(
@@ -1239,7 +1244,8 @@ class DiskTestTab(ScrollPage):
         varied = [m for m in result.measures if m.noisy]
         if varied:
             self._result_notes.addWidget(self._note(
-                "varied", mark=VARIED_MARK, tests=", ".join(
+                "varied" if len(varied) <= VARIED_NAMED else "varied_many",
+                mark=VARIED_MARK, tests=", ".join(
                     f"{m.name} ({_(DIRECTIONS[m.direction])})" for m in varied)))
 
         rows = []
