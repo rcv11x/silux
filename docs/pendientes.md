@@ -443,6 +443,13 @@ la memoria) no va: está propuesto en las notas
   restante» de un pendrive se enseña y se esconde entre dos fotos iguales
   (`test_nada_se_mueve` como root, en el contenedor de
   `tools/probar_en_minimo.py`).
+* `ui/pages/storage.py` · media · después de la prueba13. Las tarjetas
+  «Leyendo» y «Escribiendo» suman todos los discos, y no se sabe cuál es
+  cuál. Propuesta: un desplegable en esas tarjetas para elegir «Todas las
+  unidades» o un disco (por su nombre y su dispositivo), y que pulsar una
+  fila de «Unidades» también lo elija. La gráfica de cada disco guarda su
+  historia desde que se abre Silux, para que al cambiar no empiece vacía, y
+  la elección se recuerda entre sesiones.
 
 * **La terminal, solo en español** · menor · `cli.py` escribe el volcado
   con literales en español («Núcleo», «Reloj de memoria», «de N W»), sin
