@@ -290,11 +290,16 @@ la memoria) no va: está propuesto en las notas
     decimales («16.666 ns») donde otras salen con dos o ninguno. Y sin
     permisos, Inicio no dice el tipo de memoria aunque el SPD lo sepa
     (`home._tipo_de_memoria` solo mira los módulos de SMBIOS).
-  - Volcado · media · lo que el anexo no trae: lo que lee el ayudante (SMBIOS,
+  - Volcado · media · para más adelante, y toca privilegios (se propone antes
+    de escribirlo): lo que el anexo no trae, lo que lee el ayudante (SMBIOS,
     SMART, MSR). Con él se habrían visto la memoria a 6000 MT/s de un 9600X y
-    el segundo módulo de un 7900 (ya propuesto en las notas). El anexo del
-    `i7-6700k` salió además sin los tiempos de arranque de systemd, sin saber
-    por qué.
+    el segundo módulo de un 7900. El anexo del `i7-6700k` salió además sin
+    los tiempos de arranque de systemd, sin saber por qué.
+  - Volcado · baja · el anexo podría llevar lo que dicen las herramientas de
+    referencia en ese equipo (`systemd-analyze`, `sensors -j`, `vulkaninfo
+    --summary`, `lsblk -J` sin números de serie), para compararlas en los
+    tests sin pedírselas al probador. Lo que lanza Silux va en
+    `system_deps.py`, y su salida pasa por el tapado como el resto.
 
 ## Datos que se leen mal o no se leen
 
