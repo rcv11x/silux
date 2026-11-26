@@ -2375,18 +2375,22 @@ class Snapshot:
         with, which on a laptop is the integrated one.
 
         The awake dedicated card, if any: the one that draws on a desktop and
-        is used when gaming. If the dedicated card sleeps, the awake one,
-        which is the one working. If all sleep or it isn't known, the boot
-        one, and failing that the first. A card no driver talks to (on the bus,
-        with no driver and no DRM node) does not work, awake or not.
+        is used when gaming. Of two, the one with a monitor connected, then
+        the boot one: a second card can be kept for a virtual machine. If the
+        dedicated card sleeps, the awake one, which is the one working. If all
+        sleep or it isn't known, the boot one, and failing that the first. A
+        card no driver talks to (on the bus, with no driver and no DRM node)
+        does not work, awake or not.
         """
         if not self.gpus:
             return None
         awake = [i for i, g in enumerate(self.gpus)
                  if not g.resting and (g.driver or g.drm_node)]
-        for i in awake:
-            if self.gpus[i].integrated is False:
-                return i
+        dedicated = [i for i in awake if self.gpus[i].integrated is False]
+        if dedicated:
+            # max() keeps the first of equals: the cardN order decides last.
+            return max(dedicated, key=lambda i: (
+                any(d.connected for d in self.gpus[i].displays), self.gpus[i].primary))
         for i in awake:
             if self.gpus[i].primary:
                 return i
