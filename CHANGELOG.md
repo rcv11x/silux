@@ -43,6 +43,10 @@ lo que trajeron los informes de la prueba12.
   Q1T32», no «RND4K Q32T1».
 - Almacenamiento: cada disco dice su enlace (SATA a 6 Gb/s, USB a 5 Gb/s) y,
   si lo has medido, su última prueba de disco, que se abre con un clic.
+- Disco: cada cifra dice cuánto cambió respecto a la prueba anterior del
+  mismo disco y perfil («▲ 3 %», «▼ 12 %»), en gris si es menos del 3 %, que
+  es ruido; el historial lo dice en cada fila. Mientras mide, la fila de la
+  prueba en marcha se resalta y su barra crece suave en cada vuelta.
 
 ### NVIDIA
 
