@@ -9,6 +9,7 @@ import dataclasses
 import json
 import os
 import pathlib
+import threading
 import unittest
 from unittest import mock
 
@@ -581,6 +582,29 @@ class TestRunningAndFailing(TabCase):
             tab._on_progress({"phase": "lapped", "test": "RND4K Q1T1", "direction": "read",
                               "lap": 1, "laps": 5, "done": 0.9, "bytes_per_second": 61_000_000})
             self.assertIn("61.0", visible_texts(tab))
+
+    def test_a_run_started_here_is_titled_by_its_disk_as_its_result_will_be(self):
+        """Never the kernel's name for it, «nvme0n1», while it measures."""
+        release = threading.Event()
+
+        def run(plan, step, _stop):
+            step({"phase": "lap", "test": plan.tests[0].name, "direction": "read",
+                  "lap": 1, "laps": 5, "done": 0.1})
+            release.wait(10)
+            return disktest.Result(reason="cancelled")
+
+        tab = self.tab()
+        with mock.patch.object(disktest, "run", run):
+            tab.start()
+            self.addCleanup(tab._run._thread.join)
+            self.addCleanup(release.set)
+            for _turn in range(3):
+                self.app.processEvents()
+            self.assertTrue(tab.running)
+            self.assertEqual(tab.disk_name.text(), "WD_BLACK SN850X HS 1000GB")
+            # A sample on the way doesn't change it.
+            tab.apply(self.snapshot)
+            self.assertEqual(tab.disk_name.text(), "WD_BLACK SN850X HS 1000GB")
 
     def test_a_run_that_ends_shows_its_result_and_joins_the_history(self):
         from silux.ui.pages.disktest import DiskTestRun
