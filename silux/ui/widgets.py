@@ -2664,12 +2664,15 @@ class Table(QScrollArea):
 
     def __init__(self, headers: Sequence[str], numeric: Sequence[bool] = (),
                  parent: Optional[QWidget] = None, cede: Sequence[int] = (),
-                 spare: Sequence[int] = ()):
+                 spare: Sequence[int] = (), short: Optional[dict[int, str]] = None):
         """`cede`: las columnas de texto que pueden salir recortadas, con
         puntos suspensivos, cuando la tabla no cabe (`_encajar`).
 
         `spare`: columns the table can do without, left out, the last first,
-        where nothing else makes it fit."""
+        where nothing else makes it fit.
+
+        `short`: a shorter title for a column, shown where the full ones
+        don't fit on two lines; the full one goes into its tooltip."""
         super().__init__(parent)
         self._headers = list(headers)
         # (fila, columna) → su candado, para las celdas que lo han tenido.
@@ -2679,6 +2682,9 @@ class Table(QScrollArea):
         self.left_out: frozenset[int] = frozenset()
         # How tall the titles are, broken as the widths leave them.
         self._titles_height = 0
+        self._short = {column: title.upper() for column, title in (short or {}).items()}
+        self._shortened = False
+        self._tips: dict[int, str] = {}
         self._numeric = list(numeric) + [False] * (len(headers) - len(numeric))
 
         self.setWidgetResizable(True)
@@ -2913,6 +2919,8 @@ class Table(QScrollArea):
         if not self._cells:
             return
         columnas = len(self._headers)
+        if self._short and self.viewport().width() > 0:
+            self._shorten(self._width_in_two_lines() > self.viewport().width())
         if self._spare:
             self._leave_out(self._spare_to_leave_out(self.viewport().width()))
         out = self.left_out
@@ -2942,17 +2950,19 @@ class Table(QScrollArea):
             sobra -= narrower * (shown - 1)
         if sobra > 0 and self.viewport().width() > 0:
             # Then a title wider than its figures takes a second line, the
-            # widest first and never narrower than its longest word.
-            floors = [0 if c in out else max(anchos[c], self._palabra_mas_larga(c))
-                      for c in range(columnas)]
-            while sobra > 0:
-                longer = [c for c in range(columnas) if heads[c] > floors[c]]
-                if not longer:
-                    break
-                widest = max(longer, key=lambda c: heads[c])
-                taken = min(sobra, heads[widest] - floors[widest], 8)
-                heads[widest] -= taken
-                sobra -= taken
+            # widest first; a third only once every title has two, and never
+            # narrower than its longest word.
+            for pieces in (self._two_lines, str.split):
+                floors = [0 if c in out else max(anchos[c], self._title_width(c, pieces))
+                          for c in range(columnas)]
+                while sobra > 0:
+                    longer = [c for c in range(columnas) if heads[c] > floors[c]]
+                    if not longer:
+                        break
+                    widest = max(longer, key=lambda c: heads[c])
+                    taken = min(sobra, heads[widest] - floors[widest], 8)
+                    heads[widest] -= taken
+                    sobra -= taken
         if sobra > 0 and self.viewport().width() > 0:
             suelo = QFontMetrics(value_font()).averageCharWidth() * 10
             suelos = {c: max(suelo, heads[c]) for c in self._cede if c < columnas}
@@ -2992,15 +3002,15 @@ class Table(QScrollArea):
 
     def _narrowest(self, out: frozenset[int]) -> int:
         """The least width the table fits in without the columns in `out`:
-        each title broken down to its longest word, the gaps at their least
-        and the columns that may cede cut to their floor, as `_encajar`
-        does it."""
+        each title on two lines at most, the gaps at their least and the
+        columns that may cede cut to their floor. A spare column goes before
+        a title takes a third line."""
         suelo = QFontMetrics(value_font()).averageCharWidth() * 10
         widths = []
         for column, ancho in enumerate(self._anchos):
             if column in out:
                 continue
-            word = self._palabra_mas_larga(column)
+            word = self._title_width(column, self._two_lines)
             floor = max(ancho, word)
             if column in self._cede:
                 floor = min(floor, max(suelo, word))
@@ -3051,9 +3061,49 @@ class Table(QScrollArea):
         self._encajar()
 
     def set_header_tooltip(self, column: int, text: str) -> None:
+        self._tips[column] = text
         item = self._grid.itemAtPosition(0, column)
         if item and item.widget():
-            item.widget().setToolTip(text)
+            item.widget().setToolTip(self._header_tip(column))
+
+    def _header_tip(self, column: int) -> str:
+        full = self._headers[column] if self._shortened and column in self._short else ""
+        return "\n".join(text for text in (full, self._tips.get(column, "")) if text)
+
+    def _width_in_two_lines(self) -> int:
+        """What the table takes with every column and its full title broken
+        into two lines at most, at the least air between columns."""
+        widths = [max(ancho, self._title_width(column, self._two_lines,
+                                               self._headers[column].upper()
+                                               if column in self._short else None))
+                  for column, ancho in enumerate(self._anchos)]
+        return sum(widths) + self.MIN_COLUMN_GAP * max(0, len(widths) - 1)
+
+    def _two_lines(self, text: str) -> list[str]:
+        """`text` broken between two words where its longer line is shortest,
+        or where it is already broken."""
+        if "\n" in text:
+            return text.split("\n")
+        words = text.split()
+        if len(words) < 2:
+            return [text]
+        # Every title is in the same letter.
+        title = self._grid.itemAtPosition(0, 0).widget()
+        title.ensurePolished()
+        metrics = title.fontMetrics()
+        return min(([" ".join(words[:at]), " ".join(words[at:])] for at in range(1, len(words))),
+                   key=lambda lines: max(metrics.horizontalAdvance(line) for line in lines))
+
+    def _shorten(self, shortened: bool) -> None:
+        """The short titles, or the full ones back."""
+        if shortened == self._shortened:
+            return
+        self._shortened = shortened
+        for column, title in self._short.items():
+            item = self._grid.itemAtPosition(0, column)
+            if item and item.widget():
+                item.widget().setText(title if shortened else self._headers[column].upper())
+                item.widget().setToolTip(self._header_tip(column))
 
     def _ancho_de_cabecera(self, columna: int) -> int:
         """What the column's title takes on one line (a line of its own
@@ -3079,7 +3129,8 @@ class Table(QScrollArea):
         """The narrowest the title can go: its longest word."""
         return self._title_width(columna, str.split)
 
-    def _title_width(self, column: int, pieces) -> int:
+    def _title_width(self, column: int, pieces, text: Optional[str] = None) -> int:
+        """The widest of the `pieces` of the column's title, or of `text`."""
         item = self._grid.itemAtPosition(0, column)
         label = item.widget() if item else None
         if label is None:
@@ -3087,7 +3138,8 @@ class Table(QScrollArea):
         label.ensurePolished()
         metrics = label.fontMetrics()
         margins = label.contentsMargins()
-        widest = max((metrics.horizontalAdvance(piece) for piece in pieces(label.text())),
+        widest = max((metrics.horizontalAdvance(piece)
+                      for piece in pieces(label.text() if text is None else text)),
                      default=0)
         return widest + margins.left() + margins.right() + 2 * label.margin()
 

@@ -370,8 +370,13 @@ class TestWhatAResultShows(TabCase):
 
     def test_a_narrow_window_shows_the_history_whole(self):
         """It was cut at the right, behind a scroll bar. With its titles in
-        words it fits from 520 px; narrower, down to the narrowest window,
-        it leaves out the hottest temperature, and takes it back."""
+        words, on two lines at most, it fits from 530 px; narrower, down to
+        the narrowest window, it leaves out the hottest temperature, and
+        takes it back. Its titles took four lines."""
+        from PySide6.QtWidgets import QLabel
+
+        from silux.ui import theme
+
         tab = self.tab()
         hottest = _("disktest.col.hottest").upper()
 
@@ -381,16 +386,51 @@ class TestWhatAResultShows(TabCase):
                 self.app.processEvents()
             for _heading, table in tab.history_tables:
                 self.assertEqual(table.horizontalScrollBar().maximum(), 0, width)
+                for title in table.findChildren(QLabel, "ColumnTitle"):
+                    if title.isVisibleTo(table) and width >= theme.METRICS.min_window_w:
+                        self.assertLessEqual(
+                            title.height() // title.fontMetrics().lineSpacing(), 2,
+                            (width, title.text()))
             return visible_texts(tab)
 
-        for width in (900, 520):
+        for width in (900, 530):
             self.assertIn(hottest, at(width))
             self.assertIn("62.9", at(width))
-        for width in (500, 480, 400):
+        for width in (520, 500, 480, 400):
             text = at(width)
             self.assertNotIn(hottest, text)
             self.assertNotIn("62.9", text.split(_("memtest.card.history"))[-1])
         self.assertIn(hottest, at(900))
+
+    def test_a_narrow_history_shortens_a_long_title_and_tells_it_whole(self):
+        """«Random 4K, one at a time, read» took four lines of titles."""
+        from PySide6.QtWidgets import QLabel
+
+        from silux import i18n
+        from silux.ui import theme
+        from silux.ui.pages.disktest import SINGLE, history_title, kind_words
+
+        before = i18n.current()
+        self.addCleanup(i18n.set_language, before)
+        test = next(t for t in disktest.PROFILES["standard"] if t.name == SINGLE)
+        for language in ("es", "en"):
+            i18n.set_language(language)
+            full, short = history_title(test, "read"), history_title(test, "read", kind_words)
+            tab = self.tab()
+            for width, shown in ((1200, full), (theme.METRICS.min_window_w, short)):
+                with self.subTest(language=language, width=width):
+                    tab.resize(width, 900)
+                    for _turn in range(5):
+                        self.app.processEvents()
+                    _heading, table = tab.history_tables[0]
+                    title = next(label for label in table.findChildren(QLabel)
+                                 if label.text() in (full.upper(), short.upper()))
+                    self.assertEqual(title.text(), shown.upper())
+                    lines = title.height() // title.fontMetrics().lineSpacing()
+                    self.assertLessEqual(lines, 1 if shown == full else 2)
+                    if shown == short:
+                        self.assertIn(full, title.toolTip())
+                    self.assertIn(SINGLE, title.toolTip())
 
     def test_on_a_wide_screen_both_tabs_keep_to_the_same_width(self):
         """At 1920 px the cards went from side to side of the page."""

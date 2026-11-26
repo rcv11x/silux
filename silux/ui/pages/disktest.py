@@ -185,19 +185,27 @@ def microseconds(nanoseconds: Optional[float]) -> str:
     return unbroken(render.microseconds(nanoseconds))
 
 
-def test_words(test: disktest.Test) -> str:
-    """What a test is, in words: «Sequential», «Random 4K, one at a time»."""
+def kind_words(test: disktest.Test) -> str:
+    """What a test reads or writes, in words: «Sequential», «Random 4K»."""
     if test.pattern == "sequential":
         kind = _("disktest.kind.sequential")
-        if test.block != MIB:
-            kind = f"{kind} {block_name(test.block)}"
-    else:
-        kind = _("disktest.kind.random").format(block=block_name(test.block))
+        return kind if test.block == MIB else f"{kind} {block_name(test.block)}"
+    return _("disktest.kind.random").format(block=block_name(test.block))
+
+
+def test_words(test: disktest.Test) -> str:
+    """What a test is, in words: «Sequential», «Random 4K, one at a time»."""
+    kind = kind_words(test)
     if test.threads > 1:
         return _("disktest.kind.threads").format(kind=kind, n=test.threads)
     if test.depth == 1:
         return _("disktest.kind.single").format(kind=kind)
     return kind
+
+
+def history_title(test: disktest.Test, direction: str, words=test_words) -> str:
+    """A column of the history: «Sequential, read»."""
+    return _("disktest.col.history").format(test=words(test), direction=_(DIRECTIONS[direction]))
 
 
 def block_name(block: int) -> str:
@@ -1294,15 +1302,17 @@ class DiskTestTab(ScrollPage):
             columns = [(sequential, "read")] + ([(sequential, "write")] if writes else []) \
                 + [(SINGLE, "read")]
             # Each test in words, as the table above names it, with its code
-            # on hovering: «Sequential, read».
+            # on hovering: «Sequential, read». In a narrow window, without
+            # how many requests at a time: it took four lines.
             table = Table([_("memtest.col.date")]
-                          + [_("disktest.col.history").format(
-                              test=test_words(tests[name]), direction=_(DIRECTIONS[direction]))
-                             for name, direction in columns]
+                          + [history_title(tests[name], direction) for name, direction in columns]
                           + [_("disktest.col.hottest")],
                           numeric=(False,) + (True,) * (len(columns) + 1),
                           # In a narrow window, rather than cut it.
-                          spare=(len(columns) + 1,))
+                          spare=(len(columns) + 1,),
+                          short={index: history_title(tests[name], direction, kind_words)
+                                 for index, (name, direction) in enumerate(columns, start=1)
+                                 if kind_words(tests[name]) != test_words(tests[name])})
             for column, (name, direction) in enumerate(columns, start=1):
                 table.set_header_tooltip(column, f"{ran[name]} · {_(DIRECTIONS[direction])}")
             rows = []
