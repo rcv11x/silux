@@ -417,9 +417,9 @@ buscar y reemplazar), la huella idéntica y los tests como red. En cada zona,
 sus comentarios y docstrings se rehacen con el criterio de arriba, y al
 acabarla se abren todas las páginas de todos los volcados en los dos
 idiomas, además de la suite: rope falla sin avisar. La interfaz sigue
-teniendo el español como original (`silux/db/lang/`). El CHANGELOG y las
-notas de las versiones van en inglés, con el español debajo (abajo, «Cómo se
-escribe lo público»). El README y los documentos para usuarios van en los dos
+teniendo el español como original (`silux/db/lang/`), y el CHANGELOG va en
+español. Las notas de las versiones van en inglés, con el español debajo
+(abajo, «Cómo se escribe lo público»). El README y los documentos para usuarios van en los dos
 idiomas, con las mismas secciones y los mismos enlaces
 (`tests/test_readmes.py`): `README.md` (inglés, el de por defecto) y
 `README.es.md`, `docs/usage.md` y `docs/uso.md`, `docs/compatibility.md` y
@@ -525,8 +525,10 @@ del repositorio.
 **Las notas de una versión y su entrada del CHANGELOG** (desde la prueba13;
 las anteriores se quedan como están), como las de Waywallen o Heroic:
 
-- Cuatro apartados: Highlights, Improved, Fixed y Known issues (en español,
-  Novedades, Mejoras, Arreglos y Problemas conocidos).
+- El CHANGELOG está en español: su entrada lleva Lo destacado, Mejoras,
+  Arreglos y Problemas conocidos. Las notas de la versión llevan los dos
+  idiomas: Highlights, Improved, Fixed y Known issues en inglés, y debajo, en
+  `<details><summary>Español</summary>`, la entrada del CHANGELOG.
 - Una idea por punto, en una línea. Sin punto y coma encadenando cosas.
 - Pueden ser largas: van todos los arreglos y mejoras que se notan, no solo
   los principales. Un fallo de algo nuevo en esa versión no va en Fixed: nadie
@@ -535,8 +537,8 @@ las anteriores se quedan como están), como las de Waywallen o Heroic:
   sistema de archivos), sin el porqué interno: eso va en los commits.
 - Una cifra de validación dice contra qué y dónde («within 1 % on sequential,
   on ext4»); lo que no cuadra va a Known issues.
-- Primero en inglés, y debajo en español dentro de
-  `<details><summary>Español</summary>`.
+- En inglés, como se escribe en inglés: comillas "", «an NVIDIA» y frases que
+  no sean una traducción al pie de la letra.
 - La tabla de descarga, solo dos filas: el normal («This one: works on almost
   any PC») y el compat («Only if the normal one tells you it won't run on
   your PC»). La plantilla está en `.github/release-notes.md`.

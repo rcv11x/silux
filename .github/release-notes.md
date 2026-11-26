@@ -1,9 +1,9 @@
 <!--
-The notes of a release: which AppImage to download, and what changes, with
-the same lines as the version's CHANGELOG entry. Highlights, Improved, Fixed
-and Known issues, one idea per line; English first and Spanish in the
-<details> under it. How to write them: «Cómo se escribe lo público» in
-CLAUDE.md. Copy this, fill the sections and leave the tables as they are.
+The notes of a release: which AppImage to download, and what changes.
+Highlights, Improved, Fixed and Known issues, one idea per line; English
+first, with "" quotes, and under it, in the <details>, the Spanish of the
+version's CHANGELOG entry. How to write them: «Cómo se escribe lo público»
+in CLAUDE.md. Copy this, fill the sections and leave the tables as they are.
 -->
 | File | |
 |---|---|
@@ -35,7 +35,7 @@ CLAUDE.md. Copy this, fill the sections and leave the tables as they are.
 | `silux-x86_64.AppImage` | Este: funciona en casi cualquier PC. |
 | `silux-x86_64-compat.AppImage` | Solo si el normal te dice que no puede funcionar en tu PC. |
 
-### Novedades
+### Lo destacado
 
 - …
 

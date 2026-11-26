@@ -12,167 +12,84 @@ que hace falta.
 
 ## 0.4-prueba13 (sin publicar)
 
-### Highlights
-
-- New disk benchmark, written from scratch in Rust (experimental)
-- Sequential and random 4K, with many requests at once and one at a time, reading and, if you want, writing
-- Checked against fio on two NVMe drives: within 1 % on sequential and 2.5 % on random 4K, on ext4
-- Tested on a SATA SSD, a hard disk and USB drives, with ext4, btrfs, exFAT and FAT32
-- New memory benchmark, written in Rust (experimental): the latency of each cache level and of the RAM, and the bandwidth reading, writing and copying
-- Checked against multichase, lmbench, STREAM and Intel MLC
-- It replaces the simple memory measure in Python, which stays only when running from source without the native module
-- Laptops with NVIDIA: Silux no longer keeps the GPU awake
-
-### Improved
-
-- Disk results compare against your previous run of the same disk and profile («▲ 8 %», «▼ 12 %»)
-- Changes under 3 % aren't shown: that is noise
-- While the disk test runs, the test under way is highlighted and its bar grows smoothly
-- The disk table's figures are larger, bold and next to their bar
-- On a wide screen, the single request, the link and the temperature share one row
-- The disk test says how long it will take and how much it will write before starting
-- At the end, it says how much it really wrote
-- The «Real use» profile runs only the one-at-a-time tests, in half the time
-- On FAT32, it says before starting if the file is too big, and offers the largest that fits
-- On a slow pen drive, it says how long writing the file takes, before and while
-- While FAT32 reserves the file, the progress bar moves and says so
-- If a file system goes through the RAM (FAT32, exFAT or NTFS), the test stops and says so
-- If the disk is unplugged mid-test, the test says it was disconnected
-- On a hard disk, the result says where on the platter the file lay
-- Without io_uring (in a container, for example), it measures with threads and names each test by what it ran
-- Its temporary file leaves nothing behind, even if Silux closes mid-test
-- When more than two figures varied between runs, the note leaves them to their «*» marks
-- The code of each test (SEQ1M Q8T1…) opens its tip over its own row, not over the next one
-- Storage shows each disk's link (SATA at 6 Gb/s, USB at 5 Gb/s)
-- Storage shows each disk's last disk test, which opens with a click
-- With permissions, the memory test says what share of your memory's maximum it reaches
-- The memory and disk histories, and the report, keep the latest test whole
-- If Silux closes mid-test, the memory test stops and frees its memory
-- Clearer texts in the Disk and Memory tabs
-- The Disk and Memory headers are grouped, with air between the description, the choices and the progress
-- In a narrow window, table titles take two lines at most, shortened where they need to
-- A notice whose text changes updates on the open page, without leaving it
-- A NVIDIA without a power sensor (like the desktop RTX 4060) shows the driver's estimate in its own row, named as an estimate
-- A switched-off GPU says «Asleep», not «Idle»
-- The report says what each way of reading a NVIDIA's power answered
-- The sensors note no longer says «GeForce» on a professional card
-- When an Intel integrated GPU's power can't be read, Graphics says why
-- In a container, the RAPL notice blames the container, not the CPU
-- `--report` on a system without the graphics libraries writes the short report instead of failing
-- The report writes each cache size with its decimals («1.25 MiB»)
-- A checked box shows its tick, in the light and the dark themes
-- A disabled button looks disabled
-- In the dark theme, a bar's empty part shows where its 100 % is
-- The «Copied» notice shows next to the value
-
-### Fixed
-
-- Integrated GPUs showing their codename instead of their name («AlderLake-S GT1» for «UHD Graphics 770»)
-- An AMD integrated GPU nobody names titled with the processor's codename («Raphael»)
-- GPU fans shown as stopped while spinning
-- A Radeon's core voltage at rest shown as «0.006 V»
-- A Radeon's 0 °C for the memory and regulators it doesn't measure
-- Board temperatures nobody measures (0 °C and −1 °C on nct67xx chips) shown as real readings
-- Card readers without a card listed as «SSD · 0 B» drives
-- The desktop shown as «X-Cinnamon» or «ubuntu:GNOME»
-- A graphical session started from the console shown as «tty»
-- Monitor brands written twice («LG LG HDR 4K», «Hewlett Packard HP 27wm»)
-- ROCm's OpenCL shown with Mesa's version
-- Intel chipsets with their model at the end of the name not recognised with an old pci.ids («H670»)
-- The USB and audio of an AMD processor with integrated graphics listed under the GPU
-- An impossible power reading from a laptop NVIDIA waking up (588 W)
-
-### Known issues
-
-- Random 4K writes with 32 requests come out 12-15 % low on btrfs
-- Sequential reads with 8 requests through io_uring come out about 5 % low on btrfs
-- On processors with two kinds of cores or two CCDs, the memory test measures only one of them
-- The memory test's AVX-512 path runs, but hasn't been compared with other tools yet
-- NVIDIA laptop sleep has been tested on one model so far
-- On KDE, Dolphin may not show the AppImage's own icon
-
-<details><summary>Español</summary>
-
-### Novedades
+### Lo destacado
 
 - Nueva prueba de disco, escrita desde cero en Rust (experimental)
-- Secuencial y aleatoria 4K, con muchas peticiones a la vez y una a una, en lectura y, si quieres, en escritura
+- Secuencial y aleatoria 4K, con muchas peticiones a la vez y de una en una, en lectura y, si quieres, en escritura
 - Comparada con fio en dos NVMe: dentro del 1 % en secuencial y del 2,5 % en aleatoria 4K, en ext4
 - Probada en un SSD SATA, un disco de platos y unidades USB, con ext4, btrfs, exFAT y FAT32
 - Nueva prueba de memoria, escrita en Rust (experimental): la latencia de cada nivel de caché y de la RAM, y el ancho de banda leyendo, escribiendo y copiando
 - Comparada con multichase, lmbench, STREAM e Intel MLC
-- Sustituye a la medida sencilla de la memoria en Python, que queda solo al ejecutarlo desde el código sin el módulo nativo
+- Sustituye a la medida antigua en Python, que queda solo como reserva al ejecutarlo desde el código sin el módulo nativo
 - Portátiles con NVIDIA: Silux ya no mantiene despierta la gráfica
 
 ### Mejoras
 
 - Los resultados de disco se comparan con tu prueba anterior del mismo disco y perfil («▲ 8 %», «▼ 12 %»)
-- Los cambios de menos del 3 % no se enseñan: son ruido
+- Los cambios de menos del 3 % se toman como ruido y no se enseñan
 - Mientras mide, la prueba en marcha se resalta y su barra crece suave
-- Las cifras de la tabla de disco son más grandes, en negrita y junto a su barra
-- En una pantalla ancha, la petición suelta, el enlace y la temperatura van en una fila
-- La prueba de disco dice cuánto va a tardar y cuánto va a escribir antes de empezar
+- La tabla del resultado de disco lleva las cifras más grandes, en negrita y junto a su barra
+- En pantallas anchas, la petición suelta, el uso del enlace y la temperatura van en una sola fila
+- Antes de empezar, la prueba de disco dice cuánto va a tardar y cuánto va a escribir
 - Al acabar, dice cuánto escribió de verdad
-- El perfil «Uso real» hace solo las pruebas una a una, en la mitad de tiempo
-- En FAT32, dice antes de empezar si el archivo no cabe, y ofrece el más grande que cabe
-- En un pendrive lento, dice cuánto tarda en escribir el archivo, antes y mientras
-- Mientras FAT32 reserva el archivo, la barra de progreso avanza y lo dice
-- Si un sistema de archivos pasa por la RAM (FAT32, exFAT o NTFS), la prueba se para y lo dice
+- El perfil «Uso real» hace solo las pruebas de una petición cada vez, en la mitad de tiempo
+- En FAT32, avisa antes de empezar si el archivo no cabe y ofrece el más grande que cabe
+- En memorias USB lentas, dice cuánto tardará en crear el archivo de la prueba, antes y durante la prueba
+- Mientras FAT32 reserva el espacio del archivo, la barra de progreso sigue avanzando y dice qué está haciendo
+- Si el sistema de archivos pasa la prueba por la RAM (FAT32, exFAT o NTFS), la prueba se para y te lo dice
 - Si el disco se desconecta a mitad, la prueba lo dice así
-- En un disco de platos, el resultado dice en qué parte del disco cayó el archivo
-- Sin io_uring (en un contenedor, por ejemplo), mide con hilos y llama a cada prueba por lo que hizo
-- Su archivo temporal no deja nada, aunque Silux se cierre a mitad
-- Cuando más de dos cifras variaron entre vueltas, el aviso las deja a sus marcas «*»
-- El código de cada prueba (SEQ1M Q8T1…) abre su globo sobre su propia fila, no sobre la de abajo
-- Almacenamiento enseña el enlace de cada disco (SATA a 6 Gb/s, USB a 5 Gb/s)
-- Almacenamiento enseña la última prueba de cada disco, que se abre con un clic
-- Con permisos, la prueba de memoria dice qué parte del máximo de tu memoria alcanza
-- Los historiales de memoria y de disco, y el informe, guardan la última prueba entera
+- En un disco de platos, el resultado dice en qué parte del plato estaba el archivo de la prueba
+- Sin io_uring (en un contenedor, por ejemplo), mide con hilos y llama a cada prueba por lo que hizo de verdad
+- El archivo temporal de la prueba nunca se queda, aunque Silux se cierre a mitad
+- Cuando más de dos cifras varían entre vueltas, el aviso ya no las nombra todas: las marcas «*» dicen cuáles
+- El globo del código de cada prueba (SEQ1M Q8T1…) ya no tapa la fila de abajo
+- Almacenamiento enseña la velocidad del enlace de cada disco (SATA a 6 Gb/s, USB a 5 Gb/s)
+- Almacenamiento enseña el último resultado de cada disco; al pulsarlo se abre la prueba
+- Con permisos de administrador, la prueba de memoria dice qué porcentaje del máximo teórico de tu memoria alcanza
+- El informe lleva enteras tus últimas pruebas de memoria y de disco
 - Si Silux se cierra a mitad, la prueba de memoria se para y suelta su memoria
 - Textos más claros en las pestañas de Disco y Memoria
-- Las cabeceras de Disco y Memoria van por grupos, con aire entre la descripción, las opciones y el progreso
-- En una ventana estrecha, los títulos de las tablas ocupan dos líneas como mucho, y se acortan si hace falta
-- Un aviso que cambia de texto se pone al día en la página abierta, sin salir de ella
+- Las cabeceras de Disco y Memoria tienen más aire, con el progreso en su propio bloque y una barra más gruesa y redondeada
+- En ventanas estrechas, los títulos de las tablas ocupan dos líneas como mucho y se acortan si hace falta
+- Los avisos se ponen al día cuando cambia su texto, sin salir de la página
 - Una NVIDIA sin sensor de consumo (como la RTX 4060 de sobremesa) enseña lo que estima su driver en su propia fila, con ese nombre
-- Una gráfica apagada dice «Dormida», no «En reposo»
-- El informe dice qué contestó cada forma de leer el consumo de una NVIDIA
-- El pie de los sensores ya no dice «GeForce» en una tarjeta profesional
-- Cuando no se puede leer el consumo de una integrada de Intel, Gráficos dice por qué
+- Una gráfica apagada dice ahora «Dormida» en vez de «En reposo»
+- El informe dice qué devolvió cada forma de leer el consumo de una NVIDIA
+- El pie de los sensores ya no llama «GeForce» a una tarjeta profesional
+- Cuando no se puede leer el consumo de una integrada de Intel, Gráficos explica por qué
 - En un contenedor, el aviso de RAPL culpa al contenedor, no a la CPU
 - `--report` en un sistema sin las bibliotecas gráficas escribe el informe corto en vez de fallar
 - El informe escribe el tamaño de cada caché con sus decimales («1.25 MiB»)
-- Una casilla marcada enseña su marca, en el tema claro y en el oscuro
-- Un botón desactivado se ve desactivado
-- En el tema oscuro, la parte vacía de una barra enseña dónde está su 100 %
+- Las casillas marcadas enseñan su marca en los temas claro y oscuro
+- Los botones desactivados se ven desactivados
+- En el tema oscuro, la parte vacía de una barra enseña dónde está el 100 %
 - El aviso de «Copiado» sale junto al valor
 
 ### Arreglos
 
 - Gráficas integradas con su nombre en clave en vez de su nombre («AlderLake-S GT1» en vez de «UHD Graphics 770»)
-- Una integrada de AMD que nadie nombra, titulada con el nombre en clave del procesador («Raphael»)
+- Integradas de AMD sin nombre conocido, tituladas con el nombre en clave del procesador («Raphael»)
 - Ventiladores de gráfica que salían parados mientras giraban
 - El voltaje del núcleo de una Radeon en reposo, como «0.006 V»
-- Los 0 °C de una Radeon en la memoria y los reguladores que no mide
-- Temperaturas de la placa que nadie mide (0 °C y −1 °C en los chips nct67xx), como si fueran lecturas
-- Lectores de tarjetas sin tarjeta, como unidades «SSD · 0 B»
+- Temperaturas de la memoria y los reguladores de una Radeon que no las mide, como 0 °C
+- Sensores de la placa sin nada conectado (0 °C y −1 °C en los chips nct67xx), como si fueran lecturas
+- Lectores de tarjetas vacíos, como unidades «SSD · 0 B»
 - El escritorio como «X-Cinnamon» o «ubuntu:GNOME»
 - Una sesión gráfica arrancada desde la consola, como «tty»
 - La marca de un monitor, dos veces («LG LG HDR 4K», «Hewlett Packard HP 27wm»)
 - La OpenCL de ROCm con la versión de Mesa
-- Chipsets de Intel con el modelo al final del nombre sin reconocer con un pci.ids antiguo («H670»)
-- El USB y el sonido de un procesador AMD con gráfica integrada, en la gráfica
-- Una lectura de consumo imposible de una NVIDIA de portátil al despertar (588 W)
+- Chipsets de Intel sin reconocer con un pci.ids antiguo cuando el modelo va al final del nombre («H670»)
+- El USB y el sonido de los procesadores AMD con gráfica integrada, en la gráfica
+- Lecturas de consumo imposibles de una NVIDIA de portátil al despertar (588 W)
 
 ### Problemas conocidos
 
-- La escritura aleatoria 4K con 32 peticiones sale un 12-15 % baja en btrfs
-- La lectura secuencial con 8 peticiones por io_uring sale un 5 % baja en btrfs
+- En btrfs, la escritura aleatoria 4K con 32 peticiones sale un 12-15 % por debajo de fio
+- En btrfs, la lectura secuencial con 8 peticiones por io_uring sale un 5 % por debajo de fio
 - En procesadores con dos tipos de núcleo o dos CCD, la prueba de memoria mide solo uno
 - El camino AVX-512 de la prueba de memoria funciona, pero aún no se ha comparado con otras herramientas
-- Que el portátil duerma la NVIDIA solo se ha probado en un modelo
-- En KDE, Dolphin puede no enseñar el icono del propio AppImage
-
-</details>
+- Que una NVIDIA de portátil se quede dormida solo se ha probado en un modelo
+- En KDE, Dolphin puede no enseñar el icono del AppImage
 
 ## 0.4-prueba12 (24 de noviembre de 2026)
 
