@@ -280,6 +280,9 @@ class TestRows(QWidget):
     scale they all share and a figure."""
 
     BAR = 20
+    # The air between columns, and with no room for the bars: they go, and
+    # their empty columns would still take it.
+    GAP, NARROW_GAP = 14, 6
 
     def __init__(self, palette: Palette, parent=None):
         super().__init__(parent)
@@ -288,9 +291,11 @@ class TestRows(QWidget):
         self._writes: Optional[bool] = None
         self._cells: dict[tuple[str, str], tuple[RateBar, QLabel]] = {}
         self.names: list[QWidget] = []
+        self._axes: list[QWidget] = []
+        self._barred = True
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
-        self._grid.setHorizontalSpacing(14)
+        self._grid.setHorizontalSpacing(self.GAP)
         self._grid.setVerticalSpacing(10)
         self._grid.setColumnStretch(1, 1)
         self._grid.setColumnStretch(3, 1)
@@ -314,13 +319,14 @@ class TestRows(QWidget):
 
     @staticmethod
     def _figure() -> QLabel:
+        """The figure is what a test is read for: as large and as bold as a
+        card's, and as wide as the widest of its column, so the shorter ones
+        end by their bar instead of a reserved width away."""
         figure = QLabel(render.DASH)
-        font = value_font()
-        font.setPointSizeF(font.pointSizeF() + 3)
-        font.setWeight(font.Weight.DemiBold)
+        font = value_font(bold=True)
+        font.setPixelSize(theme.METRICS.headline_px)
         figure.setFont(font)
         figure.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        figure.setMinimumWidth(figure.fontMetrics().horizontalAdvance("00 000*"))
         return figure
 
     @staticmethod
@@ -349,12 +355,39 @@ class TestRows(QWidget):
         tallest = max((name.sizeHint().height() for name in self.names), default=0)
         for row in range(1, len(tests) + 1):
             self._grid.setRowMinimumHeight(row, tallest)
+        self._axes = []
         for index, _direction in enumerate(directions):
-            self._grid.addWidget(Axis(self._p), len(tests) + 1, 1 + 2 * index)
+            axis = Axis(self._p)
+            self._axes.append(axis)
+            self._grid.addWidget(axis, len(tests) + 1, 1 + 2 * index)
         unit = QLabel(_("disktest.unit"))
         unit.setObjectName("Muted")
         unit.setFont(ui_font(theme.METRICS.small_pt))
         self._grid.addWidget(unit, len(tests) + 1, 0)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._fit_gaps()
+
+    def _fit_gaps(self) -> None:
+        """Whether the bars have room is decided with the wide air, so that
+        narrowing it never gives them room again: without it, they go with
+        their axis."""
+        if not self._cells:
+            return
+        directions = 2 if self._writes else 1
+        names = max((name.sizeHint().width() for name in self.names), default=0)
+        figures = sum(max((figure.sizeHint().width() for (_name, way), (_bar, figure)
+                           in self._cells.items() if way == direction), default=0)
+                      for direction in (("read", "write") if self._writes else ("read",)))
+        gaps = self.GAP * 2 * directions
+        room = (self.width() - names - figures - gaps) / directions >= RateBar.NARROWEST
+        if room == self._barred:
+            return
+        self._barred = room
+        self._grid.setHorizontalSpacing(self.GAP if room else self.NARROW_GAP)
+        for widget in [bar for bar, _figure in self._cells.values()] + self._axes:
+            widget.setVisible(room)
 
     def set_rows(self, tests: tuple, writes: bool) -> None:
         """The tests to show, each with nothing measured yet."""
@@ -363,11 +396,15 @@ class TestRows(QWidget):
             self._cells = {}
             self._build(tests, writes)
             self._tests, self._writes = tests, writes
+            # New bars are shown: whether they fit is decided again.
+            self._barred = True
+            self._grid.setHorizontalSpacing(self.GAP)
         for bar, figure in self._cells.values():
             bar.set_rate(None)
             figure.setText(render.DASH)
             figure.setToolTip("")
             self._tint(figure, False)
+        self._fit_gaps()
 
     @staticmethod
     def _tint(figure: QLabel, live: bool) -> None:
@@ -387,6 +424,7 @@ class TestRows(QWidget):
         figure.setText(megabytes(bytes_per_second) + (VARIED_MARK if note else ""))
         figure.setToolTip(note)
         self._tint(figure, live)
+        self._fit_gaps()
 
 
 class DiskTestRun(QObject):

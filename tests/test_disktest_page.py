@@ -424,10 +424,13 @@ class TestWhatAResultShows(TabCase):
             tab.resize(width, 900)
             for _turn in range(5):
                 self.app.processEvents()
+            # Below the narrowest window, only to see the spare column go.
+            if width < theme.METRICS.min_window_w:
+                return visible_texts(tab)
             for _heading, table in tab.history_tables:
                 self.assertEqual(table.horizontalScrollBar().maximum(), 0, width)
                 for title in table.findChildren(QLabel, "ColumnTitle"):
-                    if title.isVisibleTo(table) and width >= theme.METRICS.min_window_w:
+                    if title.isVisibleTo(table):
                         self.assertLessEqual(
                             title.height() // title.fontMetrics().lineSpacing(), 2,
                             (width, title.text()))
@@ -636,15 +639,59 @@ class TestWhatAResultShows(TabCase):
         self.assertNotIn(_(disktest_page().COLUMNS["write"]), text.splitlines())
 
     def test_it_fits_the_narrowest_window(self):
+        from silux import i18n
         from silux.ui import theme
 
+        before = i18n.current()
+        self.addCleanup(i18n.set_language, before)
         narrowest = theme.METRICS.min_window_w
+        for language in ("es", "en"):
+            with self.subTest(language=language):
+                i18n.set_language(language)
+                tab = self.tab()
+                tab.resize(narrowest, 800)
+                for _turn in range(4):
+                    self.app.processEvents()
+                self.assertLessEqual(tab.widget().minimumSizeHint().width(), narrowest)
+                self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+
+    def test_without_room_the_bars_go_instead_of_squeezing(self):
+        """In a narrow window they were drawn 45 px wide, against the next
+        column's figure."""
+        from silux.ui import theme
+
         tab = self.tab()
-        tab.resize(narrowest, 800)
+        bars = [bar for bar, _figure in tab.rows._cells.values()] + tab.rows._axes
+        for width, shown in ((1200, True), (theme.METRICS.min_window_w, False), (1200, True)):
+            with self.subTest(width=width):
+                tab.resize(width, 900)
+                for _turn in range(4):
+                    self.app.processEvents()
+                self.assertEqual({bar.isVisibleTo(tab) for bar in bars}, {shown})
+
+    def test_the_figures_are_large_bold_and_by_their_bar(self):
+        """They were the size of the text, and a reserved width kept a short
+        one some 50 px from its bar."""
+        from PySide6.QtGui import QFont
+
+        from silux.ui import theme
+
+        tab = self.tab()
+        tab.resize(1200, 900)
         for _turn in range(4):
             self.app.processEvents()
-        self.assertLessEqual(tab.widget().minimumSizeHint().width(), narrowest)
-        self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+        cells = tab.rows._cells
+        for figure in (figure for _bar, figure in cells.values()):
+            self.assertEqual(figure.font().pixelSize(), theme.METRICS.headline_px)
+            self.assertGreaterEqual(figure.font().weight(), QFont.Weight.Bold)
+        for direction in ("read", "write"):
+            with self.subTest(direction=direction):
+                figures = [figure for (_name, way), (_bar, figure) in cells.items()
+                           if way == direction]
+                widest = max(figure.fontMetrics().horizontalAdvance(figure.text())
+                             for figure in figures)
+                for figure in figures:
+                    self.assertLessEqual(figure.width() - widest, 4, figure.text())
 
     def test_it_reads_the_same_in_english(self):
         from silux import i18n
