@@ -393,7 +393,7 @@ Una NVIDIA no tiene reloj de SoC ni perfil de rendimiento, y NVML no da la frecu
 - Límite de potencia: 115 W
 - Ventilador: parado
 
-NVML no publica el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes de esta tarjeta; el uso del video está en «Ahora mismo».
+NVML no da el punto caliente, la temperatura de la memoria, los reguladores ni los voltajes de esta tarjeta. El uso del video está en «Ahora mismo».
 
 #### Bibliotecas gráficas
 
