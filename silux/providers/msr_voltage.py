@@ -37,7 +37,10 @@ from .base import Draft, Provider, is_virtual_machine, read_text
 
 # The AMD families whose P-state registers this reads (Zen 1 to Zen 4, from
 # AMD's PPRs for families 17h and 19h). Bulldozer and the others before Zen
-# keep the voltage in other bits and steps; Zen 5 changed the layout again.
+# keep the voltage in other bits and steps; Zen 5 (1Ah) changed the layout
+# again. Both are left out on purpose, and say so (`prov.msr.amdformat`).
+# The sheet's Tjmax (`hwmon._sheet_maximum`) is the model's, not a
+# register's, and does cover Zen 5.
 ZEN_FAMILIES = (0x17, 0x19)
 
 

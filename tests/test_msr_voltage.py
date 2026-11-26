@@ -107,6 +107,17 @@ class TestElProveedor(unittest.TestCase):
         self.assertEqual([(n.need, n.key) for n in draft.notes if n.path == "cpu.voltage_v"],
                          [(Need.DATABASE, "prov.msr.amdformat")])
 
+    def test_nor_a_zen_5(self):
+        """Family 1Ah changed the P-state registers again: left out on
+        purpose, and said."""
+        cliente = mock.Mock()
+        cliente.connected.return_value = True
+        draft = _draft(family=0x1A)
+        msr_voltage.MsrVoltage(cliente).collect(draft)
+        cliente.read_msr.assert_not_called()
+        self.assertEqual([(n.need, n.key) for n in draft.notes if n.path == "cpu.voltage_v"],
+                         [(Need.DATABASE, "prov.msr.amdformat")])
+
     def test_without_the_module_its_notice_offers_to_load_it(self):
         cliente = mock.Mock()
         cliente.connected.return_value = True

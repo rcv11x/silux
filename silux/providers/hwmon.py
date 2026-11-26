@@ -474,7 +474,9 @@ class HwmonSensors(Provider):
 
     @staticmethod
     def _sheet_maximum(draft: Draft) -> Optional[float]:
-        """AMD's Tjmax for this exact model, from Zen 2 on.
+        """AMD's Tjmax for this exact model, from Zen 2 on, Zen 5 (1Ah)
+        included: it is the model's sheet, not a register whose layout
+        changed (`msr_voltage.ZEN_FAMILIES` leaves Zen 5 out on purpose).
 
         Before Zen 2, k10temp's Tctl can carry an offset for fan control and
         older parts' sheets give a case temperature: neither compares with
