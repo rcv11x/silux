@@ -443,6 +443,11 @@ la memoria) no va: está propuesto en las notas
   restante» de un pendrive se enseña y se esconde entre dos fotos iguales
   (`test_nada_se_mueve` como root, en el contenedor de
   `tools/probar_en_minimo.py`).
+* `docs/uso.md` · baja · después de la prueba13. Una lista de todas las
+  carpetas y archivos que Silux crea fuera de `~/.config/silux` y
+  `~/.cache/silux` (las entradas de menú, los iconos, lo que deja en
+  `~/AppImages`), para responder si alguien pregunta. No es un fallo: lo
+  preguntó un usuario, que luego confirmó que no le había creado nada.
 * `ui/pages/storage.py` · media · después de la prueba13. Las tarjetas
   «Leyendo» y «Escribiendo» suman todos los discos, y no se sabe cuál es
   cuál. Propuesta: un desplegable en esas tarjetas para elegir «Todas las

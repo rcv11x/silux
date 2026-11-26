@@ -3,7 +3,7 @@
 # Usage
 
 How to open Silux, what it does in the terminal, how to send a report when
-something goes wrong, and which data need the administrator. Which AppImage to
+something goes wrong, and which data need administrator rights. Which AppImage to
 pick is in [compatibility](compatibility.md).
 
 ![Home](../capturas/inicio.png)
@@ -27,7 +27,7 @@ It works with [Linux 5.15](kernel.md) or later.
 On KDE, the file shows Silux's logo when libappimage is installed (on Arch and
 derivatives, `sudo pacman -S libappimage`).
 
-## What needs the administrator
+## What needs administrator rights
 
 Some data, such as the memory modules, disk health or voltages, can only be
 read by the administrator. Silux asks for it when you click a padlock and

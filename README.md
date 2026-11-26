@@ -55,7 +55,7 @@ To everyone who sends reports: with them Silux is tested on machines that are no
 
 ## More
 
-- [Usage](docs/usage.md): the terminal, the report for a bug, running from source and what needs the administrator.
+- [Usage](docs/usage.md): the terminal, the report for a bug, running from source and what needs administrator rights.
 - [Compatibility](docs/compatibility.md): which AppImage, and the hardware Silux has been tested on.
 - [What it uses from the system](docs/dependencias.md), [what's still missing](docs/pendientes.md) and [what changed in each release](CHANGELOG.md).
 - [A short architecture](ARCHITECTURE.md), [how to contribute](CONTRIBUTING.md) and [how to report a security problem](SECURITY.md). The rest of `docs/` is in Spanish, starting with the [architecture](docs/arquitectura.md).

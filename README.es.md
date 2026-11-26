@@ -43,7 +43,7 @@ chmod +x silux-x86_64.AppImage
 
 ## Gracias
 
-A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nuestro. Aquí sale quien ha dado permiso, y lo mismo en Ajustes → Acerca de.
+A quienes mandan informes: con ellos Silux se prueba en equipos que no son los nuestros. Aquí sale quien ha dado permiso, y lo mismo en Ajustes → Acerca de.
 
 <!-- thanks:start -->
 - Anianin27
@@ -55,7 +55,7 @@ A quienes mandan informes: con ellos Silux se prueba en equipos que no son el nu
 
 ## Más
 
-- [Uso](docs/uso.md): la terminal, el informe para avisar de un fallo, cómo ejecutarlo desde el código y lo que necesita al administrador.
+- [Uso](docs/uso.md): la terminal, el informe para avisar de un fallo, cómo ejecutarlo desde el código y lo que necesita permisos de administrador.
 - [Compatibilidad](docs/compatibilidad.md): qué AppImage, y el hardware en el que se ha probado Silux.
 - [Lo que usa del sistema](docs/dependencias.md), [lo que falta](docs/pendientes.md) y [los cambios de cada versión](CHANGELOG.md).
 - En inglés: [la arquitectura en corto](ARCHITECTURE.md), [cómo contribuir](CONTRIBUTING.md) y [cómo avisar de un problema de seguridad](SECURITY.md). El resto de `docs/` está en español, empezando por la [arquitectura](docs/arquitectura.md).

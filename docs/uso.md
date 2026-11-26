@@ -3,7 +3,7 @@
 # Uso
 
 Cómo se abre Silux, qué hace en la terminal, cómo mandar un informe cuando algo
-falla y qué datos necesitan al administrador. Qué AppImage elegir está en
+falla y qué datos necesitan permisos de administrador. Qué AppImage elegir está en
 [compatibilidad](compatibilidad.md).
 
 ![Inicio](../capturas/inicio.png)
@@ -27,7 +27,7 @@ Funciona con [Linux 5.15](kernel.md) o posterior.
 En KDE, el archivo enseña el logo de Silux si está instalada libappimage (en
 Arch y derivadas, `sudo pacman -S libappimage`).
 
-## Lo que necesita al administrador
+## Lo que necesita permisos de administrador
 
 Algunos datos, como los módulos de memoria, la salud de los discos o el
 voltaje, solo los puede leer el administrador. Silux los pide al pulsar un
