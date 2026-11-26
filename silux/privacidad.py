@@ -285,6 +285,27 @@ def _mask_address(address: Optional[str], substitute: str) -> Optional[str]:
     return substitute
 
 
+def mount_substitutes(snapshot: Snapshot) -> dict[str, str]:
+    """What goes in place of each mount point someone chose, decided once on
+    the real ones so the same disk is the same «unidadN» all over a report.
+    A pen drive's mount carries its owner's name and its label."""
+    mounts: dict[str, str] = {}
+    for disk in snapshot.disks:
+        for partition in disk.partitions:
+            path = partition.mountpoint
+            if path and path not in _SYSTEM_MOUNTS:
+                mounts.setdefault(path, MOUNT.format(len(mounts) + 1))
+    return mounts
+
+
+def mount_substitute(path: Optional[str], mounts: dict[str, str]) -> Optional[str]:
+    """`path` as `mount_substitutes` covers it. One no longer mounted (the
+    pen drive a disk test ran on) gets a number of its own."""
+    if not path or path in _SYSTEM_MOUNTS:
+        return path
+    return mounts.get(path) or MOUNT.format(len(mounts) + 1)
+
+
 def anonymize(snapshot: Snapshot) -> Snapshot:
     """The same snapshot without what points to one specific machine."""
     changes: dict = {}
@@ -374,18 +395,12 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
         )
 
     if snapshot.disks:
-        mounts: dict[str, str] = {}
-
-        def _mount_index(path: Optional[str]) -> Optional[str]:
-            if not path or path in _SYSTEM_MOUNTS:
-                return path
-            return mounts.setdefault(path, MOUNT.format(len(mounts) + 1))
-
+        mounts = mount_substitutes(snapshot)
         changes["disks"] = tuple(
             dataclasses.replace(
                 d, serial=_mask(d.serial),
-                partitions=tuple(dataclasses.replace(p, mountpoint=_mount_index(p.mountpoint))
-                                 for p in d.partitions))
+                partitions=tuple(dataclasses.replace(p, mountpoint=mount_substitute(
+                    p.mountpoint, mounts)) for p in d.partitions))
             for d in snapshot.disks
         )
 

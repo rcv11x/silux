@@ -92,6 +92,7 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
     if not inside_app:
         theme.apply(aplicacion, "dark", preferencias.density, "normal")
     foto = privacidad.anonymize(snapshot) if anonymous else snapshot
+    mounts = privacidad.mount_substitutes(snapshot) if anonymous else None
     ventana = MainWindow(preferencias)
     if inside_app:
         # Laid out and painted, but never on screen.
@@ -117,6 +118,12 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
             cuerpo = page_text(pagina)
             if cuerpo.strip():
                 partes.append(f"\n## {_(clave)}\n\n{cuerpo}")
+        # The latest memory and disk tests, whole: the pages show only their
+        # summary, and the whole run is what lets a foreign figure be checked.
+        if not sections:
+            partes += [section for section in (
+                report._memory_test(translate=_),
+                report._disk_test(translate=_, mounts=mounts)) if section]
         partes.append(report._diagnosis(foto, translate=_))
     finally:
         ventana.hide()

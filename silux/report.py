@@ -43,6 +43,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
     network names and the sensor tree. Each section's «omitted» marks stay,
     since they say something was covered instead of showing a fake value.
     """
+    mounts = privacidad.mount_substitutes(snapshot) if anonymous else None
     if anonymous:
         snapshot = privacidad.anonymize(snapshot)
     parts = [
@@ -57,7 +58,7 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
         _sensors(snapshot),
         _benchmark(),
         _memory_test(),
-        _disk_test(),
+        _disk_test(mounts=mounts),
         _diagnosis(snapshot),
     ]
     return "\n".join(part for part in parts if part).strip() + "\n"
@@ -546,30 +547,38 @@ def _sensors(snapshot: Snapshot) -> str:
     return "\n".join(lines)
 
 
-def _disk_test() -> str:
+def _disk_test(translate=in_spanish, mounts: Optional[dict[str, str]] = None) -> str:
     """The latest disk test, whole: every lap of every test, the engine and
     why, what the checks after each test found, and what went wrong with
-    its code, which the screen never shows."""
+    its code, which the screen never shows.
+
+    `mounts`, from `privacidad.mount_substitutes`, covers where it ran as the
+    rest of the report does: a pen drive's mount carries its owner's name.
+    """
     from . import disktest
 
     result = next(iter(disktest.load_history()), None)
     if result is None:
         return ""
+    t = translate
+    mountpoint = (result.mountpoint if mounts is None
+                  else privacidad.mount_substitute(result.mountpoint, mounts))
     megabytes = lambda rate: f"{rate / 1e6:.1f}"  # noqa: E731
-    lines = ["\n## Prueba de disco\n"]
+    lines = [f"\n## {t('report.disktest.title')}\n"]
     if result.measures:
-        lines += ["| Prueba | Sentido | Del medio MB/s | Mejor | Peor | Previa | Vueltas | IOPS | "
-                  "Media µs | p99 µs | En caché | Disco/contado | °C |",
+        lines += [t("report.disktest.columns"),
                   "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for measure in result.measures:
         middle = measure.median
         first = next((lap for lap in measure.laps if lap.number == 0), None)
-        name = measure.name + (f" (por {measure.stands_for})" if measure.stands_for else "")
+        name = measure.name + (t("report.disktest.standsfor").format(test=measure.stands_for)
+                               if measure.stands_for else "")
         ratio = (render.DASH if measure.disk_bytes is None or not measure.moved_bytes
                  else f"{measure.disk_bytes / measure.moved_bytes:.2f}")
         cells = [
             name, measure.direction,
-            megabytes(middle.bytes_per_second) + (" (varió)" if measure.noisy else ""),
+            megabytes(middle.bytes_per_second)
+            + (t("report.disktest.varied") if measure.noisy else ""),
             megabytes(measure.best.bytes_per_second), megabytes(measure.worst.bytes_per_second),
             megabytes(first.bytes_per_second) if first else render.DASH,
             " ".join(megabytes(lap.bytes_per_second) for lap in measure.counted),
@@ -580,41 +589,50 @@ def _disk_test() -> str:
             ratio, render.DASH if measure.temperature_c is None else f"{measure.temperature_c:.1f}",
         ] if middle is not None else [name, measure.direction] + [render.DASH] * 11
         lines.append("| " + " | ".join(cells) + " |")
-    facts = [f"perfil {result.profile}", f"motor: {result.engine or 'ninguno'}"]
+    facts = [t("report.disktest.profile").format(profile=result.profile),
+             t("report.test.engine").format(
+                 engine=result.engine or t("report.disktest.engine.none"))]
     if result.uring_errno is not None:
         facts.append(f"io_uring_setup: errno {result.uring_errno}")
     if result.model:
         facts.append(result.model)
-    if result.mountpoint:
-        facts.append(f"{result.mountpoint} ({result.filesystem})")
+    if mountpoint:
+        facts.append(f"{mountpoint} ({result.filesystem})")
     if result.disks:
-        facts.append("sobre " + " + ".join(result.disks))
+        facts.append(t("report.disktest.on").format(disks=" + ".join(result.disks)))
     if result.layers:
-        facts.append("capas: " + ", ".join(result.layers))
+        facts.append(t("report.disktest.layers").format(layers=", ".join(result.layers)))
     if result.bytes_:
-        facts.append(f"archivo de {render.size(result.bytes_)} ({result.creation or '?'})")
+        facts.append(t("report.disktest.file").format(size=render.size(result.bytes_),
+                                                      creation=result.creation or "?"))
     if result.no_cow is not None:
-        facts.append(f"+C {'sí' if result.no_cow else 'no'}")
+        facts.append(t("report.disktest.nocow.yes" if result.no_cow
+                       else "report.disktest.nocow.no"))
     if result.align_declared is not None:
-        facts.append("alineación " + ("declarada" if result.align_declared else "supuesta"))
+        facts.append(t("report.disktest.align.declared" if result.align_declared
+                       else "report.disktest.align.assumed"))
     if result.laps:
-        facts.append(f"{result.laps} vueltas de {result.lap_seconds:g} s, "
-                     f"pausa {result.pause_seconds:g} s")
-    facts.append(f"escribió {result.written_bytes / 1e9:.1f} GB en {result.seconds:.1f} s")
+        facts.append(t("report.disktest.laps").format(
+            laps=result.laps, seconds=f"{result.lap_seconds:g}",
+            pause=f"{result.pause_seconds:g}"))
+    facts.append(t("report.disktest.written").format(
+        gb=f"{result.written_bytes / 1e9:.1f}", seconds=f"{result.seconds:.1f}"))
     if result.temperature_peak_c is not None:
-        facts.append(f"temperatura {result.temperature_start_c} → {result.temperature_peak_c} "
-                     f"→ {result.temperature_end_c} °C")
+        facts.append(t("report.disktest.temperature").format(
+            start=result.temperature_start_c, peak=result.temperature_peak_c,
+            end=result.temperature_end_c))
     if result.warnings:
-        facts.append("avisos: " + ", ".join(result.warnings))
+        facts.append(t("report.disktest.warnings").format(warnings=", ".join(result.warnings)))
     lines += ["", " · ".join(facts)]
     if result.reason:
         figures = ", ".join(f"{name}={value}" for name, value in result.figures)
-        lines += ["", f"No terminó: {result.reason}. {result.detail}"
+        lines += ["", t("report.disktest.unfinished").format(reason=result.reason,
+                                                            detail=result.detail)
                   + (f" ({figures})" if figures else "")]
     return "\n".join(lines) + "\n"
 
 
-def _memory_test() -> str:
+def _memory_test(translate=in_spanish) -> str:
     """The latest memory test, whole: each level, each pass and the curve.
 
     The curve goes here and not on the page: it is what lets a figure from
@@ -625,9 +643,11 @@ def _memory_test() -> str:
     result = next(iter(memtest.load_history()), None)
     if result is None or not result.measured:
         return ""
-    lines = ["\n## Prueba de memoria\n"]
+    t = translate
+    noisy = t("report.memtest.noisy")
+    lines = [f"\n## {t('report.memtest.title')}\n"]
     if result.levels:
-        lines += ["| Nivel | Latencia | Ciclos | Frecuencia | Bloque |", "|---|---|---|---|---|"]
+        lines += [t("report.memtest.levels.columns"), "|---|---|---|---|---|"]
         for level in result.levels:
             cycles = render.core_cycles(level.nanoseconds, level.frequency_hz)
             lines.append(
@@ -635,46 +655,48 @@ def _memory_test() -> str:
                 f"{render.DASH if cycles is None else f'{cycles:.1f}'} | "
                 f"{render.hz(level.frequency_hz)} | {render.size(level.bytes_)} |")
     if result.rates:
-        lines += ["", "| Operación | Hilos | GB/s | Instrucciones | Frecuencia |",
-                  "|---|---|---|---|---|"]
+        lines += ["", t("report.memtest.rates.columns"), "|---|---|---|---|---|"]
         for rate in result.rates:
-            name = rate.operation + (" (no temporal)" if rate.non_temporal else "")
+            name = rate.operation + (t("report.memtest.nontemporal") if rate.non_temporal else "")
             if rate.level != "RAM":
                 name = f"{rate.level} {name}"
             lines.append(
                 f"| {name} | {rate.threads} | {rate.bytes_per_second / 1e9:.1f}"
-                f"{' (con ruido)' if rate.noisy else ''} | {rate.isa or render.DASH} | "
+                f"{noisy if rate.noisy else ''} | {rate.isa or render.DASH} | "
                 f"{render.hz(rate.frequency_hz)} |")
-    facts = [f"motor: {result.engine}"]
+    facts = [t("report.test.engine").format(engine=result.engine)]
     if result.cpu is not None:
         facts.append(f"CPU {result.cpu}")
     if result.ram_block:
-        facts.append(f"RAM sobre {render.size(result.ram_block)}"
-                     + (" (limitado por la memoria libre)" if result.ram_block_limited else ""))
+        facts.append(t("report.memtest.ramblock").format(size=render.size(result.ram_block))
+                     + (t("report.memtest.ramblock.limited") if result.ram_block_limited else ""))
     if result.huge_fraction is not None:
-        facts.append(f"páginas grandes {result.huge_fraction * 100:.0f} %")
-    facts.append(f"frecuencia por {result.frequency_source or 'ninguna vía'}")
+        facts.append(t("report.memtest.huge").format(pct=f"{result.huge_fraction * 100:.0f}"))
+    facts.append(t("report.memtest.frequency").format(
+        source=result.frequency_source or t("report.memtest.frequency.none")))
     if result.governor:
-        facts.append(f"gobernador {result.governor}")
+        facts.append(t("report.memtest.governor").format(governor=result.governor))
     if result.energy_preference:
         facts.append(f"EPP {result.energy_preference}")
     share = memtest.share_of_theoretical(result)
     if share is not None:
-        facts.append(f"lectura al {share:.0f} % de {result.channels} × "
-                     f"{render.memory_speed(result.speed_mts)} MT/s × 8 B")
+        facts.append(t("report.memtest.share").format(
+            pct=f"{share:.0f}", channels=result.channels,
+            speed=render.memory_speed(result.speed_mts)))
     for step in memtest.curve_steps(result.points, result.levels, result.caches):
         facts.append(
-            f"{step.level} de {render.size(step.declared_bytes)}: la curva sube entre "
-            f"{render.size(step.flat_until)} y {render.size(step.rises_by)}"
-            + ("" if step.matches else " (no cuadra)"))
+            t("report.memtest.step").format(
+                level=step.level, declared=render.size(step.declared_bytes),
+                flat=render.size(step.flat_until), rises=render.size(step.rises_by))
+            + ("" if step.matches else t("report.memtest.mismatch")))
     lines += ["", " · ".join(facts)]
     if result.points:
-        lines += ["", "| Bloque | ns | MHz | Dispersión |", "|---|---|---|---|"]
+        lines += ["", t("report.memtest.points.columns"), "|---|---|---|---|"]
         for point in result.points:
             mhz = render.DASH if not point.frequency_hz else f"{point.frequency_hz / 1e6:.0f}"
             lines.append(
                 f"| {render.size(point.bytes_)} | {point.nanoseconds:.2f} | {mhz} | "
-                f"{point.spread * 100:.1f} %{' (con ruido)' if point.noisy else ''} |")
+                f"{point.spread * 100:.1f} %{noisy if point.noisy else ''} |")
     return "\n".join(lines)
 
 
