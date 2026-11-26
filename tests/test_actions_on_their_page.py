@@ -125,10 +125,14 @@ class TestTheDiskBenchmark(Case):
             tab.run_button.click()
             wait_for(self.app, lambda: not tab.running
                      and not tab.cancel_button.isVisibleTo(tab))
+        self.assertFalse(tab.running)
         # A result, or what stopped it, on the page.
-        result = tab.result
-        self.assertIsNotNone(result)
-        self.assertTrue(result.measures or result.reason)
+        failure = tab._failure
+        if tab.result is None:
+            self.assertIsNotNone(failure, "no result and nothing said")
+            self.assertTrue(failure.isVisibleTo(tab))
+        else:
+            self.assertTrue(tab.result.measures)
         self.after(tab)
 
 
