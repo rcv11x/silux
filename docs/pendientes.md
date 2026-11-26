@@ -298,6 +298,12 @@ la memoria) no va: está propuesto en las notas
   tres. Se pierde el decimal que distingue los escalones del VID.
 * `ui/pages/graphics.py` · baja · la tasa de datos de la VRAM, compuesta a
   mano.
+* `providers/drm.py` · baja · la tensión de Gráficos lee `vddgfx` y
+  `vddnb`, pero no `vddc`, el otro nombre que hwmon da al núcleo: Sensores
+  ya lo reconoce (`Sensor.gpu_core_rail`) y Gráficos no.
+* `db/families.json` · baja · Granite Ridge (Zen 5 de sobremesa) está en la
+  familia 26 con los modelos 0 a 15, y un Ryzen 7 9700X es el modelo 0x44
+  según su volcado de libcpuid. Solo cuenta si libcpuid no conoce el chip.
 * `spd.py` · media · el perfil 2 de XMP en DDR4 no se lee: no hay fuente de
   dónde va (memtest86+ solo lee el 1) ni un módulo que lo traiga. El
   perfil 1 (F-A2) se arregló con los módulos de un sobremesa con Gentoo.
