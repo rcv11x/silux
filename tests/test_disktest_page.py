@@ -13,6 +13,8 @@ import threading
 import unittest
 from unittest import mock
 
+from PySide6.QtCore import Qt
+
 from silux import disktest, render, sysroot
 from silux.i18n import _
 from tests.qt import app
@@ -840,7 +842,8 @@ class TestRunningAndFailing(TabCase):
 
         def say(message) -> None:
             steps.put(message)
-            for _turn in range(20):
+            # On a loaded machine the thread takes its time to say it.
+            for _turn in range(500):
                 QTest.qWait(10)
                 if tab._run.last == message:
                     break
@@ -959,7 +962,7 @@ def moved(result: disktest.Result, factors: dict, timestamp: float) -> disktest.
 
 class TestAgainstTheTestBefore(TabCase):
     """Each figure says how much it moved from the test before of the same
-    disk, engine and profile; in grey under 3 %, which is noise."""
+    disk, engine and profile; under 3 %, which is noise, nothing."""
 
     def setUp(self):
         super().setUp()
@@ -978,10 +981,9 @@ class TestAgainstTheTestBefore(TabCase):
         grown, noise = changes["SEQ1M Q8T1", "read"], changes["RND4K Q1T1", "read"]
         self.assertTrue(grown.isVisibleTo(tab))
         self.assertEqual(grown.text().replace("\u00a0", " "), "▲ 10 %")
-        self.assertEqual(grown.objectName(), "")
-        self.assertEqual(noise.text().replace("\u00a0", " "), "▲ 1 %")
-        self.assertEqual(noise.objectName(), "Muted")
-        self.assertEqual(changes["RND4K Q32T1", "write"].text(), "0 %")
+        # «0 %» and «▲ 1 %» everywhere cluttered it.
+        self.assertFalse(noise.isVisibleTo(tab))
+        self.assertFalse(changes["RND4K Q32T1", "write"].isVisibleTo(tab))
         self.assertIn(disktest_page().when(self.before.timestamp), grown.toolTip())
         # Under its figure.
         figure = tab.rows._cells["SEQ1M Q8T1", "read"][1]
@@ -1005,10 +1007,18 @@ class TestAgainstTheTestBefore(TabCase):
                      if _(disktest_page().ENGINES["uring"]) in heading)
         newer, older = table._cells
         texts = [cell.text().replace("\u00a0", " ") for cell in newer]
-        self.assertIn("▲ 10 %", texts)
+        self.assertEqual(texts.count("▲ 10 %"), 1)
+        self.assertNotIn("▲ 1 %", texts)
         self.assertTrue(all(cell.text() == "" for cell in older[2:-1:2]))
-        quiet = next(cell for cell in newer if cell.text().replace("\u00a0", " ") == "▲ 1 %")
-        self.assertEqual(quiet.property("tone"), "muted")
+        # Glued to its figure, whose column stays aligned on the right: at
+        # 1690 px it sat halfway to the next column.
+        change = newer[texts.index("▲ 10 %")]
+        figure = newer[texts.index("▲ 10 %") - 1]
+        end = figure.mapTo(table, figure.rect().topLeft()).x() + figure.width()
+        start = change.mapTo(table, change.rect().topLeft()).x()
+        self.assertLessEqual(start - end, table._grid.horizontalSpacing() + 1)
+        self.assertTrue(change.alignment() & Qt.AlignmentFlag.AlignLeft)
+        self.assertTrue(figure.alignment() & Qt.AlignmentFlag.AlignRight)
 
 
 class TestWhereTheFileLay(TabCase):

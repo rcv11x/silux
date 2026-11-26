@@ -809,10 +809,13 @@ class TestAgainstTheTestBefore(unittest.TestCase):
         self.assertAlmostEqual(disktest.change(before, now), -0.5, places=3)
         self.assertIsNone(disktest.change(now, None))
 
-    def test_it_is_written_with_its_arrow_and_without_one_at_nothing(self):
+    def test_it_is_written_with_its_arrow_and_said_only_beyond_the_noise(self):
         from silux import render
 
         self.assertEqual(render.change(0.10), "▲ 10 %")
         self.assertEqual(render.change(-0.12), "▼ 12 %")
-        self.assertEqual(render.change(0.004), "0 %")
         self.assertEqual(render.change(None), render.DASH)
+        self.assertTrue(disktest.noticeable(disktest.NOISE))
+        self.assertTrue(disktest.noticeable(-0.12))
+        self.assertFalse(disktest.noticeable(0.029))
+        self.assertFalse(disktest.noticeable(None))

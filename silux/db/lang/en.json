@@ -576,7 +576,7 @@
   "disktest.action.fits": "Try with {size}",
   "disktest.action.folder": "Choose another folder",
   "disktest.action.smaller": "Try with a smaller file",
-  "disktest.change.column": "How much each figure moved from the test before on the same disk and profile; in grey, what is within the noise (under {noise}).",
+  "disktest.change.column": "How much each figure moved from the test before on the same disk and profile. Under {noise} it isn't said: that is noise.",
   "disktest.change.tip": "Against the test of {when}, on the same disk and profile.",
   "disktest.col.best": "Best",
   "disktest.col.first": "Warm-up",

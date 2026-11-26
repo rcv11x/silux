@@ -46,7 +46,7 @@ PAUSE_SECONDS = 5.0
 # test: the median absolute deviation over the median.
 NOISY_SPREAD = 0.05
 # A change from the test before smaller than this is within what the same
-# disk moves from one test to the next: noise.
+# disk moves from one test to the next: noise, which isn't said.
 NOISE = 0.03
 
 HISTORY_VERSION = 1
@@ -148,6 +148,11 @@ def change(now: Optional["Measure"], before: Optional["Measure"]) -> Optional[fl
     if new is None or old is None or not old.bytes_per_second:
         return None
     return new.bytes_per_second / old.bytes_per_second - 1
+
+
+def noticeable(fraction: Optional[float]) -> bool:
+    """Whether a change (`change`) is more than the noise."""
+    return fraction is not None and abs(fraction) >= NOISE
 
 
 def headline_test(profile: str) -> str:

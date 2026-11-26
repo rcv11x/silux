@@ -513,17 +513,16 @@ class TestRows(QWidget):
 
     def set_change(self, name: str, direction: str, fraction: Optional[float],
                    tip: str = "") -> None:
-        """How much a figure moved from the test before; in grey where that
-        is within the noise, and nothing without one."""
+        """How much a figure moved from the test before: nothing without one,
+        or where that is within the noise."""
         change = self.changes.get((name, direction))
         if change is None:
             return
-        change.setVisible(fraction is not None)
-        if fraction is None:
-            return
-        change.setText(render.change(fraction))
-        change.setToolTip(tip)
-        self._tint(change, abs(fraction) < disktest.NOISE)
+        shown = disktest.noticeable(fraction)
+        change.setVisible(shown)
+        if shown:
+            change.setText(render.change(fraction))
+            change.setToolTip(tip)
 
     def set_running(self, name: Optional[str]) -> None:
         """The test under way, or none."""
@@ -1509,7 +1508,19 @@ class DiskTestTab(ScrollPage):
             # With more than one test, each figure with how much it moved from
             # the one before, in a column of its own: in grey where that is
             # noise. In a narrow window those go first.
-            compared = len(results) > 1
+            # How much each figure moved from the test before, where it
+            # moved more than the noise.
+            moves = {}
+            for result in results:
+                before = disktest.previous(result, results)
+                for name, direction in columns:
+                    moved = disktest.change(result.measure(name, direction),
+                                            before.measure(name, direction)) if before else None
+                    if disktest.noticeable(moved):
+                        moves[result.timestamp, name, direction] = moved
+            # Each in a column of its own, glued to its figure: on its left,
+            # the figures stay aligned. In a narrow window those go first.
+            compared = bool(moves)
             step = 2 if compared else 1
             figures = [1 + step * index for index in range(len(columns))]
             changes = [column + 1 for column in figures] if compared else []
@@ -1520,7 +1531,8 @@ class DiskTestTab(ScrollPage):
                 # code on hovering: «Sequential, read».
                 titles += [history_title(tests[name], direction)] + ([""] if compared else [])
             table = Table(titles + [_("disktest.col.hottest")],
-                          numeric=(False,) + (True,) * (len(titles)),
+                          numeric=[column > 0 and column not in changes
+                                   for column in range(len(titles) + 1)],
                           # In a narrow window, rather than cut it.
                           spare=(hottest, *changes),
                           # In a narrow window, without how many requests at
@@ -1533,25 +1545,19 @@ class DiskTestTab(ScrollPage):
             for column in changes:
                 table.set_header_tooltip(column, _("disktest.change.column").format(
                     noise=render.whole_percent(disktest.NOISE * 100)))
-            rows, noise = [], []
-            for row, result in enumerate(results):
-                before = disktest.previous(result, results)
+            rows = []
+            for result in results:
                 cells = [result.label or when(result.timestamp)]
                 for name, direction in columns:
                     measure = result.measure(name, direction)
                     middle = measure.median if measure is not None else None
                     cells.append(megabytes(middle.bytes_per_second) if middle else render.DASH)
                     if compared:
-                        moved = disktest.change(measure, before.measure(name, direction)) \
-                            if before is not None else None
+                        moved = moves.get((result.timestamp, name, direction))
                         cells.append(render.change(moved) if moved is not None else "")
-                        if moved is not None and abs(moved) < disktest.NOISE:
-                            noise.append((row, len(cells) - 1))
                 cells.append(render.temperature(result.temperature_peak_c, fahrenheit))
                 rows.append(cells)
             table.set_rows(rows)
-            for row, column in noise:
-                table.set_cell_tone(row, column, "muted")
             heading = QLabel(" · ".join(part for part in (
                 disk, _(ENGINES[engine]) if engine in ENGINES else "",
                 _(PROFILE_NAMES[profile]) if profile in PROFILE_NAMES else profile) if part))
