@@ -16,9 +16,10 @@ import threading
 import time
 from typing import Optional
 
-from PySide6.QtCore import QObject, QRectF, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -27,6 +28,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QToolTip,
     QVBoxLayout,
     QWidget,
 )
@@ -223,6 +225,38 @@ def test_tip(test: disktest.Test) -> str:
         code=test.name, block=render.size(test.block), depth=test.depth, threads=test.threads)
 
 
+class TipOverRow(QObject):
+    """A test's tip over its own row and not under it: by the mouse, it
+    covered the row below. Above the row if the screen has room, else beside
+    its name."""
+
+    GAP = 4
+
+    def __init__(self, widget: QWidget):
+        super().__init__(widget)
+        self._widget = widget
+        widget.installEventFilter(self)
+
+    def eventFilter(self, _watched, event) -> bool:  # noqa: N802
+        if event.type() != QEvent.Type.ToolTip or not self._widget.toolTip():
+            return False
+        QToolTip.showText(event.globalPos(), self._widget.toolTip(), self._widget)
+        label = TipsBeside.tip_label()
+        if label is not None:
+            label.move(self.place(label.size()))
+        return True
+
+    def place(self, size: QSize) -> QPoint:
+        """Where a tip of `size` goes."""
+        widget = self._widget
+        corner = widget.mapToGlobal(QPoint(0, 0))
+        screen = (widget.screen() or QApplication.primaryScreen()).availableGeometry()
+        above = corner.y() - self.GAP - size.height()
+        if above >= screen.top():
+            return QPoint(max(screen.left(), corner.x()), above)
+        return QPoint(corner.x() + widget.width() + self.GAP, corner.y())
+
+
 class Axis(QWidget):
     """What the bars above it are measured against: a mark at each power of
     ten, with its figure where there is room."""
@@ -315,6 +349,7 @@ class TestRows(QWidget):
         inside.addWidget(words)
         inside.addWidget(code)
         block.setToolTip(test_tip(test))
+        TipOverRow(block)
         return block
 
     @staticmethod

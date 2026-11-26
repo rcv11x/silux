@@ -264,6 +264,41 @@ class TestWhatAResultShows(TabCase):
             self.assertIn(code, text.splitlines())
         self.assertIn(_(disktest_page().COLUMNS["read"]).upper(), text.splitlines())
 
+    def test_a_test_s_tip_covers_neither_its_name_nor_the_rows_below(self):
+        """By the mouse, the tip of «SEQ1M Q8T1» covered the row below."""
+        from PySide6.QtCore import QEvent, QRect
+        from PySide6.QtGui import QHelpEvent
+        from PySide6.QtWidgets import QApplication, QToolTip
+
+        from silux.ui.pages.disktest import test_tip
+        from silux.ui.widgets import TipsBeside
+
+        tab = self.tab()
+        tab.move(0, 200)
+        for _turn in range(4):
+            self.app.processEvents()
+        self.addCleanup(QToolTip.hideText)
+
+        def on_screen(widget) -> QRect:
+            return QRect(widget.mapToGlobal(widget.rect().topLeft()), widget.size())
+
+        names = tab.rows.names
+        figures = {name: figure for (name, _way), (_bar, figure) in tab.rows._cells.items()}
+        for index, (name, test) in enumerate(zip(names, tab.rows._tests)):
+            with self.subTest(test=test.name):
+                inside = name.rect().center()
+                QApplication.sendEvent(name, QHelpEvent(
+                    QEvent.Type.ToolTip, inside, name.mapToGlobal(inside)))
+                self.app.processEvents()
+                label = TipsBeside.tip_label()
+                self.assertIsNotNone(label)
+                self.assertEqual(label.text(), test_tip(test))
+                tip = label.frameGeometry()
+                self.assertFalse(tip.intersects(on_screen(name)))
+                for below, later in zip(names[index + 1:], tab.rows._tests[index + 1:]):
+                    self.assertFalse(tip.intersects(on_screen(below)), later.name)
+                    self.assertFalse(tip.intersects(on_screen(figures[later.name])), later.name)
+
     def test_each_name_on_one_line_and_every_row_as_tall(self):
         """The names took three lines, in English too, and each row was of
         its own height."""
