@@ -16,6 +16,7 @@ lectura ni el histórico de las gráficas.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import math
 import os
 import pathlib
@@ -48,7 +49,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, build_id, desktop, i18n, render, system_env, updates
+from .. import __version__, build_id, desktop, failures, i18n, render, system_env, updates
 from .. import settings as prefs_module
 from ..i18n import _
 from ..model import Snapshot
@@ -169,6 +170,8 @@ class MainWindow(QMainWindow):
                  forzadas: Optional[dict[str, tuple]] = None):
         super().__init__()
         self.prefs = prefs
+        # What breaks in the window, for the report (`failures.install_hooks`).
+        self.failures = failures.Failures()
         # Lo que se forzó por la línea de órdenes: campo -> (lo que había
         # guardado, lo que se forzó). Ver `_guardar`.
         self._forzadas = dict(forzadas or {})
@@ -705,6 +708,14 @@ class MainWindow(QMainWindow):
         self._report_preview.show()
         self._report_preview.raise_()
 
+    def for_the_report(self, snapshot: Snapshot) -> Snapshot:
+        """The snapshot with what broke in the window too: the collector's
+        failures come in it, the interface's are kept here."""
+        own = self.failures.recent()
+        if not own:
+            return snapshot
+        return dataclasses.replace(snapshot, failures=(*snapshot.failures, *own))
+
     def _refresh_report_preview(self, snapshot: Snapshot) -> None:
         """Rebuild the open preview when what needs permissions changed: the
         full report is too expensive to redo on every sample."""
@@ -718,7 +729,8 @@ class MainWindow(QMainWindow):
         self._report_once_more = (self._report_missing is not None
                                   and missing != self._report_missing)
         self._report_missing = missing
-        dialog.set_report(full_report.build(snapshot, anonymous=True, inside_app=True), missing)
+        dialog.set_report(full_report.build(self.for_the_report(snapshot), anonymous=True,
+                                            inside_app=True), missing)
 
     def _save_report(self) -> None:
         from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -1822,6 +1834,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     for number in (signal.SIGINT, signal.SIGTERM):
         signal.signal(number, _exit_before_the_window)
     app, window, args = build_app(argv)
+    failures.install_hooks(window.failures)
 
     # Antes de las dos ramas y una sola vez. Un nombre que no existe se tragaba
     # sin decir nada, y en la de la captura eso es peor que un fallo: el archivo
