@@ -480,9 +480,14 @@ def main(argv: Optional[list[str]] = None) -> int:
                 return 1
             print(f"Informe guardado en {args.report}")
             if not args.with_identifiers:
-                print("Se han omitido el nombre del equipo, las direcciones IP y "
-                      "MAC y los números de serie.\n"
-                      "Para incluirlos:  --report ARCHIVO --with-identifiers")
+                # Replaced, not left out: the full report carries values that
+                # look real, and its header says which.
+                print("El nombre del equipo, sus direcciones y las carpetas de sus discos "
+                      "llevan valores de ejemplo, y los números de serie van en ceros."
+                      if full else
+                      "Se han tapado el nombre del equipo, las direcciones IP y MAC y los "
+                      "números de serie.")
+                print("Para poner los de verdad:  --report ARCHIVO --with-identifiers")
         return 0
 
     if args.json:

@@ -105,7 +105,8 @@ def build(snapshot, sections: Optional[Iterable[str]] = None,
         # medias) solo sale con la segunda.
         ventana._on_sample(foto)
         ventana._on_sample(foto)
-        partes = [report._header(foto, anonymous=anonymous, translate=_)]
+        partes = [report._header(foto, anonymous=anonymous, translate=_,
+                                    examples=True)]
         for clave, activa in SECTIONS:
             if not activa or clave in FUERA or not wanted(clave, sections):
                 continue

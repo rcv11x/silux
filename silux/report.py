@@ -66,9 +66,11 @@ def build(snapshot: Snapshot, anonymous: bool = True) -> str:
 
 # -- sections ----------------------------------------------------------------
 
-def _header(snapshot: Snapshot, anonymous: bool, translate=in_spanish) -> str:
+def _header(snapshot: Snapshot, anonymous: bool, translate=in_spanish,
+            examples: bool = False) -> str:
     """The report's first lines. `translate` is the language: Spanish for
-    the short report, the interface's for the full one."""
+    the short report, the interface's for the full one. `examples`: the
+    anonymized values look real, and the line saying so goes too."""
     t = translate
     system = snapshot.system
     qt = _qt_version()
@@ -106,7 +108,17 @@ def _header(snapshot: Snapshot, anonymous: bool, translate=in_spanish) -> str:
         lines.append(f"- **{t('report.head.vm')}:** {virt}")
     if not anonymous and system.hostname:
         lines.append(f"- **{t('report.head.host')}:** {system.hostname}")
+    if anonymous and examples:
+        lines.append(f"- **{t('report.head.covered')}:** "
+                     + t("report.head.covered.text").format(values=", ".join(EXAMPLE_VALUES)))
     return "\n".join(lines)
+
+
+# What the anonymized full report writes in place of each identifier, as a
+# reader can find it on its pages.
+EXAMPLE_VALUES = (privacidad.HOST_NAME, privacidad.IPV4, privacidad.GATEWAY, privacidad.IPV6,
+                  privacidad.MAC.rsplit(":", 1)[0] + ":…", privacidad.MOUNT.format(1) + "…",
+                  privacidad.INTERFACE.format(1) + "…")
 
 
 def _hypervisor(snapshot: Snapshot, translate=in_spanish) -> str:
