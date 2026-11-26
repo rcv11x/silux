@@ -18,6 +18,19 @@ def _broken_slot():
     raise KeyError("a slot of the window")
 
 
+def run_the_loop_with(slot) -> None:
+    """`slot` called from Qt's loop, as Silux runs: `app.exec()`. Called
+    from `processEvents`, PySide 6.9 raises the slot's exception out of it
+    instead of handing it to the hook; inside the loop both 6.9 and 6.12 hand
+    it over."""
+    from PySide6.QtCore import QTimer
+
+    app = qt.app()
+    QTimer.singleShot(0, slot)
+    QTimer.singleShot(100, app.quit)
+    app.exec()
+
+
 class Hooks(unittest.TestCase):
     def setUp(self):
         hook, thread_hook = sys.excepthook, threading.excepthook
@@ -33,14 +46,9 @@ class Hooks(unittest.TestCase):
 
 class TestTheHooks(Hooks):
     def test_a_slot_that_breaks(self):
-        from PySide6.QtCore import QTimer
-
-        app = qt.app()
         recorded = failures.Failures()
         failures.install_hooks(recorded)
-        QTimer.singleShot(0, _broken_slot)
-        for _turn in range(5):
-            app.processEvents()
+        run_the_loop_with(_broken_slot)
         [failure] = recorded.recent()
         self.assertEqual(failure.where, "ui._broken_slot")
         self.assertIn("a slot of the window", failure.error)
@@ -69,20 +77,16 @@ class TestTheHooks(Hooks):
 
 class TestTheWindowsReport(Hooks):
     def test_carries_them(self):
-        from PySide6.QtCore import QTimer
-
         from silux.i18n import _
         from silux.settings import Preferences
         from silux.ui import full_report
         from silux.ui.app import MainWindow
 
-        app = qt.app()
+        qt.app()
         window = MainWindow(Preferences().normalized())
         self.addCleanup(window.deleteLater)
         failures.install_hooks(window.failures)
-        QTimer.singleShot(0, _broken_slot)
-        for _turn in range(5):
-            app.processEvents()
+        run_the_loop_with(_broken_slot)
         snapshot = window.for_the_report(shared_snapshot(EQUIPOS / "i5-10400"))
         text = full_report.build(snapshot)
         self.assertIn(_("report.diag.failures"), text)
