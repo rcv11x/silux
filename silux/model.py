@@ -773,6 +773,12 @@ class MemoryModule:
         return self.speed_mts
 
     @property
+    def running_mts(self) -> Optional[int]:
+        """The speed it runs at: what the BIOS set it to, or failing that the
+        one the firmware lists for it."""
+        return self.configured_mts or self.speed_mts
+
+    @property
     def maker(self) -> Optional[str]:
         """Its SPD's JEDEC maker first: the firmware's table writes it its own
         way («Crucial Technology»), and the same part would change name on
@@ -829,7 +835,7 @@ class MemoryModule:
         """Running faster than any JEDEC speed of its type: a maker's profile
         (XMP, EXPO), with its own voltage."""
         top = JEDEC_TOP_MTS.get(self.type or "")
-        running = self.configured_mts or self.speed_mts
+        running = self.running_mts
         return bool(top and running and running > top + 1)
 
     @property
@@ -842,7 +848,7 @@ class MemoryModule:
         and the BIOS sets to 2666 is the same grade, and a bare comparison lit
         the warning and its triangle over one MT/s.
         """
-        current = self.configured_mts or self.speed_mts
+        current = self.running_mts
         rated = self.rated_mts
         if not (current and rated):
             return False
@@ -883,8 +889,8 @@ def firmware_contradicted(module: "MemoryModule", modules) -> frozenset[str]:
     forms = {_small_outline(m.spd.module_type) for m in read} - {None}
     if small is not None and forms and small not in forms:
         found.add("form")
-    running = module.configured_mts or module.speed_mts
-    others = {m.configured_mts or m.speed_mts for m in read} - {None, 0}
+    running = module.running_mts
+    others = {m.running_mts for m in read} - {None, 0}
     if running and others and all(abs(running - o) > o * ROUNDING_MARGIN for o in others):
         found.add("running")
     return frozenset(found)
@@ -2466,7 +2472,7 @@ _COMPUTED: dict[str, tuple[str, ...]] = {
                 "cores_temp_c", "in_virtual_machine", "temp_level"),
     "Sensor": ("unit", "plausible", "group", "category", "alarm", "alarm_level"),
     "Board": ("display_name",),
-    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "in_a_slot", "soldered_by",
+    "MemoryModule": ("has_ecc", "underclocked", "rated_mts", "running_mts", "in_a_slot", "soldered_by",
                      "maker", "maker_from_firmware", "part", "part_from_firmware",
                      "rated_from_firmware", "voltage_mv", "nominal_voltage_mv",
                      "voltage_from_firmware",

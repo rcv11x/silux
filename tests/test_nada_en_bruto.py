@@ -92,7 +92,9 @@ class TestLaTarjetaDeMemoriaDeInicio(unittest.TestCase):
     def test_con_permisos_dice_ddr4_y_no_desconocido(self):
         texto = self._tarjeta(_con_permisos(self.amd, DOS_DE_CUATRO))
         self.assertNotIn("Desconocido", texto)
-        self.assertIn("DDR4-3200", texto)
+        # The speed it runs at, as Memory says: the table lists 3200 and
+        # the BIOS set 2666.
+        self.assertIn("DDR4-2666", texto)
 
     def test_si_no_se_sabe_no_dice_nada(self):
         texto = self._tarjeta(_con_permisos(self.amd, SIN_TIPO))

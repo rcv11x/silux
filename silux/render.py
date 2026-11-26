@@ -1360,8 +1360,7 @@ def memory_theoretical_parts(modules) -> Optional[tuple[int, int]]:
     channels = memory_channels(modules)
     if not channels:
         return None
-    speeds = [m.configured_mts or m.speed_mts for m in modules
-                   if m.populated and (m.configured_mts or m.speed_mts)]
+    speeds = [m.running_mts for m in modules if m.populated and m.running_mts]
     if not speeds:
         return None
     # The slowest: the controller runs everything at the lowest it's given.
@@ -2079,7 +2078,7 @@ def memory_module_verdict(module, limit=None) -> Optional[str]:
     """
     if not module.underclocked:
         return None
-    current = memory_speed(module.configured_mts or module.speed_mts)
+    current = memory_speed(module.running_mts)
     if limit and current and current >= limit.mts * (1 - ROUNDING_MARGIN):
         return "cpu_max"
     return "slow"
@@ -2118,7 +2117,7 @@ def memory_speed_warning(modules, limit=None, chipset: bool = False) -> Optional
     highest = max(m.rated_mts for m in fitted)
     # One clock for all: where the firmware writes a different speed for
     # each module, the slowest is the one the set can run at.
-    running = [m.configured_mts or m.speed_mts for m in fitted if m.configured_mts or m.speed_mts]
+    running = [m.running_mts for m in fitted if m.running_mts]
     current = memory_speed(min(running)) if running else None
     if not current:
         # Without the firmware's table the speed in use isn't known, but all

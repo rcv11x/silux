@@ -952,7 +952,7 @@ class MemoryPage(ScrollPage):
                  tooltip=_("memory.tip.rated.bios") if module.rated_from_firmware
                  else _("memory.tip.rated") if spd else "")
 
-        crudo_mts = module.configured_mts or module.speed_mts
+        crudo_mts = module.running_mts
         actual = render.memory_speed(crudo_mts)
         funcionando = f"{actual} MT/s" if actual else d
         veredicto = render.memory_module_verdict(module, limite)
