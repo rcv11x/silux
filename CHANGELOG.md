@@ -36,6 +36,10 @@ que hace falta.
 - Inicio decía la velocidad de catálogo de la memoria y no a la que va («DDR5-4800» con un perfil EXPO a 6000)
 - Dos discos del mismo modelo salían juntos en Sensores, con cada temperatura dos veces y «(nvme)» detrás
 - La versión del driver de Vulkan de NVK salía como «Mesa 26.0.128»
+- Los chips de memoria de una Radeon salían en minúscula («hynix», «samsung»): ahora con su marca (SK Hynix, Samsung)
+- El reloj del núcleo de una Radeon saltaba entre «en reposo» y cifras como 41 MHz: ahora es la media del segundo, y «en reposo» solo cuando el núcleo estuvo apagado todo ese tiempo
+- Con el núcleo de una Radeon en sueño profundo, la fila de escalones decía «en reposo»: ahora dice a qué reloj está
+- Ctrl+C en la terminal no cerraba Silux, y SIGTERM lo mataba sin parar las pruebas en marcha: los dos lo cierran ya como el botón de cerrar
 
 ### Problemas conocidos
 
