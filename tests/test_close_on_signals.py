@@ -66,7 +66,11 @@ class TestTheProgram(unittest.TestCase):
     def run_and_stop(self, number: int,
                      command=("-m", "silux.ui.app")) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as home:
-            env = dict(os.environ, QT_QPA_PLATFORM="offscreen",
+            # Silux on the path, as the AppImage has it: the AppRun drops the
+            # current folder, and a checkout doesn't install it.
+            root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            path = os.pathsep.join(p for p in (root, os.environ.get("PYTHONPATH", "")) if p)
+            env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONPATH=path,
                        XDG_CONFIG_HOME=os.path.join(home, "config"),
                        XDG_DATA_HOME=os.path.join(home, "data"),
                        XDG_CACHE_HOME=os.path.join(home, "cache"))
