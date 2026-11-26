@@ -349,7 +349,7 @@ amdgpu · Mesa 25.0.7 · 15.9 GiB · 32 CU · principal
 - Tasa de datos: 20.1 Gbps
 - Visible por la CPU: 15.9 GiB
 - Resizable BAR: activo
-- Chips: samsung
+- Chips: Samsung
 - Memoria del sistema (GTT): 199.7 MiB de 31.2 GiB
 
 #### Relojes y enlace

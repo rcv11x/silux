@@ -912,6 +912,22 @@ def maker(name: Optional[str]) -> Optional[str]:
     return clean
 
 
+# A graphics card's memory maker, as amdgpu writes it: lowercase words of its
+# own list (`mem_info_vram_vendor`, amdgpu_vram_mgr.c). Matched whole, so
+# that a JEDEC name like «Infineon (Siemens)» is left alone.
+_VRAM_MAKERS = {"samsung": "Samsung", "infineon": "Infineon", "elpida": "Elpida",
+                "etron": "Etron", "nanya": "Nanya", "hynix": "SK Hynix",
+                "mosel": "Mosel Vitelic", "winbond": "Winbond", "esmt": "ESMT",
+                "micron": "Micron"}
+
+
+def vram_maker(name: Optional[str]) -> Optional[str]:
+    """The brand of a graphics card's memory chips."""
+    if not name:
+        return None
+    return _VRAM_MAKERS.get(name.strip().lower()) or maker(name)
+
+
 def memory_maker(name: Optional[str]) -> Optional[str]:
     """A memory module's maker, also when the firmware writes its JEDEC code.
 

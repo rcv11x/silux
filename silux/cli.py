@@ -171,7 +171,7 @@ def dump(snapshot: Snapshot, style: Style) -> str:
             if gpu.memory.kind else None,
             render.bandwidth(gpu.memory.bandwidth_bytes)
             if gpu.memory.bandwidth_bytes else None,
-            f"chips de {gpu.memory.vendor}" if gpu.memory.vendor else None) if p)
+            f"chips de {render.vram_maker(gpu.memory.vendor)}" if gpu.memory.vendor else None) if p)
         if detail_text:
             lines.append(_row(style, "", style.dim(detail_text)))
         lines.append(_row(style, "Núcleo", f"{render.gpu_clock(gpu.clocks.core_hz)}"

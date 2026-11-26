@@ -1269,7 +1269,7 @@ class GpuSection(QWidget):
           tooltip=_("gpu.tip.visible"))
         m(_("gpu.vram.rebar"), render.resizable_bar(memoria),
           tooltip=_("gpu.tip.rebar"))
-        m(_("gpu.vram.chips"), memoria.vendor or d)
+        m(_("gpu.vram.chips"), render.vram_maker(memoria.vendor) or d)
         prestada = d
         if memoria.gtt_total_bytes:
             # El total es lo que el driver podría tomar, no lo que toma: sin

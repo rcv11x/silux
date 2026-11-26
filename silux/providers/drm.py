@@ -1081,7 +1081,8 @@ def _total_memory(device: pathlib.Path) -> GpuMemory:
         total_bytes=read_int(f"{device}/mem_info_vram_total"),
         visible_bytes=read_int(f"{device}/mem_info_vis_vram_total"),
         gtt_total_bytes=read_int(f"{device}/mem_info_gtt_total"),
-        vendor=read_text(f"{device}/mem_info_vram_vendor"),
+        # «unknown» is amdgpu's default, not a maker.
+        vendor=_known(read_text(f"{device}/mem_info_vram_vendor")),
     )
 
 
@@ -1092,6 +1093,10 @@ def _used_memory(device: pathlib.Path, previous_value: GpuMemory) -> GpuMemory:
         visible_used_bytes=read_int(f"{device}/mem_info_vis_vram_used"),
         gtt_used_bytes=read_int(f"{device}/mem_info_gtt_used"),
     )
+
+
+def _known(text: Optional[str]) -> Optional[str]:
+    return None if not text or text.lower() == "unknown" else text
 
 
 def _levels(path: pathlib.Path) -> tuple[GpuClockLevel, ...]:
