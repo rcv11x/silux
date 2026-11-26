@@ -563,6 +563,15 @@ la memoria) no va: está propuesto en las notas
 * `tools/build_appimage.py` · baja · `--container` se traga `--keep` y
   `--appdir-only`; `appimagetool` se descarga en cada construcción sin fijar
   su hash.
+* `tools/build_appimage.py` · media · en un KDE con el miniaturizador de
+  AppImage, Dolphin no enseña el icono del de Silux y sí el de otros. El
+  `.DirIcon` publicado es correcto: un enlace a `silux.png`, el logo en PNG
+  de 256 px, como en los AppImage que sí salen (mismo runtime, zstd y
+  cabecera del squashfs), y `unsquashfs` lo lee bien. Sin reproducir: falta
+  ver qué devuelve libappimage con este archivo en ese equipo.
+* `tools/build_appimage.py` · baja · construido con `--container` en un
+  sistema con SELinux, el squashfs se lleva las etiquetas `security.selinux`
+  como xattr. Los del CI no las llevan.
 * `.github/workflows/appimage.yml` · baja · `contents: write` para todo el
   flujo; las acciones van por etiqueta y no por SHA; comprobar que el
   AppImage arranca es un `--help`, que no carga el plugin de plataforma ni
