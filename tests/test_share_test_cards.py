@@ -19,8 +19,14 @@ MOUNT = "/run/media/zoraida/Fotos de Zoraida"
 LABEL = "El SSD de Zoraida"
 
 
-def card_texts(summary: str, rows) -> str:
-    return "\n".join([summary] + [" ".join(row) for row in rows])
+def disk_texts(result) -> str:
+    """Everything a disk card writes but its footer."""
+    from silux.ui import tarjeta
+
+    cells = [" ".join([name] + [" ".join(map(str, cell)) for cell in row.values()])
+             for name, row in tarjeta.disk_cells(result)]
+    return "\n".join([tarjeta.disk_title(result), tarjeta.disk_subtitle(result), *cells,
+                      *tarjeta.disk_notes(result)])
 
 
 class Case(unittest.TestCase):
@@ -35,41 +41,70 @@ class Case(unittest.TestCase):
 
 
 class TestTheDiskCard(Case):
-    def test_its_figures_are_the_tests(self):
+    def test_a_column_per_direction_and_each_figure_alone(self):
+        """As CrystalDiskMark: the unit once, over the table, and in each
+        cell only its figure, with the requests per second under a random
+        test's."""
         from silux.ui import tarjeta
 
         result = disk_run("970-evo-plus-ext4")
-        rows = tarjeta.disk_rows(result)
-        text = card_texts(tarjeta.disk_summary(result), rows)
+        cells = dict(tarjeta.disk_cells(result))
+        self.assertEqual(list(cells), ["SEQ1M Q8T1", "SEQ1M Q1T1", "RND4K Q32T1", "RND4K Q1T1"])
         for measure in result.measures:
-            self.assertIn(render.disk_rate(measure.median.bytes_per_second), text)
-        self.assertEqual([row[0] for row in rows[:4]],
-                         ["SEQ1M Q8T1", "SEQ1M Q1T1", "RND4K Q32T1", "RND4K Q1T1"])
-        for expected in ("Samsung SSD 970 EVO Plus 2TB", "ext4",
-                         _("disktest.profile.standard"), f"{render.thousands(262452)} IOPS"):
-            self.assertIn(expected, text)
+            figure, fraction, iops = cells[measure.name][measure.direction]
+            self.assertEqual(figure, render.rate_figure(measure.median.bytes_per_second, 1e6))
+            self.assertGreater(fraction, 0)
+            self.assertEqual(bool(iops), measure.pattern == "random")
+        self.assertEqual(cells["RND4K Q32T1"]["read"][2], f"{render.thousands(262452)} IOPS")
+        self.assertEqual(tarjeta.DISK_UNIT, "MB/s")
+        self.assertNotIn("MB/s", disk_texts(result))
 
-    def test_a_figure_that_varied_is_marked_as_on_the_page(self):
+    def test_a_figure_reads_over_its_bar(self):
+        """In both themes, a figure over its bar is at least 4:1 against it:
+        the white ink over the dark theme's orange was 1.8."""
+        from PySide6.QtGui import QColor
+
+        from silux.ui import tarjeta, theme
+        from silux.ui.pages.disktest import TONES
+
+        self.assertAlmostEqual(tarjeta.contrast(QColor("#ffffff"), QColor("#000000")), 21)
+        for palette in (theme.DARK, theme.LIGHT):
+            for direction, tone in TONES.items():
+                bar = tarjeta._blend(palette.q("accent"), tone, palette.q("track"))
+                with self.subTest(theme=palette.bg, direction=direction):
+                    self.assertGreaterEqual(
+                        tarjeta.contrast(tarjeta._readable_on(bar, palette), bar), 4)
+
+    def test_its_title_is_the_disk(self):
         from silux.ui import tarjeta
 
-        result = disk_run("sn850x-btrfs")
-        rows = {row[0]: row for row in tarjeta.disk_rows(result)}
-        self.assertTrue(rows["SEQ1M Q8T1"][1].endswith("MB/s*"))
-        self.assertNotIn("*", rows["SEQ1M Q1T1"][1])
-        self.assertIn(_("disktest.note.varied"), rows[_("share.test.profile")][2])
+        result = disk_run("970-evo-plus-ext4")
+        self.assertEqual(tarjeta.disk_title(result), "Samsung SSD 970 EVO Plus 2TB")
+        subtitle = tarjeta.disk_subtitle(result)
+        self.assertTrue(subtitle.startswith(_("share.test.disk")))
+        self.assertIn("ext4", subtitle)
+        self.assertIn(_("disktest.profile.standard"), tarjeta.disk_notes(result)[0])
+
+    def test_a_figure_that_varied_is_marked_and_said_once_at_the_foot(self):
+        from silux.ui import tarjeta
+
+        varied = disk_run("sn850x-btrfs")
+        cells = dict(tarjeta.disk_cells(varied))
+        self.assertTrue(cells["SEQ1M Q8T1"]["write"][0].endswith("*"))
+        self.assertNotIn("*", cells["SEQ1M Q1T1"]["write"][0])
+        footnote = f"* {_('share.test.varied')}"
+        self.assertIn(footnote, tarjeta.disk_notes(varied))
+        self.assertNotIn(footnote, tarjeta.disk_notes(disk_run("970-evo-plus-ext4")))
 
     def test_its_file_system_as_the_page_says_it(self):
         from silux.ui import tarjeta
 
         self.assertIn(_("disktest.conditions.nocow").format(filesystem="btrfs"),
-                      tarjeta.disk_summary(disk_run("sn850x-btrfs")))
+                      tarjeta.disk_subtitle(disk_run("sn850x-btrfs")))
 
     def test_never_where_it_ran(self):
-        from silux.ui import tarjeta
-
         result = dataclasses.replace(disk_run("970-evo-plus-ext4"), mountpoint=MOUNT, label=LABEL)
-        text = card_texts(tarjeta.disk_summary(result), tarjeta.disk_rows(result))
-        self.assertNotIn("zoraida", text.lower())
+        self.assertNotIn("zoraida", disk_texts(result).lower())
 
 
 class TestTheMemoryCard(Case):
@@ -78,7 +113,7 @@ class TestTheMemoryCard(Case):
 
         result = memory_run("i5-10400-window")
         rows = tarjeta.memory_rows(result)
-        text = card_texts(tarjeta.memory_summary(result, "Core i5-10400"), rows)
+        text = "\n".join([tarjeta.memory_subtitle(result)] + [" ".join(row) for row in rows])
         for level in result.levels:
             self.assertIn(render.nanoseconds(level.nanoseconds), text)
         # As the page's grid: the fastest kind, which here skips the cache
@@ -90,7 +125,7 @@ class TestTheMemoryCard(Case):
             self.assertIn(f"{one} GB/s", row[2])
             self.assertEqual(_("memtest.grid.nt") in row[2], operation != "read")
         share = render.whole_percent(memtest.share_of_theoretical(result))
-        for expected in ("Core i5-10400", "2666 MT/s", share, "42.7 GB/s"):
+        for expected in (_("share.test.memory"), "2666 MT/s", share, "42.7 GB/s"):
             self.assertIn(expected, text)
 
 
@@ -134,9 +169,9 @@ class TestTheImage(Case):
             rows = tarjeta.memory_rows(result)
             image = tarjeta.draw_memory_test(result, "Core i5-10400", palette).toImage()
             for index, (label, _value, _detail) in enumerate(rows):
-                baseline = tarjeta.MARGEN + 96 + index * tarjeta.ALTO_FILA
+                top = tarjeta.BODY_TOP + index * tarjeta.ALTO_FILA
                 labels, values = [], []
-                for y in range(baseline - 16, baseline + 4):
+                for y in range(top, top + tarjeta.ALTO_FILA):
                     for x in range(tarjeta.MARGEN, tarjeta.ANCHO - tarjeta.MARGEN):
                         pixel = image.pixelColor(x, y)
                         if near(pixel, accent):
@@ -146,6 +181,57 @@ class TestTheImage(Case):
                 with self.subTest(language=language, label=label):
                     self.assertTrue(labels and values)
                     self.assertLess(max(labels) + 4, min(values))
+
+
+class TestTheLayout(Case):
+    """The three cards, the machine's and the tests', alike."""
+
+    def cards(self):
+        from silux.ui import tarjeta, theme
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        palette = theme.DARK
+        return palette, {
+            "machine": tarjeta.dibujar(shared_snapshot(EQUIPOS / "i5-10400"), palette),
+            "disk": tarjeta.draw_disk_test(disk_run("sn850x-btrfs"), palette),
+            "memory": tarjeta.draw_memory_test(memory_run("i5-10400-window"), "Core i5-10400",
+                                               palette)}
+
+    def test_the_footer_is_the_version_and_where_silux_is(self):
+        from silux import __version__
+        from silux.ui import tarjeta
+
+        self.assertEqual(tarjeta.footer_text(),
+                         f"Silux {render.version(__version__)} · github.com/rcv11x/silux")
+
+    def test_bands_stay_inside_the_margins_and_rows_are_one_height(self):
+        """A band is as tall as a row and the plain row between two bands is
+        too; nothing of them is drawn in the margins."""
+        from PySide6.QtGui import QColor
+
+        from silux.ui import tarjeta
+
+        palette, cards = self.cards()
+        band, background = QColor(palette.surface), QColor(palette.bg)
+        for name, pixmap in cards.items():
+            image = pixmap.toImage()
+            with self.subTest(card=name):
+                for x in (tarjeta.MARGEN - 1, tarjeta.ANCHO - tarjeta.MARGEN):
+                    self.assertTrue(all(image.pixelColor(x, y) == background
+                                        for y in range(image.height())))
+                inside = tarjeta.MARGEN + 2
+                runs, start = [], None
+                for y in range(image.height() + 1):
+                    banded = y < image.height() and image.pixelColor(inside, y) == band
+                    if banded and start is None:
+                        start = y
+                    elif not banded and start is not None:
+                        runs.append((start, y))
+                        start = None
+                self.assertGreaterEqual(len(runs), 2)
+                self.assertEqual({end - begin for begin, end in runs}, {tarjeta.ALTO_FILA})
+                self.assertEqual({b[0] - a[1] for a, b in zip(runs, runs[1:])},
+                                 {tarjeta.ALTO_FILA})
 
 
 class TestOnTheDiskPage(TabCase):

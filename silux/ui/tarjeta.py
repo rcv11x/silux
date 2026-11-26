@@ -18,10 +18,13 @@ resuelve; lo que identifica a una pieza es su nombre, que ya está escrito.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRectF
+import time
+from typing import Optional
+
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPixmap
 
-from .. import __version__, build_id, render
+from .. import __version__, render, updates
 from ..i18n import _
 from ..model import Snapshot
 from ..privacidad import anonymize
@@ -38,6 +41,11 @@ ALTO_FILA = 54
 # Where the values start, and the least room between a label and its value.
 VALUE_COLUMN = 150
 LABEL_GAP = 12
+# From a row's edge to its text: a row's band stays inside the margins.
+PADDING = 12
+# The line under the title, and where the rows start.
+HEADER_LINE = MARGEN + 76
+BODY_TOP = HEADER_LINE + 12
 
 
 def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
@@ -119,7 +127,8 @@ def dibujar(snapshot: Snapshot, palette: Palette,
     """
     if anonimo:
         snapshot = anonymize(snapshot)
-    return _compose(_machine_summary(snapshot), _fila(snapshot), palette)
+    subtitle = f"{_('share.card.machine')} · {time.strftime('%d/%m/%Y')}"
+    return _compose(_machine_summary(snapshot), subtitle, _fila(snapshot), palette)
 
 
 def _machine_summary(snapshot: Snapshot) -> str:
@@ -133,10 +142,11 @@ def _machine_summary(snapshot: Snapshot) -> str:
     return " · ".join(parts)
 
 
-def _compose(summary: str, rows: list[tuple[str, str, str]], palette: Palette) -> QPixmap:
-    """A card: the brand and `summary` above, one line per row, the version
-    below."""
-    height = MARGEN * 2 + 96 + len(rows) * ALTO_FILA + 30
+def _card(title: str, subtitle: str, body_height: int, paint_body,
+          palette: Palette) -> QPixmap:
+    """Every card: the mark, `title` and `subtitle` above, what
+    `paint_body(painter, top)` draws, and the version below."""
+    height = BODY_TOP + body_height + MARGEN + 28
 
     pixmap = QPixmap(ANCHO, height)
     pixmap.fill(QColor(palette.bg))
@@ -144,43 +154,61 @@ def _compose(summary: str, rows: list[tuple[str, str, str]], palette: Palette) -
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
 
-    _cabecera(painter, palette, summary)
-    column = value_column(rows)
-    y = MARGEN + 96
-    for index, (label, value, detail) in enumerate(rows):
-        _renglon(painter, palette, y, label, value, detail, index, column)
-        y += ALTO_FILA
+    _cabecera(painter, palette, title, subtitle)
+    paint_body(painter, BODY_TOP)
     _pie(painter, palette, height)
 
     painter.end()
     return pixmap
 
 
-def _cabecera(pintor: QPainter, p: Palette, summary: str) -> None:
-    pintor.setPen(QColor(p.accent))
-    fuente = QFont()
-    fuente.setPointSize(20)
-    fuente.setWeight(QFont.Weight.DemiBold)
-    pintor.setFont(fuente)
+def _compose(title: str, subtitle: str, rows: list[tuple[str, str, str]],
+             palette: Palette) -> QPixmap:
+    """A card with one line per row: its label, its value and a detail."""
+    column = value_column(rows)
+
+    def body(painter: QPainter, top: int) -> None:
+        for index, (label, value, detail) in enumerate(rows):
+            _renglon(painter, palette, top + index * ALTO_FILA, label, value, detail,
+                     index, column)
+
+    return _card(title, subtitle, len(rows) * ALTO_FILA, body, palette)
+
+
+def _cabecera(pintor: QPainter, p: Palette, title: str, subtitle: str) -> None:
     # La marca delante del nombre: la misma de la barra lateral, para que la
     # imagen se reconozca como de este programa donde acabe pegada.
     from . import icons
 
     marca = icons.mark(p.bg == theme.DARK.bg, 28)
-    desplazado = 0
+    left = MARGEN
     if not marca.isNull():
         pintor.drawPixmap(QRectF(MARGEN, MARGEN + 2, 28, 28), marca, QRectF(marca.rect()))
-        desplazado = 36
-    pintor.drawText(MARGEN + desplazado, MARGEN + 26, "Silux")
+        left = MARGEN + 40
+    width = ANCHO - MARGEN - left
 
+    big = QFont()
+    big.setPointSize(20)
+    big.setWeight(QFont.Weight.DemiBold)
+    pintor.setFont(big)
+    pintor.setPen(QColor(p.ink))
+    pintor.drawText(QPointF(left, MARGEN + 26),
+                    QFontMetrics(big).elidedText(title, Qt.TextElideMode.ElideRight, width))
+
+    small = QFont()
+    small.setPointSize(11)
+    pintor.setFont(small)
     pintor.setPen(QColor(p.ink_dim))
-    pequena = QFont()
-    pequena.setPointSize(11)
-    pintor.setFont(pequena)
-    pintor.drawText(MARGEN, MARGEN + 56, summary)
+    pintor.drawText(QPointF(left, MARGEN + 56),
+                    QFontMetrics(small).elidedText(subtitle, Qt.TextElideMode.ElideRight, width))
 
-    pintor.setPen(QColor(p.line))
-    pintor.drawLine(MARGEN, MARGEN + 76, ANCHO - MARGEN, MARGEN + 76)
+    _rule(pintor, p, HEADER_LINE)
+
+
+def _rule(pintor: QPainter, p: Palette, y: int) -> None:
+    """A line from margin to margin, one pixel exactly: drawn as a line it
+    blurred over two and its ends went into the margins."""
+    pintor.fillRect(QRectF(MARGEN, y, ANCHO - MARGEN * 2, 1), QColor(p.line))
 
 
 def value_column(rows: list[tuple[str, str, str]]) -> int:
@@ -198,56 +226,56 @@ def _label_font() -> QFont:
     return font
 
 
-def _renglon(pintor: QPainter, p: Palette, y: int, etiqueta: str,
-             valor: str, detalle: str, indice: int, column: int = VALUE_COLUMN) -> None:
+def _sized(points: int, weight: QFont.Weight = QFont.Weight.Normal) -> QFont:
+    font = QFont()
+    font.setPointSize(points)
+    font.setWeight(weight)
+    return font
+
+
+def _band(pintor: QPainter, p: Palette, top: float, indice: int) -> None:
     # Una banda muy tenue en las alternas: con seis filas de texto seguidas, la
     # vista se pierde de renglón al saltar de la etiqueta al valor.
     if indice % 2:
-        pintor.fillRect(QRectF(MARGEN - 12, y - 27, ANCHO - MARGEN * 2 + 24,
-                               ALTO_FILA - 2),
-                        QColor(p.surface))
+        pintor.fillRect(QRectF(MARGEN, top, ANCHO - MARGEN * 2, ALTO_FILA), QColor(p.surface))
+
+
+def _renglon(pintor: QPainter, p: Palette, top: float, etiqueta: str,
+             valor: str, detalle: str, indice: int, column: int = VALUE_COLUMN) -> None:
+    """A row from `top`, its label, value and detail centred in its height."""
+    _band(pintor, p, top, indice)
+    value_font, detail_font = _sized(13), _sized(10)
+    value_metrics, detail_metrics = QFontMetrics(value_font), QFontMetrics(detail_font)
+    block = value_metrics.height() + (2 + detail_metrics.height() if detalle else 0)
+    baseline = top + (ALTO_FILA - block) / 2 + value_metrics.ascent()
 
     pintor.setFont(_label_font())
     pintor.setPen(QColor(p.accent))
-    pintor.drawText(MARGEN, y, etiqueta.upper())
+    pintor.drawText(QPointF(MARGEN + PADDING, baseline), etiqueta.upper())
 
-    principal = QFont()
-    principal.setPointSize(13)
-    pintor.setFont(principal)
+    pintor.setFont(value_font)
     pintor.setPen(QColor(p.ink))
-    pintor.drawText(MARGEN + column, y, valor or render.DASH)
+    pintor.drawText(QPointF(MARGEN + PADDING + column, baseline), valor or render.DASH)
 
     if detalle:
-        pintor.setFont(QFont())
-        pequena = pintor.font()
-        pequena.setPointSize(10)
-        pintor.setFont(pequena)
+        pintor.setFont(detail_font)
         pintor.setPen(QColor(p.ink_dim))
-        pintor.drawText(MARGEN + column, y + 19, detalle)
+        pintor.drawText(QPointF(MARGEN + PADDING + column,
+                                baseline + value_metrics.descent() + 2 + detail_metrics.ascent()),
+                        detalle)
+
+
+def footer_text() -> str:
+    """The version and where Silux is: what situates the card and says where
+    to get the program."""
+    return f"Silux {render.version(__version__)} · github.com/{updates.REPO}"
 
 
 def _pie(pintor: QPainter, p: Palette, alto: int) -> None:
-    """La versión y de qué copia salió.
-
-    Va aquí por lo mismo que va en la barra lateral: una captura sin versión no
-    se puede situar, y estas están hechas para acabar en un canal donde alguien
-    las va a mirar días después.
-    """
-    pintor.setPen(QColor(p.line))
-    pintor.drawLine(MARGEN, alto - MARGEN - 12, ANCHO - MARGEN, alto - MARGEN - 12)
-
-    fuente = QFont()
-    fuente.setPointSize(9)
-    pintor.setFont(fuente)
+    _rule(pintor, p, alto - MARGEN - 12)
+    pintor.setFont(_sized(9))
     pintor.setPen(QColor(p.muted))
-    marca = f"Silux {render.version(__version__)}"
-    if build_id():
-        marca += f" · {build_id()}"
-    pintor.drawText(MARGEN, alto - MARGEN + 6, marca)
-
-    texto = _("share.footer")
-    ancho = pintor.fontMetrics().horizontalAdvance(texto)
-    pintor.drawText(ANCHO - MARGEN - ancho, alto - MARGEN + 6, texto)
+    pintor.drawText(QPointF(MARGEN, alto - MARGEN + 6), footer_text())
 
 
 def guardar(snapshot: Snapshot, palette: Palette, ruta: str,
@@ -263,51 +291,69 @@ def guardar(snapshot: Snapshot, palette: Palette, ruta: str,
 # it ran (a pen drive's mount carries its owner's name and its label), the
 # name someone gave the run, or the machine's name.
 
+# The disk table: its header, each figure's box and a line of notes.
+TABLE_HEAD = 30
+BOX = 28
+NOTE_LINE = 20
+COLUMN_NAMES = {"read": "disktest.col.read", "write": "disktest.col.write"}
+# Its unit, said once, over the tests' names.
+DISK_UNIT = "MB/s"
 
-def disk_rows(result) -> list[tuple[str, str, str]]:
-    """A row per test: its read and write figures, marked as the page marks
-    one that varied between laps, and its requests per second where it is a
-    random one; then the profile and its laps."""
-    from .pages.disktest import ENGINES, PROFILE_NAMES, VARIED_MARK
+
+def disk_cells(result) -> list[tuple[str, dict[str, tuple[str, Optional[float], str]]]]:
+    """A row per test, and in it each direction's figure as the page writes
+    it (marked when it varied between laps), how full its bar is on the
+    page's scale, and its requests per second where the test is a random
+    one."""
+    from .pages.disktest import SCALE, VARIED_MARK, megabytes
+    from .widgets import log_fraction
 
     rows = []
     for name in dict.fromkeys(m.name for m in result.measures):
-        parts, requests = [], []
-        for direction, key in (("read", "disktest.col.read"), ("write", "disktest.col.write")):
+        cells = {}
+        for direction in COLUMN_NAMES:
             measure = result.measure(name, direction)
             middle = measure.median if measure is not None else None
             if middle is None:
                 continue
-            parts.append(f"{_(key)} {render.disk_rate(middle.bytes_per_second)}"
-                          + (VARIED_MARK if measure.noisy else ""))
-            if measure.pattern == "random":
-                requests.append(_("share.test.iops").format(
-                    direction=_(key), n=render.thousands(round(middle.requests_per_second))))
-        if parts:
-            rows.append((name, " · ".join(parts), " · ".join(requests)))
-    laps = render.counted("share.test.laps", result.laps, s=f"{result.lap_seconds:g}") \
-        if result.laps else ""
-    varied = f"{VARIED_MARK} {_('disktest.note.varied')}" \
-        if any(m.noisy for m in result.measures) else ""
-    rows.append((_("share.test.profile"),
-                  _(PROFILE_NAMES[result.profile]) if result.profile in PROFILE_NAMES
-                  else result.profile,
-                  " · ".join(x for x in (laps, _(ENGINES[result.engine])
-                                         if result.engine in ENGINES else "", varied) if x)))
+            cells[direction] = (
+                megabytes(middle.bytes_per_second) + (VARIED_MARK if measure.noisy else ""),
+                log_fraction(middle.bytes_per_second, *SCALE),
+                _("share.test.iops").format(n=render.thousands(round(middle.requests_per_second)))
+                if measure.pattern == "random" else "")
+        if cells:
+            rows.append((name, cells))
     return rows
 
 
-def disk_summary(result) -> str:
-    """The test, its disk's model, its file system as the page says it, and
-    when."""
+def disk_notes(result) -> list[str]:
+    """Under the table: the profile, its laps and the engine; and what the
+    mark on a figure means, when one has it."""
+    from .pages.disktest import ENGINES, PROFILE_NAMES, VARIED_MARK
+
+    profile = _(PROFILE_NAMES[result.profile]) if result.profile in PROFILE_NAMES \
+        else result.profile
+    laps = render.counted("share.test.laps", result.laps, s=f"{result.lap_seconds:g}") \
+        if result.laps else ""
+    engine = _(ENGINES[result.engine]) if result.engine in ENGINES else ""
+    notes = [" · ".join(x for x in (profile, laps, engine) if x)]
+    if any(m.noisy for m in result.measures):
+        notes.append(f"{VARIED_MARK} {_('share.test.varied')}")
+    return notes
+
+
+def disk_title(result) -> str:
+    return result.model or " + ".join(result.disks)
+
+
+def disk_subtitle(result) -> str:
+    """The test, its file system as the page says it, and when."""
     from .pages.disktest import when
 
     filesystem = result.filesystem or ""
     if result.no_cow:
         filesystem = _("disktest.conditions.nocow").format(filesystem=filesystem)
-    return " · ".join(x for x in (_("share.test.disk"),
-                                  result.model or " + ".join(result.disks),
-                                  filesystem, when(result.timestamp)) if x)
+    return " · ".join(x for x in (_("share.test.disk"), filesystem, when(result.timestamp)) if x)
 
 
 def memory_rows(result) -> list[tuple[str, str, str]]:
@@ -322,7 +368,7 @@ def memory_rows(result) -> list[tuple[str, str, str]]:
     for level in result.levels:
         cycles = render.core_cycles(level.nanoseconds, level.frequency_hz)
         rows.append((level_name(level.level), render.nanoseconds(level.nanoseconds),
-                      _("memtest.grid.cycles").format(n=f"{cycles:.1f}") if cycles else ""))
+                     _("memtest.grid.cycles").format(n=f"{cycles:.1f}") if cycles else ""))
     threads = max((r.threads for r in result.rates), default=1)
     for operation, key, _colour in GRID_COLUMNS:
         every, one = result.fastest(operation, threads)
@@ -338,19 +384,19 @@ def memory_rows(result) -> list[tuple[str, str, str]]:
     share = memtest.share_of_theoretical(result)
     if share is not None:
         rows.append((_("share.test.share"), render.whole_percent(share),
-                      _("share.test.share.detail").format(
-                          channels=render.counted("memtest.channels", result.channels or 0),
-                          mts=render.memory_speed(result.speed_mts),
-                          total=render.bandwidth(result.theoretical_bytes_per_second, 1))))
+                     _("share.test.share.detail").format(
+                         channels=render.counted("memtest.channels", result.channels or 0),
+                         mts=render.memory_speed(result.speed_mts),
+                         total=render.bandwidth(result.theoretical_bytes_per_second, 1))))
     return rows
 
 
-def memory_summary(result, cpu: str) -> str:
-    """The test, the processor, the memory's speed and channels, and when."""
+def memory_subtitle(result) -> str:
+    """The test, the memory's speed and channels, and when."""
     from .pages.memtest import when
 
     return " · ".join(x for x in (
-        _("share.test.memory"), cpu,
+        _("share.test.memory"),
         f"{render.memory_speed(result.speed_mts)} MT/s" if result.speed_mts else "",
         render.counted("memtest.channels", result.channels) if result.channels else "",
         when(result.timestamp)) if x)
@@ -363,13 +409,118 @@ def shareable(result) -> bool:
 
 
 def draw_disk_test(result, palette: Palette) -> QPixmap:
-    """A disk test's card."""
-    return _compose(disk_summary(result), disk_rows(result), palette)
+    """A disk test's card: a table as CrystalDiskMark's, a column per
+    direction with each figure over its bar."""
+    cells = disk_cells(result)
+    notes = disk_notes(result)
+    directions = [d for d in COLUMN_NAMES if any(d in row for _name, row in cells)]
+    height = TABLE_HEAD + len(cells) * ALTO_FILA + (8 + len(notes) * NOTE_LINE if notes else 0)
+
+    def body(painter: QPainter, top: int) -> None:
+        _disk_table(painter, palette, top, cells, directions)
+        y = top + TABLE_HEAD + len(cells) * ALTO_FILA + 8
+        painter.setFont(_sized(10))
+        painter.setPen(QColor(palette.ink_dim))
+        for note in notes:
+            painter.drawText(QPointF(MARGEN + PADDING, y + 14), note)
+            y += NOTE_LINE
+
+    return _card(disk_title(result), disk_subtitle(result), height, body, palette)
+
+
+def _disk_table(painter: QPainter, p: Palette, top: int, cells, directions) -> None:
+    from .pages.disktest import TONES
+
+    column = value_column([(name, "", "") for name, _row in cells])
+    left = MARGEN + PADDING + column
+    gap = 16
+    width = (ANCHO - MARGEN - PADDING - left - gap * (len(directions) - 1)) / max(len(directions), 1)
+
+    painter.setFont(_sized(9))
+    painter.setPen(QColor(p.muted))
+    painter.drawText(QPointF(MARGEN + PADDING, top + 20), DISK_UNIT)
+    painter.setFont(_label_font())
+    painter.setPen(QColor(p.accent))
+    for index, direction in enumerate(directions):
+        painter.drawText(QPointF(left + index * (width + gap), top + 20),
+                         _(COLUMN_NAMES[direction]).upper())
+
+    figure_font = _sized(17, QFont.Weight.Bold)
+    centred = Qt.AlignmentFlag.AlignVCenter
+    for index, (name, row) in enumerate(cells):
+        row_top = top + TABLE_HEAD + index * ALTO_FILA
+        _band(painter, p, row_top, index)
+        box_top = row_top + 6
+        painter.setFont(_label_font())
+        painter.setPen(QColor(p.accent))
+        painter.drawText(QRectF(MARGEN + PADDING, box_top, column, BOX),
+                         Qt.AlignmentFlag.AlignLeft | centred, name.upper())
+        for place, direction in enumerate(directions):
+            x = left + place * (width + gap)
+            box = QRectF(x, box_top, width, BOX)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(p.track))
+            painter.drawRoundedRect(box, 5, 5)
+            cell = row.get(direction)
+            if cell is None:
+                continue
+            figure, fraction, iops = cell
+            bar = QRectF(x, box_top, max(width * fraction, BOX) if fraction is not None else 0,
+                         BOX)
+            colour = _blend(p.q("accent"), TONES[direction], p.q("track"))
+            painter.setBrush(colour)
+            painter.drawRoundedRect(bar, 5, 5)
+            # The figure over its bar in what reads on the bar, and past its
+            # end in the ink.
+            painter.setFont(figure_font)
+            text_box = box.adjusted(10, 0, -10, 0)
+            for clip, pen in ((bar, _readable_on(colour, p)),
+                              (box.adjusted(bar.width(), 0, 0, 0), p.q("ink"))):
+                painter.save()
+                painter.setClipRect(clip)
+                painter.setPen(pen)
+                painter.drawText(text_box, Qt.AlignmentFlag.AlignRight | centred, figure)
+                painter.restore()
+            if iops:
+                painter.setFont(_sized(9))
+                painter.setPen(QColor(p.ink_dim))
+                painter.drawText(QRectF(x, box_top + BOX + 1, width - 10, 16),
+                                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, iops)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+
+
+def _blend(colour: QColor, alpha: float, under: QColor) -> QColor:
+    """`colour` at `alpha` over `under`, as one opaque colour."""
+    return QColor(*(round(alpha * a + (1 - alpha) * b) for a, b in (
+        (colour.red(), under.red()), (colour.green(), under.green()),
+        (colour.blue(), under.blue()))))
+
+
+def _luminance(colour: QColor) -> float:
+    def channel(value: int) -> float:
+        value /= 255
+        return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+
+    return (0.2126 * channel(colour.red()) + 0.7152 * channel(colour.green())
+            + 0.0722 * channel(colour.blue()))
+
+
+def contrast(one: QColor, other: QColor) -> float:
+    """WCAG's contrast ratio, from 1 to 21."""
+    light, dark = sorted((_luminance(one), _luminance(other)), reverse=True)
+    return (light + 0.05) / (dark + 0.05)
+
+
+def _readable_on(colour: QColor, p: Palette) -> QColor:
+    """The ink or the background, whichever reads better on `colour`: on
+    the dark theme's orange, the white ink hardly did."""
+    return max((p.q("ink"), p.q("bg")), key=lambda pen: contrast(pen, colour))
 
 
 def draw_memory_test(result, cpu: str, palette: Palette) -> QPixmap:
-    """A memory test's card; `cpu`, the processor's name."""
-    return _compose(memory_summary(result, cpu), memory_rows(result), palette)
+    """A memory test's card, with the processor, `cpu`, as its title."""
+    return _compose(cpu or _("share.test.memory"), memory_subtitle(result),
+                    memory_rows(result), palette)
 
 
 def marked(pixmap: QPixmap):
