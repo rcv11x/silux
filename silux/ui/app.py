@@ -1770,7 +1770,57 @@ def _with_the_welcome(window: MainWindow, image, page: int):
     return image
 
 
+def _exit_before_the_window(_number, _frame) -> None:
+    raise SystemExit(0)
+
+
+def close_on_signals(app, window) -> None:
+    """Ctrl+C and SIGTERM close Silux as its close button does: the tests under
+    way stop with their children and the preferences are saved.
+
+    Python runs a signal's handler only between its own instructions, and an
+    idle Qt loop runs none: Ctrl+C waited for the next timer and came out
+    there as a KeyboardInterrupt, with the window still open. The signal now
+    writes to a socket that wakes the loop. A second one doesn't wait for the
+    first: closing may be what hangs.
+    """
+    import signal
+    import socket
+
+    from PySide6.QtCore import QSocketNotifier
+
+    reader, writer = socket.socketpair()
+    for end in (reader, writer):
+        end.setblocking(False)
+    signal.set_wakeup_fd(writer.fileno())
+    notifier = QSocketNotifier(reader.fileno(), QSocketNotifier.Type.Read, app)
+
+    def drain() -> None:
+        try:
+            while reader.recv(64):
+                pass
+        except OSError:
+            pass
+
+    def close(_number, _frame) -> None:
+        for number in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(number, signal.SIG_DFL)
+        QTimer.singleShot(0, window.close)
+        QTimer.singleShot(0, app.quit)
+
+    notifier.activated.connect(drain)
+    for number in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(number, close)
+    # Kept alive with the window: the socket and its notifier go with it.
+    window._signal_wakeup = (reader, writer, notifier)
+
+
 def main(argv: Optional[list[str]] = None) -> int:
+    import signal
+
+    # Until the window exists, a signal just ends it.
+    for number in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(number, _exit_before_the_window)
     app, window, args = build_app(argv)
 
     # Antes de las dos ramas y una sola vez. Un nombre que no existe se tragaba
@@ -1831,6 +1881,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"captura guardada en {args.screenshot}")
         return 0
 
+    close_on_signals(app, window)
     window.show()
     window.start()
     return app.exec()
