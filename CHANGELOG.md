@@ -20,6 +20,7 @@ que hace falta.
 
 ### Mejoras
 
+- Las pruebas de disco y de memoria se comparten como imagen: «Copiar como imagen» y «Guardar…» bajo su resultado, sin la carpeta donde se hizo ni el nombre del equipo
 - La cabecera del informe dice qué valores son de ejemplo: el nombre del equipo, las direcciones IP y MAC, las carpetas de los discos
 - La vista previa del informe y la terminal ya no dicen que esos datos se quitan: se cambian por otros de ejemplo
 - Sin permisos, Memoria dice cuánta memoria suman los módulos leídos cuando no es toda la del equipo

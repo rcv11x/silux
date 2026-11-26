@@ -37,7 +37,7 @@ from ... import disktest, render, thermal
 from ...disktest import GIB, MIB
 from ...i18n import _
 from ...settings import Preferences
-from .. import theme
+from .. import tarjeta, theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
@@ -51,6 +51,7 @@ from ..widgets import (
     RateBar,
     ResponsiveRow,
     ScrollPage,
+    ShareButtons,
     Table,
     TipsBeside,
     clear_layout,
@@ -847,9 +848,11 @@ class DiskTestTab(ScrollPage):
         self.detail_button.setObjectName("GhostButton")
         self.detail_button.setCheckable(True)
         self.detail_button.toggled.connect(self._toggle_detail)
+        self.share_buttons = ShareButtons()
         fold = QHBoxLayout()
         fold.addWidget(self.detail_button)
         fold.addStretch(1)
+        fold.addWidget(self.share_buttons)
         card.body.addLayout(fold)
         self.laps_table = Table(
             [_("disktest.col.test"), "", _("disktest.col.first"), _("disktest.col.laps"),
@@ -1274,6 +1277,7 @@ class DiskTestTab(ScrollPage):
         for widget in (self.empty, self.facts["single"], self.fact_row,
                        self.detail_button, self.detail):
             widget.hide()
+        self.share_buttons.set_card(None)
         for widget in (self.disk_name, self.conditions, self.rows):
             widget.show()
         self.result_card.show()
@@ -1288,6 +1292,7 @@ class DiskTestTab(ScrollPage):
         for widget in (self.conditions, self.facts["single"], self.fact_row,
                        self.detail_button, self.detail):
             widget.hide()
+        self.share_buttons.set_card(None)
         plan = self.plan() if measurable else None
         if plan is not None:
             self.disk_name.setText(self._model_of(plan.disks) or " + ".join(plan.disks))
@@ -1374,6 +1379,11 @@ class DiskTestTab(ScrollPage):
         if result.no_cow:
             filesystem = _("disktest.conditions.nocow").format(filesystem=filesystem)
         self.disk_name.setText(result.label or result.model or " + ".join(result.disks))
+        self.share_buttons.set_card(
+            (lambda: tarjeta.draw_disk_test(result, self._p))
+            if tarjeta.shareable(result) else None,
+            time.strftime(f"{_('share.test.file.disk')}-%Y%m%d-%H%M.png",
+                          time.localtime(result.timestamp)))
         parts = [result.model if result.label else "", link if link != render.DASH else "",
                  filesystem, _(ENGINES[result.engine]) if result.engine in ENGINES else "",
                  when(result.timestamp)]

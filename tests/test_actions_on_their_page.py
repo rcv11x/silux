@@ -60,6 +60,18 @@ class Case(unittest.TestCase):
         geometry.settle(self.app)
         return page._tabs[key]
 
+    def copy_the_card(self, tab) -> None:
+        """A test's result, copied as an image, says so on its page."""
+        from PySide6.QtWidgets import QApplication
+
+        from silux.i18n import _
+
+        QApplication.clipboard().clear()
+        tab.share_buttons.copy_button.click()
+        geometry.settle(self.app)
+        self.assertFalse(QApplication.clipboard().pixmap().isNull())
+        self.assertEqual(tab.share_buttons.note.text(), _("share.copied"))
+
     def after(self, area) -> None:
         geometry.stays_in_view(self, self.window, area, self.snapshot)
         self.assertEqual(self.window.failures.recent(), ())
@@ -102,6 +114,7 @@ class TestTheMemoryBenchmark(Case):
             wait_for(self.app, lambda: not tab.running
                      and not tab.cancel_button.isVisibleTo(tab))
         self.assertTrue(tab.result_card.isVisibleTo(tab))
+        self.copy_the_card(tab)
         self.after(tab)
 
 
@@ -133,6 +146,7 @@ class TestTheDiskBenchmark(Case):
             self.assertTrue(failure.isVisibleTo(tab))
         else:
             self.assertTrue(tab.result.measures)
+            self.copy_the_card(tab)
         self.after(tab)
 
 

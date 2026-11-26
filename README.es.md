@@ -43,7 +43,7 @@ chmod +x silux-x86_64.AppImage
 - [x] Prueba de memoria: la latencia de cada nivel de caché y de la RAM, y el ancho de banda (experimental)
 - [x] Prueba de disco, comparada con fio (experimental)
 - [x] Español e inglés, y la terminal: el volcado, JSON, los sensores y el informe
-- [ ] Compartir el resultado de un disco como imagen
+- [x] Compartir el resultado de la prueba de disco y de la de memoria como imagen
 - [ ] Elegir un disco en las gráficas de lectura y escritura de Almacenamiento
 - [ ] Grabar una sesión: empezar, pausar y parar
 - [ ] La última hora de cada sensor, y un modo bandeja

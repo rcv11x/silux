@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 from ... import memtest, render
 from ...i18n import _
 from ...settings import Preferences
-from .. import theme
+from .. import tarjeta, theme
 from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
@@ -40,6 +40,7 @@ from ..widgets import (
     RateBar,
     ResponsiveRow,
     ScrollPage,
+    ShareButtons,
     Table,
     clear_layout,
     let_go,
@@ -628,9 +629,11 @@ class MemoryTestTab(ScrollPage):
         self.detail_button.setObjectName("GhostButton")
         self.detail_button.setCheckable(True)
         self.detail_button.toggled.connect(self._toggle_detail)
+        self.share_buttons = ShareButtons()
         fold = QHBoxLayout()
         fold.addWidget(self.detail_button)
         fold.addStretch(1)
+        fold.addWidget(self.share_buttons)
         card.body.addLayout(fold)
         self.detail = QWidget()
         inside = QVBoxLayout(self.detail)
@@ -759,6 +762,11 @@ class MemoryTestTab(ScrollPage):
             parts.append(result.governor)
         parts.append(when(result.timestamp))
         self.conditions.setText(" · ".join(parts))
+        self.share_buttons.set_card(
+            (lambda: tarjeta.draw_memory_test(result, self.cpu_name.text(), self._p))
+            if tarjeta.shareable(result) else None,
+            time.strftime(f"{_('share.test.file.memory')}-%Y%m%d-%H%M.png",
+                          time.localtime(result.timestamp)))
 
         self.grid.set_result(result)
         self.grid.setVisible(bool(result.levels or result.rates))

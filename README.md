@@ -43,7 +43,7 @@ chmod +x silux-x86_64.AppImage
 - [x] Memory benchmark: latency of each cache level and the RAM, and bandwidth (experimental)
 - [x] Disk benchmark, checked against fio (experimental)
 - [x] English and Spanish, and the terminal: a dump, JSON, the sensors and a report
-- [ ] Share a disk result as an image
+- [x] Share a disk or memory test's result as an image
 - [ ] Choose one disk in Storage's reading and writing charts
 - [ ] Record a session: start, pause and stop
 - [ ] The last hour of each sensor, and a tray mode
