@@ -812,6 +812,7 @@
   "gpu.expert.marker": "{marker} marks the step in use.",
   "gpu.expert.mclk": "Memory steps",
   "gpu.expert.now.asleep": "asleep",
+  "gpu.expert.now.deepsleep": "in deep sleep, at {mhz} MHz",
   "gpu.expert.off": "off",
   "gpu.expert.off.how": "With OverDrive off the driver lets no clock or voltage be changed. It's turned on with bit 14 (0x4000) of the kernel parameter amdgpu.ppfeaturemask, as LACT explains.",
   "gpu.expert.on": "on: the driver lets clocks and voltages be changed",

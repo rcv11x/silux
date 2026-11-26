@@ -242,11 +242,14 @@ class TestFormatosQueCambian(BancoDrm):
     def test_la_gpu_dormida_marca_su_escalon_con_una_letra(self):
         # RDNA3 y RDNA4 escriben «S:» —de sleep— en vez de un índice cuando la
         # tarjeta está en reposo profundo. Con el patrón anterior, esa línea se
-        # colaba como escalón número cero y descuadraba la tabla entera.
+        # colaba como escalón número cero y descuadraba la tabla entera. Va
+        # aparte: es el reloj de ahora, no un escalón.
         self.tarjeta(0, vendor="0x1002", device="0x7550",
                      pp_dpm_sclk="S: 0Mhz *\n1: 500Mhz \n2: 2520Mhz ")
         gpu = self.recolectar().freeze().gpus[0]
-        self.assertEqual([n.index for n in gpu.clocks.core_levels], [1, 2])
+        niveles = gpu.clocks.core_levels
+        self.assertEqual([n.index for n in niveles if not n.deep_sleep], [1, 2])
+        self.assertEqual([(n.hz, n.active) for n in niveles if n.deep_sleep], [(0, True)])
         self.assertEqual(gpu.clocks.core_max_hz, 2_520_000_000)
 
     def test_cero_megahercios_es_una_respuesta_no_una_ausencia(self):

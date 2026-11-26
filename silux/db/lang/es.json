@@ -812,6 +812,7 @@
   "gpu.expert.marker": "{marker} marca el escalón en uso.",
   "gpu.expert.mclk": "Escalones de la memoria",
   "gpu.expert.now.asleep": "en reposo",
+  "gpu.expert.now.deepsleep": "en sueño profundo, a {mhz} MHz",
   "gpu.expert.off": "desactivado",
   "gpu.expert.off.how": "Con OverDrive desactivado, el driver no deja cambiar relojes ni voltajes. Se activa con el bit 14 (0x4000) del parámetro del kernel amdgpu.ppfeaturemask, como explica LACT.",
   "gpu.expert.on": "activado: el driver deja cambiar relojes y voltajes",

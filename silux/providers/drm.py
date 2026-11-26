@@ -1107,13 +1107,19 @@ def _levels(path: pathlib.Path) -> tuple[GpuClockLevel, ...]:
     levels = []
     for text_line in raw.splitlines():
         match = _DPM_LEVEL.match(text_line)
-        if not match or not match.group(1).isdigit():
+        if not match:
+            continue
+        # «S: 68Mhz *»: the clock under half the lowest step, deep sleep;
+        # «S: 0Mhz *», the core switched off (smu_cmn.c).
+        deep_sleep = match.group(1).upper() == "S"
+        if not (deep_sleep or match.group(1).isdigit()):
             continue
         scale = 1_000_000_000 if match.group(3).upper() == "G" else 1_000_000
         levels.append(GpuClockLevel(
-            index=int(match.group(1)),
+            index=-1 if deep_sleep else int(match.group(1)),
             hz=int(float(match.group(2)) * scale),
             active=bool(match.group(4)),
+            deep_sleep=deep_sleep,
         ))
     return tuple(levels)
 

@@ -1304,6 +1304,9 @@ class GpuClockLevel:
     index: int
     hz: int
     active: bool = False
+    # AMD's «S» line: not a step, the clock now, under half the lowest step
+    # (deep sleep). At 0 the core is switched off.
+    deep_sleep: bool = False
 
 
 @dataclass(frozen=True, slots=True)

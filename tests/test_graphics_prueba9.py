@@ -57,8 +57,10 @@ class TestTheRadeon(unittest.TestCase):
             expert = section.expert._values
             self.assertRegex(expert[_("gpu.expert.fclk")].full_text(),
                              r"^313 · (\d+ · )*▸\d+( · \d+)* MHz$")
+            # Its pp_dpm_sclk says «S: 68Mhz *»: deep sleep, at that clock.
             self.assertEqual(expert[_("gpu.expert.sclk")].full_text(),
-                             "500 · 2520 MHz · " + _("gpu.expert.now.asleep"))
+                             "500 · 2520 MHz · "
+                             + _("gpu.expert.now.deepsleep").format(mhz="68"))
             self.assertEqual(expert[_("gpu.expert.profile")].full_text(),
                              _("gpu.profile.bootup_default") + " (BOOTUP_DEFAULT)")
             self.assertEqual(expert[_("gpu.expert.overdrive")].full_text(), _("gpu.expert.off"))

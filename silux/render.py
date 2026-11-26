@@ -1805,11 +1805,16 @@ ACTIVE_STEP = "▸"
 
 
 def dpm_levels(levels) -> str:
-    """«▸500 · 2520 MHz»: a DPM table's steps, the one in use marked, and
-    «en reposo» after them when none is (the core sleeps below its first)."""
+    """«▸500 · 2520 MHz»: a DPM table's steps, the one in use marked. Under
+    the first, AMD's deep sleep says its clock after them, and «en reposo»
+    only when the driver says the core is off (at 0) or marks no step."""
     steps = " · ".join(f"{ACTIVE_STEP if level.active else ''}{figure(level.hz / 1e6, 0)}"
-                       for level in levels) + " MHz"
-    if not any(level.active for level in levels):
+                       for level in levels if not level.deep_sleep) + " MHz"
+    sleeping = next((level for level in levels if level.deep_sleep and level.active), None)
+    if sleeping is not None and sleeping.hz:
+        steps += " · " + _("gpu.expert.now.deepsleep").format(
+            mhz=figure(sleeping.hz / 1e6, 0))
+    elif not any(level.active and level.hz for level in levels):
         steps += " · " + _("gpu.expert.now.asleep")
     return steps
 
