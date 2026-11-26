@@ -331,6 +331,30 @@ class TestWhatAResultShows(TabCase):
         self.assertIn("7 877 MB/s", text)
         self.assertIn("62.9 °C", text)
 
+    def test_on_a_wide_screen_the_three_facts_share_a_row(self):
+        """The single request took a whole row of its own at 1920 px. In a
+        narrow window it keeps it: its reading and its writing want a line."""
+        from silux.ui import theme
+
+        tab = self.tab()
+        facts = [tab.facts[name] for name in ("single", "link", "heat")]
+
+        def at(width: int) -> list:
+            tab.resize(width, 1200)
+            for _turn in range(4):
+                self.app.processEvents()
+            return [fact.mapTo(tab, fact.rect().topLeft()) for fact in facts]
+
+        self.assertTrue(all(fact.isVisibleTo(tab) for fact in facts))
+        corners = at(1690)
+        self.assertEqual(len({corner.y() for corner in corners}), 1, corners)
+        self.assertEqual(sorted(corner.x() for corner in corners), [c.x() for c in corners])
+        widths = [fact.width() for fact in facts]
+        self.assertLessEqual(max(widths) - min(widths), theme.METRICS.section_gap, widths)
+        single, link, heat = at(theme.METRICS.min_window_w)
+        self.assertGreater(link.y(), single.y())
+        self.assertEqual(link.y(), heat.y())
+
     def test_a_single_request_reads_on_one_line_and_writes_on_another(self):
         """In one line the card was crammed and «µs» parted from its figure."""
         detail = self.tab().facts["single"].detail.text()

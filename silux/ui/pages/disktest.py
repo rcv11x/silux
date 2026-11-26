@@ -225,6 +225,54 @@ def test_tip(test: disktest.Test) -> str:
         code=test.name, block=render.size(test.block), depth=test.depth, threads=test.threads)
 
 
+class FactsRow(QWidget):
+    """The single request and the other facts of a result: side by side
+    where each has a third of `THIRD` px or more; else the single request on
+    a line of its own, as its reading and its writing each want a whole one,
+    over the others."""
+
+    THIRD = 300
+
+    def __init__(self, single: QWidget, others: QWidget, items: list[QWidget],
+                 spacing: int, parent: Optional[QWidget] = None):
+        """`others`: the row `items` are in; `spacing`: the air between the
+        single request and them when one is over the other."""
+        super().__init__(parent)
+        self._single, self._others, self._items = single, others, items
+        self._grid = QGridLayout(self)
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setHorizontalSpacing(theme.METRICS.section_gap)
+        self._grid.setVerticalSpacing(spacing)
+        self.wide: Optional[bool] = None
+        self._arrange(False)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        wide = self.width() >= 3 * self.THIRD + 2 * self._grid.horizontalSpacing()
+        if wide != self.wide:
+            self._arrange(wide)
+
+    @staticmethod
+    def _shown(widget: QWidget) -> bool:
+        return not (widget.isHidden()
+                    and widget.testAttribute(Qt.WidgetAttribute.WA_WState_ExplicitShowHide))
+
+    def refresh(self) -> None:
+        """After a fact is shown or hidden: side by side, each takes the same."""
+        if self.wide:
+            self._grid.setColumnStretch(0, int(self._shown(self._single)))
+            self._grid.setColumnStretch(1, sum(map(self._shown, self._items)))
+
+    def _arrange(self, wide: bool) -> None:
+        self.wide = wide
+        for widget in (self._single, self._others):
+            self._grid.removeWidget(widget)
+        self._grid.addWidget(self._single, 0, 0)
+        self._grid.addWidget(self._others, 0 if wide else 1, 1 if wide else 0)
+        self._grid.setColumnStretch(1, 0)
+        self.refresh()
+
+
 class TipOverRow(QObject):
     """A test's tip over its own row and not under it: by the mouse, it
     covered the row below. Above the row if the screen has room, else beside
@@ -700,13 +748,12 @@ class DiskTestTab(ScrollPage):
         card.body.addWidget(self.empty)
 
         self.facts = {name: Fact(_(FACT_NAMES[name])) for name in ("single", "link", "heat")}
-        # The single request on a row of its own: its reading and its
-        # writing each want a whole line.
-        card.body.addWidget(self.facts["single"])
         self.fact_row = ResponsiveRow(min_item_width=170)
         for name in ("link", "heat"):
             self.fact_row.add(self.facts[name])
-        card.body.addWidget(self.fact_row)
+        self.facts_row = FactsRow(self.facts["single"], self.fact_row,
+                                  [self.facts["link"], self.facts["heat"]], card.body.spacing())
+        card.body.addWidget(self.facts_row)
 
         self._result_notes = QVBoxLayout()
         self._result_notes.setSpacing(6)
@@ -1304,6 +1351,7 @@ class DiskTestTab(ScrollPage):
                         if same_disk else thermal.OK)
         self.fact_row.setVisible(any(self.facts[name].isVisibleTo(self.fact_row)
                                      for name in ("link", "heat")))
+        self.facts_row.refresh()
 
         # What this result has to be read with, in its own card.
         for warning in result.warnings:
