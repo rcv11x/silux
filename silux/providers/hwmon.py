@@ -355,6 +355,22 @@ CAPS = {
 }
 
 
+_NVME_NAMESPACE = re.compile(r"nvme\d+n\d+")
+
+
+def _disk_block(entry: pathlib.Path) -> Optional[str]:
+    """The drive a disk's temperature chip hangs from, as Storage names it:
+    the namespace under an NVMe controller («nvme0n1»), the block device
+    under a SATA one («sda»)."""
+    device = entry / "device"
+    for found in sorted(device.glob("block/*")):
+        return found.name
+    for found in sorted(device.glob("nvme*")):
+        if _NVME_NAMESPACE.fullmatch(found.name):
+            return found.name
+    return None
+
+
 def _device_name(entry: pathlib.Path) -> str:
     """The name of the device a hwmon hangs from («nvme1», «2:0:0:0»), or
     its own if it hangs from none."""
@@ -615,6 +631,10 @@ class HwmonSensors(Provider):
             return
         entries = sorted(sysroot.path(HWMON).iterdir())
         names = [read_text(str(entry / "name")) for entry in entries]
+        # Two disks of one model are two devices: the model alone grouped
+        # them as one, with every label twice.
+        models = [_disk_name(entry) for entry, chip in zip(entries, names)
+                  if chip and DISK_CHIP.match(chip)]
         for entry, chip in zip(entries, names):
             if not chip:
                 continue
@@ -626,6 +646,10 @@ class HwmonSensors(Provider):
             if _also_in_power_supply(chip):
                 continue
             device, device_kind, key = device_for(chip, entry, cpu_name, board_name, gpu_names)
+            if device_kind == DeviceKind.DISK and models.count(_disk_name(entry)) > 1:
+                if block := _disk_block(entry):
+                    device = f"{device} ({block})"
+                key = f"{key}#{_device_name(entry)}"
             channels = sorted(entry.glob("*_input"), key=_by_number)
             seen = {path.name.replace("_input", "") for path in channels}
             for suffix in ALTERNATIVES:

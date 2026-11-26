@@ -683,7 +683,7 @@ Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2
 
 ## Sensores
 
-SENSORES · 61 en 5 dispositivos
+SENSORES · 61 en 6 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - AMD Ryzen 5 9600X
   - Temperaturas
@@ -751,14 +751,16 @@ SENSORES · 61 en 5 dispositivos
   - Ocupación
     - Memoria de video · 1976.0 MiB · 1976.0 · 1976.0 · 1976.0
     - Memoria prestada al sistema · 200.0 MiB · 200.0 · 200.0 · 200.0
-- KINGSTON SNV3S500G
+- KINGSTON SNV3S500G (nvme0n1)
   - Temperaturas
-    - Del disco (nvme) · 34.9 °C · 34.9 · 34.9 · 34.9
-    - Del disco (nvme) · 32.9 °C · 32.9 · 32.9 · 32.9
-    - Sensor 1 (nvme) · 44.9 °C · 44.9 · 44.9 · 44.9
-    - Sensor 2 (nvme) · 75.8 °C · 75.8 · 75.8 · 75.8
-    - Sensor 2 (nvme) · 53.9 °C · 53.9 · 53.9 · 53.9
-    - Sensor 3 (nvme) · 34.9 °C · 34.9 · 34.9 · 34.9
+    - Del disco · 34.9 °C · 34.9 · 34.9 · 34.9
+    - Sensor 1 · 44.9 °C · 44.9 · 44.9 · 44.9
+    - Sensor 2 · 53.9 °C · 53.9 · 53.9 · 53.9
+    - Sensor 3 · 34.9 °C · 34.9 · 34.9 · 34.9
+- KINGSTON SNV3S500G (nvme1n1)
+  - Temperaturas
+    - Del disco · 32.9 °C · 32.9 · 32.9 · 32.9
+    - Sensor 2 · 75.8 °C · 75.8 · 75.8 · 75.8
 - Red (eno1)
   - Tráfico
     - Bajada · 0.1 kB/s · 0.1 · 0.1 · 0.1
