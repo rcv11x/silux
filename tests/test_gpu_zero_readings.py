@@ -3,7 +3,8 @@
 From a report: an RX 5500 XT (Navi 14) whose firmware table and hwmon give
 0 for the memory's temperature and the three regulators'. The Graphics page
 read «Memory chips: 0.0 °C» and three regulators at 0.0 °C. At rest its core's
-rail is switched off and reads 6 mV, which the page showed as «0.006 V».
+rail reads 6 mV. That is a figure the driver gives, and it shows: «en
+reposo» is only for a rail the driver says is at 0, as for the clock.
 """
 
 import unittest
@@ -120,7 +121,7 @@ class TestTheRx5500xt(BancoDrm):
         self.assertIn(_("gpu.na.piece.memtemp"), foot)
         self.assertIn(_("gpu.na.piece.vrs"), foot)
 
-    def test_its_switched_off_rail_is_at_rest(self):
+    def test_its_rail_at_rest_shows_its_figure(self):
         from silux.i18n import _
         from silux.settings import Preferences
         from silux.ui import theme
@@ -130,12 +131,11 @@ class TestTheRx5500xt(BancoDrm):
         page = GraphicsPage(theme.palette_for(app, "dark"), Preferences().normalized())
         self.addCleanup(page.deleteLater)
         snapshot = self._collect().freeze()
-        # The reading stays as the driver gave it; only how it is said changes.
         self.assertEqual(snapshot.gpus[0].voltage_v, 0.006)
         page.apply(snapshot)
         self.assertEqual(
             page._sections[0].sensors.value_label(_("gpu.sensor.voltage")).full_text(),
-            _("gpu.clock.idle"))
+            "0.006 V")
 
 
 class TestTheCoreVoltage(unittest.TestCase):
@@ -147,6 +147,15 @@ class TestTheCoreVoltage(unittest.TestCase):
         self.assertEqual(render.gpu_voltage(0.693), "0.693 V")
         self.assertEqual(render.gpu_voltage(0.781), "0.781 V")
         self.assertEqual(render.gpu_voltage(None), render.DASH)
+
+    def test_only_zero_is_at_rest(self):
+        from silux import render
+        from silux.i18n import _
+
+        self.assertEqual(render.gpu_voltage(0.0), _("gpu.clock.idle"))
+        # A few millivolts are a reading, not a threshold to hide it under.
+        self.assertEqual(render.gpu_voltage(0.006), "0.006 V")
+        self.assertEqual(render.gpu_voltage(0.038), "0.038 V")
 
 
 class TestOnTheSensorsPage(unittest.TestCase):
@@ -182,10 +191,13 @@ class TestOnTheSensorsPage(unittest.TestCase):
         page.apply(draft.freeze())
         return page.tree._rows["amdgpu/in0"].text(1)
 
-    def test_its_switched_off_rail_is_at_rest(self):
+    def test_its_rail_at_rest_shows_its_figure(self):
+        self.assertEqual(self._row("6").strip(), "0.006 V")
+
+    def test_its_rail_at_zero_is_at_rest(self):
         from silux.i18n import _
 
-        self.assertEqual(self._row("6"), _("gpu.clock.idle"))
+        self.assertEqual(self._row("0"), _("gpu.clock.idle"))
 
     def test_a_working_one_shows_its_voltage(self):
         self.assertEqual(self._row("781").strip(), "0.781 V")
@@ -194,7 +206,7 @@ class TestOnTheSensorsPage(unittest.TestCase):
         """hwmon names «vddc» the core as it does «vddgfx» (`GPU_LABELS`)."""
         from silux.i18n import _
 
-        self.assertEqual(self._row("6", label="vddc"), _("gpu.clock.idle"))
+        self.assertEqual(self._row("0", label="vddc"), _("gpu.clock.idle"))
         # The northbridge's is not the core's.
         self.assertEqual(self._row("6", label="vddnb").strip(), "0.006 V")
 

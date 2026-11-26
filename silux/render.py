@@ -208,15 +208,10 @@ def gpu_clock(value: Optional[float]) -> str:
     return hz(value)
 
 
-# No working GPU core runs below this: a few millivolts is its rail switched
-# off while the engine sleeps (amdgpu's GFXOFF).
-GPU_RAIL_OFF_V = 0.1
-
-
 def gpu_voltage(value: Optional[float]) -> str:
-    """A GPU core's voltage, or that it is at rest: its rail switched off is
-    not a voltage of the engine."""
-    if value is not None and value < GPU_RAIL_OFF_V:
+    """A GPU core's voltage, or that it is at rest: only at 0, as the clock.
+    A few millivolts are what the driver read, and they show."""
+    if value == 0:
         return _("gpu.clock.idle")
     return volts(value)
 
