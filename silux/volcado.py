@@ -130,6 +130,21 @@ def is_asleep(state: dict[str, str]) -> bool:
             or state.get("power_state") in POWERED_OFF)
 
 
+# Drivers that hold a device for a virtual machine: the system doesn't use it.
+VIRTUAL_MACHINE_DRIVERS = ("vfio-pci", "pci-stub")
+
+
+def passed_through(device) -> bool:
+    """Whether the system handed the device to a virtual machine. Bound to
+    vfio-pci it has no graphics node here, and nothing that reads the other
+    cards wakes it."""
+    try:
+        driver = os.readlink(sysroot.path(f"{device}/driver"))
+    except OSError:
+        return False
+    return os.path.basename(driver) in VIRTUAL_MACHINE_DRIVERS
+
+
 def gpu_devices() -> list[str]:
     """The graphics cards on the PCI bus (class 0x03), with a driver or not."""
     try:
@@ -256,10 +271,15 @@ class _SleepingCards:
         self.nodes: list[str] = []
         self.dev: set[str] = set()
         self.nvidia = False
+        # A card kept for a virtual machine sits in D3 too, and isn't asleep.
+        self.passed_through: list[str] = []
         for gpu in gpu_devices():
             state = power_state(gpu)
             slot = gpu.rsplit("/", 1)[1]
             self.states[slot] = state
+            if passed_through(gpu):
+                self.passed_through.append(slot)
+                continue
             if not is_asleep(state):
                 continue
             self.asleep.append(slot)
@@ -1436,6 +1456,8 @@ def dump(name: str, base: pathlib.Path,
             "ilegibles": sorted(clean._replace_text(c) for c in copy.unreadable),
             # How each card was before anything was read, by its slot.
             "energia_de_las_graficas": sleeping.states,
+            # The cards the system handed to a virtual machine.
+            "de_una_maquina_virtual": sleeping.passed_through,
             "sin_grabar": [
                 "de NVML, el número de serie de cada tarjeta",
                 "todo lo que lee el ayudante privilegiado",
