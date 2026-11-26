@@ -9,7 +9,7 @@ pide el sistema en su ventana), deja que se llenen las gráficas y guarda
 Inicio, CPU, Gráficos, Memoria y Sensores. Cada imagen va anonimizada, como
 con `--anonymous`, y lo lleva escrito dentro (`silux-anonimo`), que es lo
 que mira `tools/comprobar_privacidad.py`. Se guardan fuera del repositorio:
-se miran antes de copiarlas a `capturas/`.
+se miran antes de copiarlas a `capturas/es/` o `capturas/en/`, según el idioma.
 """
 
 from __future__ import annotations

@@ -6,13 +6,13 @@ Cómo se abre Silux, qué hace en la terminal, cómo mandar un informe cuando al
 falla y qué datos necesitan permisos de administrador. Qué AppImage elegir está en
 [compatibilidad](compatibilidad.md).
 
-![Inicio](../capturas/inicio.png)
+![Inicio](../capturas/es/inicio.png)
 
 <p>
-  <img src="../capturas/cpu.png" width="49%" alt="CPU">
-  <img src="../capturas/graficos.png" width="49%" alt="Gráficos">
-  <img src="../capturas/memoria.png" width="49%" alt="Memoria">
-  <img src="../capturas/sensores.png" width="49%" alt="Sensores">
+  <img src="../capturas/es/cpu.png" width="49%" alt="CPU">
+  <img src="../capturas/es/graficos.png" width="49%" alt="Gráficos">
+  <img src="../capturas/es/memoria.png" width="49%" alt="Memoria">
+  <img src="../capturas/es/sensores.png" width="49%" alt="Sensores">
 </p>
 
 ## Abrirlo

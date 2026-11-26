@@ -7,7 +7,7 @@
 Silux shows what hardware a Linux PC has and what it is doing: processor, memory, graphics, disks, network, battery and sensors.
 It does what CPU-Z, GPU-Z and HWMonitor do on Windows, in one program, and when it can't read something it tells you why.
 
-![The disk test with its result](capturas/disco.png)
+![The disk test with its result](capturas/en/disco.png)
 
 ## Download
 
