@@ -3792,12 +3792,20 @@ class ShareButtons(QWidget):
         super().__init__(parent)
         self._draw = None
         self._file_name = ""
-        row = QHBoxLayout(self)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(4)
+        row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(6)
+        # Under the buttons, and in as many lines as it needs: beside them, a
+        # saved file's folder made the page wider than a narrow window.
         self.note = QLabel("")
         self.note.setObjectName("Muted")
         self.note.setFont(ui_font(theme.METRICS.small_pt))
+        self.note.setWordWrap(True)
+        self.note.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        self.note.hide()
         self.copy_button = QPushButton(_("share.test.copy"))
         self.save_button = QPushButton(_("share.test.save"))
         for button in (self.copy_button, self.save_button):
@@ -3805,15 +3813,21 @@ class ShareButtons(QWidget):
             button.setToolTip(_("share.test.tip"))
         self.copy_button.clicked.connect(self._copy)
         self.save_button.clicked.connect(self._save)
-        row.addWidget(self.note)
+        row.addStretch(1)
         row.addWidget(self.copy_button)
         row.addWidget(self.save_button)
+        column.addLayout(row)
+        column.addWidget(self.note)
         self.hide()
+
+    def _say(self, text: str) -> None:
+        self.note.setText(text)
+        self.note.setVisible(bool(text))
 
     def set_card(self, draw, file_name: str = "") -> None:
         """`draw()` gives the card's pixmap; None hides the buttons. What
         came of the last copy was about the card before."""
-        self.note.setText("")
+        self._say("")
         self._draw, self._file_name = draw, file_name
         self.setVisible(draw is not None)
 
@@ -3821,7 +3835,7 @@ class ShareButtons(QWidget):
         if self._draw is None:
             return
         QApplication.clipboard().setPixmap(self._draw())
-        self.note.setText(_("share.copied"))
+        self._say(_("share.copied"))
 
     def _save(self) -> None:
         import pathlib
@@ -3838,5 +3852,5 @@ class ShareButtons(QWidget):
         if not path:
             return
         saved = tarjeta.save_image(self._draw(), path)
-        self.note.setText(_("share.saved").format(ruta=render.home_path(path)) if saved
-                          else _("share.failed"))
+        self._say(_("share.saved").format(ruta=render.home_path(path)) if saved
+                  else _("share.failed"))

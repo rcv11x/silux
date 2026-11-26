@@ -234,6 +234,30 @@ class TestTheLayout(Case):
                                  {tarjeta.ALTO_FILA})
 
 
+class TestNarrow(Case):
+    def test_what_the_buttons_say_never_widens_the_page(self):
+        """At 480 px, «copied» beside the buttons made both tabs 610 px wide
+        in a 448 px view."""
+        from tests import geometry, pantalla
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "i5-10400")) as window:
+            window.resize(480, 900)
+            geometry.settle(self.app)
+            window.select_section("Rendimiento")
+            page = window.benchmarks_page
+            for key, result in (("disk", disk_run("sn850x-btrfs")),
+                                ("memory", memory_run("i5-10400-window"))):
+                page.select_tab(key)
+                tab = page._tabs[key]
+                tab.show_result(result)
+                tab.share_buttons.copy_button.click()
+                geometry.settle(self.app)
+                with self.subTest(tab=key):
+                    self.assertTrue(tab.share_buttons.note.isVisibleTo(tab))
+                    self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+
+
 class TestOnTheDiskPage(TabCase):
     def setUp(self):
         super().setUp()
