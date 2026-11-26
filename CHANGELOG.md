@@ -10,7 +10,7 @@ que hace falta.
 
 ---
 
-## 0.4-prueba13 (sin publicar)
+## 0.4-prueba13 (26 de noviembre de 2026)
 
 ### Lo destacado
 
