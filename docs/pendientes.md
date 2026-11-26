@@ -247,7 +247,54 @@ la memoria) no va: está propuesto en las notas
   - Placa base · baja · en un Ryzen 9 7900 los USB 3 del procesador salen
     «en el procesador» (comparten dispositivo con la integrada) y su USB 2
     «en la placa»: cuelga de otro puente interno del procesador (`00:08.x`).
-    Decidirlo pide mirar de qué puente cuelga cada dispositivo.
+    Decidirlo pide mirar de qué puente cuelga cada dispositivo. Con la
+    integrada desactivada (volcado `ryzen5-9600x`) salen todos «en la placa».
+* **De los informes de la prueba13** (volcados `ryzen5-9600x`, `i7-6700k`,
+  `ryzen9-7900` e `i7-12700`), lo que queda:
+  - CPU · media · límites de potencia abiertos que no llenan el registro:
+    una placa deja PL1 en 3408,2 W y PL2 en 4090 W, y CPU dice «0 % de
+    3408.2 W». `rapl.fills_the_register` solo los reconoce desde 4095 W
+    (volcado `i7-6700k`). Ningún procesador de escritorio pasa de 1000 W.
+  - CPU · media · «Activo 30 %» con el procesador parado: `cpuidle/stateN/time`
+    solo avanza cuando el hilo sale del estado, y `cpuidle.residency` cuenta
+    como activo el hilo que duerme todo el intervalo. Hay que contrastar cada
+    hilo con su tiempo ocioso de `/proc/stat`. Se ve en un Ryzen 7 5700X3D con
+    la preferencia de energía en `power`.
+  - Sistema · media · «Firmware: 7122.0 s» en el arranque: el FPDT de esa
+    placa no se pone a cero al reiniciar, y `system._boot` no lee
+    `reset_end_ns`, donde el firmware apunta su propio arranque. Antes,
+    comparar con `systemd-analyze` en el equipo (volcado `i7-6700k`, sin ese
+    archivo: hay que leerlo para que un volcado lo traiga).
+  - Red · baja · el puerto de un puente (`enp14s0` en `br0`) sale «sin
+    dirección» y la cabecera «0 de 1 activa»: `NetworkInterface.active` pide
+    una IP, y el puerto de un puente no la tiene nunca (volcado `i7-6700k`).
+  - Sensores · baja · el porcentaje del ventilador contradice sus RPM: 0 %
+    con 1725 RPM en una RX 550 (`pwm1_enable` 2) y 100 % con 0 RPM en una GTX
+    1060 con nouveau (volcados `ryzen9-7900` e `i7-6700k`). Gráficos ya decide
+    por las RPM.
+  - Sensores · baja · cuando dos etiquetas chocan bajo un dispositivo, el
+    árbol les pega el nombre del chip hwmon («Temperatura 1 (gigabyte_wmi)»,
+    «(acpitz)»): un nodo en pantalla. Y la fila del voltaje del núcleo en
+    reposo dice «en reposo» con cifras en mínimo, máximo y media.
+  - Placa base · baja · «Chip de sensores: ASUS» por los hwmon `asus` de
+    `eeepc-wmi` y `asus-nb-wmi`, que no tienen ningún sensor:
+    `pci._sensor_chip` (volcado `ryzen5-9600x`).
+  - Gráficos · baja · un monitor Vestel sale con la razón social entera
+    («Vestel Elektronik Sanayi ve Ticaret A. S.»): `render.maker` no conoce
+    la forma «A. S.».
+  - Gráficos · baja · una GTX 1060 6GB con NVK sale con «6.2 GiB»: falta ver
+    sus montones de Vulkan (`vulkaninfo`).
+  - Placa base · baja · la integrada en `vfio-pci` sale «en la placa», y es
+    del procesador (volcado `i7-6700k`).
+  - Memoria · baja · la latencia de un perfil del SPD sale con tres
+    decimales («16.666 ns») donde otras salen con dos o ninguno. Y sin
+    permisos, Inicio no dice el tipo de memoria aunque el SPD lo sepa
+    (`home._tipo_de_memoria` solo mira los módulos de SMBIOS).
+  - Volcado · media · lo que el anexo no trae: lo que lee el ayudante (SMBIOS,
+    SMART, MSR). Con él se habrían visto la memoria a 6000 MT/s de un 9600X y
+    el segundo módulo de un 7900 (ya propuesto en las notas). El anexo del
+    `i7-6700k` salió además sin los tiempos de arranque de systemd, sin saber
+    por qué.
 
 ## Datos que se leen mal o no se leen
 
