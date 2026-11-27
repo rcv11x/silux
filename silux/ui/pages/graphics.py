@@ -14,7 +14,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from ... import render, thermal
+from ... import gpu_figures, render, thermal
 from ...i18n import _
 from ...model import Gpu, Need, Snapshot
 from ...settings import Preferences
@@ -59,7 +59,11 @@ NEED_TITLES = {
 CARD_FIELDS = (
     "gpu.field.vendor", "gpu.field.subsystem", "gpu.field.codename", "gpu.field.driver", "gpu.field.driverver",
     "gpu.field.compute", "gpu.field.rops", "gpu.field.shaders", "gpu.field.l2", "gpu.field.mall",
+    # Worked out, not read: each value says so.
+    "gpu.field.units", "gpu.field.tmus", "gpu.field.fp32", "gpu.field.pixels", "gpu.field.texels",
 )
+CALCULATED_FIELDS = ("gpu.field.units", "gpu.field.tmus", "gpu.field.fp32", "gpu.field.pixels",
+                     "gpu.field.texels")
 # Y con qué números la identifica el sistema: lo que se busca una vez, para
 # un informe o un foro. Va plegado debajo.
 INVENTORY_FIELDS = (
@@ -74,7 +78,8 @@ EXPERT_FIELDS = ("gpu.expert.sclk", "gpu.expert.mclk", "gpu.expert.fclk", "gpu.e
 
 # Rows only some drivers have a source for: hidden where there's none, and
 # named only where the driver could give them.
-ONLY_SOME = frozenset({"gpu.field.isa", "gpu.field.l2", "gpu.field.mall", "gpu.field.vbiosver"})
+ONLY_SOME = frozenset({"gpu.field.isa", "gpu.field.l2", "gpu.field.mall", "gpu.field.vbiosver",
+                       *CALCULATED_FIELDS})
 
 # Lo que está pasando ahora, en una barra por medida: cuánta memoria de video
 # hay ocupada, cuánto consume de lo que puede y cuánto bus se mueve. Juntas
@@ -711,6 +716,12 @@ class GpuSection(QWidget):
         c(_("gpu.field.l2"), render.size(gpu.l2_cache_bytes) if gpu.l2_cache_bytes else d)
         c(_("gpu.field.mall"), render.size(gpu.infinity_cache_bytes)
           if gpu.infinity_cache_bytes else d, tooltip=_("gpu.tip.mall"))
+        figures = gpu_figures.of(gpu)
+        calculated = {field: (value, tip) for field, value, tip
+                      in (render.gpu_figure_rows(figures) if figures is not None else ())}
+        for field in CALCULATED_FIELDS:
+            value, tip = calculated.get(field, (d, ""))
+            c(_(field), value, tooltip=tip)
         # Un identificador todo a ceros no identifica nada: es lo que da un
         # driver que no lo tiene, y lo que deja una captura anónima. La fila
         # se va entera; con un guion parecería un dato que falta.

@@ -303,6 +303,12 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `gpu_figures.py` · baja · las cifras calculadas de la gráfica (unidades,
+  TFLOPS, rellenos) solo salen en AMD: las de NVIDIA piden sus núcleos por
+  arquitectura (NVML no los da en todos los drivers) y las de Intel, sus EU
+  por generación. Y la ficha del chip (proceso, transistores, fecha), una
+  tabla con la fuente primaria de cada fila.
+
 * `providers/devices.py` · media · «Sin driver» solo mira los PCI: los USB
   piden el enlace `driver` de cada interfaz, y los volcados no lo guardan
   (saldría todo sin driver). Antes, que `volcado.py` lo guarde. El lector de

@@ -1217,6 +1217,38 @@ PROCESSING_UNITS = {
 }
 
 
+def tflops(value: float) -> str:
+    return f"{value:.1f} TFLOPS"
+
+
+def fill_rate(per_second: float, key: str) -> str:
+    """«161.3 Gpíxeles/s»: a fill rate in thousands of millions."""
+    return _(key).format(n=f"{per_second:.1f}")
+
+
+def gpu_figure_rows(figures) -> list[tuple[str, str, str]]:
+    """A card's calculated figures as (field, value, how it was worked out),
+    each value saying it is calculated."""
+    calculated = _("gpu.calculated")
+    clock = hz(figures.clock_hz)
+    rows = [
+        ("gpu.field.units", f"{thousands(figures.shading_units)} {calculated}",
+         _("gpu.tip.units").format(cus=thousands(figures.shading_units // 64))),
+        ("gpu.field.tmus", f"{thousands(figures.texture_units)} {calculated}",
+         _("gpu.tip.tmus")),
+        ("gpu.field.fp32", f"{tflops(figures.tflops)} {calculated}",
+         _("gpu.tip.fp32").format(units=thousands(figures.shading_units),
+                                  ops=figures.operations, clock=clock)),
+        ("gpu.field.texels", f"{fill_rate(figures.gigatexels, 'gpu.texels')} {calculated}",
+         _("gpu.tip.texels").format(clock=clock)),
+    ]
+    if figures.gigapixels is not None:
+        rows.insert(3, ("gpu.field.pixels",
+                        f"{fill_rate(figures.gigapixels, 'gpu.pixels')} {calculated}",
+                        _("gpu.tip.pixels").format(clock=clock)))
+    return rows
+
+
 def compute_units(gpu) -> str:
     """«64 compute units», «2048 CUDA cores»."""
     if not gpu.compute_units:
