@@ -10,13 +10,7 @@ que hace falta.
 
 ---
 
-## 0.4-prueba14 (27 de noviembre de 2026)
-
-### Lo destacado
-
-- Una versión de arreglos, con lo que salió en los informes de la prueba13
-- La página de Rendimiento ya no se queda en blanco después de la prueba de procesador
-- El informe lleva enteras tus últimas pruebas de memoria y de disco
+## Sin publicar
 
 ### Mejoras
 
@@ -29,6 +23,22 @@ que hace falta.
 - Dispositivos lista lo que no tiene driver del kernel (una wifi, un controlador USB, el sonido) con su ID y qué se puede hacer; un driver que se carga se ve al momento
 - En una Radeon, Gráficos calcula las unidades de sombreado y de texturas, los TFLOPS en FP32 y los rellenos de píxeles y texturas, cada cifra marcada como calculada y con su fórmula al pasar el ratón
 - La prueba de disco tiene un perfil «Personalizado»: patrón, bloque y cola a elegir, con un hilo; su comparación con la vez anterior y su historial van solo con pruebas iguales
+
+### Arreglos
+
+- En una ventana estrecha, el selector de secciones («Almacenam…») y el texto de la barra de estado ya no se cortan
+- En la prueba de disco, «Dónde» mide lo que su texto pide, con un tope, y no todo el ancho de la ventana
+
+## 0.4-prueba14 (27 de noviembre de 2026)
+
+### Lo destacado
+
+- Una versión de arreglos, con lo que salió en los informes de la prueba13
+- La página de Rendimiento ya no se queda en blanco después de la prueba de procesador
+- El informe lleva enteras tus últimas pruebas de memoria y de disco
+
+### Mejoras
+
 - La cabecera del informe dice qué valores son de ejemplo: el nombre del equipo, las direcciones IP y MAC, las carpetas de los discos
 - La vista previa del informe y la terminal ya no dicen que esos datos se quitan: se cambian por otros de ejemplo
 - Sin permisos, Memoria dice cuánta memoria suman los módulos leídos cuando no es toda la del equipo
@@ -57,8 +67,6 @@ que hace falta.
 - En Sensores, la media de una lectura que no cambia podía salir una décima por encima del máximo (75.9 frente a 75.8 en un NVMe)
 - En una ventana estrecha, la tabla de pruebas anteriores de Rendimiento ensanchaba la página y cortaba el texto por la derecha: ahora se desplaza por dentro
 - La pestaña abierta de Rendimiento, en negrita, se cortaba por los bordes («Memoria», «Disco»)
-- En una ventana estrecha, el selector de secciones («Almacenam…») y el texto de la barra de estado ya no se cortan
-- En la prueba de disco, «Dónde» mide lo que su texto pide, con un tope, y no todo el ancho de la ventana
 
 ### Problemas conocidos
 
