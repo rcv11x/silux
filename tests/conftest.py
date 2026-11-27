@@ -14,8 +14,8 @@ Van aquí por nombre, y no con un decorador en cada uno, para que los
 archivos de tests no tengan que importar pytest: en el Python del suelo se
 ejecutan con `unittest` y sin él.
 
-Also puts back, before every class and every test, the font and the theme a
-test starts with (`tests/qt.py`): with pytest the order can't hand one test
+Also puts back, before every class and every test, the font, the theme and
+the language a test starts with (`tests/qt.py`): with pytest the order can't hand one test
 the font of another. Under `unittest` they're set once, when Qt starts.
 """
 
@@ -34,9 +34,14 @@ A_SOLAS = (
 def _default_theme_for_each_class():
     # Before the class's own setUpClass, which may apply another and keeps
     # it for all its tests.
+    from silux import i18n
     from tests import qt
 
     qt.reset_theme()
+    # And in Spanish, the original: a class that switched to English left
+    # the next ones in another process reading English texts.
+    if i18n.current() != "es":
+        i18n.set_language("es")
     yield
 
 
