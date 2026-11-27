@@ -827,7 +827,7 @@
  "cpu": "12th Gen Intel(R) Core(TM) i7-12700KF",
  "kernel": "Linux 7.3.5-300.fc45.x86_64",
  "gpus": [
-  "GeForce RTX 3060 Lite Hash Rate"
+  "GeForce RTX 3060 LHR"
  ],
  "fuentes": [
   "cppc",

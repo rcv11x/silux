@@ -44,6 +44,8 @@ que hace falta.
 - El ventilador de un portátil salía como «cpu_fan»: ahora «Ventilador del procesador»
 - Placa base decía «Chip de sensores: ASUS» en placas sin driver de Super I/O: era el firmware de la placa
 - Una batería que no da su tensión, o da una imposible, salía en Sensores con «0.000 V» o esa tensión, mientras Batería decía que no la da
+- Una GeForce de la revisión «Lite Hash Rate» llevaba eso en el nombre: ahora «GeForce RTX 3070 LHR», como la vende NVIDIA
+- Los frenos por temperatura salían sin separador de miles y con «(0.0 s)» cuando el kernel los cuenta sin su tiempo: ahora «128 753 en los núcleos»
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

@@ -12,7 +12,7 @@ AMD Ryzen 7 5800X
 
 ### Gráfica
 
-GeForce RTX 3070 Lite Hash Rate
+GeForce RTX 3070 LHR
 PCIe 4.0 × 16 · 5888 núcleos CUDA
 0.0 % 47.0 °C 44 W
 
@@ -208,7 +208,7 @@ El firmware de esta placa no dice su revisión ni el fabricante del chasis. Es u
 
 | TIPO | DISPOSITIVO | ENLACE | MÁXIMO | DRIVER |
 |---|---|---|---|---|
-| Gráfica | GeForce RTX 3070 Lite Hash Rate | PCIe 1.0 × 16 | PCIe 4.0 × 16 | nvidia |
+| Gráfica | GeForce RTX 3070 LHR | PCIe 1.0 × 16 | PCIe 4.0 × 16 | nvidia |
 | NVMe | Corsair MP700 ELITE | PCIe 4.0 × 4 | PCIe 4.0 × 4 | nvme |
 | Ethernet | Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller | en la placa |  | r8169 |
 | Wifi | Intel Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak] | PCIe 2.0 × 1 | PCIe 2.0 × 1 | iwlwifi |
@@ -338,7 +338,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-### GeForce RTX 3070 Lite Hash Rate
+### GeForce RTX 3070 LHR
 
 MSI · GA104 · PCIe 4.0 × 16
 nvidia · 595.99.02 · 8 GiB · 5888 CUDA · principal
@@ -737,7 +737,7 @@ SENSORES · 65 en 9 dispositivos
   - Uso
     - RAM usada · 31.5 % · 31.5 · 31.5 · 31.5
     - Intercambio usado · 0.0 % · 0.0 · 0.0 · 0.0
-- GeForce RTX 3070 Lite Hash Rate
+- GeForce RTX 3070 LHR
   - Temperaturas
     - Núcleo · 47.0 °C · 47.0 · 47.0 · 47.0
   - Potencias
@@ -807,7 +807,7 @@ SENSORES · 65 en 9 dispositivos
 
 **Consumo de las gráficas: lo que contestó cada vía**
 
-- GeForce RTX 3070 Lite Hash Rate (0000:09:00.0)
+- GeForce RTX 3070 LHR (0000:09:00.0)
   - runtime_status: active
   - el consumo sale de: nvmlDeviceGetPowerUsage
   - nvmlDeviceGetPowerUsage: 43888 mW

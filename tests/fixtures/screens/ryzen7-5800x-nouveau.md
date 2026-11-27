@@ -12,7 +12,7 @@ AMD Ryzen 7 5800X
 
 ### Gráfica
 
-GeForce RTX 3070 Lite Hash Rate
+GeForce RTX 3070 LHR
 PCIe 4.0 × 16
 
 ### Memoria
@@ -206,7 +206,7 @@ El firmware de esta placa no dice su revisión ni el fabricante del chasis. Es u
 
 | TIPO | DISPOSITIVO | ENLACE | MÁXIMO | DRIVER |
 |---|---|---|---|---|
-| Gráfica | GeForce RTX 3070 Lite Hash Rate | PCIe 4.0 × 16 | PCIe 4.0 × 16 | nouveau |
+| Gráfica | GeForce RTX 3070 LHR | PCIe 4.0 × 16 | PCIe 4.0 × 16 | nouveau |
 | Ethernet | Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller | PCIe 1.0 × 1 | PCIe 1.0 × 1 | r8169 |
 | Wifi | Intel Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak] | PCIe 2.0 × 1 | PCIe 2.0 × 1 | iwlwifi |
 | SATA | FCH SATA Controller [AHCI mode] | en la placa |  | ahci |
@@ -334,7 +334,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 ## Gráficos
 
-### GeForce RTX 3070 Lite Hash Rate
+### GeForce RTX 3070 LHR
 
 MSI · GA104 · PCIe 4.0 × 16
 nouveau · Mesa 25.0.7 · 8.2 GiB · principal
@@ -681,7 +681,7 @@ SENSORES · 37 en 3 dispositivos
   - Temperaturas
     - Temperatura 1 · 34.0 °C · 34.0 · 34.0 · 34.0
 
-GeForce RTX 3070 Lite Hash Rate: no tiene sensor de temperatura propio.
+GeForce RTX 3070 LHR: no tiene sensor de temperatura propio.
 
 > **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.

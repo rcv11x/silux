@@ -182,10 +182,15 @@ def _names_the_gpu(subsystem_model: str, device_name: Optional[str]) -> bool:
 
 
 def _split_name(text: str) -> tuple[Optional[str], Optional[str]]:
-    """pci.ids writes «codename [marketing name]»; this splits them."""
+    """pci.ids writes «codename [marketing name]»; this splits them. NVIDIA's
+    «Lite Hash Rate» revisions keep the short name it sells them by: LHR."""
     if match := _NAME_IN_BRACKETS.match(text):
-        return match.group(1) or None, match.group(2)
-    return None, text or None
+        codename, name = match.group(1) or None, match.group(2)
+    else:
+        codename, name = None, text or None
+    if name:
+        name = name.replace("Lite Hash Rate", "LHR")
+    return codename, name
 
 
 def cards() -> list[pathlib.Path]:

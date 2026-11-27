@@ -486,7 +486,7 @@
  "cpu": "AMD Ryzen 7 5800X 8-Core Processor",
  "kernel": "Linux 6.14.0-37-generic",
  "gpus": [
-  "GeForce RTX 3070 Lite Hash Rate"
+  "GeForce RTX 3070 LHR"
  ],
  "fuentes": [
   "cppc",
