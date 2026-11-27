@@ -52,6 +52,7 @@ from .providers import (
     SysfsClocks,
     SysfsTopology,
     SystemDependencies,
+    SystemHealth,
     SystemIdentity,
     SystemSecurity,
     SystemState,
@@ -97,6 +98,7 @@ DEFAULT_PROVIDERS: tuple[type[Provider], ...] = (
     ConnectedDevices,
     NvidiaGpus,
     SystemState,
+    SystemHealth,       # failed services and kernel errors, every half minute
     PowerLimits,        # before RaplPower, which adds its watts to this card
     RaplPower,
     ImcTraffic,

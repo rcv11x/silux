@@ -298,6 +298,16 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `providers/system.py` · media · los errores del kernel y los servicios que
+  fallan no dicen nada cuando no se pueden leer (sin systemd, o un usuario
+  fuera de los grupos que leen el journal del sistema): falta su nota. En
+  Fedora y openSUSE no salen los paquetes ni la versión del escritorio (salvo
+  GNOME, de `gnome-version.xml`): la base de RPM es SQLite y el AppImage no
+  lleva `sqlite3`; `rpm -qa` pediría su fila en `system_deps.py`.
+* `tests/fixtures/equipos` · media · ningún volcado tiene aún los paquetes,
+  el control de acceso, los servicios ni los errores del kernel: salen al
+  volcar de nuevo un equipo.
+
 * `gpu_figures.py` · baja · las cifras calculadas de la gráfica (unidades,
   TFLOPS, rellenos) solo salen en AMD: las de NVIDIA piden sus núcleos por
   arquitectura (NVML no los da en todos los drivers) y las de Intel, sus EU

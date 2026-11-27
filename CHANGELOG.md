@@ -22,6 +22,7 @@ que hace falta.
 - Silux avisa cuando hay una versión nueva: al abrirse pregunta a GitHub, sin mandar nada del equipo, y se puede apagar en Ajustes
 - Color de acento en Ajustes: ámbar, azul, verde, frambuesa o morado, legibles en claro y en oscuro, y todo cambia a la vez
 - «Enviar mi informe»: se guarda, se copia y se abre el Discord para pegarlo; nada se envía solo
+- Sistema dice cuántos paquetes hay, la versión del escritorio, los servicios que fallan y los errores del kernel desde el arranque
 - La salud de cada disco de un vistazo en Almacenamiento, y un desplegable para elegir qué unidad enseñan sus fichas
 - Dispositivos dice qué no tiene driver y, de lo que se conoce, qué instalar
 - Todo crece con el tamaño de letra de Ajustes, y cambiar de tema o de letra tarda la mitad
@@ -65,6 +66,8 @@ que hace falta.
 - «Comunidad» en la barra lateral, encima de la versión: abre el Discord; con la barra plegada, su icono
 - La bienvenida tiene el color de acento junto al tema, un paso que cuenta qué lleva el informe (sin el nombre del equipo ni números de serie) con su botón, y al final «Buscar actualizaciones al iniciar»
 - Ajustes abre la carpeta de datos (historial de pruebas, registros e informes) y la de los ajustes
+- Sistema enseña los paquetes instalados (pacman o dpkg, y Flatpak y Snap), la versión del escritorio («KDE Plasma 6.8.3»), el control de acceso (SELinux, AppArmor), la zona horaria, el idioma y región, la carga media, los servicios que fallan y los errores del kernel desde el arranque, agrupados con cuántas veces salió cada uno
+- Sistema ya no deja huecos: las vulnerabilidades y el intercambio van uno encima del otro, junto al arranque
 - Rendimiento → Procesador se ve como Memoria y Disco: las opciones a la izquierda y «Ejecutar la prueba» en el color de acento a la derecha; «Renombrar» y «Borrar» de cada prueba van en su menú «⋯»
 - En Sensores, la columna «Último minuto» llega siempre hasta el borde, también después de arrastrar las demás
 - En Memoria, por qué no se lee el chip SPD de los módulos va en un aviso propio y más corto

@@ -28,6 +28,7 @@ from ..widgets import (
     Plegable,
     ResponsiveRow,
     ScrollPage,
+    Table,
     clear_layout,
     let_go,
     tone_for,
@@ -38,12 +39,17 @@ from .board import NEED_TITLES
 # cuando todavía no se sabe qué idioma quiere el usuario. La traducción ocurre
 # al montar cada rejilla.
 OS_FIELDS = ("sys.field.distro", "sys.field.version", "sys.os.variant",
-             "sys.os.id", "sys.field.hostname")
+             "sys.os.id", "sys.field.hostname", "sys.os.packages", "sys.os.timezone",
+             "sys.os.locale")
 KERNEL_FIELDS = ("sys.kernel.name", "sys.kernel.arch", "sys.field.build",
                  "sys.kernel.init", "sys.kernel.desktop", "sys.field.session",
-                 "sys.kernel.shell", "sys.kernel.graphics", "sys.kernel.tainted")
-ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.processes",
-                   "sys.act.threads", "sys.field.openfiles")
+                 "sys.kernel.shell", "sys.kernel.graphics", "sys.kernel.access",
+                 "sys.kernel.tainted")
+ACTIVITY_FIELDS = ("sys.field.since", "sys.field.uptime", "sys.act.load", "sys.act.processes",
+                   "sys.act.threads", "sys.field.openfiles", "sys.act.failed",
+                   "sys.act.kernelerrors")
+# The kernel's errors listed, the most repeated first.
+KERNEL_ERRORS_SHOWN = 12
 SECURITY_FIELDS = ("sys.vuln.known", "sys.vuln.unaffected", "sys.vuln.mitigated",
                    "sys.vuln.open", "sys.vuln.unknown")
 BOOT_FIELDS = ("sys.boot.loader", "sys.boot.entry") + tuple(
@@ -110,6 +116,19 @@ class SystemPage(ScrollPage):
         row.add(activity_card)
         layout.addWidget(row)
 
+        self.kernel_errors_card = Card(_("sys.card.kernelerrors"))
+        # The message cut where it doesn't fit; whole in its tooltip.
+        self.kernel_errors = Table([_("sys.kerr.message"), _("sys.kerr.times")],
+                                   numeric=(False, True), cede=(0,))
+        self.kernel_errors_card.body.addWidget(self.kernel_errors)
+        self.kernel_errors_pie = QLabel("")
+        self.kernel_errors_pie.setObjectName("Muted")
+        self.kernel_errors_pie.setFont(ui_font(theme.METRICS.small_pt))
+        self.kernel_errors_pie.hide()
+        self.kernel_errors_card.body.addWidget(self.kernel_errors_pie)
+        self.kernel_errors_card.hide()
+        layout.addWidget(self.kernel_errors_card)
+
         # Las mitigaciones del procesador: el resumen a la vista y la lista,
         # con el texto del kernel tal cual, plegada.
         self.security_card = Card(_("sys.card.security"))
@@ -122,15 +141,23 @@ class SystemPage(ScrollPage):
         self.vuln_fold.body.addWidget(self.vulns)
         self.security_card.body.addWidget(self.vuln_fold)
         self.security_card.hide()
-        layout.addWidget(self.security_card)
         self._vuln_signature: tuple = ()
 
+        # The vulnerabilities and swap, one over the other beside the boot:
+        # the swap alone took half the width for one line.
         abajo = ResponsiveRow(min_item_width=400, span_last=True)
         self.swap_card = Card(_("sys.card.swap"))
         self.swap = InfoGrid()
         self.swap_card.body.addWidget(self.swap)
         self._swap_signature: tuple = ()
-        abajo.add(self.swap_card)
+        column = QWidget()
+        stacked = QVBoxLayout(column)
+        stacked.setContentsMargins(0, 0, 0, 0)
+        stacked.setSpacing(m.section_gap)
+        stacked.addWidget(self.security_card)
+        stacked.addWidget(self.swap_card)
+        stacked.addStretch(1)
+        abajo.add(column)
         self.boot_card = Card(_("sys.card.boot"))
         self.boot = InfoGrid()
         for name in BOOT_FIELDS:
@@ -211,13 +238,18 @@ class SystemPage(ScrollPage):
         self.os_pie.setVisible(bool(faltan))
         o(_("sys.os.id"), system.distribution_id or d)
         o(_("sys.field.hostname"), system.hostname or d)
+        for key, value in (("sys.os.packages", render.packages(system.packages)),
+                           ("sys.os.timezone", system.timezone),
+                           ("sys.os.locale", system.locale)):
+            o(_(key), value or d)
+            self.os.set_visible(_(key), bool(value))
 
         k = self.kernel.set
         k(_("sys.kernel.name"), system.kernel or d)
         k(_("sys.kernel.arch"), system.architecture or d)
         k(_("sys.field.build"), system.kernel_build or d)
         k(_("sys.kernel.init"), system.init or d)
-        k(_("sys.kernel.desktop"), system.desktop or d)
+        k(_("sys.kernel.desktop"), render.desktop(system.desktop, system.desktop_version) or d)
         k(_("sys.field.session"), system.session_type or d)
         # Neither declared by this program's environment: hidden and said.
         unknown = [key for key, value in (("sys.kernel.desktop", system.desktop),
@@ -234,6 +266,9 @@ class SystemPage(ScrollPage):
         graficos = render.graphics_stack(snapshot)
         k(_("sys.kernel.graphics"), graficos or d)
         self.kernel.set_visible(_("sys.kernel.graphics"), bool(graficos))
+        access = render.access_control(system.access_control)
+        k(_("sys.kernel.access"), access or d, tooltip=_("sys.access.tip"))
+        self.kernel.set_visible(_("sys.kernel.access"), access is not None)
         k(_("sys.kernel.tainted"), render.tainted(system.tainted, system.tainting_modules),
           tooltip=_("sys.taint.tip").format(mask=system.tainted or 0))
         self.kernel.set_visible(_("sys.kernel.tainted"), system.tainted is not None)
@@ -244,10 +279,31 @@ class SystemPage(ScrollPage):
         a(_("sys.act.processes"), render.thousands(system.processes))
         a(_("sys.act.threads"), render.thousands(system.threads))
         a(_("sys.field.openfiles"), render.thousands(system.open_files))
+        cpu = snapshot.cpu
+        load = (render.load_average(cpu.load_average, cpu.total_threads)
+                if cpu is not None and cpu.load_average else None)
+        for key, value, tip in (
+                ("sys.act.load", load, "sys.load.tip"),
+                ("sys.act.failed", render.failed_units(system.failed_units), ""),
+                ("sys.act.kernelerrors", render.kernel_errors(system.kernel_errors), "")):
+            a(_(key), value or d, tooltip=_(tip) if tip else "")
+            self.activity.set_visible(_(key), value is not None)
+        self._apply_kernel_errors(system)
 
         self._apply_security(system)
         self._apply_swap(system)
         self._apply_boot(system)
+
+    def _apply_kernel_errors(self, system: System) -> None:
+        groups = sorted(system.kernel_errors or (), key=lambda g: -g[1])
+        self.kernel_errors_card.setVisible(bool(groups))
+        if not groups:
+            return
+        rows = [(text, render.thousands(times)) for text, times in groups[:KERNEL_ERRORS_SHOWN]]
+        self.kernel_errors.set_rows(rows, tooltips=[text for text, _times in rows])
+        rest = len(groups) - KERNEL_ERRORS_SHOWN
+        self.kernel_errors_pie.setText(render.counted("sys.kerr.more", rest) if rest > 0 else "")
+        self.kernel_errors_pie.setVisible(rest > 0)
 
     def _apply_notices(self, snapshot: Snapshot) -> None:
         notes = snapshot.notes_for("system")

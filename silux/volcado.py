@@ -1087,6 +1087,11 @@ class _Anonymizer:
         # covered first, a path holding the user's name became another one.
         mounted_points = {space: {self._mount(p): v for p, v in (self.recording.get(space) or {}).items()}
                           for space in ("statvfs", "statfs")}
+        # Before the texts are replaced: a unit's instance read as an email.
+        units = (self.recording.get("systemd") or {}).get("fallidos")
+        if isinstance(units, list):
+            self.recording["systemd"]["fallidos"] = [
+                privacidad.unit_without_instance(u) for u in units]
         clean = json.loads(self._replace_text(json.dumps(self.recording, ensure_ascii=False)))
         for card in (clean.get("nvml") or {}).get("tarjetas") or ():
             if isinstance(card, dict) and card.get("uuid"):
@@ -1103,6 +1108,12 @@ class _Anonymizer:
         env = clean.get("plataforma", {}).get("uname")
         if isinstance(env, dict) and env.get("node"):
             env["node"] = privacidad.HOST_NAME
+        # As the anonymous report leaves them (`privacidad.anonymize`): the
+        # city, and any MAC a kernel message names.
+        clean.get("plataforma", {}).pop("zona_horaria", None)
+        lines = clean.get("kernel", {}).get("errores")
+        if isinstance(lines, list):
+            clean["kernel"]["errores"] = [privacidad._any_mac(line) for line in lines]
         return clean
 
 

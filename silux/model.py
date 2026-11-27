@@ -658,6 +658,23 @@ class System:
     swaps: tuple[Swap, ...] = ()
     boot: Boot = field(default_factory=Boot)
 
+    # The desktop's own version, from its package: «6.8.3».
+    desktop_version: Optional[str] = None
+    # Installed packages per manager, in the order found: (("pacman", 1838),
+    # ("flatpak", 11)).
+    packages: tuple[tuple[str, int], ...] = ()
+    # The mandatory access control the kernel runs, and its mode:
+    # ("selinux", "enforcing"), ("apparmor", None); ("", None) for none and
+    # None when unknown.
+    access_control: Optional[tuple[str, Optional[str]]] = None
+    timezone: Optional[str] = None             # «Europe/Madrid»
+    locale: Optional[str] = None               # LANG: «es_ES.UTF-8»
+    # Failed systemd units, by name; None when it couldn't be asked.
+    failed_units: Optional[tuple[str, ...]] = None
+    # The kernel's errors since boot, grouped as (first message, times);
+    # None when the journal couldn't be read.
+    kernel_errors: Optional[tuple[tuple[str, int], ...]] = None
+
 
 # How far a module's running speed may differ from its declared one without
 # being a real underclock. It's the JEDEC grade's rounding and nothing else:

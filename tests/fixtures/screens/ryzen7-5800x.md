@@ -646,6 +646,7 @@ Esta distribución no declara variante.
 
 - Encendido desde: (hora de arranque)
 - Tiempo encendido: 16 min
+- Carga media: 3.45 · 5.83 · 3.64 (de 16 hilos)
 - Procesos: 638
 - Hilos: 2 155
 - Archivos abiertos: 13 326

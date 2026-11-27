@@ -24,7 +24,7 @@ from .rapl import PowerLimits, RaplPower
 from .spd_modules import SpdModules
 from .storage import Disks
 from .sysfs_cpu import SysfsClocks, SysfsTopology
-from .system import SystemIdentity, SystemSecurity, SystemState
+from .system import SystemHealth, SystemIdentity, SystemSecurity, SystemState
 from .system_deps import SystemDependencies
 from .thermal_throttle import ThermalThrottleCounts
 from .turbo import TurboState
@@ -37,5 +37,5 @@ __all__ = [
     "Batteries",
     "DrmGpus", "GpuState", "GpuApis", "NvidiaGpus", "NetworkInterfaces",
     "ConnectedDevices", "CpuIdle", "ThermalThrottleCounts", "PowerLimits", "PciDevices", "PlatformInfo",
-    "SystemIdentity", "SystemSecurity", "SystemState", "SystemDependencies", "PrivilegedMemory", "SpdModules", "Disks",
+    "SystemHealth", "SystemIdentity", "SystemSecurity", "SystemState", "SystemDependencies", "PrivilegedMemory", "SpdModules", "Disks",
 ]

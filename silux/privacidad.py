@@ -205,6 +205,24 @@ def _rename(text: Optional[str], changes: dict[str, str]) -> Optional[str]:
     return text
 
 
+_A_MAC = re.compile(r"(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}(?![0-9A-Fa-f:])")
+
+
+def _any_mac(text: Optional[str]) -> Optional[str]:
+    """Every MAC in a free text, the documentation one: a kernel message can
+    name the router a card joined, which places the machine."""
+    return _A_MAC.sub(MAC, text) if text else text
+
+
+def unit_without_instance(unit: str) -> str:
+    """A unit with an instance, the name after its «@», with «…» for it."""
+    template, at, rest = unit.partition("@")
+    if not at:
+        return unit
+    _instance, dot, kind = rest.rpartition(".")
+    return f"{template}@…{dot}{kind}" if dot else f"{template}@…"
+
+
 def fake_mac(index: int) -> str:
     """The documentation address number `index`, starting from `MAC`.
 
@@ -321,13 +339,25 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
     for index, name in enumerate(with_mac):
         names[name] = name_without_mac(name, index)
 
-    if snapshot.system and snapshot.system.hostname:
-        changes["system"] = dataclasses.replace(snapshot.system, hostname=HOST_NAME)
     # A machine named after its brand («lenovo» on a Lenovo): the brand is in
     # the report a dozen times and hides nothing, and looked for in the texts
     # it broke them («silux-pc LOQ 15IRH8»). The field still goes.
     if host and is_common_host_name(host, _common_words_of(snapshot)):
         host = None
+    if snapshot.system:
+        system = snapshot.system
+        covered = dataclasses.replace(
+            system, hostname=HOST_NAME if system.hostname else system.hostname,
+            # Where someone lives, to the city.
+            timezone=None,
+            # An instance can carry a name: a network, a VPN, a user.
+            failed_units=(tuple(unit_without_instance(u) for u in system.failed_units)
+                          if system.failed_units is not None else None),
+            kernel_errors=(tuple((_any_mac(_clean(text, host, names)), times)
+                                 for text, times in system.kernel_errors)
+                           if system.kernel_errors is not None else None))
+        if covered != system:
+            changes["system"] = covered
 
     if snapshot.gpus:
         # The monitor carries its serial number too, in the EDID: it's shown

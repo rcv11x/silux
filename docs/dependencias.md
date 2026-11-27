@@ -85,7 +85,7 @@ completos traen el suyo.
 
 | Qué | Para qué | Debian | Ubuntu | Fedora | Arch | Gentoo | Si falta | ¿Se avisa? |
 |---|---|---|---|---|---|---|---|---|
-| `systemctl` | Los tiempos de arranque, con systemd | `systemd` | `systemd` | `systemd` | `systemd` | `sys-apps/systemd` | No salen los tiempos de arranque | Sí, con systemd en marcha |
+| `systemctl`, `journalctl` | Los tiempos de arranque, los servicios que fallan y los errores del kernel, con systemd | `systemd` | `systemd` | `systemd` | `systemd` | `sys-apps/systemd` | No salen los tiempos de arranque, los servicios que fallan ni los errores del kernel | Sí, con systemd en marcha |
 | `modinfo`, `modprobe` | Saber qué módulos del kernel hay y cargar uno de la lista blanca | `kmod` | `kmod` | `kmod` | `kmod` | `sys-apps/kmod` | No se sabe qué módulos hay, ni se puede cargar uno desde Silux | Sí |
 | `xdg-open` | Abrir los enlaces y las carpetas | `xdg-utils` | `xdg-utils` | `xdg-utils` | `xdg-utils` | `x11-misc/xdg-utils` | No se abren | Sí, en una sesión gráfica |
 | `ca-certificates` | Comprobar a GitHub al buscar una versión nueva (solo si se pide) | `ca-certificates` | `ca-certificates` | `ca-certificates` | `ca-certificates` | `app-misc/ca-certificates` | No se puede buscar ni descargar una versión nueva | Sí, al buscarla: lo dice el error |

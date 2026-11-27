@@ -3165,3 +3165,60 @@ def monitor_color(edid) -> str:
             pieces.append(wide)
             break
     return " · ".join(pieces) if pieces else DASH
+
+
+# How each package manager is called beside its count.
+PACKAGE_MANAGERS = {"pacman": "pacman", "dpkg": "dpkg", "flatpak": "Flatpak", "snap": "Snap"}
+
+
+def packages(counts) -> Optional[str]:
+    """«1 838 (pacman) · 11 (Flatpak)»; None with none counted."""
+    if not counts:
+        return None
+    return " · ".join(f"{thousands(n)} ({PACKAGE_MANAGERS.get(m, m)})" for m, n in counts)
+
+
+def desktop(name: Optional[str], version: Optional[str]) -> Optional[str]:
+    """«KDE Plasma 6.8.3»: the version is Plasma's, not KDE's."""
+    if not name:
+        return None
+    if not version:
+        return name
+    return f"{'KDE Plasma' if name == 'KDE' else name} {version}"
+
+
+ACCESS_CONTROL = {"selinux": "SELinux", "apparmor": "AppArmor", "smack": "Smack",
+                  "tomoyo": "TOMOYO"}
+
+
+def access_control(value) -> Optional[str]:
+    """«SELinux, aplicando sus reglas», «AppArmor» or «ninguno»."""
+    if value is None:
+        return None
+    name, mode = value
+    if not name:
+        return _("sys.access.none")
+    shown = ACCESS_CONTROL.get(name, name)
+    if mode in ("enforcing", "permissive"):
+        return _(f"sys.access.{mode}").format(name=shown)
+    return shown
+
+
+def failed_units(units) -> Optional[str]:
+    if units is None:
+        return None
+    if not units:
+        return _("sys.failed.none")
+    return ", ".join(units)
+
+
+def kernel_errors(groups) -> Optional[str]:
+    """«20, de 8 tipos», or «ninguno»."""
+    if groups is None:
+        return None
+    if not groups:
+        return _("sys.kerr.none")
+    total = sum(times for _text, times in groups)
+    if total == len(groups):
+        return counted("sys.kerr.count", total)
+    return _("sys.kerr.kinds").format(n=thousands(total), kinds=len(groups))

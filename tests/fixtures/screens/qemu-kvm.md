@@ -388,6 +388,7 @@ No se sabe el escritorio: el entorno con el que se abrió Silux no lo declara.
 
 - Encendido desde: (hora de arranque)
 - Tiempo encendido: 11 min
+- Carga media: 0.00 · 0.00 · 0.00 (de 4 hilos)
 - Procesos: 121
 - Hilos: 122
 - Archivos abiertos: 736

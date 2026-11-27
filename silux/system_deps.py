@@ -102,7 +102,7 @@ DEPENDENCIES = (
                {"debian": "python3", "ubuntu": "python3", "fedora": "python3", "arch": "python",
                 "gentoo": "dev-lang/python"},
                "deps.python3"),
-    Dependency("systemctl", "program", ("systemctl",),
+    Dependency("systemctl", "program", ("systemctl", "journalctl"),
                {"debian": "systemd", "ubuntu": "systemd", "fedora": "systemd", "arch": "systemd",
                 "gentoo": "sys-apps/systemd"},
                "deps.systemctl"),
