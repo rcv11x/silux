@@ -77,7 +77,6 @@ que hace falta.
 
 ### Problemas conocidos
 
-- En un disco SATA, la tarjeta dice «Temperatura —» si no está cargado drivetemp, aunque su diagnóstico traiga la temperatura
 - Las esquinas de los avisos, con su raya de color a la izquierda, salen escalonadas
 - En btrfs, la escritura aleatoria 4K con 32 peticiones sale un 12-15 % por debajo de fio
 - En btrfs, la lectura secuencial con 8 peticiones por io_uring sale un 5 % por debajo de fio

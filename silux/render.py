@@ -32,6 +32,7 @@ from .model import (
     short_vendor,
     thread_name,
 )
+from .smart import packed_temperature
 from .spd import jedec_grade
 
 DASH = "—"
@@ -1653,19 +1654,10 @@ SMART_COMMON = {
 PACKED_TEMPERATURES = (190, 194)
 
 
-def _packed_temperature(raw: int) -> Optional[tuple[int, Optional[int], Optional[int]]]:
-    now, low, high = raw & 0xFF, (raw >> 16) & 0xFF, (raw >> 32) & 0xFF
-    if not 0 < now < 128:
-        return None
-    if 0 < low <= now <= high < 128:
-        return now, low, high
-    return now, None, None
-
-
 def smart_temperature(raw: int, fahrenheit: bool = False) -> Optional[str]:
     """«27 °C, mín 14, máx 41» from a packed raw value; None if it holds no
     temperature."""
-    packed = _packed_temperature(raw)
+    packed = packed_temperature(raw)
     if packed is None:
         return None
     now, low, high = packed

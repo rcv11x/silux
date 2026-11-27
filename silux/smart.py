@@ -287,14 +287,28 @@ def _parse_ata(data: bytes, vendor: Optional[str] = None,
     )
 
 
+# The airflow temperature, read where a disk has no 194.
+ATA_AIRFLOW_TEMPERATURE = 190
+
+
+def packed_temperature(raw: int) -> Optional[tuple[int, Optional[int], Optional[int]]]:
+    """Degrees now, and the lowest and highest the disk kept, from a 194 or
+    190 raw value read as smartctl reads it: now in the low byte, and the
+    lowest and highest in bytes 2 and 4 when they make sense around it."""
+    now, low, high = raw & 0xFF, (raw >> 16) & 0xFF, (raw >> 32) & 0xFF
+    if not 0 < now < 128:
+        return None
+    if 0 < low <= now <= high < 128:
+        return now, low, high
+    return now, None, None
+
+
 def ata_temperature(data: bytes) -> Optional[float]:
     """The temperature from the attribute table, if the disk publishes it."""
     if len(data) < 362:
         return None
-    entry = _attributes(data).get(ATA_TEMPERATURE)
-    if not entry:
-        return None
-    # Many disks keep minimums and maximums in the raw value's high bytes;
-    # the current temperature is in the low byte.
-    degrees = entry[1] & 0xFF
-    return float(degrees) if 0 < degrees < 120 else None
+    table = _attributes(data)
+    for attribute in (ATA_TEMPERATURE, ATA_AIRFLOW_TEMPERATURE):
+        if (entry := table.get(attribute)) and (packed := packed_temperature(entry[1])):
+            return float(packed[0])
+    return None
