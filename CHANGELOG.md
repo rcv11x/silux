@@ -81,10 +81,10 @@ que hace falta.
 - Con nouveau, el aviso de Gráficos se titulaba «Falta un driver» en una tarjeta que lo tiene: ahora «Con nouveau, el driver libre», con lo que da el propietario
 - Los sensores de un Dell (dell_smm) salían en inglés: «Processor Fan», «Other»
 - «Wifi» se escribía así en Placa base y Dispositivos: ahora «Wi-Fi»
+- La raya de color de los avisos dibujaba un gancho escalonado en sus esquinas
 
 ### Problemas conocidos
 
-- Las esquinas de los avisos, con su raya de color a la izquierda, salen escalonadas
 - En btrfs, la escritura aleatoria 4K con 32 peticiones sale un 12-15 % por debajo de fio
 - En btrfs, la lectura secuencial con 8 peticiones por io_uring sale un 5 % por debajo de fio
 - En procesadores con dos tipos de núcleo o dos CCD, la prueba de memoria mide solo uno

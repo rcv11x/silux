@@ -555,6 +555,10 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border: 1px solid {p.line_soft};
         border-left: 3px solid {p.warn};
         border-radius: 8px;
+        /* Square on the strip's side: a 3 px border turning a rounded corner
+           into a 1 px one drew a stepped hook. */
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
     }}
     /* Lo que el usuario puede arreglar va en azul; lo que es un hecho del
        hardware, en gris; un fallo, en rojo. Con el mismo color, «esta gráfica

@@ -512,11 +512,6 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
-* `ui/widgets.py` · media · las esquinas de los avisos (`Notice`) salen
-  escalonadas: Qt dibuja mal las esquinas redondeadas con bordes de distinto
-  grosor (3 px a la izquierda, 1 px el resto). Propuesta: pintar el aviso con
-  `QPainter` y suavizado, la raya de color como un trazado propio. Los
-  botones y las tarjetas ya salen suavizados.
 * `ui/pages/storage.py` · media · con una unidad elegida, sus fichas en vivo
   sin permisos, de `/proc/diskstats`: tiempo activo, respuesta media de
   lectura y escritura e IOPS, con su historia; los subtítulos con la unidad,
