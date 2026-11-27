@@ -286,8 +286,10 @@ class DrmGpus(Provider):
                 if gpu["temperature_unpublished"]:
                     notice = ("prov.drm.nouveau", "prov.drm.nouveau.hint.nosensor")
             if notice:
+                # It has a driver: it is the open one, and that is said.
+                title = _("prov.drm.nouveau.title") if notice[0] == "prov.drm.nouveau" else ""
                 draft.note(f"gpus.{index}", Need.DRIVER,
-                           *(_(entry_key) for entry_key in notice), key=notice[0])
+                           *(_(entry_key) for entry_key in notice), key=notice[0], title=title)
 
         self._without_a_node(draft, no_driver)
         _name_monitors(draft.gpus)

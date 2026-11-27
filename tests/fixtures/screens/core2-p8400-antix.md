@@ -268,9 +268,9 @@ Dell · G98M · PCIe 1.0 × 16
 nouveau · Mesa 25.0.7 · principal
 - Temperatura: 49 °C
 
-> **Falta un driver**
+> **Con nouveau, el driver libre**
 > nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
-> Es el driver libre: lo que enseña un programa como este de una NVIDIA (relojes, vatios, núcleos CUDA, recortes) sale de NVML, que viene con el driver propietario. Con nouveau quedan la temperatura, el enlace PCIe y la memoria que dice Vulkan.
+> Para jugar y ver todos los datos, el driver propietario de NVIDIA, si tu tarjeta aún lo admite: de él salen los relojes, los vatios y los recortes. Con nouveau quedan la temperatura, el enlace PCIe y la memoria.
 
 #### Ahora mismo
 
@@ -636,7 +636,7 @@ SENSORES · 19 en 5 dispositivos
 
 - `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
 - `cpu.clocks.max_turbo_hz` (este equipo no lo expone): Este procesador no publica su frecuencia máxima de fábrica.
-- `gpus.0` (falta un módulo del kernel): nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
+- `gpus.0` (con nouveau, el driver libre): nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
 - `gpus.packages.pnpids` (falta un paquete del sistema): Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre. Viene en el paquete hwdata.
 - `privileged.pkexec` (falta un paquete del sistema): Falta pkexec: no hay forma de pedir permisos, y lo que los necesita no sale (los módulos de memoria, el voltaje, el diagnóstico de los discos). Viene en el paquete pkexec. Sin systemd, polkit necesita además libpam-elogind, que trae elogind, y un agente de polkit en la sesión que pida la contraseña, como lxpolkit; después hay que volver a iniciar sesión.
 - `system.kernel` (kernel anterior a 5.15): Tu kernel (5.10) es anterior a Linux 5.15, el mínimo que admite Silux: puede faltar algún dato sin que se diga por qué.

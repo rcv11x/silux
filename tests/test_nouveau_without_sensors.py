@@ -75,5 +75,23 @@ class TestNouveauWithoutSensors(unittest.TestCase):
         self.assertEqual(note.hint, _("prov.drm.nouveau.hint"))
 
 
+
+class TestTheOpenDriversNotice(unittest.TestCase):
+    """The notice read «Falta un driver» over a card that has one: nouveau,
+    the open driver."""
+
+    def test_titled_by_the_driver_it_has(self):
+        app = qt.app()
+        snapshot, _gpu = nouveau_card("ryzen7-5800x-nouveau")
+        note = next(n for n in snapshot.notes if n.key == "prov.drm.nouveau")
+        self.assertEqual(note.title, _("prov.drm.nouveau.title"))
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Gráficos")
+            geometry.settle(app)
+            texts = "\n".join(visible_texts(window.stack.currentWidget()))
+        self.assertIn(_("prov.drm.nouveau.title"), texts)
+        self.assertNotIn(_("note.needsdriver"), texts)
+
+
 if __name__ == "__main__":
     unittest.main()

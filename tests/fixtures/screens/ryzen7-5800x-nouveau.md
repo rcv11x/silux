@@ -340,9 +340,9 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 MSI · GA104 · PCIe 4.0 × 16
 nouveau · Mesa 25.0.7 · 8.2 GiB · principal
 
-> **Falta un driver**
+> **Con nouveau, el driver libre**
 > nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
-> Es el driver libre: lo que enseña un programa como este de una NVIDIA (relojes, vatios, núcleos CUDA, recortes) sale de NVML, que viene con el driver propietario. En esta tarjeta nouveau no publica ningún sensor, ni la temperatura: quedan el enlace PCIe y la memoria que dice Vulkan.
+> Para jugar y ver todos los datos, el driver propietario de NVIDIA, si tu tarjeta aún lo admite: de él salen los relojes, los vatios y los recortes. En esta tarjeta nouveau no publica ningún sensor, ni la temperatura.
 
 #### Ahora mismo
 
@@ -698,7 +698,7 @@ GeForce RTX 3070 LHR: nouveau no publica su temperatura.
 
 **Datos que faltan:**
 
-- `gpus.0` (falta un módulo del kernel): nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
+- `gpus.0` (con nouveau, el driver libre): nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `cpu.clocks.max_hz` (este equipo no lo expone): La BIOS da 4.20 GHz de base y la de fábrica de este procesador es 3.80 GHz (AMD): está ajustada a mano.
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
