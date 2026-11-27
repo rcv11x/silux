@@ -512,11 +512,16 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
-* `ui/pages/storage.py` · media · con una unidad elegida, sus fichas en vivo
-  sin permisos, de `/proc/diskstats`: tiempo activo, respuesta media de
-  lectura y escritura e IOPS, con su historia; los subtítulos con la unidad,
-  su fila y su tarjeta en el acento, y la ficha lleva a su tarjeta. Con todas
-  las unidades, solo lo que tiene sentido sumado (IOPS).
+* `ui/pages/storage.py` · media · para la prueba16: con una unidad elegida,
+  sus fichas en vivo sin permisos, de `/proc/diskstats`: tiempo activo,
+  respuesta media de lectura y escritura e IOPS, con su historia; los
+  subtítulos con la unidad, su fila y su tarjeta en el acento, y la ficha
+  lleva a su tarjeta. Con todas las unidades, solo lo que tiene sentido
+  sumado (IOPS).
+* `ui/app.py` · media · para la prueba16: al cambiar de tema, de densidad o
+  de letra, montar solo la página visible y las demás al abrirlas. Bajaría de
+  ~1 s a ~0,2 s, pero toca cómo se cablea cada página con la ventana (unas
+  120 referencias). Medido en [rendimiento.md](rendimiento.md).
 * `ui/widgets.py` · baja · dos textos que se parten en líneas reciben menos
   alto del que piden a su ancho y se les corta el borde de abajo: la línea de
   órdenes del kernel en Sistema (66 de 72 px con la letra máxima a 720 px,
