@@ -152,6 +152,14 @@ class MemoryPage(ScrollPage):
         self.spd_missing.setFont(ui_font(theme.METRICS.small_pt))
         self.spd_missing.hide()
         layout.addWidget(self.spd_missing)
+        # Why the SPD can't be read, under the modules: a notice of its own,
+        # not the first paragraph of their foot.
+        self.spd_reason = QWidget()
+        self._spd_reason_host = QVBoxLayout(self.spd_reason)
+        self._spd_reason_host.setContentsMargins(0, 0, 0, 0)
+        self._spd_reason_shown = None
+        self.spd_reason.hide()
+        layout.addWidget(self.spd_reason)
 
         self.timings_card = Card(_("memory.card.timings"))
         self.timings = Table([_(h) for h in TIMING_HEADERS],
@@ -782,6 +790,7 @@ class MemoryPage(ScrollPage):
         lista = render.enumeration(
             [_(SOLO_DEL_SPD[clave]) for clave in MODULE_FIELDS if clave in sin_spd])
         pies = []
+        reason = None
         spd_reason_told = False
         # El SPD de la DDR5 lo lee el driver spd5118, de Linux 6.11: con un
         # kernel anterior no es la placa la que no deja, es que no hay driver.
@@ -824,7 +833,8 @@ class MemoryPage(ScrollPage):
                 else:
                     why = _("memory.na.nospd.why.many").format(
                         campos=campos, n=numbers, motivo=motivo)
-                pies.append(" ".join(p for p in (why, nota_spd.hint) if p))
+                reason = (render.note_title(nota_spd, NEED_TITLES), why, nota_spd.hint,
+                          tone_for(nota_spd.need))
                 spd_reason_told = True
             else:
                 pies.append(not_read)
@@ -859,6 +869,13 @@ class MemoryPage(ScrollPage):
         # One paragraph per matter: why the SPD isn't read is not the profile.
         self.spd_missing.setText("\n\n".join(pies))
         self.spd_missing.setVisible(bool(pies))
+        if reason != self._spd_reason_shown:
+            self._spd_reason_shown = reason
+            clear_layout(self._spd_reason_host)
+            if reason is not None:
+                title, body, hint, tone = reason
+                self._spd_reason_host.addWidget(Notice(title, body, hint, tone=tone))
+        self.spd_reason.setVisible(reason is not None)
 
     @staticmethod
     def _solo_del_spd(module: MemoryModule) -> tuple[str, ...]:

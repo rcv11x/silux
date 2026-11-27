@@ -14,7 +14,7 @@ from tests import pantalla, qt
 from tests.test_equipos import EQUIPOS, foto, shared_snapshot
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QLabel
 except ImportError:                                    # pragma: no cover
     QApplication = None
 
@@ -108,16 +108,17 @@ class TestSinSpd(unittest.TestCase):
                 self.assertTrue(rejilla._values[_("memory.field.vendor")].isVisible())
                 visibles = [v.full_text() for v in rejilla._values.values() if v.isVisible()]
                 self.assertNotIn(render.DASH, visibles)
-            self.assertTrue(pagina.spd_missing.isVisible())
-            # Una frase, no una lista de nombres de campo.
-            # Con el porqué que diagnostica el proveedor: en esta placa el
-            # firmware se reserva el bus. No «esta placa no deja», a secas.
-            self.assertEqual(
-                pagina.spd_missing.text(),
+            # A notice of its own under the modules, not a paragraph of their
+            # foot. One sentence, not a list of field names, with the reason
+            # the provider found: here the firmware keeps the bus.
+            self.assertTrue(pagina.spd_reason.isVisible())
+            self.assertFalse(pagina.spd_missing.isVisible())
+            textos = [w.text() for w in pagina.spd_reason.findChildren(QLabel)]
+            self.assertIn(
                 "Los chips, los perfiles rápidos y la fecha de fabricación salen del "
-                "chip SPD de cada módulo, y no se puede leer: el controlador SMBus existe "
-                "pero el kernel no lo ha activado: el firmware de la placa se reserva ese bus. "
-                + _("spd.nobus.hint"))
+                "chip SPD de cada módulo, y no se puede leer: el firmware de la placa se "
+                "reserva el bus por el que se leen estos chips.", textos)
+            self.assertIn(_("spd.nobus.hint"), textos)
 
     def test_si_la_tabla_tampoco_dice_el_fabricante_tambien_se_esconde(self):
         import dataclasses
@@ -130,8 +131,10 @@ class TestSinSpd(unittest.TestCase):
         with pantalla.Ventana(f) as ventana:
             pagina = self._pagina(f, ventana)
             self.assertFalse(pagina._slot_grids[0]._values[_("memory.field.vendor")].isVisible())
-            self.assertTrue(pagina.spd_missing.text().startswith(
-                "El fabricante, los chips, los perfiles rápidos y la fecha de fabricación salen"))
+            self.assertTrue(any(
+                w.text().startswith("El fabricante, los chips, los perfiles rápidos y la "
+                                    "fecha de fabricación salen")
+                for w in pagina.spd_reason.findChildren(QLabel)))
 
     def test_con_spd_solo_se_esconde_lo_que_esos_modulos_no_traen(self):
         # En el i5-10400 el SPD se lee sin permisos: sus fichas salen de él.

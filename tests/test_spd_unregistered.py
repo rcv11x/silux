@@ -113,7 +113,11 @@ def _foot(snapshot) -> str:
         window.select_section("Memoria")
         for _turn in range(3):
             app.processEvents()
-        return window.stack.currentWidget().spd_missing.text()
+        page = window.stack.currentWidget()
+        # The foot, and why the SPD isn't read in its notice under the modules.
+        return "\n\n".join([page.spd_missing.text()] + [
+            label.text() for label in page.spd_reason.findChildren(QLabel)
+            if label.isVisibleTo(page)])
 
 
 def _sentence(key: str, **fields) -> str:

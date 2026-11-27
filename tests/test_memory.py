@@ -990,8 +990,9 @@ class TestSinSpdNoSeCulpaALaPlaca(unittest.TestCase):
         from silux.i18n import _
         from tests.test_equipos import EQUIPOS, foto
 
+        from PySide6.QtWidgets import QLabel
         pagina = self._pagina(foto(EQUIPOS / "5800x3d")[0])
-        texto = pagina.spd_missing.text()
+        texto = " ".join(w.text() for w in pagina.spd_reason.findChildren(QLabel))
         # Aquí sí es de la placa, y se dice por qué.
         self.assertIn(_("spd.nobus")[1:40], texto)
         self.assertNotIn("esta placa no deja", texto)

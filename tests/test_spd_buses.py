@@ -150,7 +150,10 @@ class TestAChipWaitingForItsDriver(unittest.TestCase):
                 for clave in ("memory.field.chips", "memory.field.profiles", "memory.field.made"):
                     with self.subTest(campo=clave):
                         self.assertFalse(ficha.is_locked(_(clave)))
-            pie = pagina.spd_missing.text()
+            from PySide6.QtWidgets import QLabel
+            # Why it isn't read is a notice of its own under the modules.
+            pie = " ".join([pagina.spd_missing.text()] + [
+                label.text() for label in pagina.spd_reason.findChildren(QLabel)])
         self.assertIn(_("spd.nodriver")[1:40], pie)
         self.assertIn("sudo modprobe ee1004", pie)
         memoria = full_report.build(f).split("\n## Memoria\n", 1)[1].split("\n## ", 1)[0]
