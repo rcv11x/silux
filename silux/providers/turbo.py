@@ -120,7 +120,9 @@ def _base_set_by_hand(draft: Draft) -> None:
         if not factory or not clocks.base_hz or abs(clocks.base_hz - factory[0]) < CHANGED_BASE_HZ:
             continue
         kernel_max = clocks.max_hz or clocks.max_turbo_hz
-        entry["clocks"] = dataclasses.replace(clocks, max_hz=None, max_turbo_hz=None)
+        entry["clocks"] = dataclasses.replace(clocks, max_hz=None, max_turbo_hz=None,
+                                              factory_base_hz=factory[0],
+                                              factory_boost_hz=factory[1])
         hint = _("prov.cppc.basechanged.hint").format(
             kernel=render.hz(kernel_max) if kernel_max else render.DASH,
             boost=render.hz(factory[1]) if factory[1] else render.DASH)

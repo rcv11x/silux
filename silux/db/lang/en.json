@@ -405,6 +405,7 @@
   "cpu.card.identity": "Identification (CPUID)",
   "cpu.card.processor": "Processor",
   "cpu.clock.base": "Base",
+  "cpu.clock.base.set": "{base} · set in the BIOS (factory {factory}, per AMD)",
   "cpu.clock.base.tdp": "Base at the current TDP",
   "cpu.clock.bus": "Bus (BCLK)",
   "cpu.clock.current": "Frequency",

@@ -268,7 +268,7 @@ class TypeSection(QWidget):
         c(_("cpu.clock.current"), render.hz(clocks.current_hz))
         c(_("cpu.clock.multiplier"), render.multiplier(clocks.multiplier))
         self._base_hz = clocks.base_hz
-        self._base_texto = render.clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
+        self._base_texto = render.base_clock(clocks)
         if self._base_hz is not None or not self.clocks.is_locked(_("cpu.clock.base")):
             c(_("cpu.clock.base"), self._base_texto)
         configured = render.configured_base(clocks)

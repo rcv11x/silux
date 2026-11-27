@@ -109,7 +109,7 @@ Ryzen 7 (Vermeer) · AM4 (PGA-1331) · TSMC N7FF · x86_64
 
 - Frecuencia: 3.63 GHz
 - Multiplicador: × 36.3
-- Base: 4.20 GHz × 42.0
+- Base: 4.20 GHz × 42.0 · fijada en la BIOS (de fábrica, 3.80 GHz según AMD)
 - Mínima: 614 MHz × 6.1
 - Bus (BCLK): 100 MHz
 - Turbo: desactivado

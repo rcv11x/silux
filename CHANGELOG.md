@@ -50,6 +50,7 @@ que hace falta.
 - Acerca de Silux tiene la comunidad: UniversoLinux en Discord (#silux-app-chat)
 - En una Radeon, el reloj de la memoria va como lo dan GPU-Z y TechPowerUp, el mismo en la ficha y en Relojes: «2516 MHz · 20.1 Gbps efectivos»
 - El estado de una gráfica dice «no está limitada» o «limitada: temperatura», en vez de «sin límites» o «recortando por…»
+- Con la base cambiada a mano, la fila «Base» de CPU dice que está fijada en la BIOS y cuál es la de fábrica
 
 ### Arreglos
 

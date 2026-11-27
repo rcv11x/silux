@@ -2794,6 +2794,15 @@ def turbo(clocks: Clocks) -> str:
     return _("board.on") if clocks.turbo_enabled else _("board.off")
 
 
+def base_clock(clocks: Clocks) -> str:
+    """The base with its multiplier, and where it was set in the BIOS, the
+    maker's: «4.20 GHz × 42.0 · fijada en la BIOS (de fábrica, 3.80 GHz)»."""
+    base = clock_and_multiplier(clocks.base_hz, clocks.base_multiplier)
+    if clocks.base_hz and clocks.factory_base_hz:
+        return _("cpu.clock.base.set").format(base=base, factory=hz(clocks.factory_base_hz))
+    return base
+
+
 def configured_base(clocks: Clocks) -> Optional[str]:
     """The base the configured TDP gives, when it isn't the specification's."""
     now = clocks.base_configured_hz

@@ -114,6 +114,10 @@ class Clocks:
     # sets a lower TDP gets a lower base than the specification's.
     base_configured_hz: Optional[int] = None
     max_turbo_hz: Optional[int] = None    # the silicon's ceiling, per CPUID 0x16
+    # The maker's base and boost from its table, only where the firmware's
+    # base isn't the maker's: set by hand in the BIOS.
+    factory_base_hz: Optional[int] = None
+    factory_boost_hz: Optional[int] = None
     bus_hz: Optional[int] = None          # BCLK / reference clock
     turbo_enabled: Optional[bool] = None
     # Whether the part has a turbo at all («cpb» on AMD, «ida» on Intel). Some
