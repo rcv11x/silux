@@ -46,6 +46,7 @@ que hace falta.
 - Ctrl+C en la terminal no cerraba Silux, y SIGTERM lo mataba sin parar las pruebas en marcha: los dos lo cierran ya como el botón de cerrar
 - En un sistema que arranca sin initramfs, Almacenamiento no decía dónde está montada la raíz, y una prueba de disco en ella no enseñaba su resultado
 - En Sensores, la media de una lectura que no cambia podía salir una décima por encima del máximo (75.9 frente a 75.8 en un NVMe)
+- En una ventana estrecha, la tabla de pruebas anteriores de Rendimiento ensanchaba la página y cortaba el texto por la derecha: ahora se desplaza por dentro
 
 ### Problemas conocidos
 

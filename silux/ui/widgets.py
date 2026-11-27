@@ -2397,6 +2397,46 @@ class Paragraph(QLabel):
         return super().heightForWidth(min(width, self.maximumWidth()))
 
 
+class SideScroll(QScrollArea):
+    """Content that scrolls sideways on its own where the page is narrower
+    than it, as `Table` does: its minimum width no longer drags the whole
+    page past the window. As tall as the content, and its scroll bar when
+    that shows."""
+
+    def __init__(self, content: QWidget, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setWidget(content)
+        content.installEventFilter(self)
+        self._fit()
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        return QSize(0, self.height())
+
+    def eventFilter(self, watched, event) -> bool:  # noqa: N802
+        if watched is self.widget() and event.type() == QEvent.Type.LayoutRequest:
+            self._fit()
+        return super().eventFilter(watched, event)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._fit()
+
+    def _fit(self) -> None:
+        content = self.widget()
+        if content is None:
+            return
+        height = content.sizeHint().height()
+        if content.minimumSizeHint().width() > self.viewport().width():
+            height += self.horizontalScrollBar().sizeHint().height()
+        if self.height() != height:
+            self.setFixedHeight(height)
+
+
 class PageRoot(QWidget):
     """A page's root inside its scroll area: the page's margins and its
     content in `column`, across the whole width, as every other page."""

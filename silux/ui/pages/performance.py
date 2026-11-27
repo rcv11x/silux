@@ -40,6 +40,7 @@ from ..widgets import (
     ProgressLine,
     ResponsiveRow,
     ScrollPage,
+    SideScroll,
     Table,
     clear_layout,
     value_font,
@@ -461,7 +462,7 @@ class PerformancePage(ScrollPage):
             rejilla.setColumnStretch(columna, 1)
         envoltorio = QWidget()
         envoltorio.setLayout(rejilla)
-        self.history_host.addWidget(envoltorio)
+        self.history_host.addWidget(SideScroll(envoltorio))
 
     def _duracion_de(self, entrada) -> str:
         """Cómo se midió: es la mitad de lo que hace comparable una cifra.

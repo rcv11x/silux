@@ -77,5 +77,16 @@ class TestWide(unittest.TestCase):
                 self.assertEqual(button.font().pointSizeF(), common.font().pointSizeF())
 
 
+class TestNarrow(TestWide):
+    def test_the_table_scrolls_on_its_own_and_the_page_stays_in_view(self):
+        """At 480 px the table, five columns and two buttons, made the whole
+        page wider than the window, its text cut at the right."""
+        self.page.resize(440, 900)
+        geometry.settle(self.app)
+        self.assertLessEqual(self.page.widget().width(), self.page.viewport().width())
+        buttons = self.row_buttons()
+        self.assertTrue(buttons)
+
+
 if __name__ == "__main__":
     unittest.main()
