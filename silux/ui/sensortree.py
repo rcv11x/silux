@@ -293,6 +293,8 @@ class SensorTree(QTreeWidget):
         # que uno quiere hacer cuando le parecen apretadas.
         for column in range(len(self.COLUMNS) - 1):
             header.setSectionResizeMode(column, QHeaderView.ResizeMode.Interactive)
+        # The curve takes what's left, up to the edge: it isn't dragged.
+        header.setSectionResizeMode(self.TREND_COLUMN, QHeaderView.ResizeMode.Fixed)
         header.setSectionResizeMode(len(self.COLUMNS) - 1, QHeaderView.ResizeMode.Stretch)
         header.setStretchLastSection(False)
         header.setMinimumSectionSize(40)
@@ -458,15 +460,9 @@ class SensorTree(QTreeWidget):
         self._repartir_sobrante()
 
     def _repartir_sobrante(self) -> None:
-        """Le da a la curva el hueco que iba a quedarse la columna vacía.
-
-        Solo mientras el usuario no haya tocado los anchos. Al arrastrar la
-        columna para estrecharla volvía a estirarse sola en el muestreo
-        siguiente: cambiar los valores recalcula la altura del árbol, eso es
-        un `resizeEvent`, y aquí se repartía otra vez el sobrante como si
-        nadie hubiera dicho nada. Lo que se arrastra manda.
-        """
-        if self._applying_widths or self._preferred_widths or not self.isVisible():
+        """Give the curve the room the empty column would keep, up to the
+        edge, also with dragged widths: those are the other columns'."""
+        if self._applying_widths or not self.isVisible():
             return
         ocupado = sum(self.columnWidth(c) for c in range(len(self.COLUMNS) - 1))
         sobra = self.viewport().width() - ocupado
@@ -523,7 +519,7 @@ class SensorTree(QTreeWidget):
         para que el árbol dejara de ajustarse solo nunca más.
         """
         if (self._applying_widths or not self.isVisible()
-                or index >= len(self.COLUMNS) - 1):
+                or index >= self.TREND_COLUMN):
             return
         self._preferred_widths = self.column_widths()
         self.columnsResized.emit(self._preferred_widths)

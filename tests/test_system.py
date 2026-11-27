@@ -210,7 +210,8 @@ class TestColumnasDelArbol(unittest.TestCase):
         tree.show()
         self.app.processEvents()
         header = tree.header()
-        for column in range(len(tree.COLUMNS) - 1):
+        # The curve takes what's left up to the edge: those before it are dragged.
+        for column in range(tree.TREND_COLUMN):
             with self.subTest(columna=tree.COLUMNS[column]):
                 self.assertEqual(header.sectionResizeMode(column),
                                  QHeaderView.ResizeMode.Interactive)
@@ -934,20 +935,29 @@ class TestArrastrarLasColumnas(unittest.TestCase):
         arbol.refresh_height()
         self.app.processEvents()
 
-    def test_una_columna_arrastrada_no_se_estira_sola(self):
-        arbol = self._tree()
-        arbol.header().resizeSection(arbol.TREND_COLUMN, 150)
-        self.app.processEvents()
-        self._muestreo(arbol)
-        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), 150)
+    def _hasta_el_borde(self, arbol):
+        return (arbol.viewport().width() - arbol.TREND_MARGIN
+                - sum(arbol.columnWidth(c) for c in range(arbol.TREND_COLUMN)))
 
-    def test_ni_al_cambiar_el_tamaño_de_la_ventana(self):
+    def test_la_curva_no_se_arrastra(self):
+        from PySide6.QtWidgets import QHeaderView
         arbol = self._tree()
-        arbol.header().resizeSection(arbol.TREND_COLUMN, 150)
+        self.assertEqual(arbol.header().sectionResizeMode(arbol.TREND_COLUMN),
+                         QHeaderView.ResizeMode.Fixed)
+
+    def test_con_anchos_arrastrados_la_curva_llega_al_borde(self):
+        # With widths dragged once and saved, the curve stopped short and
+        # left the card's right side empty.
+        arbol = self._tree()
+        arbol.header().resizeSection(1, 200)
         self.app.processEvents()
+        self.assertTrue(arbol._preferred_widths)
+        self._muestreo(arbol)
+        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), self._hasta_el_borde(arbol))
         arbol.resize(1900, 800)
         self.app.processEvents()
-        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), 150)
+        self.assertEqual(arbol.columnWidth(arbol.TREND_COLUMN), self._hasta_el_borde(arbol))
+        self.assertEqual(arbol.columnWidth(1), 200)
 
     def test_sin_tocar_nada_sigue_aprovechando_el_hueco(self):
         arbol = self._tree()
