@@ -628,6 +628,9 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         padding: 3px 6px; color: {p.muted};
     }}
     QToolButton#NavFoot:hover {{ background: {p.surface_alt}; color: {p.ink_dim}; }}
+    QFrame#NavNotice {{ border: 1px solid {p.line}; border-radius: {NAV_RADIUS}px; }}
+    QFrame#NavNotice:hover {{ border-color: {p.accent}; }}
+    QLabel#NavNoticeText {{ color: {p.ink_dim}; }}
     /* A row's «⋯»: its actions, without the menu's arrow. */
     QToolButton#RowMenu {{
         background: transparent; border: none; border-radius: {NAV_RADIUS}px;

@@ -48,6 +48,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetricsF, QIcon, QKeySequence, QPa
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -196,6 +197,34 @@ def application_icon() -> QIcon:
     if BUNDLED_ICON.exists():
         return QIcon(str(BUNDLED_ICON))
     return QIcon.fromTheme(DESKTOP_ID)
+
+
+class FootNotice(QFrame):
+    """A notice at the sidebar's foot that is pressed as a whole: its text in
+    the bar's small type, broken in lines as a label breaks them."""
+
+    clicked = Signal()
+
+    def __init__(self, text: str, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("NavNotice")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 3, 6, 3)
+        self.label = QLabel(text)
+        self.label.setObjectName("NavNoticeText")
+        self.label.setWordWrap(True)
+        self.label.setFont(ui_font(theme.METRICS.small_pt))
+        layout.addWidget(self.label)
+
+    def text(self) -> str:
+        return self.label.text()
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton and self.rect().contains(
+                event.position().toPoint()):
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
 
 
 class _TareaDeRed(QObject):
@@ -611,8 +640,9 @@ class MainWindow(QMainWindow):
         notice_row = QHBoxLayout(self.report_notice)
         notice_row.setContentsMargins(0, 0, 0, 0)
         notice_row.setSpacing(2)
-        self.report_ask = Button(_("sidebar.report.ask"))
-        self.report_ask.setObjectName("GhostButton")
+        # In the bar's small type: as a button it took three lines and pushed
+        # the sections off a short window.
+        self.report_ask = FootNotice(_("sidebar.report.ask"))
         self.report_ask.clicked.connect(self._on_send_report_requested)
         self.report_dismiss = self._foot_button("", lado_pie)
         self.report_dismiss.setText("×")
