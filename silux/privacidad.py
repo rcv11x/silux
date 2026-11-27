@@ -345,10 +345,8 @@ def anonymize(snapshot: Snapshot) -> Snapshot:
 
     # What's plugged in keeps its vendor:product ids and the names it writes,
     # which name the model: without them a fingerprint reader or an infrared
-    # camera can't be told apart. Its serial number is never read.
-    if snapshot.bluetooth:
-        changes["bluetooth"] = tuple(
-            dataclasses.replace(b, product=None) for b in snapshot.bluetooth)
+    # camera can't be told apart. Its serial number is never read. The same
+    # for the Bluetooth adapter, a USB device like the rest.
 
     if snapshot.batteries:
         changes["batteries"] = tuple(

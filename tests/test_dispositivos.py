@@ -185,8 +185,10 @@ class TestLosNombres(unittest.TestCase):
     def test_anonymous_it_keeps_what_names_the_model(self):
         """The ids and the names a USB device or a camera writes stay in the
         anonymous snapshot: they name the model, and without them a
-        fingerprint reader can't be told apart (the author's decision). A
-        Bluetooth adapter's name still goes."""
+        fingerprint reader can't be told apart (the author's decision). A USB
+        Bluetooth adapter's name too: it is its USB product's, which the dump
+        keeps. Dropped only here, the dump of a machine with a TP-Link UB500
+        refused to be written, and its report went without its annex."""
         draft = _leer()
         base = foto(EQUIPOS / "5800x3d")[0]
         f = dataclasses.replace(
@@ -199,7 +201,7 @@ class TestLosNombres(unittest.TestCase):
         self.assertEqual(anonima.cameras, f.cameras)
         self.assertEqual(anonima.sound_cards, f.sound_cards)
         self.assertTrue(any(u.product for u in anonima.usb_devices))
-        self.assertNotIn("Acme", repr(anonima.bluetooth))
+        self.assertEqual(anonima.bluetooth, f.bluetooth)
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")
