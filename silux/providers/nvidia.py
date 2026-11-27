@@ -353,6 +353,8 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
         core_max_hz=clocks.core_max_hz or card.core_max_hz,
         memory_hz=clocks.memory_hz if clocks.memory_hz is not None else card.memory_hz,
         memory_max_hz=clocks.memory_max_hz or card.memory_max_hz,
+        performance_state=(clocks.performance_state if clocks.performance_state is not None
+                           else card.performance_state),
     )
 
     # NVML gives the PCIe generation; the model keeps gigatransfers, which is

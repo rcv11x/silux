@@ -1344,6 +1344,8 @@ class GpuClocks:
     core_levels: tuple[GpuClockLevel, ...] = ()
     memory_levels: tuple[GpuClockLevel, ...] = ()
     performance_level: Optional[str] = None   # auto, low, high, manual…
+    # An NVIDIA's current performance state, P0 (the fastest) to P15.
+    performance_state: Optional[int] = None
     # The other DPM tables amdgpu publishes, by its file's name: fclk,
     # socclk, dcefclk, vclk, dclk.
     other_levels: tuple[tuple[str, tuple[GpuClockLevel, ...]], ...] = ()

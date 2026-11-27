@@ -380,7 +380,7 @@ El driver de NVIDIA no publica el tipo de memoria, su ancho de banda, cuánta ve
 - Enlace (máximo): PCIe 3.0 × 8
 - Errores del enlace: ninguno desde el arranque
 
-Una NVIDIA no tiene reloj de SoC ni perfil de rendimiento, y NVML no da la frecuencia efectiva de la memoria.
+Una NVIDIA no tiene reloj de SoC, y NVML no da la frecuencia efectiva de la memoria.
 
 #### Consumo y temperaturas
 

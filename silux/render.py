@@ -2602,6 +2602,11 @@ def gpu_memory_clock(gpu, driver_hz: Optional[int], rate: bool = False) -> str:
     return text
 
 
+def performance_state(state: Optional[int]) -> str:
+    """«P8», as nvidia-smi writes it."""
+    return DASH if state is None else f"P{state}"
+
+
 def throttle_state(gpu) -> str:
     """Whether the card is throttling, and for what reasons."""
     if gpu.throttled is None:

@@ -180,6 +180,8 @@ class NvidiaGpu:
     power_sensor: Optional[bool] = None
     # NVML_DEVICE_ARCH_*: whether the driver estimates what it can't read.
     architecture: Optional[int] = None
+    # The performance state, 0 to 15 (nvidia-smi's «P8»).
+    performance_state: Optional[int] = None
     # Without power: what NVML answered to each way of asking, for the report.
     power_error: Optional[str] = None
     # The driver's estimate where it measures none: the mean of its power
@@ -620,6 +622,8 @@ class Nvml:
             temp_c=self._temperature(handle),
             **power,
             architecture=architecture,
+            performance_state=(lambda v: v if v is not None and 0 <= v <= 15 else None)(
+                self._integer("nvmlDeviceGetPerformanceState", handle)),
             compute_processes=self._compute_processes(handle),
             power_cap_w=enforced,
             **limits,

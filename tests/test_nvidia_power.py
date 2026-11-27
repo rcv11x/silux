@@ -185,7 +185,7 @@ def collect_1050_ti(card):
     draft = Draft()
     # As DRM leaves it from pci.ids: the name, and the chip as its codename.
     draft.gpu(0).update(pci_slot=fake_nvml.SLOT, vendor="NVIDIA", driver="nvidia",
-                        name="GP107 [GeForce GTX 1050 Ti]", drm_node="card1",
+                        name="GeForce GTX 1050 Ti", codename="GP107", drm_node="card1",
                         integrated=False)
     return collect(fake_nvml.FakeNvml(card), draft=draft)[0]
 
@@ -217,6 +217,22 @@ class TestACardWithNoSensor(unittest.TestCase):
         self.assertFalse([n for n in draft.notes if n.path == "gpus.0.power_w"])
         self.assertIs(draft.gpus[0]["power_sensor"], False)
         self.assertEqual(draft.gpus[0]["power_cap_w"], 75.0)
+
+    @unittest.skipIf(QApplication is None, "sin PySide6")
+    def test_what_nvidia_smi_showed_is_on_its_page(self):
+        # The tester's nvidia-smi: 4096 MiB, fan at 45 %, P8. A capture with
+        # a fake card that answered none of it read «nvidia no publica total,
+        # ventilador ni relojes».
+        qt.app()
+        snapshot = snapshot_of(collect_1050_ti(fake_nvml.gtx_1050_ti_instant()))
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("nav.graphics")
+            section = window.stack.currentWidget()._sections[0]
+            self.assertEqual(section.title.text(), "GeForce GTX 1050 Ti")
+            self.assertEqual(section.memory._values[_("gpu.vram.total")].full_text(), "4 GiB")
+            self.assertEqual(section.sensors._values[_("gpu.sensor.fan")].full_text(),
+                             render.fan(None, 45.0))
+            self.assertEqual(section.clocks._values[_("gpu.clock.pstate")].full_text(), "P8")
 
     @unittest.skipIf(QApplication is None, "sin PySide6")
     def test_on_screen_no_sensor_and_its_limit_apart(self):

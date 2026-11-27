@@ -51,6 +51,11 @@ class Card:
     compute_processes: int = 0
     # nvmlDeviceGetArchitecture: NVML_DEVICE_ARCH_*, None for no answer.
     architecture: Optional[int] = None
+    # Memory total and used in bytes, fan in %, performance state: None for
+    # NOT_SUPPORTED.
+    memory: Optional[tuple] = None
+    fan_percent: Optional[int] = None
+    pstate: Optional[int] = None
 
 
 def rtx_4060_desktop() -> Card:
@@ -90,11 +95,12 @@ PASCAL = 4
 
 def gtx_1050_ti_instant() -> Card:
     """A GTX 1050 Ti on driver 535.183.01: `nvidia-smi` shows «N/A / 75W»
-    for its power, so nvmlDeviceGetPowerUsage answers NOT_SUPPORTED. Silux
-    showed 36 W, from one of the two ways read after it: this card has the
-    instant power field answering it."""
+    for its power, so nvmlDeviceGetPowerUsage answers NOT_SUPPORTED, and
+    4096 MiB, its fan at 45 % and P8. Silux showed 36 W, from one of the two
+    ways read after it: this card has the instant power field answering it."""
     return Card(name="NVIDIA GeForce GTX 1050 Ti", fields={186: 36000},
-                enforced_mw=75000, temp_c=35, architecture=PASCAL)
+                enforced_mw=75000, temp_c=35, architecture=PASCAL,
+                memory=(4096 * 1024 ** 2, 512 * 1024 ** 2), fan_percent=45, pstate=8)
 
 
 def gtx_1050_ti_samples() -> Card:
@@ -191,6 +197,25 @@ class FakeNvml:
             samples[i].timeStamp = stamp
             samples[i].sampleValue.uiVal = mw
         count._obj.value = min(count._obj.value, len(newer))
+        return 0
+
+    def nvmlDeviceGetMemoryInfo(self, handle, memory):
+        if self.card.memory is None:
+            return NOT_SUPPORTED
+        memory._obj.total, memory._obj.used = self.card.memory
+        memory._obj.free = self.card.memory[0] - self.card.memory[1]
+        return 0
+
+    def nvmlDeviceGetFanSpeed(self, handle, value):
+        if self.card.fan_percent is None:
+            return NOT_SUPPORTED
+        value._obj.value = self.card.fan_percent
+        return 0
+
+    def nvmlDeviceGetPerformanceState(self, handle, value):
+        if self.card.pstate is None:
+            return NOT_SUPPORTED
+        value._obj.value = self.card.pstate
         return 0
 
     def nvmlDeviceGetArchitecture(self, handle, value):

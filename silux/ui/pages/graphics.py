@@ -113,7 +113,7 @@ MEMORY_FIELDS = ("gpu.vram.total", "gpu.vram.type", "gpu.vram.bus", "gpu.vram.ba
 
 CLOCK_FIELDS = ("gpu.clock.core", "gpu.clock.coremax", "gpu.clock.silmax", "gpu.clock.efficient",
                 "gpu.clock.silmin", "gpu.clock.limits", "gpu.clock.memory", "gpu.clock.memeff",
-                "gpu.clock.memmax", "SoC", "gpu.clock.profile",
+                "gpu.clock.memmax", "SoC", "gpu.clock.profile", "gpu.clock.pstate",
                 "gpu.clock.link", "gpu.clock.linkmax", "gpu.clock.linkerrors")
 
 # El estado y las temperaturas de dentro de la tarjeta. La del núcleo no
@@ -758,6 +758,8 @@ class GpuSection(QWidget):
         k(_("gpu.clock.memmax"), render.gpu_memory_clock(gpu, gpu.clocks.memory_max_hz))
         k("SoC", render.hz(gpu.clocks.soc_hz))
         k(_("gpu.clock.profile"), gpu.clocks.performance_level or d)
+        k(_("gpu.clock.pstate"), render.performance_state(gpu.clocks.performance_state),
+          tooltip=_("gpu.tip.pstate"))
         k(_("gpu.clock.link"), render.pcie_link(gpu.link),
           tooltip=render.pcie_note(gpu.link) or "")
         k(_("gpu.clock.linkmax"), render.pcie_link(gpu.link, maximum=True))
@@ -859,6 +861,9 @@ class GpuSection(QWidget):
         # Without AER (an integrated GPU, a kernel without it) there's no count.
         if gpu.link is None or gpu.link.correctable_errors is None:
             escondidos["clocks"].add("gpu.clock.linkerrors")
+        # Only NVML gives a performance state.
+        if gpu.clocks.performance_state is None:
+            escondidos["clocks"].add("gpu.clock.pstate")
         # Only cards whose driver publishes a factory limit have one to show.
         if gpu.power_cap_default_w is None and gpu.power_cap_max_w is None:
             escondidos["sensors"].add("gpu.sensor.powercap")
@@ -914,7 +919,7 @@ class GpuSection(QWidget):
                         [_(FROM_THE_APIS[c]) for c in sin_apis])))
                 if mudos:
                     frase, globo = render.silent_gpu_rows(
-                        [_(c) for c in mudos], gpu.driver, card=nombre == "card")
+                        [_(c) for c in mudos], gpu.driver, nombre)
                     frases.append(frase)
                     globos[nombre] = globo
                 if frases:
