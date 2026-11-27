@@ -2125,6 +2125,7 @@
   "storage.na.flash": "Una memoria flash por USB no da temperatura ni diagnóstico.",
   "storage.na.hdd.life": "Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de un SSD.",
   "storage.na.kind.usb": "Por USB no se sabe si un disco es de platos o SSD: el kernel marca casi todo lo que va por ese bus como si girara.",
+  "storage.na.life": "Este disco no publica cuánta vida le queda.",
   "storage.na.vendor": "El disco no dice su fabricante, ni en su modelo ni en lo que publica el kernel.",
   "storage.na.virtual": "Es un disco virtual: no tiene temperatura, horas, lo escrito ni desgaste propios, y lo que contestaría a un diagnóstico se lo inventa el hipervisor.",
   "storage.na.written": "Este disco no lleva en su SMART la cuenta de lo escrito.",

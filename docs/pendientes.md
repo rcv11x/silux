@@ -311,6 +311,11 @@ la memoria) no va: está propuesto en las notas
   `hwdb` instalado, o la tabla de su código en una etiqueta fija) para decir
   si lo admite y que instale `fprintd`.
 
+* Almacenamiento · media · para la prueba16, una tabla de TB garantizados
+  (TBW) por modelo, con lo escrito frente a lo que garantiza el fabricante.
+  Primer caso: el KIOXIA EXCERIA SATA de 240 GB de la oficina, 30.7 de
+  ~60 TB (su 241 va en bloques de 32 MiB).
+
 * `disk_health.py` · media · la salud de un disco SATA llega como mucho a
   «vigilar»: «haz copia ya» pide el umbral de cada atributo (SMART READ
   THRESHOLDS), otra orden ATA que el ayudante no manda. Toca privilegios: se

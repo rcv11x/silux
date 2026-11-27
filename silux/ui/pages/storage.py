@@ -908,12 +908,17 @@ class StoragePage(ScrollPage):
                          not (sin_unidad or virtual or no_lo_cuenta or flash_sin_smart))
         for clave in ("gpu.sensor.temp", "storage.field.hours"):
             grid.set_visible(_(clave), not (virtual or flash_sin_smart))
-        if flash_sin_smart:
+        # An SSD whose SMART was read and gives no wear the way the standard
+        # counts it (a KIOXIA's 173 at 141 % says nothing): said, not a dash.
+        sin_vida = (salud.power_on_hours is not None and salud.life_left_percent is None
+                    and not (de_platos or virtual or flash_sin_smart))
+        if flash_sin_smart or sin_vida:
             grid.set_visible(_("storage.field.life"), False)
         if (pie := self._pies.get(disco.name)) is not None:
             texto = " ".join(t for t in (
                 _("storage.na.vendor") if not disco.vendor and not virtual else "",
                 _("storage.na.hdd.life") if de_platos else "",
+                _("storage.na.life") if sin_vida else "",
                 _("storage.na.virtual") if virtual else "",
                 _("storage.na.flash") if flash_sin_smart else "",
                 _("storage.na.kind.usb") if disco.kind is None and disco.transport == "usb" else "",
