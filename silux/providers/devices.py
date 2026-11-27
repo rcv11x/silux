@@ -12,6 +12,7 @@ dump.
 
 from __future__ import annotations
 
+import dataclasses
 import glob
 import os
 import pathlib
@@ -60,6 +61,35 @@ def _kind(node: str) -> str:
                     else "input"
             return kind
     return "other"
+
+
+# A root hub's interface («1-0:1.0»): the kernel always binds `hub` to it.
+_ROOT_INTERFACE = re.compile(r"\d+-0:1\.0")
+
+
+def _drivers_known(entries) -> bool:
+    """Whether interfaces' driver links can be read here at all: a root hub's
+    always has one, so a dump made before they were kept has none."""
+    return any(_ROOT_INTERFACE.fullmatch(entry.name)
+               and os.path.lexists(os.path.join(entry.path, "driver"))
+               for entry in entries)
+
+
+def _with_drivers(device: UsbDevice, known: bool) -> UsbDevice:
+    """`device` saying whether any of its interfaces has a driver bound."""
+    if not known or device.is_hub:
+        return device
+    node = sysroot.path(f"{USB}/{device.port}")
+    interfaces = sorted(glob.glob(f"{node}/{device.port}:*"))
+    if not interfaces:
+        return device
+    # Each one looked at, not up to the first bound: a dump copies what's read.
+    bound = any([os.path.lexists(os.path.join(i, "driver")) for i in interfaces])
+    vendor_only = all((read_text(f"{sysroot.unrooted(i)}/bInterfaceClass") or "").lower() == "ff"
+                      for i in interfaces)
+    if (device.without_driver, device.vendor_class_only) == (not bound, vendor_only):
+        return device
+    return dataclasses.replace(device, without_driver=not bound, vendor_class_only=vendor_only)
 
 
 class ConnectedDevices(Provider):
@@ -120,7 +150,9 @@ class ConnectedDevices(Provider):
             seen[key] = device
             out.append(device)
         self._usb_read = seen
-        return out
+        # Read every sample: a driver loaded or a device bound shows at once.
+        known = _drivers_known(entries)
+        return [_with_drivers(device, known) for device in out]
 
     def _sound(self) -> list[SoundCard]:
         cards_text = read_text("/proc/asound/cards")

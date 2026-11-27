@@ -309,15 +309,12 @@ la memoria) no va: está propuesto en las notas
   por generación. Y la ficha del chip (proceso, transistores, fecha), una
   tabla con la fuente primaria de cada fila.
 
-* `providers/devices.py` · media · «Sin driver» solo mira los PCI: los USB
-  piden el enlace `driver` de cada interfaz, y los volcados no lo guardan
-  (saldría todo sin driver). Antes, que `volcado.py` lo guarde. El lector de
-  huellas y la cámara de infrarrojos tampoco se reconocen todavía: los
-  volcados quitan el nombre y el ID de los USB y los de las cámaras, así que
-  no hay con qué probarlo. Hace falta el anexo de alguien con uno, y para la
-  huella, la lista de libfprint (su `hwdb` instalado, o la tabla de su
-  código en una etiqueta fija) para decir si lo admite y que instale
-  `fprintd`.
+* `providers/devices.py` · media · el lector de huellas y la cámara de
+  infrarrojos no se reconocen todavía. Los volcados ya guardan el nombre y el
+  ID de los USB y de las cámaras, pero ninguno tiene uno: hace falta el
+  anexo de alguien con ellos, y para la huella, la lista de libfprint (su
+  `hwdb` instalado, o la tabla de su código en una etiqueta fija) para decir
+  si lo admite y que instale `fprintd`.
 
 * `disk_health.py` · media · la salud de un disco SATA llega como mucho a
   «vigilar»: «haz copia ya» pide el umbral de cada atributo (SMART READ

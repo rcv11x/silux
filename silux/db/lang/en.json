@@ -537,6 +537,7 @@
   "dev.col.speed": "Speed",
   "dev.col.type": "Type",
   "dev.col.where": "Where",
+  "dev.nodriver.usb.vendor": "What goes over USB with the maker's own interface is sometimes driven by a program, without a kernel driver: a fingerprint reader, for one.",
   "dev.nodriver.what": "Without a kernel driver they don't work. A module that didn't load, a firmware or a newer kernel may be missing; searching for its ID with your distribution's name usually says which.",
   "dev.nodriver.wl": "{device}: it works with Broadcom's «wl» driver, which doesn't come with the kernel. Its package is bcmwl-kernel-source on Ubuntu and Mint, broadcom-sta-dkms on Debian and broadcom-wl on Fedora (RPM Fusion) and Arch; then restart.",
   "dev.sound.many": "{n} sound cards",

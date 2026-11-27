@@ -498,6 +498,12 @@ class UsbDevice:
     kind: str = "other"                      # see `providers/devices.py`, `_kind`
     speed_mbps: Optional[float] = None       # the negotiated one: 1.5, 12, 480, 5000…
     version: Optional[str] = None            # the one the device declares: "2.00", "3.20"
+    # None of its interfaces has a kernel driver bound; None when that isn't
+    # known (a dump made before the links were kept).
+    without_driver: Optional[bool] = None
+    # Every interface is the maker's own class (0xff): a program may drive
+    # it without a kernel driver, as libfprint does a fingerprint reader.
+    vendor_class_only: bool = False
 
     @property
     def parent(self) -> Optional[str]:
@@ -2416,6 +2422,11 @@ class Snapshot:
             if g.primary:
                 return i
         return 0
+
+    @property
+    def driverless_usb(self) -> tuple["UsbDevice", ...]:
+        """The USB devices none of whose interfaces has a driver bound."""
+        return tuple(u for u in self.usb_devices if u.without_driver and not u.is_hub)
 
     @property
     def driverless_pci(self) -> tuple["PciDevice", ...]:
