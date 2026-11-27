@@ -100,9 +100,10 @@ class AmdPstateClocks(Provider):
             if current.base_hz is None and base:
                 changes["base_hz"] = base
             # Without a driver nothing changes the P-state, so it is the
-            # frequency. Not with turbo: the part goes past P0 on its own, and
-            # /proc/cpuinfo measures that.
-            if current.current_from != "cpufreq" and running and current.turbo_supported is False:
+            # frequency. Not with turbo on: the part goes past P0 on its own,
+            # and /proc/cpuinfo measures that.
+            no_turbo = current.turbo_supported is False or current.turbo_enabled is False
+            if current.current_from != "cpufreq" and running and no_turbo:
                 changes.update(current_hz=running, current_from="msr")
             if changes:
                 entry["clocks"] = dataclasses.replace(current, **changes)

@@ -302,6 +302,8 @@ class TypeSection(QWidget):
                 ("cpu.clock.bus", clocks.bus_hz, "cpu.clocks.bus_hz"),
                 ("cpu.clock.multiplier", clocks.multiplier, "cpu.clocks.bus_hz"),
                 ("cpu.clock.maxsilicon", clocks.max_turbo_hz, "cpu.clocks.max_turbo_hz"),
+                # Both maximums go when the kernel's come from a base set by hand.
+                ("cpu.clock.maxsilicon", clocks.max_turbo_hz, "cpu.clocks.max_hz"),
                 ("cpu.clock.maxkernel", clocks.max_hz, "cpu.clocks.max_hz")):
             if value is None and note in absent:
                 hidden.add(key)

@@ -58,7 +58,7 @@ UEFI (64 bits) · TPM 2.0
 AMD Ryzen 7 5800X
 8 núcleos · 16 hilos · 1 socket
 Ryzen 7 (Vermeer) · AM4 (PGA-1331) · TSMC N7FF · x86_64
-- Frecuencia: 3.63 GHz (614 MHz – 5.36 GHz)
+- Frecuencia: 3.63 GHz
 - Uso: 5 % (carga 3.45)
 - Temperatura: 41 °C
 - Consumo: (necesita permisos)
@@ -111,13 +111,11 @@ Ryzen 7 (Vermeer) · AM4 (PGA-1331) · TSMC N7FF · x86_64
 - Multiplicador: × 36.3
 - Base: 4.20 GHz × 42.0
 - Mínima: 614 MHz × 6.1
-- Máxima (kernel): 5.36 GHz × 53.6
 - Bus (BCLK): 100 MHz
+- Turbo: desactivado
 - Driver: amd-pstate-epp
 - Gobernador: powersave
 - Preferencia de energía: balance_performance
-
-Este procesador no tiene turbo: su frecuencia más alta es la base.
 
 ### Jerarquía de caché
 
@@ -130,6 +128,10 @@ Este procesador no tiene turbo: su frecuencia más alta es la base.
 
 SMT · MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · SSE4A · AVX · AVX2 · FMA3 · AES-NI · SHA · CLMUL · VAES · BMI1 · BMI2 · ADX · RDRAND · RDSEED · AMD-V
 61 banderas detectadas por CPUID · 39 no destacadas
+
+> **Este equipo no lo expone**
+> La BIOS da 4.20 GHz de base y la de fábrica de este procesador es 3.80 GHz (AMD): está ajustada a mano.
+> Las máximas que calcula el kernel salen de esa base (5.36 GHz) y no son las del procesador: AMD le da 4.70 GHz de turbo. Con el turbo apagado, no pasa de la base.
 
 > **Hace falta elevar permisos**
 > El contador de energía RAPL existe pero no se puede leer.
@@ -798,6 +800,7 @@ SENSORES · 65 en 9 dispositivos
 **Datos que faltan:**
 
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
+- `cpu.clocks.max_hz` (este equipo no lo expone): La BIOS da 4.20 GHz de base y la de fábrica de este procesador es 3.80 GHz (AMD): está ajustada a mano.
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
 - `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.

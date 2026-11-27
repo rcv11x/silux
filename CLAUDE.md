@@ -254,6 +254,10 @@ código nuevo:
 - **Lo que se dice de una pieza se mira en esa pieza**: que el ayudante
   devuelva algún contador no dice que devuelva los de esta gráfica. Y un
   estado que se activa también vuelve atrás.
+- **Una bandera de CPUID que la BIOS quita no dice que la pieza no lo
+  tenga**: `cpb` desaparece con el turbo apagado, y la ficha del fabricante
+  decide. Y una cifra que el kernel calcula sobre la base del firmware
+  (la máxima de amd-pstate) no vale si esa base no es la de fábrica.
 - **Un arreglo se compara con la herramienta de referencia** (`df`,
   `sensors`…) en un equipo de verdad, no con que el síntoma desaparezca.
 - **En pantalla, lenguaje normal**: ni rutas, ni nodos, ni hwmon. Dónde se
@@ -423,7 +427,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2333 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2336 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.

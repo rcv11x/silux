@@ -169,10 +169,19 @@ class TestTheTurbo(unittest.TestCase):
                 self.assertTrue(_photo().cpu.types[0].clocks.turbo_supported, flag)
 
     def test_a_part_without_one_says_so(self):
-        with _machine(boost_flag=False):
+        # The Athlon 3000G sets the flag, and AMD lists no boost for it.
+        with volcado.mounted(EQUIPOS / "athlon-3000g"):
             clocks = _photo().cpu.types[0].clocks
         self.assertIs(clocks.turbo_supported, False)
         self.assertEqual(render.turbo(clocks), _("cpu.turbo.none"))
+
+    def test_without_the_flag_a_part_amd_lists_with_one_has_it_off(self):
+        """The firmware takes `cpb` away when it switches turbo off: a
+        5800X3D without it has turbo, off (`test_base_set_by_hand`)."""
+        with _machine(boost_flag=False):
+            clocks = _photo().cpu.types[0].clocks
+        self.assertIs(clocks.turbo_supported, True)
+        self.assertIs(clocks.turbo_enabled, False)
 
 
 class TestWithPermissions(unittest.TestCase):
@@ -261,17 +270,26 @@ class TestTheCpuPage(unittest.TestCase):
                     section.clocks_foot.isVisibleTo(section))
 
     def test_without_a_driver_its_rows_go_and_the_foot_says_why(self):
+        # Turbo switched off in the firmware (no `cpb`): its row stays, off.
         with _machine(boost_flag=False):
             photo = _photo()
         values, hidden, foot, shown = self._clocks(photo)
         self.assertEqual(values[_("cpu.clock.current")],
                          render.hz(photo.cpu.types[0].clocks.current_hz))
-        # No turbo: its row and the silicon ceiling go too, said at the foot.
+        self.assertEqual(values[_("cpu.clock.turbo")], _("board.off"))
         self.assertEqual(hidden - {_only_when_it_differs()},
                          {_(k) for k in ("cpu.clock.min", "cpu.clock.maxkernel",
                                          "cpu.clock.driver", "cpu.clock.governor",
-                                         "cpu.clock.epp", "cpu.clock.turbo",
-                                         "cpu.clock.maxsilicon")})
+                                         "cpu.clock.epp", "cpu.clock.maxsilicon")})
+        self.assertEqual((foot, shown), (_("cpu.clocks.nodriver.cpuinfo"), True))
+
+    def test_a_part_without_turbo_says_so_at_the_foot(self):
+        # The Athlon 3000G: no driver and no turbo. Its row and the silicon
+        # ceiling go, and the foot says why.
+        with volcado.mounted(EQUIPOS / "athlon-3000g"):
+            photo = _photo()
+        values, hidden, foot, shown = self._clocks(photo)
+        self.assertTrue({_("cpu.clock.turbo"), _("cpu.clock.maxsilicon")} <= hidden)
         self.assertEqual((foot, shown), (_("cpu.clocks.nodriver.cpuinfo") + " "
                                          + _("cpu.clocks.noturbo"), True))
 

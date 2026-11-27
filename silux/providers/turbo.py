@@ -11,8 +11,9 @@ import dataclasses
 import os
 from typing import Optional
 
-from .. import db, sysroot
-from ..model import Clocks
+from .. import db, render, sysroot
+from ..i18n import _
+from ..model import Clocks, Need
 from .base import Draft, Provider, is_virtual_machine, read_int, read_text
 
 INTEL_PSTATE_NO_TURBO = "/sys/devices/system/cpu/intel_pstate/no_turbo"
@@ -62,11 +63,17 @@ class TurboState(Provider):
             self._supported, self._supported_read = _turbo_supported(), True
         # A virtual CPU's flags come from the hypervisor, not the host's part.
         supported = None if is_virtual_machine(draft) else self._supported
+        brands = {entry.get("brand") for entry in draft.types.values() if entry.get("brand")}
+        if supported is False and brands and all(db.amd_turbo(b) is True for b in brands):
+            # AMD lists a boost clock for this model: the firmware takes the
+            # flag away when it switches Core Performance Boost off. Off, not
+            # missing.
+            supported = True
+            enabled = False
         if enabled is None and supported:
             # Some parts without turbo set the flag anyway. With no boost
             # control from the kernel to say otherwise, the maker's
             # specifications decide.
-            brands = {entry.get("brand") for entry in draft.types.values() if entry.get("brand")}
             if brands and all(db.amd_turbo(brand) is False for brand in brands):
                 supported = False
 
@@ -74,13 +81,53 @@ class TurboState(Provider):
             # intel_pstate writes no_turbo=1 on a part without turbo: there is
             # nothing to have switched off.
             enabled = None
-        if enabled is None and supported is None:
-            return
+        if enabled is not None or supported is not None:
+            for entry in draft.types.values():
+                clocks: Clocks = entry.get("clocks") or Clocks()
+                entry["clocks"] = dataclasses.replace(clocks, turbo_enabled=enabled,
+                                                      turbo_supported=supported)
+        # No note of turbo's state: it shows next to the clocks, and since it
+        # follows the power profile, a footnote would keep coming and going.
+        _base_set_by_hand(draft)
 
-        for entry in draft.types.values():
-            clocks: Clocks = entry.get("clocks") or Clocks()
-            entry["clocks"] = dataclasses.replace(clocks, turbo_enabled=enabled,
-                                                  turbo_supported=supported)
 
-        # No note: turbo's state shows next to the clocks, and since it follows
-        # the power profile, a footnote would keep coming and going.
+# Between the firmware's base and the maker's, more than CPPC's own rounding
+# (3401 for 3400): a base set by hand in the BIOS.
+CHANGED_BASE_HZ = 50_000_000
+
+
+def _factory_clocks(entry: dict) -> Optional[tuple[int, Optional[int]]]:
+    """An AMD model's base and boost as AMD lists them, in hertz."""
+    if entry.get("vendor") != "AMD":
+        return None
+    row = db.amd_model(entry.get("brand") or "")
+    if not row or not row.get("base_mhz"):
+        return None
+    boost = row.get("boost_mhz")
+    return row["base_mhz"] * 1_000_000, boost * 1_000_000 if boost else None
+
+
+def _base_set_by_hand(draft: Draft) -> None:
+    """An AMD whose firmware base isn't AMD's: the kernel works its maximum
+    out from that base (amd-pstate scales it by a fixed figure), so neither
+    its maximum nor the part's ceiling are the processor's. They go, and the
+    note says the base, AMD's and AMD's boost."""
+    if is_virtual_machine(draft):
+        return
+    for entry in draft.types.values():
+        clocks: Clocks = entry.get("clocks") or Clocks()
+        factory = _factory_clocks(entry)
+        if not factory or not clocks.base_hz or abs(clocks.base_hz - factory[0]) < CHANGED_BASE_HZ:
+            continue
+        kernel_max = clocks.max_hz or clocks.max_turbo_hz
+        entry["clocks"] = dataclasses.replace(clocks, max_hz=None, max_turbo_hz=None)
+        hint = _("prov.cppc.basechanged.hint").format(
+            kernel=render.hz(kernel_max) if kernel_max else render.DASH,
+            boost=render.hz(factory[1]) if factory[1] else render.DASH)
+        if clocks.turbo_enabled is False:
+            hint = f"{hint} {_('prov.cppc.basechanged.noturbo')}"
+        draft.note("cpu.clocks.max_hz", Need.HARDWARE,
+                   _("prov.cppc.basechanged").format(base=render.hz(clocks.base_hz),
+                                                     factory=render.hz(factory[0])),
+                   hint, key="prov.cppc.basechanged")
+        return
