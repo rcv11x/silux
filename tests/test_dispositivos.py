@@ -182,7 +182,11 @@ class TestLosNombres(unittest.TestCase):
         self.assertNotIn("USB 1.1", render.usb_speed(12.0))
         self.assertEqual(render.usb_speed(None), render.DASH)
 
-    def test_anonima_la_foto_dice_la_clase_y_no_la_marca(self):
+    def test_anonymous_it_keeps_what_names_the_model(self):
+        """The ids and the names a USB device or a camera writes stay in the
+        anonymous snapshot: they name the model, and without them a
+        fingerprint reader can't be told apart (the author's decision). A
+        Bluetooth adapter's name still goes."""
         draft = _leer()
         base = foto(EQUIPOS / "5800x3d")[0]
         f = dataclasses.replace(
@@ -191,18 +195,11 @@ class TestLosNombres(unittest.TestCase):
             bluetooth=(BluetoothAdapter(name="hci0", product="Adaptador Acme", bus="usb",
                                         powered=True),))
         anonima = privacidad.anonymize(f)
-        self.assertEqual({(u.vendor, u.product) for u in anonima.usb_devices}, {(None, None)})
-        # vendor:product name the model, not the person: they stay.
-        self.assertEqual([u.usb_id for u in anonima.usb_devices],
-                         [u.usb_id for u in f.usb_devices])
-        self.assertTrue(any(u.usb_id for u in anonima.usb_devices))
-        self.assertEqual([u.kind for u in anonima.usb_devices],
-                         [u.kind for u in f.usb_devices])
-        self.assertEqual([u.speed_mbps for u in anonima.usb_devices],
-                         [u.speed_mbps for u in f.usb_devices])
-        self.assertNotIn("Acme", repr((anonima.usb_devices, anonima.sound_cards,
-                                       anonima.cameras, anonima.bluetooth)))
-        self.assertEqual(render.usb_name(anonima.usb_devices[1]), "Teclado")
+        self.assertEqual(anonima.usb_devices, f.usb_devices)
+        self.assertEqual(anonima.cameras, f.cameras)
+        self.assertEqual(anonima.sound_cards, f.sound_cards)
+        self.assertTrue(any(u.product for u in anonima.usb_devices))
+        self.assertNotIn("Acme", repr(anonima.bluetooth))
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")

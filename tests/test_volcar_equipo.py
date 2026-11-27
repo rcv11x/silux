@@ -147,11 +147,11 @@ class TestAnEdidStays(unittest.TestCase):
 
 
 class TestWhatIsPluggedIntoUsb(unittest.TestCase):
-    """Of a USB device its vendor:product stay (they name the model, not the
-    person); the names it writes go, and its serial is zeroed. The privacy
-    checker sees the names if they were left."""
+    """Of a USB device its vendor:product ids and the names it writes stay,
+    which name the model (the author's decision); its serial is zeroed. The
+    privacy checker finds nothing left."""
 
-    def test_its_ids_stay_and_its_names_and_serial_go(self):
+    def test_its_ids_and_names_stay_and_its_serial_goes(self):
         import sys
         sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
         from tools import comprobar_privacidad
@@ -160,19 +160,19 @@ class TestWhatIsPluggedIntoUsb(unittest.TestCase):
         root = pathlib.Path(tmp.name)
         device = root / "sys/devices/pci0000:00/0000:00:14.0/usb1/1-3"
         device.mkdir(parents=True)
-        files = {"idVendor": "0bda\n", "idProduct": "818b\n", "product": "Llave de Ana\n",
+        files = {"idVendor": "0bda\n", "idProduct": "818b\n", "product": "802.11n NIC\n",
                  "manufacturer": "Realtek\n", "serial": "00E04C0001\n"}
         for name, text in files.items():
             (device / name).write_text(text)
         where = lambda path: f"tests/fixtures/equipos/x/{path.relative_to(root)}"
         before = [f for path in sorted(device.iterdir())
                   for f in comprobar_privacidad._en_un_volcado(path, where(path))]
-        self.assertEqual(len(before), 3)          # product, manufacturer, serial
+        self.assertEqual(len(before), 1)          # the serial
         cleaner = volcar._Anonymizer(root, {})
         cleaner.clean_contents()
         self.assertEqual(sorted(p.name for p in device.iterdir()),
-                         ["idProduct", "idVendor", "serial"])
-        self.assertEqual((device / "idVendor").read_text(), "0bda\n")
+                         ["idProduct", "idVendor", "manufacturer", "product", "serial"])
+        self.assertEqual((device / "product").read_text(), "802.11n NIC\n")
         self.assertFalse((device / "serial").read_text().strip("0\n"))
         after = [f for path in sorted(device.iterdir())
                  for f in comprobar_privacidad._en_un_volcado(path, where(path))]
@@ -520,12 +520,11 @@ class TestWhatPathlibLists(unittest.TestCase):
 
 
 class TestAUsbMaker(unittest.TestCase):
-    """A USB device's maker is a company, and its name is everywhere: a card
-    reader says «Generic» (AMD's sound card is «HD-Audio Generic»), a
-    network adapter «Realtek» (and so is the sound codec). Taken for a
-    secret, the final check refused to write the dump of such a machine."""
+    """A USB device's maker and model stay in the dump and aren't looked for
+    as secrets: they name the model, and a card reader's «Generic» or a
+    network adapter's «Realtek» are also the sound card's and the codec's."""
 
-    def test_it_goes_and_is_not_looked_for_elsewhere(self):
+    def test_it_stays_and_is_not_looked_for_elsewhere(self):
         for fabricante, modelo, sonido in (
                 ("Generic", "USB3.0-CRW", "Codec: Generic HDMI\n"),
                 ("Realtek", "USB 10/100/1000 LAN", "Codec: Realtek ALC1220\n")):
@@ -539,10 +538,10 @@ class TestAUsbMaker(unittest.TestCase):
                 (raiz / "proc/asound/card0/codec#0").write_text(sonido)
                 limpio = volcar._Anonymizer(raiz, {})
                 limpio.clean_contents()
-                self.assertFalse((aparato / "manufacturer").exists())
+                self.assertEqual((aparato / "manufacturer").read_text(), fabricante + "\n")
+                self.assertEqual((aparato / "product").read_text(), modelo + "\n")
                 self.assertEqual(volcar.check(raiz, limpio.secrets), [])
-                # The model does say what someone has plugged in: still looked for.
-                self.assertIn(modelo, limpio.secrets)
+                self.assertNotIn(modelo, limpio.secrets)
 
 
 class TestLosMontajesEnLaComprobacionFinal(unittest.TestCase):

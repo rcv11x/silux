@@ -63,17 +63,6 @@ SERIAL_FILES = {"serial", "serial_number", "wwid", "vpd_pg80", "vpd_pg83",
             "unique_id", "product_uuid", "product_serial", "board_serial",
             "chassis_serial", "uuid", "eui", "nguid", "perm_addr"}
 ADDRESS_FILES = {"address", "perm_address"}
-# What a USB device writes about itself, which can name whose it is. Its
-# vendor:product ids stay: they name the model, not the person.
-USB_IDENTIFYING_FILES = {"product", "manufacturer"}
-# Names that point to nobody: a hub's or a controller's, or a product called
-# by what it is and nothing more. A gamepad named «Controller», taken for
-# someone's, took the model out of every PCI name with that word in it.
-USB_GENERIC = re.compile(
-    r"hub|host controller|usb\s*receiver"
-    r"|^\s*(?:usb\s+)?(?:controller|gamepad|game\s*pad|joystick|keyboard|mouse|"
-    r"receiver|headset|audio(?:\s+device)?|composite\s+device|wireless\s+adapter)\s*$",
-    re.I)
 MAC = re.compile(r"\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b", re.I)
 EMAIL_SUBSTITUTE = "usuario@example.org"
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
@@ -789,23 +778,6 @@ def _identify_without_serial(text: str) -> tuple[str, str]:
     return "\n".join(lines) + "\n", serial
 
 
-def _cards_without_names(text: str) -> str:
-    """`/proc/asound/cards` without the USB sound devices' names.
-
-    Each card is two lines. Of the USB ones, that they are USB and where they
-    hang stays, and their name goes; the board's and the graphics card's stay
-    as they are, identifying nobody.
-    """
-    lines = text.splitlines()
-    out = []
-    for first, second in zip(lines[::2], lines[1::2]):
-        if "USB-Audio" in first:
-            first = first.split("USB-Audio", 1)[0] + "USB-Audio - "
-            second = re.sub(r"^(\s*).*?( at usb-)", r"\1Audio USB\2", second)
-        out += [first, second]
-    return "\n".join(out) + "\n"
-
-
 def _extra_in_series(names) -> set[str]:
     """Of each family of interfaces in series, all but the first."""
     names = list(names)
@@ -834,8 +806,7 @@ QUE = {
     "disk_serial": "el número de serie de un disco",
     "monitor_serial": "el número de serie de un monitor",
     "memory_serial": "el número de serie de un módulo de memoria",
-    "mac": "una dirección física de red", "usb": "el nombre de algo enchufado por USB",
-    "camera": "el nombre de una cámara", "router": "la dirección del router",
+    "mac": "una dirección física de red", "router": "la dirección del router",
     "ip": "una dirección IP de este equipo", "ipv6": "una dirección IPv6 de este equipo",
     "gpu_id": "el identificador de una gráfica", "interface": "el nombre de una conexión de red",
     "machine": "un dato de este equipo",
@@ -968,8 +939,6 @@ class _Anonymizer:
 
     def clean_contents(self) -> None:
         self.macs = self._macs()
-        models = {(_text_of(m) or "").strip().lower() for m in self.target.rglob("model")
-                   if m.is_file() and not m.is_symlink()}
         for path in sorted(self.target.rglob("*")):
             if path.is_symlink() or not path.is_file():
                 continue
@@ -1016,34 +985,10 @@ class _Anonymizer:
                     path.write_text((self._mac(real) if MAC.fullmatch(real)
                                      else privacidad.MAC) + "\n")
                 continue
-            # What's plugged in. Someone's inventory points to them too: a
-            # security key, a specific microphone. Of USB, the vendor:product
-            # ids, the class, the speed and what hangs from what stay; the
-            # names the device writes go, and with them the Bluetooth
-            # adapter's name, from the same file. The file is deleted rather
-            # than filled: the provider must read «nothing». Its serial is
-            # zeroed with every other serial (`SERIAL_FILES`).
-            # The maker goes too, but is not looked for afterwards: it is a
-            # company, and «Realtek» or «Generic» are also the sound codec,
-            # the PHY or the HDA card.
-            if name in USB_IDENTIFYING_FILES and re.search(r"/usb\d+/", relative):
-                usb_text = data.decode(errors="replace").strip()
-                # A USB stick's name is also its disk's model, which the dump
-                # keeps as any disk's (and the report shows): not looked for.
-                if name == "product" and len(usb_text) >= 6 \
-                        and not USB_GENERIC.search(usb_text) \
-                        and usb_text.lower() not in models:
-                    self._secret(usb_text, "usb")
-                path.unlink()
-                continue
-            if relative.startswith("/sys/") and "/video4linux/" in relative and name == "name":
-                if len(data.strip()) >= 6:
-                    self._secret(data.decode(errors="replace").strip().split(":")[0], "camera")
-                path.unlink()
-                continue
-            if relative == "/proc/asound/cards":
-                path.write_text(_cards_without_names(data.decode(errors="replace")))
-                continue
+            # What's plugged in keeps its ids and the names it writes, which
+            # name the model (the author's decision): without them a
+            # fingerprint reader or an infrared camera can't be told apart.
+            # Its serial is zeroed with every other (`SERIAL_FILES`).
             if relative == "/proc/sys/kernel/hostname":
                 path.write_text(privacidad.HOST_NAME + "\n")
                 continue

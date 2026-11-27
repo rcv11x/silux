@@ -148,21 +148,20 @@ class TestElVolcadoNuevoDeIntel(unittest.TestCase):
         self.assertEqual([(x.zram, x.algorithm) for x in s.swaps], [(True, "lzo-rle")])
         self.assertRegex(render.graphics_stack(self.foto), r"^Mesa \d+")
 
-    def test_lo_enchufado_sin_marcas_ni_modelos(self):
+    def test_lo_enchufado_con_su_id_y_su_nombre(self):
+        """The ids and the names a USB device writes stay (the author's
+        decision); anonymizing leaves them."""
         usb = self.foto.usb_devices
         self.assertEqual(sorted(u.kind for u in usb), ["keyboard", "mouse"])
-        self.assertEqual({(u.vendor, u.product, u.usb_id) for u in usb}, {(None, None, None)})
-        self.assertTrue(all(s.name is None for s in self.foto.sound_cards))
+        self.assertEqual(sorted((u.usb_id, u.product) for u in usb),
+                         [("046d:c077", "USB Optical Mouse"), ("8968:4e4b", "NK65")])
         anonima = privacidad.anonymize(self.foto)
         self.assertEqual(anonima.usb_devices, usb)
 
-    def test_en_el_volcado_no_hay_archivos_que_digan_de_quien_es_cada_cosa(self):
+    def test_ningun_numero_de_serie_usb(self):
         for nombre in ("i5-10400", "i5-10400-turbo"):
             raiz = EQUIPOS / nombre
             with self.subTest(volcado=nombre):
-                delatores = [str(p.relative_to(raiz)) for p in raiz.rglob("*")
-                             if p.name in ("product", "manufacturer") and "/usb" in str(p)]
-                self.assertEqual(delatores, [])
                 self.assertFalse([p for p in raiz.rglob("serial") if "/usb" in str(p)])
 
     def test_el_trim_del_disco(self):

@@ -178,9 +178,6 @@ def _en_un_volcado(ruta: pathlib.Path, relativa: str) -> list[str]:
         valor = _read(ruta)
         if valor.strip("0-: \n"):
             return [f"un {nombre} sin poner a cero"]
-    # De lo USB quedan vendor:product; lo que escribe el propio aparato, no.
-    if nombre in ("product", "manufacturer") and re.search(r"/usb\d+/", relativa):
-        return [f"el {nombre} de un aparato USB"]
     if nombre == "hostname" and relativa.endswith("kernel/hostname"):
         if _read(ruta) not in _NOMBRES_DE_EQUIPO_FALSOS:
             return [f"un nombre de equipo que no es «{privacidad.HOST_NAME}»"]

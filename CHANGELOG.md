@@ -25,6 +25,7 @@ que hace falta.
 - La prueba de disco tiene un perfil «Personalizado»: patrón, bloque y cola a elegir, con un hilo; su comparación con la vez anterior y su historial van solo con pruebas iguales
 - Los botones, desplegables y casillas llevan la letra del resto del programa en todas las páginas y crecen con el tamaño de letra de Ajustes; un botón que no cabe parte su texto en dos líneas
 - Los desplegables miden lo que su opción más larga, con un mínimo y un tope, y no se estiran a todo el ancho
+- El informe y su anexo llevan el nombre y el ID de lo enchufado por USB y de las cámaras (nunca su número de serie), para reconocer un lector de huellas o una cámara de infrarrojos
 
 ### Arreglos
 
