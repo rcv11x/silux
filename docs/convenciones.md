@@ -110,21 +110,21 @@ La suite queda en verde entre uno y otro.
 
 ## El CHANGELOG
 
-Cada versión es una entrada `## X.Y.Z (día de mes de año)`, de la más nueva a
-la más vieja, contada para quien usa el programa y no commit a commit. Dentro,
-un apartado por zona del programa y en este orden, omitiendo los vacíos:
+Silux es rolling release: cada versión se llama por el día en que se publica,
+`AAAA.M.D` sin ceros delante (`2026.11.28`), y es una entrada `## 2026.11.28`,
+de la más nueva a la más vieja. Las de antes (`## 0.4-prueba14 (…)` y
+anteriores) se quedan como están. Dentro, Lo destacado, Mejoras, Arreglos y
+Problemas conocidos, contado para quien usa el programa y no commit a commit:
+una línea por cambio, corta, sin emojis.
 
-1. **Antes de actualizar**: lo que hay que saber antes de dar el paso (lo que
-   deja de valer, lo que hay que hacer a mano). Sin prefijo: no son cambios.
-2. **Memoria**, **Procesador**, **Gráficos**, **Batería**, **Rendimiento**,
-   **Interfaz**, **Privacidad** y **AppImage**.
+La entrada se escribe como «Sin publicar» y la versión se pone al publicar,
+con `__version__`, en el mismo commit; la de arriba tiene que ser la versión
+que declara el paquete, y hay un test que lo vigila. Como mucho una versión
+al día: la versión es la fecha y no hay formato para dos.
 
-En cada zona, una línea por cambio, corta, que empieza por «Nuevo:» o
-«Arreglado:». Sin emojis. Lo que no encaja en ninguna zona va a la más
-cercana, no a una nueva: la lista corta es lo que deja encontrar lo suyo de un
-vistazo. La entrada se escribe como «sin publicar» y la fecha se pone al
-etiquetar; la de arriba tiene que ser la versión que declara el paquete, y
-hay un test que lo vigila.
+Se publica como release normal, no *prerelease*, con la versión como
+etiqueta y como título: así sale como «Latest» en GitHub y la encuentran las
+copias de las pruebas, en cualquier canal (`docs/arquitectura.md`).
 
 Debajo del título de cada versión, una línea «Con informes de Ana, Luis y
 Marta.» con quien mandó los informes que la arreglaron, si ha dado permiso

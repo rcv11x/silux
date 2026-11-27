@@ -1,5 +1,8 @@
 <!--
-The notes of a release: which AppImage to download, and what changes.
+Silux is a rolling release: publish it as a normal release, not a
+prerelease, with its version as the tag and the title («2026.11.28»), one a
+day at most. The notes of a release: which AppImage to download, and what
+changes.
 Highlights, Improved, Fixed and Known issues, one idea per line; English
 first, with "" quotes, and under it, in the <details>, the Spanish of the
 version's CHANGELOG entry. How to write them: «Cómo se escribe lo público»

@@ -43,4 +43,5 @@ that still identifies someone is a vulnerability too.
 
 ## Supported versions
 
-The latest release and the latest test release (`0.4.0rcN`).
+The latest release. Silux is a rolling release: each version is named after
+the day it comes out (`2026.11.28`), and only the newest is supported.

@@ -21,7 +21,7 @@ Hace lo que en Windows hacen CPU-Z, GPU-Z y HWMonitor, en un solo programa, y cu
 
 ## Descargar
 
-Cada [versión](https://github.com/rcv11x/silux/releases) trae dos AppImage:
+Silux es rolling release: cada versión se llama por el día en que sale (2026.11.28), y la [última](https://github.com/rcv11x/silux/releases/latest) es la que hay que usar. Trae dos AppImage:
 
 | Archivo | Cuál |
 |---|---|

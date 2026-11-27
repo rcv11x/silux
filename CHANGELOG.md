@@ -4,6 +4,10 @@ Lo que cambia en cada versión, contado para quien usa el programa: qué se ve
 distinto y qué deja de funcionar como funcionaba. El porqué técnico va en los
 mensajes de commit y en [docs/](docs/), que tienen otro lector.
 
+Silux es rolling release: cada versión se llama por el día en que sale
+(2026.11.28) y la última es la que hay que usar. Las pruebas de antes
+(0.4-prueba1 a 0.4-prueba14) se quedan como se publicaron.
+
 Cada copia dice de qué versión y de qué commit salió: `silux --version`, la
 barra lateral y la cabecera del informe. Al pedir ayuda, ese par es lo primero
 que hace falta.

@@ -460,7 +460,7 @@ pensado para pegarlo en un issue público) y lo dice al terminar. Con
 la última versión al abrirse y cuando se pulsa «Buscar ahora».
 
 **Cuándo se conecta:** «Buscar actualizaciones al iniciar» viene encendido,
-para que quien usa una versión de prueba se entere de la siguiente. Pregunta
+para que nadie se quede en una versión vieja sin saberlo. Pregunta
 tres segundos después de abrirse, una vez. Apagado, solo «Buscar ahora» abre
 un socket. Los ajustes de antes de que viniera encendido lo encienden una
 sola vez (`check_updates_migrated`); si después se apaga, se queda apagado.
@@ -483,13 +483,18 @@ sola vez (`check_updates_migrated`); si después se apaga, se queda apagado.
 | Sumas | el `SHA256SUMS` de esa release | 64 kB |
 | Bajar | el AppImage del mismo tipo que el que corre (normal o `-compat`) | 400 MB |
 
-**Qué cuenta como nuevo:** solo las releases publicadas, nunca los
-borradores. Las versiones de prueba (marcadas *prerelease*, o con «rcN» en la
-etiqueta) solo en el canal «Pruebas» de Ajustes; sin elegir canal, una versión
-de prueba busca en ese y una final, en «Estable» (`updates.channel_for`). Una
-de prueba va por debajo de la siguiente y de su final (`0.4.0rc2` <
-`0.4.0rc3` < `0.4.0`), así que quien tiene la 0.4-prueba2 recibe la prueba3 y,
-en cualquier canal, la 0.4.
+**Qué cuenta como nuevo:** Silux es rolling release: cada versión se llama
+por el día en que se publica (`2026.11.28`) y no hay canales. Cuenta la
+release normal con la fecha más alta; los borradores y las *prerelease* no.
+Las pruebas de antes (`0.4.0rcN`, publicadas como *prerelease*) se siguen
+entendiendo para comparar, y cualquier fecha va por delante de todas.
+
+Las copias que ya hay fuera se actualizan solas a la primera fecha: su
+actualizador lee `2026.11.28` como una versión final más nueva, en el canal
+que tengan elegido, si la release es normal
+(`tests/test_date_versions_on_old_updaters.py`, con una copia del
+actualizador de cada prueba). Por eso cada versión se publica como release
+normal, y como mucho una al día: la versión es la fecha.
 
 **Cómo se sustituye:** se baja a un temporal en la misma carpeta, se
 comprueba la suma, y `os.replace` lo pone en la ruta de `$APPIMAGE`, que es a

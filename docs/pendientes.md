@@ -311,7 +311,7 @@ la memoria) no va: está propuesto en las notas
   `hwdb` instalado, o la tabla de su código en una etiqueta fija) para decir
   si lo admite y que instale `fprintd`.
 
-* Almacenamiento · media · para la prueba16, una tabla de TB garantizados
+* Almacenamiento · media · para la próxima versión, una tabla de TB garantizados
   (TBW) por modelo, con lo escrito frente a lo que garantiza el fabricante.
   Primer caso: el KIOXIA EXCERIA SATA de 240 GB de la oficina, 30.7 de
   ~60 TB (su 241 va en bloques de 32 MiB).
@@ -512,13 +512,13 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
-* `ui/pages/storage.py` · media · para la prueba16: con una unidad elegida,
+* `ui/pages/storage.py` · media · para la próxima versión: con una unidad elegida,
   sus fichas en vivo sin permisos, de `/proc/diskstats`: tiempo activo,
   respuesta media de lectura y escritura e IOPS, con su historia; los
   subtítulos con la unidad, su fila y su tarjeta en el acento, y la ficha
   lleva a su tarjeta. Con todas las unidades, solo lo que tiene sentido
   sumado (IOPS).
-* `ui/app.py` · media · para la prueba16: al cambiar de tema, de densidad o
+* `ui/app.py` · media · para la próxima versión: al cambiar de tema, de densidad o
   de letra, montar solo la página visible y las demás al abrirlas. Bajaría de
   ~1 s a ~0,2 s, pero toca cómo se cablea cada página con la ventana (unas
   120 referencias). Medido en [rendimiento.md](rendimiento.md).
