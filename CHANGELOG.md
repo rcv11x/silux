@@ -46,6 +46,7 @@ que hace falta.
 - El aviso de versión nueva de la barra lateral, también con la barra plegada, lleva a Ajustes → Actualizaciones, donde se pulsa «Actualizar a…»
 - Al cambiar un ajuste, la barra de estado dice «Ajuste guardado» durante dos segundos
 - «Mostrar todas las instrucciones» se aplica al momento: solo se rehace la lista de CPU, y Ajustes se queda donde estaba
+- Acerca de Silux tiene la comunidad: UniversoLinux en Discord (#silux-app-chat)
 
 ### Arreglos
 

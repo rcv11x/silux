@@ -17,6 +17,7 @@ alguien instala la entrada desde la terminal con la página abierta, se ve.
 
 from __future__ import annotations
 
+import html
 import math
 import pathlib
 import platform
@@ -38,7 +39,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import __version__, db, desktop, i18n, render, updates
+from ... import __version__, db, desktop, i18n, render, system_env, updates
 from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
@@ -55,6 +56,9 @@ from ..widgets import (
     ScrollPage,
     match_widths,
 )
+
+# The UniversoLinux Discord server, where Silux has its channel.
+COMMUNITY_URL = "https://discord.gg/YEctcwHZCQ"
 
 # The names in these tables that are said in the interface's language.
 TRANSLATED_NAMES = ("about.claude.name",)
@@ -650,8 +654,11 @@ class SettingsPage(ScrollPage):
         fila.add(self._bloque(_("about.credits"), AUTORIA))
         fila.add(self._bloque(_("about.builtwith"), CONSTRUIDO_CON))
         card.body.addWidget(fila)
+        gente = ResponsiveRow(min_item_width=220)
         if nombres := db.thanks():
-            card.body.addWidget(self._gracias(nombres))
+            gente.add(self._gracias(nombres))
+        gente.add(self._community())
+        card.body.addWidget(gente)
         # Folded: a list as long as the rest of the card, which few open.
         self.third_party = Plegable(_("about.thirdparty.fold"))
         third = ResponsiveRow(min_item_width=220)
@@ -746,6 +753,30 @@ class SettingsPage(ScrollPage):
         porque.setWordWrap(True)
         porque.setFont(ui_font(max(7, m.small_pt - 1)))
         columna.addWidget(porque)
+        return caja
+
+    def _community(self) -> QWidget:
+        """Where people who use Silux talk about it, as a link."""
+        m = theme.METRICS
+        caja = QWidget()
+        columna = QVBoxLayout(caja)
+        columna.setContentsMargins(0, m.card_gap, 0, 0)
+        columna.setSpacing(3)
+        encabezado = QLabel(_("about.community").upper())
+        encabezado.setObjectName("ColumnTitle")
+        columna.addWidget(encabezado)
+        columna.addSpacing(2)
+        self.community_link = QLabel(
+            f'<a href="{COMMUNITY_URL}" style="color: {self._p.info};">'
+            f'{html.escape(_("about.community.discord"))}</a>')
+        self.community_link.setTextFormat(Qt.TextFormat.RichText)
+        self.community_link.setWordWrap(True)
+        self.community_link.setFont(ui_font(m.small_pt))
+        self.community_link.setToolTip(COMMUNITY_URL)
+        # Through xdg-open with the system's environment, not the AppImage's.
+        self.community_link.linkActivated.connect(system_env.open_path)
+        columna.addWidget(self.community_link)
+        columna.addStretch(1)
         return caja
 
     def _bloque(self, titulo: Optional[str], lineas: tuple[tuple[str, str], ...]) -> QWidget:
