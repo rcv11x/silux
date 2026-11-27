@@ -670,6 +670,12 @@ la memoria) no va: está propuesto en las notas
 
 ## Empaquetado y CI
 
+* `.github/workflows/appimage.yml` · media · una vuelta de CI tarda 1 h 40
+  min a 1 h 55 min. Propuesta: los tests de anchura (cada volcado con cada
+  letra) solo en el trabajo normal de 3.14, el trabajo normal partido en dos,
+  `--dist worksteal` para que no quede un proceso solo al final, y la caché
+  de pip y de PySide6.
+
 * `tools/probar_en_minimo.py` · media · pasa la suite como root dentro del
   contenedor y sin `.git`, y el CI como usuario normal y con el repositorio:
   en `master` da 147 fallos que el CI no tiene (avisos y candados de
@@ -710,6 +716,9 @@ la memoria) no va: está propuesto en las notas
   corrido.
 
 ## Menores
+
+* `render.py` · baja · `maker` no quita la razón social seguida de un
+  paréntesis: «KYE Systems Corp. (Mouse Systems)», de usb.ids.
 
 De la quinta auditoría, sin comprobar uno a uno si siguen igual:
 
