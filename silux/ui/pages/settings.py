@@ -146,7 +146,7 @@ class _DialogoDeAvisos(QDialog):
 THEMES = (("opt.theme.system", "system"), ("opt.theme.light", "light"), ("opt.theme.dark", "dark"))
 # In the order of `settings.ACCENTS`, the default first.
 ACCENT_NAMES = (("settings.accent.amber", "amber"), ("settings.accent.blue", "blue"),
-                ("settings.accent.green", "green"), ("settings.accent.red", "red"),
+                ("settings.accent.green", "green"), ("settings.accent.raspberry", "raspberry"),
                 ("settings.accent.purple", "purple"))
 UNITS = (("opt.temp.celsius", "c"), ("opt.temp.fahrenheit", "f"))
 DENSITIES = (("opt.density.spacious", "spacious"), ("opt.density.normal", "normal"), ("opt.density.compact", "compact"))

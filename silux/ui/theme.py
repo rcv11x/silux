@@ -1005,8 +1005,10 @@ ACCENTS: dict[str, dict[str, tuple[str, str, str]]] = {
                "light": ("#1D6EB6", "#185C98", "#E3EEF8")},
     "green":  {"dark": ("#5FBF8B", "#8AD4AC", "#10241A"),
                "light": ("#1F7A4D", "#1A6640", "#E2F2E9")},
-    "red":    {"dark": ("#E57373", "#F09999", "#2E1618"),
-               "light": ("#B23A3A", "#973131", "#FAE7E7")},
+    # Not red: red is what a fault is painted in (`crit`), and beside it the
+    # accent read as one.
+    "raspberry": {"dark": ("#EE6FA8", "#F393BE", "#2E1622"),
+                  "light": ("#A8235F", "#8E1D50", "#FBE4EE")},
     "purple": {"dark": ("#A98BE0", "#C0A9EC", "#201A2E"),
                "light": ("#6A45B0", "#5A3A96", "#EDE7F8")},
 }

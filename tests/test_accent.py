@@ -50,6 +50,18 @@ class TestTheTable(unittest.TestCase):
         self.assertEqual(settings.ACCENTS[0], "amber")
         self.assertEqual(settings.Preferences().accent, "amber")
 
+    def test_none_has_the_tone_of_a_fault(self):
+        # The red accent was #E57373 beside a fault's #E0857D: a disk's
+        # «Back it up now» read as one more thing in the accent.
+        for name, base, palette in _palettes():
+            apart = abs(_hue(palette.accent) - _hue(palette.crit)) % 360
+            with self.subTest(accent=name, dark=base is theme.DARK):
+                # Amber, the brand, is 19° from it in light; red was 5°.
+                self.assertGreaterEqual(min(apart, 360 - apart), 15)
+
+    def test_a_saved_red_is_raspberry(self):
+        self.assertEqual(settings.Preferences(accent="red").normalized().accent, "raspberry")
+
     def test_every_one_reads_in_both_themes(self):
         # Normal text, WCAG's 4.5:1: the primary button's text on the accent
         # and on its hover, a badge's on its wash, the accent as text.

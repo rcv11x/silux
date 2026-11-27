@@ -20,7 +20,7 @@ que hace falta.
 
 - Silux pasa a rolling release: cada versión se llama por el día en que sale, y la última es la que hay que usar
 - Silux avisa cuando hay una versión nueva: al abrirse pregunta a GitHub, sin mandar nada del equipo, y se puede apagar en Ajustes
-- Color de acento en Ajustes: ámbar, azul, verde, rojo o morado, legibles en claro y en oscuro, y todo cambia a la vez
+- Color de acento en Ajustes: ámbar, azul, verde, frambuesa o morado, legibles en claro y en oscuro, y todo cambia a la vez
 - La salud de cada disco de un vistazo en Almacenamiento, y un desplegable para elegir qué unidad enseñan sus fichas
 - Dispositivos dice qué no tiene driver y, de lo que se conoce, qué instalar
 - Todo crece con el tamaño de letra de Ajustes, y cambiar de tema o de letra tarda la mitad
@@ -33,7 +33,7 @@ que hace falta.
 - La barra lateral se encoge a solo los iconos con el botón de su panel, junto al logo; al pasar el ratón dice el nombre de cada sección, y se queda como la dejaste
 - Con «Movimiento fluido», la marca de la sección abierta en la barra lateral y la raya de la pestaña abierta en Rendimiento se deslizan hasta la nueva en vez de saltar
 - Cambiar de tema, de densidad o de letra tarda la mitad: menos de un segundo en un sobremesa
-- Color de acento en Ajustes → Apariencia: ámbar, azul, verde, rojo o morado, cada uno legible en claro y en oscuro; cambia todo a la vez, sin reiniciar, y con el azul lo que tiene arreglo y los candados pasan a morado
+- Color de acento en Ajustes → Apariencia: ámbar, azul, verde, frambuesa o morado, cada uno legible en claro y en oscuro; cambia todo a la vez, sin reiniciar, y con el azul lo que tiene arreglo y los candados pasan a morado
 - El ámbar del tema claro, un poco más oscuro: el texto de los botones principales y de las etiquetas se lee mejor
 - Ajustes explica cada fila en una o dos líneas, más cortas y directas
 - En Ajustes, los desplegables van todos del ancho del más largo y quedan alineados
