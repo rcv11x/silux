@@ -29,10 +29,12 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font, value_font
 from ..widgets import Card, ChipRow, InfoGrid, ResponsiveRow, ScrollPage, Table, let_go
+from .board import PCI_KINDS
 
 USB_HEADERS = ("dev.col.device", "dev.col.maker", "dev.col.kind", "dev.col.speed")
 SOUND_HEADERS = ("dev.col.card", "dev.col.where")
 CAMERA_HEADERS = ("dev.col.camera", "dev.col.type")
+NODRIVER_HEADERS = ("dev.col.device", "dev.col.kind", "dev.col.id")
 DONDE_SUENA = {"hdmi": "dev.sound.where.gpu", "board": "dev.sound.where.board",
                "usb": "dev.sound.where.usb"}
 
@@ -123,6 +125,14 @@ class DevicesPage(ScrollPage):
         bluetooth.body.addWidget(self.bluetooth_pie)
         fila.add(bluetooth)
         layout.addWidget(fila)
+
+        # What has no driver bound, and what can be done about it.
+        self.nodriver_card = Card(_("dev.card.nodriver"))
+        self.nodriver = Table([_(h) for h in NODRIVER_HEADERS], cede=(0,))
+        self.nodriver_card.body.addWidget(self.nodriver)
+        self.nodriver_card.body.addWidget(self._nota(_("dev.nodriver.what")))
+        self.nodriver_card.hide()
+        layout.addWidget(self.nodriver_card)
         layout.addStretch(1)
 
     @staticmethod
@@ -173,6 +183,14 @@ class DevicesPage(ScrollPage):
         self.cameras_none.setVisible(not snapshot.cameras)
 
         self._apply_bluetooth(snapshot.bluetooth)
+
+        sin_driver = snapshot.driverless_pci
+        self.nodriver.set_rows([
+            (d.name or render.DASH, _(PCI_KINDS[d.kind]) if d.kind in PCI_KINDS else d.kind,
+             f"{d.vendor_id:04x}:{d.device_id:04x}" if d.vendor_id is not None
+             and d.device_id is not None else render.DASH)
+            for d in sin_driver])
+        self.nodriver_card.setVisible(bool(sin_driver))
 
     def _apply_usb(self, usb) -> None:
         self.usb_card.setVisible(bool(usb))

@@ -303,6 +303,16 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `providers/devices.py` · media · «Sin driver» solo mira los PCI: los USB
+  piden el enlace `driver` de cada interfaz, y los volcados no lo guardan
+  (saldría todo sin driver). Antes, que `volcado.py` lo guarde. El lector de
+  huellas y la cámara de infrarrojos tampoco se reconocen todavía: los
+  volcados quitan el nombre y el ID de los USB y los de las cámaras, así que
+  no hay con qué probarlo. Hace falta el anexo de alguien con uno, y para la
+  huella, la lista de libfprint (su `hwdb` instalado, o la tabla de su
+  código en una etiqueta fija) para decir si lo admite y que instale
+  `fprintd`.
+
 * `disk_health.py` · media · la salud de un disco SATA llega como mucho a
   «vigilar»: «haz copia ya» pide el umbral de cada atributo (SMART READ
   THRESHOLDS), otra orden ATA que el ayudante no manda. Toca privilegios: se

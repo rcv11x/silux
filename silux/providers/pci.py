@@ -47,6 +47,15 @@ def _hex(path: str) -> Optional[int]:
         return None
 
 
+def _driver(node: pathlib.Path) -> Optional[str]:
+    """The driver bound to a device, by the name its link points to."""
+    try:
+        link = node / "driver"
+        return link.resolve().name if link.exists() else None
+    except OSError:
+        return None
+
+
 class PciDevices(Provider):
     """The PCI devices with their name, driver and link."""
 
@@ -87,7 +96,8 @@ class PciDevices(Provider):
             out.append(PciDevice(
                 slot=fixed["slot"], kind=fixed["kind"],
                 name=own.get(fixed["slot"]) or fixed["name"],
-                vendor=fixed["vendor"], driver=fixed["driver"],
+                # Read each time: a driver installed or loaded shows at once.
+                vendor=fixed["vendor"], driver=_driver(node),
                 link=link,
                 slot_name=self._slot_name(node, draft.pci_slot_names),
                 vendor_id=fixed["ids"][0], device_id=fixed["ids"][1], pci_class=fixed["class_code"]))
@@ -106,13 +116,7 @@ class PciDevices(Provider):
             kind = CLASSES.get(code)
             if kind is None:
                 continue
-            driver = None
-            try:
-                link = pathlib.Path(path, "driver")
-                driver = link.resolve().name if link.exists() else None
-            except OSError:
-                pass
-            raws.append({"slot": slot, "kind": kind, "driver": driver, "class_code": code,
+            raws.append({"slot": slot, "kind": kind, "class_code": code,
                            "ids": (_hex(f"{base}/vendor"), _hex(f"{base}/device"))})
         pairs = [c["ids"] for c in raws if None not in c["ids"]]
         names = pciids.lookup(pairs) if pairs else {}

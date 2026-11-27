@@ -2417,6 +2417,18 @@ class Snapshot:
                 return i
         return 0
 
+    @property
+    def driverless_pci(self) -> tuple["PciDevice", ...]:
+        """The PCI devices worth a driver that have none bound. A function
+        of a device whose other function has its driver isn't one: a
+        graphics card's second function needs none of its own."""
+        def device(slot: str) -> str:
+            return slot.rsplit(".", 1)[0]
+
+        driven = {device(d.slot) for d in self.pci_devices if d.driver}
+        return tuple(d for d in self.pci_devices
+                     if not d.driver and device(d.slot) not in driven)
+
     def permission_note(self, path: str) -> Optional[Note]:
         """The permission note that field holds, if any.
 
