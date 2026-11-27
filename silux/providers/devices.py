@@ -19,7 +19,7 @@ import pathlib
 import re
 from typing import Optional
 
-from .. import sysroot
+from .. import sysroot, usbids
 from ..model import BluetoothAdapter, Camera, SoundCard, UsbDevice
 from .base import Draft, Provider, read_text
 
@@ -138,11 +138,21 @@ class ConnectedDevices(Provider):
                 speed = float(read_text(f"{node}/speed") or "")
             except ValueError:
                 speed = None
+            vendor = read_text(f"{node}/manufacturer") or None
+            product = read_text(f"{node}/product") or None
+            listed = None
+            if not (vendor and product) and vendor_id and product_id:
+                try:
+                    listed = usbids.lookup(int(vendor_id, 16), int(product_id, 16))
+                except ValueError:
+                    listed = None
             device = UsbDevice(
                 port=port,
-                vendor=read_text(f"{node}/manufacturer") or None,
-                product=read_text(f"{node}/product") or None,
+                vendor=vendor,
+                product=product,
                 usb_id=f"{vendor_id}:{product_id}" if vendor_id and product_id else None,
+                ids_vendor=listed[0] if listed else None,
+                ids_product=listed[1] if listed else None,
                 kind=_kind(node),
                 speed_mbps=speed,
                 version=(read_text(f"{node}/version") or "").strip() or None,

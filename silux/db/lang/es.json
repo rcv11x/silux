@@ -2344,6 +2344,7 @@
   "usb.speed.super": "SuperSpeed",
   "usb.speed.superplus": "SuperSpeed+",
   "usb.speed.usb4": "USB4",
+  "usb.unnamed": "Dispositivo USB {id}",
   "value.calculating": "Calculando…",
   "welcome.back": "Atrás",
   "welcome.before.title": "Antes de empezar",

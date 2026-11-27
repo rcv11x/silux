@@ -594,12 +594,12 @@ No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detr
 
 ### USB
 
-*DISPOSITIVO · VELOCIDAD*
-- Audio · Velocidad completa · 12 Mb/s
-- Mando o dispositivo de entrada · Velocidad completa · 12 Mb/s
-- Teclado · Baja velocidad · 1.5 Mb/s
-- Almacenamiento · SuperSpeed · 5 Gb/s
-- Teclado y ratón · Velocidad completa · 12 Mb/s
+*DISPOSITIVO · FABRICANTE · QUÉ ES · VELOCIDAD*
+- Dispositivo USB 4c4a:4155 · audio · Velocidad completa · 12 Mb/s
+- Dispositivo USB 0b05:19af · mando o dispositivo de entrada · Velocidad completa · 12 Mb/s
+- Keyboard · China Resource Semico · teclado · Baja velocidad · 1.5 Mb/s
+- ASM1051E SATA 6Gb/s bridge, ASM1053E SATA 6Gb/s bridge, ASM1153 SATA 3Gb/s bridge, ASM1153E SATA 6Gb/s bridge · ASMedia Technology · almacenamiento · SuperSpeed · 5 Gb/s
+- Dispositivo USB 32c2:0012 · teclado y ratón · Velocidad completa · 12 Mb/s
 
 Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
 

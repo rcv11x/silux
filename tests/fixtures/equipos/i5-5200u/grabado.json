@@ -369,5 +369,17 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 14355828
   }
+ },
+ "usbids": {
+  "04ca:3015": [
+   "Lite-On Technology Corp.",
+   "Qualcomm Atheros QCA9377 Bluetooth"
+  ],
+  "04f2:b520": [],
+  "0bda:9201": [],
+  "8087:8001": [
+   "Intel Corp.",
+   "Integrated Hub"
+  ]
  }
 }

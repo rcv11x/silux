@@ -298,5 +298,13 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 28000898
   }
+ },
+ "usbids": {
+  "0a5c:5800": [
+   "Broadcom Corp.",
+   "BCM5880 Secure Applications Processor"
+  ],
+  "0bda:9201": [],
+  "0781:55a5": []
  }
 }

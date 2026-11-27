@@ -84,6 +84,8 @@ class DevicesPage(ScrollPage):
         self.usb.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.usb.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.usb.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # With long names the side bar appears, and its height is a row's.
+        self.usb.horizontalScrollBar().rangeChanged.connect(self._ajustar_alto)
         self.usb.header().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.usb.header().setStretchLastSection(True)
         # El árbol crece con lo que lleva, sin barra propia: dos zonas de
@@ -196,7 +198,7 @@ class DevicesPage(ScrollPage):
             (d.name or render.DASH, _(PCI_KINDS[d.kind]) if d.kind in PCI_KINDS else d.kind,
              render.pci_id(d))
             for d in sin_driver] + [
-            (u.product or render.usb_kind(u), f"{render.usb_kind(u)} · USB", u.usb_id or render.DASH)
+            (render.usb_name(u), f"{render.usb_kind(u)} · USB", u.usb_id or render.DASH)
             for u in usb])
         hints = [render.driver_hint(d) for d in sin_driver]
         known = "\n".join(h for h in hints if h)
@@ -237,8 +239,8 @@ class DevicesPage(ScrollPage):
         # la foto anónima, que no lleva marcas ni modelos de lo enchufado: el
         # fabricante se queda vacío y «Qué es» repite el nombre («Teclado /
         # teclado»), porque el nombre ya es lo que es.
-        self.usb.setColumnHidden(1, not any(u.vendor for u in usb))
-        self.usb.setColumnHidden(2, not any(u.product for u in usb))
+        self.usb.setColumnHidden(1, not any(render.usb_maker(u) for u in usb))
+        self.usb.setColumnHidden(2, not any(u.product or u.ids_product for u in usb))
         self._ajustar_alto()
 
     @staticmethod
@@ -250,7 +252,7 @@ class DevicesPage(ScrollPage):
         return row
 
     def _fill_usb_row(self, row: QTreeWidgetItem, device) -> None:
-        texts = [render.usb_name(device), device.vendor or "",
+        texts = [render.usb_name(device), render.usb_maker(device),
                  render.usb_kind(device), render.usb_speed(device.speed_mbps)]
         tip = _("dev.usb.tip").format(puerto=device.port, id=device.usb_id or render.DASH)
         speed_tone = "ink_dim"
@@ -296,7 +298,7 @@ class DevicesPage(ScrollPage):
             self._detach_usb(row)
             parent.insertChild(index, row)
 
-    def _ajustar_alto(self) -> None:
+    def _ajustar_alto(self, *_range) -> None:
         visibles = 0
         pendientes = [self.usb.topLevelItem(i) for i in range(self.usb.topLevelItemCount())]
         while pendientes:
@@ -306,6 +308,9 @@ class DevicesPage(ScrollPage):
                 pendientes.extend(item.child(i) for i in range(item.childCount()))
         alto_fila = max(self.usb.sizeHintForRow(0), 20) if visibles else 20
         extra = self.usb.header().sizeHint().height() + 6
+        bar = self.usb.horizontalScrollBar()
+        if bar.maximum() > 0:
+            extra += bar.sizeHint().height()
         self.usb.setFixedHeight(visibles * alto_fila + extra)
 
     def _apply_bluetooth(self, adaptadores) -> None:

@@ -299,5 +299,21 @@
    "InitRDTimestampMonotonic": 1707652,
    "UserspaceTimestampMonotonic": 21879480
   }
+ },
+ "usbids": {
+  "1a2c:0e24": [],
+  "0458:0186": [
+   "KYE Systems Corp. (Mouse Systems)",
+   "Genius DX-120 Mouse"
+  ],
+  "0438:7900": [
+   "Advanced Micro Devices, Inc.",
+   "Root Hub"
+  ],
+  "0bda:579c": [],
+  "0cf3:3004": [
+   "Qualcomm Atheros Communications",
+   "AR3012 Bluetooth 4.0"
+  ]
  }
 }

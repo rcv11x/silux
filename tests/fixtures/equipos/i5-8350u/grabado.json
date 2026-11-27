@@ -445,5 +445,25 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 6091240
   }
+ },
+ "usbids": {
+  "06cb:009a": [
+   "Synaptics, Inc.",
+   "Metallica MIS Touch Fingerprint Reader"
+  ],
+  "04f2:b604": [
+   "Chicony Electronics Co., Ltd",
+   "Integrated Camera (1280x720@30)"
+  ],
+  "8087:0a2b": [
+   "Intel Corp.",
+   "Bluetooth wireless interface"
+  ],
+  "2386:432e": [],
+  "0bda:0316": [
+   "Realtek Semiconductor Corp.",
+   "Card Reader"
+  ],
+  "0bda:9201": []
  }
 }

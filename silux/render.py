@@ -1593,9 +1593,20 @@ def usb_kind(device) -> str:
 
 
 def usb_name(device) -> str:
-    """The device's name; if it has none (or the snapshot is anonymous), what it is."""
+    """The name the device writes, else the one usb.ids gives its ids, else
+    «Dispositivo USB 046d:c52b»; with no ids either, what it is."""
+    if device.product or device.ids_product:
+        return device.product or device.ids_product
+    if device.usb_id:
+        return _("usb.unnamed").format(id=device.usb_id)
     name = usb_kind(device)
-    return device.product or (name[:1].upper() + name[1:])
+    return name[:1].upper() + name[1:]
+
+
+def usb_maker(device) -> str:
+    """Who makes it: as the device writes it, else usb.ids' as a brand (its
+    legal name, «Genesys Logic, Inc.», is not what's on the box)."""
+    return device.vendor or maker(device.ids_vendor) or ""
 
 
 def sound_card(card) -> str:

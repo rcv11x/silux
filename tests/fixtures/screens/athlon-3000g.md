@@ -500,10 +500,10 @@ No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detr
 
 ### USB
 
-*DISPOSITIVO · VELOCIDAD*
-- Almacenamiento · Alta velocidad · 480 Mb/s
-- Teclado y ratón · Velocidad completa · 12 Mb/s
-- Teclado · Baja velocidad · 1.5 Mb/s
+*DISPOSITIVO · FABRICANTE · QUÉ ES · VELOCIDAD*
+- DataTraveler 100 G3/G4/SE9 G2/50 Kyson · Kingston · almacenamiento · Alta velocidad · 480 Mb/s
+- Dispositivo USB 248a:8514 · teclado y ratón · Velocidad completa · 12 Mb/s
+- Dispositivo USB c0f4:0201 · teclado · Baja velocidad · 1.5 Mb/s
 
 Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
 

@@ -261,5 +261,14 @@
    25634807,
    4096
   ]
+ },
+ "usbids": {
+  "0bda:57b4": [],
+  "04ca:2006": [
+   "Lite-On Technology Corp.",
+   "Broadcom BCM43142A0 Bluetooth Device"
+  ],
+  "0781:55a5": [],
+  "0bda:9201": []
  }
 }

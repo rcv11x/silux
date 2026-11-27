@@ -337,5 +337,13 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 8516126
   }
+ },
+ "usbids": {
+  "0951:1666": [
+   "Kingston Technology",
+   "DataTraveler 100 G3/G4/SE9 G2/50 Kyson"
+  ],
+  "248a:8514": [],
+  "c0f4:0201": []
  }
 }

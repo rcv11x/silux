@@ -591,11 +591,11 @@ No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detr
 
 ### USB
 
-*DISPOSITIVO · VELOCIDAD*
-- Teclado y ratón · Velocidad completa · 12 Mb/s
-- Teclado y ratón · Baja velocidad · 1.5 Mb/s
-- Inalámbrico · Velocidad completa · 12 Mb/s
-- Mando o dispositivo de entrada · Velocidad completa · 12 Mb/s
+*DISPOSITIVO · FABRICANTE · QUÉ ES · VELOCIDAD*
+- Dispositivo USB 0c45:7697 · teclado y ratón · Velocidad completa · 12 Mb/s
+- Dispositivo USB 4e53:5407 · teclado y ratón · Baja velocidad · 1.5 Mb/s
+- Wireless-AC 9260 Bluetooth Adapter · Intel · inalámbrico · Velocidad completa · 12 Mb/s
+- Dispositivo USB 0b05:18f3 · mando o dispositivo de entrada · Velocidad completa · 12 Mb/s
 
 Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
 

@@ -638,5 +638,16 @@
    "InitRDTimestampMonotonic": 609804,
    "UserspaceTimestampMonotonic": 13980451
   }
+ },
+ "usbids": {
+  "046d:c03e": [
+   "Logitech, Inc.",
+   "Premium Optical Wheel Mouse (M-BT58)"
+  ],
+  "0b05:19af": [],
+  "046d:c316": [
+   "Logitech, Inc.",
+   "HID-Compliant Keyboard"
+  ]
  }
 }

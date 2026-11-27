@@ -499,6 +499,10 @@ class UsbDevice:
     vendor: Optional[str] = None
     product: Optional[str] = None
     usb_id: Optional[str] = None             # "046d:c54d"
+    # What usb.ids calls its ids, for a device that writes no names of its
+    # own (and for a dump made before they were kept). Not what it says.
+    ids_vendor: Optional[str] = None
+    ids_product: Optional[str] = None
     kind: str = "other"                      # see `providers/devices.py`, `_kind`
     speed_mbps: Optional[float] = None       # the negotiated one: 1.5, 12, 480, 5000…
     version: Optional[str] = None            # the one the device declares: "2.00", "3.20"

@@ -100,20 +100,24 @@ class TestDetalles(unittest.TestCase):
         self.assertIn(f"{len(self.amd.sound_cards)} tarjetas de sonido", subtitulo)
 
     def test_el_arbol_usb_no_ensena_columnas_que_no_dicen_nada(self):
-        # Sin marcas ni modelos (la foto anónima, o un volcado), el fabricante
-        # quedaba vacío y «Qué es» repetía el nombre: «Teclado / teclado».
+        # Sin marcas ni modelos, ni de su firmware ni de usb.ids, el
+        # fabricante quedaba vacío y «Qué es» repetía el nombre: «Teclado /
+        # teclado».
         import dataclasses
-        with pantalla.Ventana(self.amd) as ventana:
+        sin_nombres = dataclasses.replace(self.amd, usb_devices=tuple(
+            dataclasses.replace(d, ids_vendor=None, ids_product=None)
+            for d in self.amd.usb_devices))
+        with pantalla.Ventana(sin_nombres) as ventana:
             ventana.select_section("nav.devices")
             QApplication.processEvents()
             arbol = ventana.devices_page.usb
             self.assertTrue(arbol.isColumnHidden(1))
             self.assertTrue(arbol.isColumnHidden(2))
             # Con el nombre y la marca que da un aparato de verdad, salen.
-            primero = dataclasses.replace(self.amd.usb_devices[0], product="G502 HERO",
+            primero = dataclasses.replace(sin_nombres.usb_devices[0], product="G502 HERO",
                                           vendor="Logitech")
             con_nombre = dataclasses.replace(
-                self.amd, usb_devices=(primero, *self.amd.usb_devices[1:]))
+                sin_nombres, usb_devices=(primero, *sin_nombres.usb_devices[1:]))
             ventana._on_sample(con_nombre)
             self.assertFalse(arbol.isColumnHidden(1))
             self.assertFalse(arbol.isColumnHidden(2))

@@ -293,5 +293,12 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 20997867
   }
+ },
+ "usbids": {
+  "1c4f:0016": [],
+  "1bcf:0005": [
+   "Sunplus Innovation Technology Inc.",
+   "Optical Mouse"
+  ]
  }
 }

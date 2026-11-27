@@ -353,5 +353,14 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 2431180
   }
+ },
+ "usbids": {
+  "8087:0025": [
+   "Intel Corp.",
+   "Wireless-AC 9260 Bluetooth Adapter"
+  ],
+  "0b05:18f3": [],
+  "0c45:7697": [],
+  "4e53:5407": []
  }
 }

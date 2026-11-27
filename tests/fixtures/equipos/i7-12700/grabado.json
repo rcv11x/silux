@@ -547,5 +547,29 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 3191335
   }
+ },
+ "usbids": {
+  "046d:c548": [
+   "Logitech, Inc.",
+   "Logi Bolt Receiver"
+  ],
+  "26ce:01a2": [],
+  "174c:2074": [
+   "ASMedia Technology Inc.",
+   "ASM1074 High-Speed hub"
+  ],
+  "05e3:0610": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "05e3:0626": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "174c:3074": [
+   "ASMedia Technology Inc.",
+   "ASM1074 SuperSpeed hub"
+  ],
+  "05e3:0764": []
  }
 }

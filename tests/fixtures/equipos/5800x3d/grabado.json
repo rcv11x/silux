@@ -462,5 +462,39 @@
    "InitRDTimestampMonotonic": 3198503,
    "UserspaceTimestampMonotonic": 7765519
   }
+ },
+ "usbids": {
+  "19f7:004a": [],
+  "048d:8297": [
+   "Integrated Technology Express, Inc.",
+   "IT8297 RGB LED Controller"
+  ],
+  "05e3:0608": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "8968:4e4b": [],
+  "2dc8:6013": [],
+  "0bda:5411": [
+   "Realtek Semiconductor Corp.",
+   "RTS5411 Hub"
+  ],
+  "0bda:1100": [],
+  "05e3:0610": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "2972:0047": [],
+  "2357:0604": [],
+  "046d:c54d": [],
+  "1050:0407": [
+   "Yubico.com",
+   "Yubikey 4/5 OTP+U2F+CCID"
+  ],
+  "3564:fefe": [],
+  "05e3:0626": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ]
  }
 }

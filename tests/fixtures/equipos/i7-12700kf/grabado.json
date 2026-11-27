@@ -705,6 +705,45 @@
   "0bda:8153": [
    "Realtek Semiconductor Corp.",
    "RTL8153 Gigabit Ethernet Adapter"
+  ],
+  "048d:5702": [
+   "Integrated Technology Express, Inc.",
+   "RGB LED Controller"
+  ],
+  "05e3:0608": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "05e3:0610": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "046d:c52b": [
+   "Logitech, Inc.",
+   "Unifying Receiver"
+  ],
+  "03f0:0391": [],
+  "32c2:0024": [],
+  "046d:0825": [
+   "Logitech, Inc.",
+   "Webcam C270"
+  ],
+  "0e8d:6639": [],
+  "0bc2:2344": [],
+  "0480:0905": [],
+  "05e3:0626": [
+   "Genesys Logic, Inc.",
+   "Hub"
+  ],
+  "0781:55a3": [],
+  "0781:cfcb": [],
+  "2109:3431": [
+   "VIA Labs, Inc.",
+   "Hub"
+  ],
+  "045e:028e": [
+   "Microsoft Corp.",
+   "Xbox360 Controller"
   ]
  }
 }

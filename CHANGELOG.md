@@ -59,6 +59,7 @@ que hace falta.
 - Con la base cambiada a mano, la fila «Base» de CPU dice que está fijada en la BIOS y cuál es la de fábrica
 - Lo que falta por permisos en una página sale en un solo aviso con un solo botón, y no en uno por dato
 - En una ventana estrecha, los desplegables de la prueba de disco quedan alineados en columna
+- Un dispositivo USB que no escribe su nombre sale con el de usb.ids, o como «Dispositivo USB 046d:c52b»
 
 ### Arreglos
 

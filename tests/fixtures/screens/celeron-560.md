@@ -505,8 +505,8 @@ No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detr
 ### USB
 
 *DISPOSITIVO · VELOCIDAD*
-- Almacenamiento · Alta velocidad · 480 Mb/s
-- Almacenamiento · Alta velocidad · 480 Mb/s
+- Dispositivo USB 0bda:9201 · Alta velocidad · 480 Mb/s
+- Dispositivo USB 0781:55a5 · Alta velocidad · 480 Mb/s
 
 Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
 

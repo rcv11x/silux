@@ -272,5 +272,9 @@
    "InitRDTimestampMonotonic": 0,
    "UserspaceTimestampMonotonic": 31766705
   }
+ },
+ "usbids": {
+  "0781:55a5": [],
+  "0bda:9201": []
  }
 }
