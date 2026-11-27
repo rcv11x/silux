@@ -1736,12 +1736,17 @@ def thermal_throttle(throttles) -> str:
     if throttles is None:
         return DASH
     parts = []
-    if throttles.core_count:
-        parts.append(_("cpu.throttle.cores").format(
-            n=throttles.core_count, tiempo=seconds(throttles.core_ms / 1000)))
-    if throttles.package_count:
-        parts.append(_("cpu.throttle.package").format(
-            n=throttles.package_count, tiempo=seconds(throttles.package_ms / 1000)))
+    for count, ms, key in ((throttles.core_count, throttles.core_ms, "cpu.throttle.cores"),
+                           (throttles.package_count, throttles.package_ms,
+                            "cpu.throttle.package")):
+        if not count:
+            continue
+        # Thousands of events in 0 ms don't add up: the kernel counted them
+        # without their time, and the time isn't said.
+        if ms:
+            parts.append(_(key).format(n=thousands(count), tiempo=seconds(ms / 1000)))
+        else:
+            parts.append(_(f"{key}.untimed").format(n=thousands(count)))
     return " · ".join(parts) or _("cpu.throttle.none")
 
 
