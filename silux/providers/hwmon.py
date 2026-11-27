@@ -327,10 +327,22 @@ GPU_LABELS = {
 }
 
 
+# dell_smm's labels, fixed in the driver (dell-smm-hwmon.c) and in English.
+DELL_SMM_LABELS = {
+    "GPU": "sensor.dell.gpu", "SODIMM": "sensor.dell.sodimm", "Other": "sensor.dell.other",
+    "Ambient": "sensor.dell.ambient", "Processor Fan": "sensor.dell.fan.cpu",
+    "Motherboard Fan": "sensor.dell.fan.board", "Video Fan": "sensor.dell.fan.gpu",
+    "Power Supply Fan": "sensor.dell.fan.psu", "Chipset Fan": "sensor.dell.fan.chipset",
+    "Other Fan": "sensor.dell.fan.other",
+}
+
+
 def _friendly(chip: str, prefix: str, index: str, label: Optional[str]) -> str:
     if label:
         if GPU_CHIP.match(chip):
             return _(GPU_LABELS.get(label, label))
+        if chip == "dell_smm" and label in DELL_SMM_LABELS:
+            return _(DELL_SMM_LABELS[label])
         # NVMe's overall temperature is labelled in English by the kernel.
         if DISK_CHIP.match(chip) and label == "Composite":
             return _("sensor.nvme.composite")

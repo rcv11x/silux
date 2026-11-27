@@ -618,9 +618,9 @@ SENSORES · 10 en 3 dispositivos
     - Temperatura 1 · 69.5 °C · 69.5 · 69.5 · 69.5
     - CPU 1 · 67.0 °C · 67.0 · 67.0 · 67.0
     - CPU 2 · 60.0 °C · 60.0 · 60.0 · 60.0
-    - Other · 47.0 °C · 47.0 · 47.0 · 47.0
+    - Otra temperatura · 47.0 °C · 47.0 · 47.0 · 47.0
   - Ventiladores
-    - Processor Fan · 4618 RPM · 4618 · 4618 · 4618
+    - Ventilador del procesador · 4618 RPM · 4618 · 4618 · 4618
 - Memoria
   - Uso
     - RAM usada · 48.7 % · 48.7 · 48.7 · 48.7

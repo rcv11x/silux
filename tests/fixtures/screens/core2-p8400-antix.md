@@ -597,11 +597,11 @@ SENSORES · 19 en 5 dispositivos
   - Temperaturas
     - Temperatura 1 · 35.5 °C · 35.5 · 35.5 · 35.5
     - CPU · 35.0 °C · 35.0 · 35.0 · 35.0
-    - SODIMM · 38.0 °C · 38.0 · 38.0 · 38.0
-    - Other · 37.0 °C · 37.0 · 37.0 · 37.0
-    - GPU · 48.0 °C · 48.0 · 48.0 · 48.0
+    - Memoria (SODIMM) · 38.0 °C · 38.0 · 38.0 · 38.0
+    - Otra temperatura · 37.0 °C · 37.0 · 37.0 · 37.0
+    - Gráfica · 48.0 °C · 48.0 · 48.0 · 48.0
   - Ventiladores
-    - Processor Fan · 0 RPM · 0 · 0 · 0
+    - Ventilador del procesador · 0 RPM · 0 · 0 · 0
 - Memoria
   - Uso
     - RAM usada · 18.6 % · 18.6 · 18.6 · 18.6

@@ -77,6 +77,7 @@ que hace falta.
 - Una NVIDIA sin sensor de consumo (una GTX 1050 Ti con el 535) salía con una cifra que no medía nadie: ahora dice «Sin sensor» y su límite aparte, y «Consumo estimado» solo sale donde NVIDIA dice que el driver lo calcula, de la serie RTX 40 en adelante
 - Con nouveau, una GeForce salía con más memoria de la que tiene (8.2 GiB una RTX 3070 de 8): se contaba dos veces la ventana del procesador a la VRAM
 - Con nouveau, el aviso de Gráficos se titulaba «Falta un driver» en una tarjeta que lo tiene: ahora «Con nouveau, el driver libre», con lo que da el propietario
+- Los sensores de un Dell (dell_smm) salían en inglés: «Processor Fan», «Other»
 
 ### Problemas conocidos
 
