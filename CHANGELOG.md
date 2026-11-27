@@ -45,6 +45,7 @@ que hace falta.
 - «Buscar actualizaciones al iniciar» viene encendido, y se enciende una vez a quien lo tenía apagado de una versión anterior; si lo apagas después, se queda apagado
 - El aviso de versión nueva de la barra lateral, también con la barra plegada, lleva a Ajustes → Actualizaciones, donde se pulsa «Actualizar a…»
 - Al cambiar un ajuste, la barra de estado dice «Ajuste guardado» durante dos segundos
+- «Mostrar todas las instrucciones» se aplica al momento: solo se rehace la lista de CPU, y Ajustes se queda donde estaba
 
 ### Arreglos
 

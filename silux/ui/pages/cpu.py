@@ -488,6 +488,13 @@ class CpuPage(ScrollPage):
 
     # -- actualización ------------------------------------------------------
 
+    def set_preferences(self, prefs: Preferences) -> None:
+        """New preferences for what the page writes; shown with the next
+        `apply`."""
+        self._prefs = prefs
+        for section in self._sections.values():
+            section._prefs = prefs
+
     def apply(self, snapshot: Snapshot) -> None:
         self.live.apply(snapshot)
         cpu = snapshot.cpu

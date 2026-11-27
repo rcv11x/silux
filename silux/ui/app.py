@@ -1145,11 +1145,8 @@ class MainWindow(QMainWindow):
         appearance_changed = ((prefs.theme, prefs.accent, prefs.density, prefs.font_scale)
                               != (previous.theme, previous.accent, previous.density,
                                   previous.font_scale))
-        content_changed = (prefs.temperature_unit, prefs.show_all_features,
-                           prefs.network_unit) != (
-            previous.temperature_unit, previous.show_all_features,
-            previous.network_unit
-        )
+        content_changed = (prefs.temperature_unit, prefs.network_unit) != (
+            previous.temperature_unit, previous.network_unit)
 
         if (prefs.density, prefs.font_scale) != (previous.density, previous.font_scale):
             # Los anchos guardados se midieron con otra tipografía y otro
@@ -1168,6 +1165,12 @@ class MainWindow(QMainWindow):
                 self._apply_appearance()
         elif content_changed or prefs.language != previous.language:
             self._build_ui()
+        elif prefs.show_all_features != previous.show_all_features:
+            # Only CPU's instruction list changes: rebuilding every page
+            # also sent Settings back to its top.
+            self.cpu_page.set_preferences(prefs)
+            self._atrasadas.add(self.cpu_page)
+            self._poner_al_dia()
 
     def _sent_from_a_page(self) -> bool:
         sender = self.sender()
