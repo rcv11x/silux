@@ -338,7 +338,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 ### GeForce RTX 3070 LHR
 
 MSI · GA104 · PCIe 4.0 × 16
-nouveau · Mesa 25.0.7 · 8.2 GiB · principal
+nouveau · Mesa 25.0.7 · 8 GiB · principal
 
 > **Con nouveau, el driver libre**
 > nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
@@ -367,7 +367,7 @@ Ni su driver (nouveau) ni la base de datos de dispositivos PCI dan unidades de p
 
 #### Memoria de video
 
-- Total: 8.2 GiB
+- Total: 8 GiB
 
 nouveau no publica tipo, bus, ancho de banda ni otros 5 datos de esta tarjeta.
 

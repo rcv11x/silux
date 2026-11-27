@@ -22,7 +22,7 @@ from typing import Optional
 from .. import amdgpu, gpuapi, sysroot
 from ..i18n import _
 from ..model import GpuApi, GpuMemory, Need, VideoCodec
-from .base import Draft, Provider
+from .base import Draft, Provider, read_text
 
 # «AMD Radeon RX 9070 XT (RADV GFX1201)» → the parenthesis is the driver's,
 # not the card's name.
@@ -225,7 +225,29 @@ def _vulkan_memory(gpu: dict, device: dict) -> None:
             return
         gpu["memory"] = dataclasses.replace(memory, gtt_total_bytes=bytes_)
         return
+    if gpu.get("vendor") == "NVIDIA" and (window := _vram_window_bytes(gpu)) \
+            and window < bytes_:
+        # NVIDIA's Vulkan drivers list the CPU's window into VRAM, when it is
+        # smaller than VRAM, as a heap of its own besides the VRAM it maps
+        # (NVK's `nvk_init_mem_heaps`): added up, an RTX 3070 of 8 GiB read
+        # 8.25.
+        bytes_ -= window
     gpu["memory"] = dataclasses.replace(memory, total_bytes=bytes_)
+
+
+def _vram_window_bytes(gpu: dict) -> Optional[int]:
+    """The size of an NVIDIA's BAR 1, the CPU's window into its VRAM, from
+    the PCI node's `resource`."""
+    slot = gpu.get("pci_slot")
+    if not slot:
+        return None
+    # The PCI core's, kept from enumeration: reading it wakes nothing.
+    lines = (read_text(f"/sys/bus/pci/devices/{slot}/resource") or "").splitlines()
+    try:
+        start, end = (int(field, 16) for field in lines[1].split()[:2])
+    except (IndexError, ValueError):
+        return None
+    return end - start + 1 if end > start else None
 
 
 # -- matching and cleaning ---------------------------------------------------

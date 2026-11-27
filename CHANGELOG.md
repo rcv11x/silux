@@ -75,6 +75,7 @@ que hace falta.
 - En el diagnóstico de un disco SATA, la temperatura del atributo 194 (y la del aire, 190) salía como un número enorme («en crudo 176 094 576 668»): ahora como smartctl, «28 °C, mín 14, máx 41»; y el 192 tiene su nombre, «Apagados sin cerrar bien»
 - Un SSD que no publica su desgaste como manda el estándar (un KIOXIA EXCERIA, con su atributo 173 al 141 %) decía «Vida restante —»: ahora dice que el disco no lo publica
 - Una NVIDIA sin sensor de consumo (una GTX 1050 Ti con el 535) salía con una cifra que no medía nadie: ahora dice «Sin sensor» y su límite aparte, y «Consumo estimado» solo sale donde NVIDIA dice que el driver lo calcula, de la serie RTX 40 en adelante
+- Con nouveau, una GeForce salía con más memoria de la que tiene (8.2 GiB una RTX 3070 de 8): se contaba dos veces la ventana del procesador a la VRAM
 - Con nouveau, el aviso de Gráficos se titulaba «Falta un driver» en una tarjeta que lo tiene: ahora «Con nouveau, el driver libre», con lo que da el propietario
 
 ### Problemas conocidos
