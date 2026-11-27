@@ -220,6 +220,10 @@ def _say_why_no_power(draft: Draft, index: int, card: nvml.NvidiaGpu, woke: bool
     elif card.power_estimate_w is not None:
         draft.note(path, Need.HARDWARE, _("prov.nvml.estimate"),
                    detail=card.power_error or "", key="nvml.estimate")
+    elif card.power_sensor is False:
+        draft.note(path, Need.HARDWARE, _("prov.nvml.nosensor"), what=_("what.gpu.power"),
+                   detail=card.power_error or "", key="nvml.nosensor",
+                   title=_("prov.nvml.nosensor.title"))
     else:
         draft.note(path, Need.HARDWARE, _("prov.nvml.nopower"), what=_("what.gpu.power"),
                    detail=card.power_error or "", key="nvml.nopower")
@@ -309,6 +313,7 @@ def _fill(gpu: dict, card: nvml.NvidiaGpu) -> None:
         "temp_c": card.temp_c,
         "power_w": card.power_w,
         "power_source": card.power_source,
+        "power_sensor": card.power_sensor,
         "power_estimate_w": card.power_estimate_w,
         "power_estimate_window_s": card.power_estimate_window_s,
         "power_estimate_samples": card.power_estimate_samples,

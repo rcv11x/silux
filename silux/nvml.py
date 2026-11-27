@@ -23,6 +23,7 @@ from .model import PLAUSIBLE
 LIBRARIES = ("libnvidia-ml.so.1", "libnvidia-ml.so")
 
 NVML_SUCCESS = 0
+NVML_ERROR_NOT_SUPPORTED = 3
 NVML_ERROR_INSUFFICIENT_SIZE = 7
 # nvmlReturn_t, as nvml.h names them: what the report says NVML answered.
 NVML_ERRORS = {1: "UNINITIALIZED", 2: "INVALID_ARGUMENT", 3: "NOT_SUPPORTED",
@@ -87,6 +88,19 @@ class _Field(ctypes.Structure):
 # nvmlValueType_t: which member of the union holds the value.
 MEMBER_BY_TYPE = {0: "dVal", 1: "uiVal", 2: "ulVal", 3: "ullVal", 4: "sllVal",
                     5: "siVal", 6: "usVal"}
+
+
+# nvmlDeviceArchitecture_t (nvml.h). The driver's power estimate on a card
+# with no sensor is documented from Ada on (an RTX 4060); before it, what the
+# samples buffer holds on such a card is no known figure.
+ARCH_ADA = 8
+ARCH_UNKNOWN = 0xFFFFFFFF
+
+
+def estimates_power(architecture: Optional[int]) -> bool:
+    """Whether the driver estimates the power of a card of this architecture
+    that has no sensor."""
+    return architecture is not None and ARCH_ADA <= architecture < ARCH_UNKNOWN
 
 
 # nvmlSamplingType_t: the board's power, which the driver's power monitor
@@ -161,6 +175,11 @@ class NvidiaGpu:
     # Which call gave it, for the dumps: two cards can show the same watts
     # from different calls.
     power_source: Optional[str] = None
+    # False when nvmlDeviceGetPowerUsage answers NOT_SUPPORTED, which nvml.h
+    # gives for a device that «does not support power readings».
+    power_sensor: Optional[bool] = None
+    # NVML_DEVICE_ARCH_*: whether the driver estimates what it can't read.
+    architecture: Optional[int] = None
     # Without power: what NVML answered to each way of asking, for the report.
     power_error: Optional[str] = None
     # The driver's estimate where it measures none: the mean of its power
@@ -369,17 +388,21 @@ class Nvml:
                 reasons.append(f"field {field.fieldId}: value type {field.valueType}")
         return values
 
-    def _power(self, handle, index: int, highest_limit_w: Optional[float]) -> dict:
+    def _power(self, handle, index: int, highest_limit_w: Optional[float],
+               architecture: Optional[int] = None) -> dict:
         """The power, the way that gave it, and what every way answered.
 
         nvmlDeviceGetPowerUsage, else the power fields, which are nvidia-smi's
         power.draw, .average and .instant: the same measurement by three doors.
         A reading over the ceiling (`power_ceiling_w`) is thrown away and the
         next door is not tried: the card answered, with something impossible.
+        NOT_SUPPORTED from the first is a card with no power sensor: no other
+        door's figure is its power.
 
-        The samples buffer is asked too. Where no door gives the power it is
-        the driver's estimate and goes in its own field; where one does, it
-        only goes to the report. The energy counter only goes to the report.
+        The samples buffer is asked too. Where no door gives the power and the
+        driver estimates it (`estimates_power`), it is that estimate and goes
+        in its own field; otherwise it only goes to the report, as does the
+        energy counter.
         """
         reasons: list[str] = []
         answers: list[tuple[str, str]] = []
@@ -388,14 +411,18 @@ class Nvml:
 
         milliwatts = self._integer("nvmlDeviceGetPowerUsage", handle, reasons=reasons)
         answers.append(("nvmlDeviceGetPowerUsage", _answer(milliwatts, reasons)))
+        no_sensor = (milliwatts is None and f"nvmlDeviceGetPowerUsage: {nvml_error(NVML_ERROR_NOT_SUPPORTED)}" in reasons)
+        result["power_sensor"] = False if no_sensor else (True if milliwatts is not None else None)
         source = "nvmlDeviceGetPowerUsage" if milliwatts is not None else None
         if milliwatts is None:
             fields = self._fields(handle, FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT,
                                   reasons=reasons)
             for field in (FIELD_POWER_AVERAGE, FIELD_POWER_INSTANT):
-                answers.append((f"field {field}", _answer(fields.get(field), reasons,
-                                                          f"field {field}")))
-                if source is None and field in fields:
+                answer = _answer(fields.get(field), reasons, f"field {field}")
+                if no_sensor and field in fields:
+                    answer += ", not taken: no power sensor"
+                answers.append((f"field {field}", answer))
+                if source is None and field in fields and not no_sensor:
                     milliwatts, source = fields[field], f"field {field}"
         else:
             answers += [(f"field {f}", "not asked")
@@ -408,6 +435,8 @@ class Nvml:
         answers.append(("nvmlDeviceGetTotalEnergyConsumption",
                         f"{energy} mJ" if energy is not None
                         else _answer(None, energy_reasons)))
+        answers.append(("nvmlDeviceGetArchitecture",
+                        str(architecture) if architecture is not None else "no answer"))
         answers.append(("ceiling", f"{ceiling_w:.1f} W, {IMPOSSIBLE_OVER_LIMIT} x "
                                    f"{highest_limit_w:.1f} W" if highest_limit_w
                         else f"{ceiling_w:.0f} W, no declared limit"))
@@ -421,7 +450,7 @@ class Nvml:
                 result.update(power_w=round(watts, 1), power_source=source)
             return result
         result["power_error"] = "; ".join(reasons) or None
-        if estimate is not None:
+        if estimate is not None and estimates_power(architecture):
             result.update(estimate)
         return result
 
@@ -559,7 +588,8 @@ class Nvml:
         limits = self._limits(handle)
         enforced = watts("nvmlDeviceGetEnforcedPowerLimit", handle)
         declared = [w for w in (enforced, *limits.values()) if w]
-        power = self._power(handle, index, max(declared) if declared else None)
+        architecture = self._integer("nvmlDeviceGetArchitecture", handle)
+        power = self._power(handle, index, max(declared) if declared else None, architecture)
         # Renamed in R535 with the same bits; the old name is deprecated.
         flags = self._integer("nvmlDeviceGetCurrentClocksEventReasons", handle,
                                 kind=ctypes.c_ulonglong)
@@ -589,6 +619,7 @@ class Nvml:
             decode_busy_percent=self._utilization("nvmlDeviceGetDecoderUtilization", handle),
             temp_c=self._temperature(handle),
             **power,
+            architecture=architecture,
             compute_processes=self._compute_processes(handle),
             power_cap_w=enforced,
             **limits,

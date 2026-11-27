@@ -71,6 +71,7 @@ que hace falta.
 - Los frenos por temperatura salían sin separador de miles y con «(0.0 s)» cuando el kernel los cuenta sin su tiempo: ahora «128 753 en los núcleos»
 - En el diagnóstico de un disco SATA, la temperatura del atributo 194 (y la del aire, 190) salía como un número enorme («en crudo 176 094 576 668»): ahora como smartctl, «28 °C, mín 14, máx 41»; y el 192 tiene su nombre, «Apagados sin cerrar bien»
 - Un SSD que no publica su desgaste como manda el estándar (un KIOXIA EXCERIA, con su atributo 173 al 141 %) decía «Vida restante —»: ahora dice que el disco no lo publica
+- Una NVIDIA sin sensor de consumo (una GTX 1050 Ti con el 535) salía con una cifra que no medía nadie: ahora dice «Sin sensor» y su límite aparte, y «Consumo estimado» solo sale donde NVIDIA dice que el driver lo calcula, de la serie RTX 40 en adelante
 
 ### Problemas conocidos
 

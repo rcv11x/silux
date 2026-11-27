@@ -122,7 +122,7 @@ class TestAnImpossibleReading(unittest.TestCase):
 
     def test_impossible_samples_are_left_out_of_the_estimate(self):
         card = fake_nvml.Card(name="NVIDIA", samples=[588210] + [12000] * 48,
-                              constraints_mw=(5000, 95000))
+                              constraints_mw=(5000, 95000), architecture=nvml.ARCH_ADA)
         read = read_once(card)[2]
         self.assertEqual((read.power_estimate_w, read.power_estimate_samples), (12.0, 48))
         self.assertIn("1 over the ceiling left out",
@@ -181,6 +181,60 @@ class TestACardWithASensor(unittest.TestCase):
         self.assertFalse([n for n in draft.notes if n.path == "gpus.0.power_w"])
 
 
+def collect_1050_ti(card):
+    draft = Draft()
+    draft.gpu(0).update(pci_slot=fake_nvml.SLOT, vendor="NVIDIA", driver="nvidia",
+                        name="GP107 [GeForce GTX 1050 Ti]", drm_node="card1",
+                        integrated=False)
+    return collect(fake_nvml.FakeNvml(card), draft=draft)[0]
+
+
+class TestACardWithNoSensor(unittest.TestCase):
+    """A GTX 1050 Ti on driver 535: `nvidia-smi` gives «N/A / 75W», and
+    Silux showed 36 W. Whichever way it came from, NOT_SUPPORTED is the
+    driver saying the card reads no power: no figure, and no estimate before
+    Ada."""
+
+    def test_not_from_the_instant_field(self):
+        card = read_once(fake_nvml.gtx_1050_ti_instant())[2]
+        self.assertEqual((card.power_w, card.power_sensor, card.power_estimate_w),
+                         (None, False, None))
+        self.assertIn("not taken", dict(card.power_answers)["field 186"])
+
+    def test_not_from_its_samples_buffer(self):
+        card = read_once(fake_nvml.gtx_1050_ti_samples())[2]
+        self.assertEqual((card.power_w, card.power_sensor, card.power_estimate_w),
+                         (None, False, None))
+        answers = dict(card.power_answers)
+        self.assertIn("119 samples", answers["nvmlDeviceGetSamples"])
+        self.assertEqual(answers["nvmlDeviceGetArchitecture"], str(fake_nvml.PASCAL))
+
+    def test_its_note_says_it_has_no_sensor(self):
+        draft = collect_1050_ti(fake_nvml.gtx_1050_ti_instant())
+        notes = [n for n in draft.notes if n.path == "gpus.0.power_w"]
+        self.assertEqual([n.key for n in notes], ["nvml.nosensor"])
+        self.assertEqual(notes[0].title, _("prov.nvml.nosensor.title"))
+        self.assertIs(draft.gpus[0]["power_sensor"], False)
+        self.assertEqual(draft.gpus[0]["power_cap_w"], 75.0)
+
+    @unittest.skipIf(QApplication is None, "sin PySide6")
+    def test_on_screen_no_sensor_and_its_limit_apart(self):
+        from tests.test_interface_language import visible_texts
+        qt.app()
+        for card in (fake_nvml.gtx_1050_ti_instant(), fake_nvml.gtx_1050_ti_samples()):
+            snapshot = snapshot_of(collect_1050_ti(card))
+            with pantalla.Ventana(snapshot) as window, self.subTest(card=card.fields or "samples"):
+                texts = {key: visible_texts(page) for key, page in pantalla.recorrer(window)}
+                window.select_section("nav.graphics")
+                tile = window.stack.currentWidget()._sections[0].tile_power
+                self.assertEqual(tile.value.text(), _("gpu.tile.nosensor"))
+                self.assertEqual(tile.detail.full_text(),
+                                 _("gpu.tile.limit").format(limit=render.limit_watts(75.0)))
+                self.assertIn(_("prov.nvml.nosensor"), " ".join(texts["nav.graphics"]))
+                for key, page_texts in texts.items():
+                    self.assertFalse([t for t in page_texts if "36" in t and "W" in t], key)
+
+
 @unittest.skipIf(QApplication is None, "sin PySide6")
 class TestOnScreen(unittest.TestCase):
 
@@ -218,7 +272,8 @@ class TestOnScreen(unittest.TestCase):
             page = window.stack.currentWidget()
             self.assertIsInstance(page, GraphicsPage)
             tile = page._sections[0].tile_power
-            self.assertEqual(tile.value.text(), render.DASH)
+            # It has no sensor: said so, with no figure nor a dash.
+            self.assertEqual(tile.value.text(), _("gpu.tile.nosensor"))
 
     def test_a_card_with_a_sensor_says_estimate_nowhere(self):
         snapshot, texts = self._window_texts(fake_nvml.rtx_4070())

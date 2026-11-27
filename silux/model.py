@@ -1551,6 +1551,9 @@ class Gpu:
     # Which of NVML's ways gave `power_w` (docs/nvml.md). Not «AC or battery»,
     # which is what NVML calls its power source.
     power_source: Optional[str] = None
+    # False where the driver says the card has no power sensor; None where it
+    # isn't known.
+    power_sensor: Optional[bool] = None
     # The driver's estimate, on a card it measures no power on: the mean of
     # its power samples over the window. Never `power_w`, and never in
     # Sensors, Home or a chart.

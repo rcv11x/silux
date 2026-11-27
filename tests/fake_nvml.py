@@ -49,6 +49,8 @@ class Card:
     # many compute processes.
     graphics_processes: list = dataclasses.field(default_factory=list)
     compute_processes: int = 0
+    # nvmlDeviceGetArchitecture: NVML_DEVICE_ARCH_*, None for no answer.
+    architecture: Optional[int] = None
 
 
 def rtx_4060_desktop() -> Card:
@@ -58,7 +60,7 @@ def rtx_4060_desktop() -> Card:
     return Card(name="NVIDIA GeForce RTX 4060",
                 samples=[52590] + [53095] * 102 + [53096] * 15 + [55370],
                 enforced_mw=115000, default_mw=115000, constraints_mw=(90000, 115000),
-                temp_c=37)
+                temp_c=37, architecture=nvml.ARCH_ADA)
 
 
 def rtx_4070() -> Card:
@@ -66,7 +68,7 @@ def rtx_4070() -> Card:
     return Card(name="NVIDIA GeForce RTX 4070", power_mw=110500,
                 fields={185: 110500, 186: 112000}, samples=[110400] * 49,
                 energy_mj=812_345_678, enforced_mw=200000, default_mw=200000,
-                constraints_mw=(100000, 220000), temp_c=54)
+                constraints_mw=(100000, 220000), temp_c=54, architecture=nvml.ARCH_ADA)
 
 
 # What a hybrid laptop's display server leaves on its NVIDIA while nothing
@@ -79,7 +81,26 @@ def rtx_4050_laptop() -> Card:
     588.21 W, and the next one, a few seconds later, 1.28 W."""
     return Card(name="NVIDIA GeForce RTX 4050 Laptop GPU", power_mw=[588210, 1280],
                 samples=[1280] * 49, energy_mj=4_560_000, enforced_mw=80000,
-                default_mw=80000, constraints_mw=(5000, 95000), temp_c=44)
+                default_mw=80000, constraints_mw=(5000, 95000), temp_c=44,
+                architecture=nvml.ARCH_ADA)
+
+
+PASCAL = 4
+
+
+def gtx_1050_ti_instant() -> Card:
+    """A GTX 1050 Ti on driver 535.183.01: `nvidia-smi` shows «N/A / 75W»
+    for its power, so nvmlDeviceGetPowerUsage answers NOT_SUPPORTED. Silux
+    showed 36 W, from one of the two ways read after it: this card has the
+    instant power field answering it."""
+    return Card(name="NVIDIA GeForce GTX 1050 Ti", fields={186: 36000},
+                enforced_mw=75000, temp_c=35, architecture=PASCAL)
+
+
+def gtx_1050_ti_samples() -> Card:
+    """The same card, with the other way: its samples buffer holding 36 W."""
+    return Card(name="NVIDIA GeForce GTX 1050 Ti", samples=[36000] * 119,
+                enforced_mw=75000, temp_c=35, architecture=PASCAL)
 
 
 class FakeNvml:
@@ -170,6 +191,12 @@ class FakeNvml:
             samples[i].timeStamp = stamp
             samples[i].sampleValue.uiVal = mw
         count._obj.value = min(count._obj.value, len(newer))
+        return 0
+
+    def nvmlDeviceGetArchitecture(self, handle, value):
+        if self.card.architecture is None:
+            return NOT_SUPPORTED
+        value._obj.value = self.card.architecture
         return 0
 
     def nvmlDeviceGetTotalEnergyConsumption(self, handle, value):

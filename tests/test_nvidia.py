@@ -184,12 +184,12 @@ class _Nvml:
     the power usage call answers NOT_SUPPORTED (3) where power management
     mode is not, and each field value carries its own return code."""
 
-    def __init__(self, uso=None, campos=None):
-        self.uso, self.campos, self.pedidos = uso, campos or {}, []
+    def __init__(self, uso=None, campos=None, error=3):
+        self.uso, self.campos, self.pedidos, self.error = uso, campos or {}, [], error
 
     def nvmlDeviceGetPowerUsage(self, asa, valor):
         if self.uso is None:
-            return 3
+            return self.error
         valor._obj.value = self.uso
         return 0
 
@@ -258,6 +258,10 @@ class _OldDriver:
 class _NoPowerButSamples(_OldDriver, _NvmlWithSamples):
     """That card, enumerated: the three ways nvidia-smi gives the power
     answer NOT_SUPPORTED, and the samples buffer holds its 53 W."""
+
+    def nvmlDeviceGetArchitecture(self, handle, value):
+        value._obj.value = nvml.ARCH_ADA
+        return 0
 
     def __init__(self):
         _NvmlWithSamples.__init__(self)
@@ -367,7 +371,14 @@ class TestItsPowerLimits(unittest.TestCase):
 class TestThePowerOfANewDriver(unittest.TestCase):
     """A desktop RTX 4060 with driver 595: temperature, clocks and limit, and
     «Consumo: —». nvmlDeviceGetPowerUsage only answers where power
-    management mode is supported; the header points to the power fields."""
+    management mode is supported; the header points to the power fields.
+
+    NOT_SUPPORTED says the card reads no power, and then no field's figure
+    is its power (`TestACardWithNoSensor`). The fields stand in when the call
+    fails otherwise: UNKNOWN (999) here, which no card has been seen to
+    answer with its fields working; the path is the header's."""
+
+    UNKNOWN = 999
 
     def _leer(self, lib):
         sesion = nvml.Nvml()
@@ -379,10 +390,14 @@ class TestThePowerOfANewDriver(unittest.TestCase):
         return self._leer(lib)[0]
 
     def test_the_seconds_average_where_the_old_call_does_not_answer(self):
-        self.assertEqual(self._potencia(_Nvml(campos={185: 15234, 186: 17000})), 15.2)
+        self.assertEqual(self._potencia(_Nvml(campos={185: 15234, 186: 17000},
+                                              error=self.UNKNOWN)), 15.2)
 
     def test_or_the_current_one(self):
-        self.assertEqual(self._potencia(_Nvml(campos={186: 9800})), 9.8)
+        self.assertEqual(self._potencia(_Nvml(campos={186: 9800}, error=self.UNKNOWN)), 9.8)
+
+    def test_not_where_the_card_has_no_sensor(self):
+        self.assertIsNone(self._potencia(_Nvml(campos={185: 15234, 186: 17000})))
 
     def test_without_either_there_is_none(self):
         self.assertIsNone(self._potencia(_Nvml()))
@@ -409,8 +424,10 @@ class TestThePowerOfANewDriver(unittest.TestCase):
 
     def test_which_call_gave_it_is_kept(self):
         self.assertEqual(self._leer(_Nvml(uso=12000))[1], "nvmlDeviceGetPowerUsage")
-        self.assertEqual(self._leer(_Nvml(campos={185: 15234, 186: 17000}))[1], "field 185")
-        self.assertEqual(self._leer(_Nvml(campos={186: 9800}))[1], "field 186")
+        self.assertEqual(self._leer(_Nvml(campos={185: 15234, 186: 17000},
+                                          error=self.UNKNOWN))[1], "field 185")
+        self.assertEqual(self._leer(_Nvml(campos={186: 9800}, error=self.UNKNOWN))[1],
+                         "field 186")
         self.assertIsNone(self._leer(_Nvml())[1])
 
     def test_where_the_old_call_answers_the_fields_are_not_asked(self):

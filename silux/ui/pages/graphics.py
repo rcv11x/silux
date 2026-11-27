@@ -1170,9 +1170,14 @@ class GpuSection(QWidget):
         if gpu.power_w is None and candado is not None:
             self.tile_power.set_locked(_("lock.detail"), render.lock_tooltip(candado))
         else:
-            self.tile_power.update_value(
-                render.power_figure(gpu.power_w),
-                gpu.power_w, series=Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/power", "W"))
+            series = Series(f"{gpu.pci_slot or f'gpu{gpu.index}'}/power", "W")
+            if gpu.power_w is None and gpu.power_sensor is False:
+                # No figure at all, nor a dash that reads as one missing.
+                self.tile_power.update_value(_("gpu.tile.nosensor"), None, word=True,
+                                             series=series)
+            else:
+                self.tile_power.update_value(render.power_figure(gpu.power_w),
+                                             gpu.power_w, series=series)
             # Without a measurement the limit goes by its name: «— of 115 W»
             # read as a figure out of 115 W.
             if not gpu.power_cap_w:

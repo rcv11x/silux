@@ -24,7 +24,8 @@ va al informe.
 | Ventilador | `nvmlDeviceGetFanSpeed` | 270 | las dedicadas con ventilador propio | SYM, DQ |
 | Consumo | `nvmlDeviceGetPowerUsage` | 270 | Fermi o posterior, con gestión de energía | SYM, DQ |
 | | si no, los campos 185 y 186 con `nvmlDeviceGetFieldValues` | campos R535 (la función, R384) | 185: Ampere o posterior, menos GA100; 186: todas | H, CL |
-| Consumo estimado | `nvmlDeviceGetSamples` con `NVML_TOTAL_POWER_SAMPLES`; se enseña solo si ninguna de las de arriba contesta | R340 | Kepler o posterior | SYM, H |
+| Consumo estimado | `nvmlDeviceGetSamples` con `NVML_TOTAL_POWER_SAMPLES`; se enseña solo si ninguna de las de arriba contesta y la tarjeta es Ada o posterior | R340 | Kepler o posterior | SYM, H |
+| Arquitectura (solo para decidir lo anterior) | `nvmlDeviceGetArchitecture` | R450 | todas las que NVML admite | SYM, H |
 | Procesos de cómputo (solo para dejarla dormir) | `nvmlDeviceGetComputeRunningProcesses_v3`; si no, `_v2` o sin versión | R510; 450.66; 285 | no comprobado | SYM |
 | Energía gastada (solo al informe) | `nvmlDeviceGetTotalEnergyConsumption` | R384 | Volta o posterior | SYM, H |
 | Límite de potencia actual | `nvmlDeviceGetEnforcedPowerLimit` | R331 | Kepler o posterior | SYM, CL, DQ |
@@ -34,11 +35,14 @@ va al informe.
 | Motivos de recorte | `nvmlDeviceGetCurrentClocksEventReasons`; si no, `nvmlDeviceGetCurrentClocksThrottleReasons` | R535; R304 | todas las que NVML admite del todo | SYM, H, CL, DQ |
 
 El consumo es lo que `nvidia-smi` da como `power.draw`, `power.draw.average`
-y `power.draw.instant`. Si las tres contestan que no y el búfer de muestras
-sí, la tarjeta sale con el consumo estimado del driver, en su propio campo y
-nunca como el consumo. Lo que contestó cada vía, el búfer y la energía
-incluidos, va al informe. Qué vale cada cifra está abajo, en «El consumo, a
-fondo».
+y `power.draw.instant`. Si `nvmlDeviceGetPowerUsage` contesta
+`NOT_SUPPORTED`, que la cabecera da para un dispositivo que «does not support
+power readings», la tarjeta no tiene sensor: ningún campo da su consumo, y
+sale «Sin sensor» con el límite aparte. Si además es Ada o posterior y el
+búfer de muestras contesta, sale el consumo estimado del driver, en su propio
+campo y nunca como el consumo. Lo que contestó cada vía, el búfer, la energía
+y la arquitectura incluidos, va al informe. Qué vale cada cifra está abajo,
+en «El consumo, a fondo».
 
 La temperatura y los motivos de recorte se piden primero con la función
 nueva: las antiguas están obsoletas desde CUDA 13.0 (R580) y se quitan en
@@ -90,6 +94,11 @@ el driver 595 y otra con el 620, son esa cifra.
 
 De ahí la regla: **una cifra que solo sale del búfer es una estimación del
 driver, no una medida**. Se puede enseñar con ese nombre; no es «el consumo».
+
+Solo donde NVIDIA documenta esa estimación, de Ada en adelante. Una GTX
+1050 Ti con el 535, sin sensor (`N/A / 75W` en `nvidia-smi`), salía con 36 W
+en reposo por la lectura instantánea o por el búfer: en una tarjeta anterior
+a Ada no se sabe qué guarda el búfer, y solo va al informe.
 
 Así la enseña Silux:
 
