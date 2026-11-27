@@ -335,6 +335,23 @@ class TestOnTheMemoryPage(Case):
         self.assertFalse(QApplication.clipboard().pixmap().isNull())
         self.assertEqual(tab.share_buttons.note.text(), _("share.copied"))
 
+    def test_its_title_is_the_processor_with_its_maker(self):
+        from silux.settings import Preferences
+        from silux.ui import tarjeta, theme
+        from silux.ui.pages.memtest import MemoryTestTab
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        tab = MemoryTestTab(theme.palette_for(self.app, "dark"), Preferences().normalized())
+        self.addCleanup(tab.deleteLater)
+        tab.apply(shared_snapshot(EQUIPOS / "i5-10400"))
+        drawn = []
+        real = tarjeta.draw_memory_test
+        with mock.patch.object(tarjeta, "draw_memory_test",
+                               lambda result, cpu, palette: drawn.append(cpu)
+                               or real(result, cpu, palette)):
+            tab.share_buttons.copy_button.click()
+        self.assertEqual(drawn, ["Intel Core i5-10400"])
+
 
 if __name__ == "__main__":
     unittest.main()

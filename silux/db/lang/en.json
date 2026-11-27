@@ -1938,7 +1938,7 @@
   "share.test.memory": "Memory test",
   "share.test.one": "with one, {rate}",
   "share.test.save": "Save…",
-  "share.test.share": "Of the theoretical peak",
+  "share.test.share": "Of peak",
   "share.test.share.detail": "{channels} × {mts} MT/s × 8 B = {total}",
   "share.test.tip": "An image of the result, ready to paste in a chat or a forum.\nIt doesn't carry where the test ran or the machine's name.",
   "share.test.varied": "varied between laps",
