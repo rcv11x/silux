@@ -2081,6 +2081,7 @@
   "storage.col.used2": "Usado",
   "storage.disks.all": "Todas las unidades",
   "storage.disks.gone": "«{disk}» ya no está: las fichas vuelven a todas las unidades.",
+  "storage.disks.label": "Unidad",
   "storage.disks.tip": "Qué unidad enseñan las fichas. También se elige pulsando su fila en «Unidades».",
   "storage.field.bridge": "Adaptador USB",
   "storage.field.bus": "Conexión",

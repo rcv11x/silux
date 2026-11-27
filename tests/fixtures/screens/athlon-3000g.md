@@ -371,6 +371,7 @@ Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se al
 71.9 GB ocupados en 3 particiones montadas
 1 × HDD · 1 × Memoria flash
 Ocupado 71.9 GB · Libre 518 GB · Reservado 34.0 GB
+Unidad Todas las unidades
 - Leyendo: 0 B/s (suma de 2 unidades)
 - Escribiendo: 8.4 MB/s (suma de 2 unidades)
 - Espacio libre: 518 GB (en 3 particiones)

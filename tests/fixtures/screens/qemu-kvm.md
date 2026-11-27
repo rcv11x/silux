@@ -259,6 +259,7 @@ La resolución de Virtual-1 es la preferida del monitor: no se ha podido pregunt
 2.8 GB ocupados en 2 particiones montadas
 1 × Virtual
 Ocupado 2.8 GB · Libre 30.9 GB · Reservado 622 MB
+Unidad Todas las unidades
 - Leyendo: 0 B/s (suma de 1 unidad)
 - Escribiendo: 0 B/s (suma de 1 unidad)
 - Espacio libre: 30.9 GB (en 2 particiones)

@@ -364,6 +364,7 @@ La resolución de eDP-1 es la preferida del monitor: no se ha podido preguntar c
 35.4 GB ocupados en 3 particiones montadas
 1 × SSD · 1 × Memoria flash
 Ocupado 35.4 GB · Libre 67.4 GB · Reservado 131 GB · Intercambio 4.9 GB · Sin montar 141 GB
+Unidad Todas las unidades
 - Leyendo: 0 B/s (suma de 2 unidades)
 - Escribiendo: 0 B/s (suma de 2 unidades)
 - Espacio libre: 67.4 GB (en 2 particiones)

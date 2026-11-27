@@ -346,6 +346,7 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 92.0 GB ocupados en 1 partición montada
 1 × SSD · 1 × HDD · 1 × Memoria flash
 Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
+Unidad Todas las unidades
 - Leyendo: 0 B/s (suma de 3 unidades)
 - Escribiendo: 0 B/s (suma de 3 unidades)
 - Espacio libre: 109 GB (en 1 partición)

@@ -427,6 +427,7 @@ HDMI-A-1 prefiere 3840 × 2160.
 1.8 TB ocupados en 4 particiones montadas
 2 × NVMe · 1 × SSD
 Ocupado 1.8 TB · Libre 109 GB · Reservado 68.0 GB
+Unidad Todas las unidades
 - Leyendo: 0 B/s (suma de 3 unidades)
 - Escribiendo: 0 B/s (suma de 3 unidades)
 - Espacio libre: 109 GB (en 4 particiones)

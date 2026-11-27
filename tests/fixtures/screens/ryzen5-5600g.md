@@ -417,6 +417,7 @@ NVML no da el punto caliente, la temperatura de la memoria, los reguladores ni l
 228 GB ocupados en 3 particiones montadas
 1 × NVMe · 1 × HDD
 Ocupado 228 GB · Libre 1.8 TB
+Unidad Todas las unidades
 - Leyendo: 0 B/s (suma de 2 unidades)
 - Escribiendo: 0 B/s (suma de 2 unidades)
 - Espacio libre: 1.8 TB (en 3 particiones)

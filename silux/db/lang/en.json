@@ -2081,6 +2081,7 @@
   "storage.col.used2": "Used",
   "storage.disks.all": "All drives",
   "storage.disks.gone": "«{disk}» is gone: the tiles are back to all drives.",
+  "storage.disks.label": "Drive",
   "storage.disks.tip": "Which drive the tiles show. A drive's row in «Drives» chooses it too.",
   "storage.field.bridge": "USB adapter",
   "storage.field.bus": "Connection",

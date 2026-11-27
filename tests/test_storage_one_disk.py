@@ -70,17 +70,15 @@ class TestChoosing(Case):
         page = self.page(window)
         window._on_sample(with_rates(self.snapshot, {"nvme1n1": (5e6, 2e6), "sda": (1e6, 0)}))
         geometry.settle(self.app)
-        box = page.choice_boxes[0]
+        box = page.choice_box
         box.setCurrentIndex(box.findData(self.key(page, "nvme1n1")))
         box.activated.emit(box.currentIndex())
         geometry.settle(self.app)
         self.assertEqual(page.tile_read.value.text(), render.rate(5e6))
         self.assertEqual(page.tile_write.value.text(), render.rate(2e6))
         self.assertEqual(page.tile_read.chart.series.key, "disk:nvme1n1/read")
-        self.assertIn("nvme1n1", page.choice_boxes[0].currentText())
+        self.assertIn("nvme1n1", page.choice_box.currentText())
         self.assertEqual(page.tile_temp.caption.text(), _("storage.tile.temperature"))
-        # The other box says the same.
-        self.assertEqual(page.choice_boxes[1].currentData(), self.key(page, "nvme1n1"))
 
     def test_a_row_chooses_its_drive_and_again_every_drive(self):
         from silux.ui.pages.storage import ALL_DISKS
@@ -92,12 +90,28 @@ class TestChoosing(Case):
         geometry.settle(self.app)
         self.assertEqual(page._chosen, self.key(page, "sda"))
         self.assertEqual(page.disks.picked, row)
-        self.assertEqual(page.choice_boxes[0].currentData(), self.key(page, "sda"))
+        self.assertEqual(page.choice_box.currentData(), self.key(page, "sda"))
         page.disks.row_picked.emit(row)
         geometry.settle(self.app)
         self.assertEqual(page._chosen, ALL_DISKS)
         self.assertIsNone(page.disks.picked)
         self.assertEqual(page.tile_temp.caption.text(), _("storage.tile.hottest"))
+
+
+class TestOneList(Case):
+    def test_a_single_list_above_the_tiles(self):
+        from PySide6.QtCore import QPoint
+        from PySide6.QtWidgets import QComboBox
+
+        window = self.window()
+        page = self.page(window)
+        boxes = [b for b in page.findChildren(QComboBox) if b.isVisibleTo(page)]
+        self.assertEqual(len(boxes), 1)
+        box = boxes[0]
+        below = box.mapTo(page, QPoint(0, box.height())).y()
+        for tile in (page.tile_read, page.tile_write, page.tile_free, page.tile_temp):
+            with self.subTest(tile=tile.caption.text()):
+                self.assertLessEqual(below, tile.mapTo(page, QPoint(0, 0)).y())
 
 
 class TestItsHistory(Case):
@@ -144,7 +158,7 @@ class TestRemembered(Case):
         again._on_sample(self.snapshot)
         again.select_section("Almacenamiento")
         geometry.settle(self.app)
-        self.assertEqual(again.storage_page.choice_boxes[0].currentData(), key)
+        self.assertEqual(again.storage_page.choice_box.currentData(), key)
         self.assertEqual(again.storage_page.tile_read.chart.series.key, "disk:nvme1n1/read")
 
 

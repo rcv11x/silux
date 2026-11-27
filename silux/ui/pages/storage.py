@@ -18,7 +18,6 @@ from typing import Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QVBoxLayout,
@@ -247,18 +246,20 @@ class StoragePage(ScrollPage):
         self.tile_write.chart.set_formatter(render.rate, intervalo)
         self.tile_temp.chart.set_formatter(
             lambda v: render.temperature(v, self._prefs.fahrenheit), intervalo)
-        # Which drive the reading and writing tiles show: every one, or one.
-        self.choice_boxes = []
-        for tile in (self.tile_read, self.tile_write):
-            box = ElidingComboBox(widest=40)
-            # Narrow, it gives up its width before the figure beside it.
-            box.setSizeAdjustPolicy(
-                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-            box.setMinimumContentsLength(8)
-            box.setToolTip(_("storage.disks.tip"))
-            box.activated.connect(self._on_choice_box)
-            tile.add_under_caption(box)
-            self.choice_boxes.append(box)
+        # Which drive the tiles show, every one or one: a single list above
+        # them, for all of them.
+        self.choice_box = box = ElidingComboBox(widest=40)
+        box.setToolTip(_("storage.disks.tip"))
+        box.activated.connect(self._on_choice_box)
+        caption = QLabel(_("storage.disks.label"))
+        caption.setObjectName("Muted")
+        caption.setFont(ui_font(theme.METRICS.base_pt))
+        choice = QHBoxLayout()
+        choice.setSpacing(8)
+        choice.addWidget(caption)
+        choice.addWidget(box)
+        choice.addStretch(1)
+        self.choice_row = choice
         # Said once when the drive chosen goes.
         self.chosen_gone = QLabel("")
         self.chosen_gone.setObjectName("Muted")
@@ -267,6 +268,7 @@ class StoragePage(ScrollPage):
         column = QWidget()
         inside = QVBoxLayout(column)
         inside.setContentsMargins(0, 0, 0, 0)
+        inside.addLayout(self.choice_row)
         inside.addWidget(fila)
         inside.addWidget(self.chosen_gone)
         return column
@@ -405,14 +407,14 @@ class StoragePage(ScrollPage):
                         for x in discos)
         if choices != self._choices:
             self._choices = choices
-            for box in self.choice_boxes:
-                box.blockSignals(True)
-                box.clear()
-                box.addItem(_("storage.disks.all"), ALL_DISKS)
-                for key, label in choices:
-                    box.addItem(label, key)
-                box.blockSignals(False)
-                box.updateGeometry()
+            box = self.choice_box
+            box.blockSignals(True)
+            box.clear()
+            box.addItem(_("storage.disks.all"), ALL_DISKS)
+            for key, label in choices:
+                box.addItem(label, key)
+            box.blockSignals(False)
+            box.updateGeometry()
         chosen = self._chosen_disk(discos)
         if self._chosen != ALL_DISKS and chosen is None:
             # Gone while shown: back to every drive, said once. Not there
@@ -424,12 +426,12 @@ class StoragePage(ScrollPage):
             self._chosen = ALL_DISKS
             self._replay(discos)
         self._seen = choices
-        for box in self.choice_boxes:
-            index = box.findData(self._chosen)
-            if index >= 0 and box.currentIndex() != index:
-                box.blockSignals(True)
-                box.setCurrentIndex(index)
-                box.blockSignals(False)
+        box = self.choice_box
+        index = box.findData(self._chosen)
+        if index >= 0 and box.currentIndex() != index:
+            box.blockSignals(True)
+            box.setCurrentIndex(index)
+            box.blockSignals(False)
 
     def _on_choice_box(self, index: int) -> None:
         box = self.sender()
