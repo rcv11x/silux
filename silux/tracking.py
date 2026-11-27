@@ -30,7 +30,12 @@ class Extremes:
 
     @property
     def average(self) -> float:
-        return self.total / self.samples if self.samples else self.last
+        """The running mean, kept between the extremes: summed in floating
+        point, six equal readings averaged a hair above themselves and
+        rounded to a tenth above the maximum."""
+        if not self.samples:
+            return self.last
+        return min(max(self.total / self.samples, self.minimum), self.maximum)
 
 
 @dataclass
