@@ -47,6 +47,7 @@ que hace falta.
 - En un sistema que arranca sin initramfs, Almacenamiento no decía dónde está montada la raíz, y una prueba de disco en ella no enseñaba su resultado
 - En Sensores, la media de una lectura que no cambia podía salir una décima por encima del máximo (75.9 frente a 75.8 en un NVMe)
 - En una ventana estrecha, la tabla de pruebas anteriores de Rendimiento ensanchaba la página y cortaba el texto por la derecha: ahora se desplaza por dentro
+- La pestaña abierta de Rendimiento, en negrita, se cortaba por los bordes («Memoria», «Disco»)
 
 ### Problemas conocidos
 

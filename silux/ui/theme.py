@@ -200,6 +200,8 @@ METRICS: Metrics = NORMAL
 # El relleno de la lista de secciones. Lo usan la hoja de estilos y quien
 # mide el ancho de la barra lateral: escrito en los dos sitios, se separan.
 NAV_PADDING = 4
+# A page tab's room at each side of its name (`QPushButton#Tab`).
+TAB_PAD_X = 12
 
 
 # Lo que el árbol de sensores deja a cada lado del texto de una celda. Vive
@@ -713,7 +715,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         border: none;
         border-bottom: 2px solid transparent;
         border-radius: 0;
-        padding: 6px 12px;
+        padding: 6px {TAB_PAD_X}px;
         color: {p.muted};
     }}
     QPushButton#Tab:hover {{ color: {p.ink}; }}

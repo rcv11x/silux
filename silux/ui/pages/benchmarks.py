@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Signal
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -60,6 +61,12 @@ class BenchmarksPage(QWidget):
             button.setObjectName("Tab")
             button.setCheckable(True)
             button.setFont(ui_font(m.base_pt))
+            # As wide as its name in the bold it takes when open: measured in
+            # the regular one, the open tab lost the edges of its letters.
+            bold = QFont(button.font())
+            bold.setWeight(QFont.Weight.DemiBold)
+            button.setMinimumWidth(QFontMetrics(bold).horizontalAdvance(_(name))
+                                   + 2 * theme.TAB_PAD_X + 2)
             button.clicked.connect(lambda _checked=False, k=key: self.select_tab(k))
             self._group.addButton(button)
             self.buttons[key] = button
