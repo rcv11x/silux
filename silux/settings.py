@@ -43,10 +43,10 @@ ACCENTS = ("amber", "blue", "green", "red", "purple")
 @dataclass(frozen=True)
 class Preferences:
     interval_s: float = 1.0
-    # Charts glide between samples instead of jumping. Nothing more is read,
-    # the four visible charts just repaint more often (about 2 % of a desktop
-    # core). Off by default: on a laptop that costs battery.
-    fluid_charts: bool = False
+    # Charts glide between samples instead of jumping, and the sidebar's and
+    # tabs' marks slide. Nothing more is read, the four visible charts just
+    # repaint more often (about 2 % of a desktop core).
+    fluid_charts: bool = True
     theme: str = "system"                 # system | light | dark
     temperature_unit: str = "c"           # c | f
     density: str = "normal"               # spacious | normal | compact
@@ -102,7 +102,7 @@ class Preferences:
         return replace(
             self,
             interval_s=min(10.0, max(0.2, float(self.interval_s))),
-            fluid_charts=_yes_or_no(self.fluid_charts, False),
+            fluid_charts=_yes_or_no(self.fluid_charts, True),
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
             accent=self.accent if self.accent in ACCENTS else ACCENTS[0],
             temperature_unit="f" if self.temperature_unit == "f" else "c",

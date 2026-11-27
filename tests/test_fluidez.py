@@ -79,13 +79,14 @@ class TestDeslizamiento(unittest.TestCase):
 
 
 class TestAjuste(unittest.TestCase):
-    def test_apagado_de_serie(self):
-        """Gasta procesador: quien lo quiera que lo encienda."""
-        self.assertFalse(Preferences().fluid_charts)
+    def test_on_by_default(self):
+        """The marks that slide are what's first seen, and they cost nothing
+        out of a click; the charts, about two points of a core."""
+        self.assertTrue(Preferences().fluid_charts)
 
     def test_se_guarda_y_se_recupera(self):
-        prefs = Preferences(fluid_charts=True).normalized()
-        self.assertTrue(prefs.fluid_charts)
+        prefs = Preferences(fluid_charts=False).normalized()
+        self.assertFalse(prefs.fluid_charts)
 
     def test_un_valor_raro_no_lo_rompe(self):
         self.assertIsInstance(

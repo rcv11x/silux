@@ -44,6 +44,7 @@ que hace falta.
 - El informe y su anexo llevan el nombre y el ID de lo enchufado por USB y de las cámaras (nunca su número de serie), para reconocer un lector de huellas o una cámara de infrarrojos
 - «Buscar actualizaciones al iniciar» viene encendido, y se enciende una vez a quien lo tenía apagado de una versión anterior; si lo apagas después, se queda apagado
 - El aviso de versión nueva de la barra lateral, también con la barra plegada, lleva a Ajustes → Actualizaciones, donde se pulsa «Actualizar a…»
+- «Movimiento fluido» viene encendido
 - Al cambiar un ajuste, la barra de estado dice «Ajuste guardado» durante dos segundos
 - «Mostrar todas las instrucciones» se aplica al momento: solo se rehace la lista de CPU, y Ajustes se queda donde estaba
 - Acerca de Silux tiene la comunidad: UniversoLinux en Discord (#silux-app-chat)
