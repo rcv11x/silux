@@ -328,9 +328,9 @@ class FoldingRow(QWidget):
     def _row_width(self) -> int:
         pieces = self._pieces()
         margins = self._box.contentsMargins()
-        # A button counts whole: the row becomes a column before a button
-        # breaks its words.
-        return (sum(p.sizeHint().width() if isinstance(p.widget(), Button)
+        # A button or a list counts whole: the row becomes a column before a
+        # button breaks its words or a list cuts its choice.
+        return (sum(p.sizeHint().width() if isinstance(p.widget(), (Button, ElidingComboBox))
                     else p.minimumSize().width() for p in pieces)
                 + self._box.spacing() * max(len(pieces) - 1, 0)
                 + margins.left() + margins.right())
