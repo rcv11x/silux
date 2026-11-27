@@ -446,12 +446,14 @@ class SettingsPage(ScrollPage):
         # Las gráficas fluidas no cambian ninguna cifra, solo cómo se pintan:
         # son apariencia.
         self.fluid_charts = self._interruptor(self._prefs.fluid_charts)
+        self.nav_slide = self._interruptor(self._prefs.nav_slide)
         return self._grupo(
             _("settings.card.appearance"),
             _Renglon(_("settings.theme.label"), self.theme_box),
             _Renglon(_("settings.density.label"), self.density_box, _("settings.density.help")),
             _Renglon(_("settings.fontsize.label"), self.font_box, _("settings.fontsize.help")),
             _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
+            _Renglon(_("settings.navslide.label"), self.nav_slide, _("settings.navslide.help")),
         )
 
     def _build_sampling(self) -> Card:
@@ -974,6 +976,7 @@ class SettingsPage(ScrollPage):
             network_unit=self.network_box.currentData(),
             show_all_features=self.all_features.isChecked(),
             fluid_charts=self.fluid_charts.isChecked(),
+            nav_slide=self.nav_slide.isChecked(),
             check_updates=self.check_updates.isChecked(),
             # What the running version would follow anyway stays unchosen:
             # a test version that later installs its final goes to finals.

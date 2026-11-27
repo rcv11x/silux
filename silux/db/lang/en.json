@@ -1911,6 +1911,8 @@
   "settings.interval.label": "Refresh every",
   "settings.language.help": "Spanish is the original: when a phrase has not been translated yet, it shows in Spanish rather than blank.",
   "settings.language.label": "Language",
+  "settings.navslide.help": "When you change section, the mark glides to the new one instead of jumping. It only moves during the change: nothing is spent afterwards.",
+  "settings.navslide.label": "Slide the sidebar's mark",
   "settings.netunit.label": "Network speed",
   "settings.perm.connected": "Granted while Silux stays open",
   "settings.perm.connected.help": "The helper is reading what the kernel reserves for the administrator. It goes away when Silux closes.",

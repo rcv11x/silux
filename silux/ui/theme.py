@@ -206,6 +206,9 @@ METRICS: Metrics = NORMAL
 # El relleno de la lista de secciones. Lo usan la hoja de estilos y quien
 # mide el ancho de la barra lateral: escrito en los dos sitios, se separan.
 NAV_PADDING = 4
+# The sidebar's rows: their corners, and the gap that keeps them apart.
+NAV_RADIUS = 8
+NAV_ROW_GAP = 1
 # A page tab's room at each side of its name (`QPushButton#Tab`).
 TAB_PAD_X = 12
 
@@ -596,14 +599,14 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QListWidget#Nav::item {{
         color: {p.ink_dim};
         padding: {max(5, m.card_pad_v - 6)}px 9px;
-        border-radius: 8px;
-        margin-bottom: 1px;
+        border-radius: {NAV_RADIUS}px;
+        margin-bottom: {NAV_ROW_GAP}px;
     }}
-    /* La sección abierta, sobre una pastilla del color de acento y con su
-       icono en ámbar: en una lista de trece se encuentra sin leer. Sin
-       borde, que la convertía en un recuadro más. */
+    /* The open section, on a pill in the accent's wash with its icon in
+       amber: in a list of thirteen it's found without reading. The list
+       paints the pill itself (`app.NavList`), so that it can slide. */
     QListWidget#Nav::item:selected {{
-        background: {p.accent_wash};
+        background: transparent;
         color: {p.ink};
         border: none;
         font-weight: 600;
@@ -612,7 +615,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     /* The button that folds the bar: its icon alone, on the rows' soft
        background when the pointer is on it. */
     QToolButton#NavToggle {{
-        background: transparent; border: none; border-radius: 8px; padding: 4px;
+        background: transparent; border: none; border-radius: {NAV_RADIUS}px; padding: 4px;
     }}
     QToolButton#NavToggle:hover {{ background: {p.surface_alt}; }}
     QListWidget#Nav::item:disabled {{ color: {p.disabled}; }}

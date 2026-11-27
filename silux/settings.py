@@ -43,6 +43,8 @@ class Preferences:
     # the four visible charts just repaint more often (about 2 % of a desktop
     # core). Off by default: on a laptop that costs battery.
     fluid_charts: bool = False
+    # The sidebar's mark slides to the section opened, for 150 ms.
+    nav_slide: bool = True
     theme: str = "system"                 # system | light | dark
     temperature_unit: str = "c"           # c | f
     density: str = "normal"               # spacious | normal | compact
@@ -95,6 +97,7 @@ class Preferences:
             self,
             interval_s=min(10.0, max(0.2, float(self.interval_s))),
             fluid_charts=_yes_or_no(self.fluid_charts, False),
+            nav_slide=_yes_or_no(self.nav_slide, True),
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
             temperature_unit="f" if self.temperature_unit == "f" else "c",
             density=self.density if self.density in ("spacious", "normal", "compact") else "normal",

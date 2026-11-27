@@ -17,6 +17,7 @@ que hace falta.
 - Las pruebas de disco y de memoria se comparten como imagen: «Copiar como imagen» y «Guardar…» bajo su resultado, sin la carpeta donde se hizo ni el nombre del equipo
 - La imagen del equipo, con el diseño de las de las pruebas: el procesador y la gráfica de título, y al pie la versión y dónde está Silux
 - La barra lateral se encoge a solo los iconos con el botón de su panel, junto al logo; al pasar el ratón dice el nombre de cada sección, y se queda como la dejaste
+- La marca de la sección abierta se desliza por la barra lateral hasta la nueva en vez de saltar; se quita en Ajustes → Apariencia
 - En Almacenamiento, las fichas de lectura, escritura y temperatura pueden enseñar una sola unidad: se elige en el desplegable «Unidad», encima de ellas, o pulsando su fila en «Unidades», con su gráfica desde que se abrió Silux, y se recuerda
 - En Sensores, clic derecho en un sensor para fijarlo arriba, en su propia rama con el nombre de su aparato; se recuerda
 - La salud de cada disco de un vistazo, en su tarjeta de Almacenamiento (que lo nombra por su dispositivo y su modelo): «Bien», «Vigilar» o «Haz copia ya», con el porqué una sola vez y arriba un resumen de los que piden atención, solo con lo que declara el propio disco o la especificación de NVMe; en SATA llega como mucho a «Vigilar»

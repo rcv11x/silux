@@ -1911,6 +1911,8 @@
   "settings.interval.label": "Refrescar cada",
   "settings.language.help": "El español es el original: cuando una frase todavía no está traducida, sale en español en vez de quedarse en blanco.",
   "settings.language.label": "Idioma",
+  "settings.navslide.help": "Al cambiar de sección, la marca pasa a la nueva en vez de saltar. Solo se mueve durante el cambio: después no gasta nada.",
+  "settings.navslide.label": "Deslizar la marca de la barra",
   "settings.netunit.label": "Velocidad de red",
   "settings.perm.connected": "Concedidos mientras Silux siga abierto",
   "settings.perm.connected.help": "El ayudante está leyendo lo que el kernel reserva al administrador. Se va al cerrar Silux.",
