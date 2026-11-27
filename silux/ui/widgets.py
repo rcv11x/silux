@@ -2558,7 +2558,28 @@ class TipsBeside(QObject):
 
 class ElidingComboBox(QComboBox):
     """A combo box whose choice, where it doesn't fit, ends in «…» instead
-    of being cut halfway through a word. Open, the list shows each whole."""
+    of being cut halfway through a word. Open, the list shows each whole.
+
+    With `widest`, it asks for its longest choice's width, up to that many
+    characters, instead of whatever its row gives it: a folder stretched to
+    nearly 1600 px on a wide screen."""
+
+    def __init__(self, parent: Optional[QWidget] = None, widest: Optional[int] = None):
+        super().__init__(parent)
+        self._widest = widest
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        hint = super().sizeHint()
+        if self._widest is None or not self.count():
+            return hint
+        metrics = self.fontMetrics()
+        text = max(metrics.horizontalAdvance(self.itemText(i)) for i in range(self.count()))
+        text = min(text, metrics.averageCharWidth() * self._widest)
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        whole = self.style().sizeFromContents(QStyle.ContentsType.CT_ComboBox, option,
+                                              QSize(text, hint.height()), self)
+        return QSize(max(whole.width(), self.minimumSizeHint().width()), hint.height())
 
     def shown_text(self) -> str:
         """The choice as it is drawn: whole, or cut to the room it has."""

@@ -1170,3 +1170,29 @@ class TestRecordedForThePage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestThePlaceBox(TabCase):
+    """«Where» is as wide as its longest place, up to a cap, and narrow it
+    still fits: at 1920 px it stretched to nearly 1600 px."""
+
+    def test_wide_it_takes_its_text_and_no_more(self):
+        from PySide6.QtGui import QFontMetrics
+
+        tab = self.tab()
+        tab.resize(1900, 900)
+        for _turn in range(5):
+            self.app.processEvents()
+        box = tab.place_box
+        metrics = QFontMetrics(box.font())
+        longest = max(metrics.horizontalAdvance(box.itemText(i)) for i in range(box.count()))
+        self.assertGreaterEqual(box.width(), longest)
+        self.assertLess(box.width(), longest + 120)
+
+    def test_narrow_it_still_fits(self):
+        tab = self.tab()
+        tab.resize(440, 900)
+        for _turn in range(5):
+            self.app.processEvents()
+        self.assertLessEqual(tab.widget().width(), tab.viewport().width())
+        self.assertTrue(tab.place_box.isVisibleTo(tab))

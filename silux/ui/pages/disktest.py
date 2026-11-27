@@ -725,7 +725,7 @@ class DiskTestTab(ScrollPage):
         intro.setObjectName("Subhead")
         intro.setWordWrap(True)
 
-        self.place_box = ElidingComboBox()
+        self.place_box = ElidingComboBox(widest=70)
         self.place_box.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.place_box.setMinimumContentsLength(18)
@@ -754,7 +754,8 @@ class DiskTestTab(ScrollPage):
         where = QHBoxLayout()
         where.setSpacing(8)
         where.addWidget(self._caption("disktest.option.where"))
-        where.addWidget(self.place_box, 1)
+        where.addWidget(self.place_box)
+        where.addStretch(1)
         options = FoldingRow()
         for caption, box in (("disktest.option.profile", self.profile_box),
                              ("disktest.option.size", self.size_box),
@@ -1034,6 +1035,7 @@ class DiskTestTab(ScrollPage):
                 if self.place_box.itemText(index) != label:
                     self.place_box.setItemText(index, label)
             self._places = tuple(rows)
+            self.place_box.updateGeometry()
             return
         before = self._folder()
         if before and before not in folders and not self.running:
@@ -1052,6 +1054,8 @@ class DiskTestTab(ScrollPage):
         wanted = self._chosen or before
         index = next((i for i, folder in enumerate(folders) if folder == wanted), 0)
         self.place_box.setCurrentIndex(index)
+        # It asks for its longest place's width: measured again with them.
+        self.place_box.updateGeometry()
 
     def _say_gone(self, folder: str) -> None:
         """The folder chosen isn't offered any more: its disk went, or its

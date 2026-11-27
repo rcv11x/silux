@@ -52,6 +52,7 @@ que hace falta.
 - En una ventana estrecha, la tabla de pruebas anteriores de Rendimiento ensanchaba la página y cortaba el texto por la derecha: ahora se desplaza por dentro
 - La pestaña abierta de Rendimiento, en negrita, se cortaba por los bordes («Memoria», «Disco»)
 - En una ventana estrecha, el selector de secciones («Almacenam…») y el texto de la barra de estado ya no se cortan
+- En la prueba de disco, «Dónde» mide lo que su texto pide, con un tope, y no todo el ancho de la ventana
 
 ### Problemas conocidos
 
