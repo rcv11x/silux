@@ -771,7 +771,8 @@ class DiskTestTab(ScrollPage):
         self.write_box.toggled.connect(self._describe)
 
         where = QHBoxLayout()
-        where.setSpacing(8)
+        # As in each pair below, so the lists line up in a column.
+        where.setSpacing(6)
         where.addWidget(self._caption("disktest.option.where"))
         where.addWidget(self.place_box)
         where.addStretch(1)
@@ -802,6 +803,8 @@ class DiskTestTab(ScrollPage):
             self.custom_row.add_widget(pair)
         self.custom_row.add_stretch(1)
         self.custom_row.hide()
+        for row in (options, self.custom_row):
+            row.folded_changed.connect(self._align_captions)
         # At the end of the choices, on the right: the one thing to press.
         self.run_button = Button(_("memtest.button.run"))
         self.run_button.setObjectName("Primary")
@@ -841,6 +844,14 @@ class DiskTestTab(ScrollPage):
         for widget in (self.about, self.blocked_note, self.progress):
             card.body.addWidget(widget)
         return card
+
+    def _align_captions(self, *_folded) -> None:
+        """In a column, every choice starts at the same place: each caption
+        as wide as the widest. In a row, each its own width."""
+        column = self.options.folded or self.custom_row.folded
+        widest = max(c.sizeHint().width() for c in self.captions) if column else 0
+        for caption in self.captions:
+            caption.setMinimumWidth(widest)
 
     def _caption(self, key: str) -> QLabel:
         label = QLabel(_(key))

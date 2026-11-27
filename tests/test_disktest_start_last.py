@@ -44,5 +44,33 @@ class TestStartLast(unittest.TestCase):
                                 f"the choice at {where.x()},{where.y()}")
 
 
+class TestChoicesInAColumn(unittest.TestCase):
+    """At 480 px each list started right after its own caption, «Cola» and
+    «Archivo» at different places: in a column they start at the same one.
+    In a row, each caption keeps its own width."""
+
+    def test_aligned_when_folded_and_not_padded_in_a_row(self):
+        app = qt.app()
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "i5-10400")) as window:
+            window.select_section("Rendimiento")
+            page = window.benchmarks_page
+            page.select_tab("disk")
+            tab = page.disk_tab
+            box = tab.profile_box
+            box.setCurrentIndex(box.findData(disktest.CUSTOM))
+            box.activated.emit(box.currentIndex())
+            window.resize(480, 900)
+            geometry.settle(app, 8)
+            starts = {choice.currentText(): choice.mapTo(window, QPoint(0, 0)).x()
+                      for choice in tab.findChildren(QComboBox) if choice.isVisibleTo(window)}
+            self.assertGreaterEqual(len(starts), 6)
+            self.assertEqual(len(set(starts.values())), 1, starts)
+            window.resize(1600, 900)
+            geometry.settle(app, 8)
+            self.assertFalse(tab.options.folded)
+            for caption in tab.captions:
+                self.assertEqual(caption.minimumWidth(), 0, caption.text())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -292,6 +292,9 @@ class FoldingRow(QWidget):
     with `add_widget`, `add_layout` and `add_stretch`, as in a QHBoxLayout.
     """
 
+    # True when it has just turned into a column, False when back to a row.
+    folded_changed = Signal(bool)
+
     def __init__(self, parent: Optional[QWidget] = None, spacing: Optional[int] = None):
         super().__init__(parent)
         self._box = QBoxLayout(QBoxLayout.Direction.LeftToRight, self)
@@ -362,6 +365,11 @@ class FoldingRow(QWidget):
                     # was worked out for the whole one, and spill over.
                     piece.setAlignment(self._alignments.get(piece.widget(), Qt.AlignmentFlag(0)))
             self.updateGeometry()
+            self.folded_changed.emit(not row)
+
+    @property
+    def folded(self) -> bool:
+        return self._box.direction() == QBoxLayout.Direction.TopToBottom
 
 
 def same_height(*widgets: QWidget) -> None:
