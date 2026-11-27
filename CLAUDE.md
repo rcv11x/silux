@@ -328,8 +328,9 @@ silux/
 ├─ saved.py        el historial de una prueba, que no pierde lo que guardó
 │                  una versión más nueva ni pisa un archivo que no entiende
 ├─ history.py      historial de pruebas de este equipo
-├─ updates.py      lo único que sale a la red, y solo si se pide: la versión
-│                  nueva y la sustitución comprobada del AppImage
+├─ updates.py      lo único que sale a la red: la versión nueva al abrirse
+│                  (se apaga en Ajustes) y, solo si se pide, la sustitución
+│                  comprobada del AppImage
 ├─ score.py        la puntuación comparable entre equipos, y su escala
 ├─ providers/      una fuente cada uno; ninguno conoce a los demás
 │                  (pci.py, devices.py y cpuidle.py son los de los datos
@@ -427,7 +428,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2356 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2376 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
