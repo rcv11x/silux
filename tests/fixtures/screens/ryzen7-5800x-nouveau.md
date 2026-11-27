@@ -14,6 +14,7 @@ AMD Ryzen 7 5800X
 
 GeForce RTX 3070 LHR
 PCIe 4.0 × 16
+nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
 
 ### Memoria
 

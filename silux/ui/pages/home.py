@@ -20,7 +20,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ... import render, thermal
 from ...i18n import _
-from ...model import Snapshot
+from ...model import Need, Snapshot
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
@@ -440,7 +440,13 @@ class HomePage(ScrollPage):
         otras = [render.gpu_name(g) + (f" ({render.gpu_rest(g)})" if g.resting else "")
                  for i, g in enumerate(snapshot.gpus) if i != indice]
         tambien = _("home.gpu.also").format(tarjetas=" · ".join(otras)) if otras else ""
-        pie = " ".join(p for p in (tambien, bloqueada) if p)
+        # Awake with no figure at all because of its driver (nouveau): the
+        # name alone read as a fault. The driver's own note says why.
+        sin_cifras = ""
+        if not piezas and not gpu.resting:
+            sin_cifras = next((n.message for n in snapshot.notes
+                               if n.path == f"gpus.{indice}" and n.need is Need.DRIVER), "")
+        pie = " ".join(p for p in (sin_cifras, tambien, bloqueada) if p)
         levels = [gpu.temp_level if i == temp_at else thermal.OK for i in range(len(piezas))]
         self.gpu.poner(render.gpu_name(gpu), detalle,
                        self._coloured(list(zip(piezas, levels)), "   "), pie)

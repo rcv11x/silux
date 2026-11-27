@@ -38,6 +38,7 @@ que hace falta.
 - Un Ryzen con el turbo apagado en la BIOS salía como «Este procesador no tiene turbo»: ahora dice que está desactivado
 - Con la base cambiada a mano en la BIOS, CPU y la imagen del equipo daban como máxima la que el kernel calcula sobre esa base (5.36 GHz en un Ryzen 7 5800X que llega a 4.7): ahora no la dan, y dicen la base de fábrica y el turbo de AMD
 - Con nouveau, una GeForce que no publica ningún sensor (una RTX 3070) salía con «Temperatura: —» y un aviso que prometía la temperatura: ahora dice que nouveau no la publica en esa tarjeta
+- Inicio dice por qué una gráfica sale sin ninguna cifra cuando es cosa de su driver (nouveau), en vez de enseñar solo su nombre
 - En la terminal, las categorías de Sensores salían como claves («cat.temperature») y quién montó la gráfica con su razón social («Micro-Star International Co., Ltd. [MSI]»)
 - Una wifi Atheros AR242x salía como «Ethernet» en los dispositivos PCIe de Placa base: declara esa clase, pero es inalámbrica
 - En Sensores, los sensores del firmware de un portátil salían como un aparato con el nombre del kernel («dell_smm», «thinkpad», «hp»), con dos «CPU (dell_smm)» iguales: ahora van con el equipo, numerados si se llaman igual, y el chip se nombra en palabras («ACPI», «Dell») solo cuando hace falta

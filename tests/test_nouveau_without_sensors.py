@@ -46,6 +46,27 @@ class TestNouveauWithoutSensors(unittest.TestCase):
         self.assertTrue(gpu.temperature_unpublished)
         self.assertFalse(gpu.no_temperature_sensor)
 
+    def test_home_says_why_the_card_has_no_figure(self):
+        """Home showed the 3070 with its name and nothing else: no usage,
+        clock, temperature or power, and no word on why."""
+        snapshot, _gpu = nouveau_card("ryzen7-5800x-nouveau")
+        app = qt.app()
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Inicio")
+            geometry.settle(app)
+            card = window.home_page.gpu
+            self.assertFalse(card.cifras.isVisibleTo(card))
+            self.assertIn(_("prov.drm.nouveau"), card.pie.text())
+            self.assertTrue(card.pie.isVisibleTo(card))
+
+    def test_a_card_with_a_figure_keeps_its_foot_as_it_was(self):
+        snapshot, _gpu = nouveau_card("core2-p8400")
+        app = qt.app()
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Inicio")
+            geometry.settle(app)
+            self.assertNotIn(_("prov.drm.nouveau"), window.home_page.gpu.pie.text())
+
     def test_an_older_card_keeps_its_temperature(self):
         snapshot, gpu = nouveau_card("core2-p8400")
         self.assertFalse(gpu.temperature_unpublished)
