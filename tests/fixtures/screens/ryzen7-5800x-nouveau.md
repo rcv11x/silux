@@ -32,6 +32,7 @@ Ocupado 95.7 GB · Libre 105 GB · Reservado 15.3 GB · Sin montar 32.0 GB
 
 Procesador 40.2 °C
 lo más caliente ahora
+Esta gráfica no tiene sensor de temperatura propio.
 
 ### Red
 
@@ -338,11 +339,10 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 MSI · GA104 · PCIe 4.0 × 16
 nouveau · Mesa 25.0.7 · 8.2 GiB · principal
-- Temperatura: —
 
 > **Falta un driver**
 > nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
-> Es el driver libre: lo que enseña un programa como este de una NVIDIA (relojes, vatios, núcleos CUDA, recortes) sale de NVML, que viene con el driver propietario. Con nouveau quedan la temperatura, el enlace PCIe y la memoria que dice Vulkan.
+> Es el driver libre: lo que enseña un programa como este de una NVIDIA (relojes, vatios, núcleos CUDA, recortes) sale de NVML, que viene con el driver propietario. En esta tarjeta nouveau no publica ningún sensor, ni la temperatura: quedan el enlace PCIe y la memoria que dice Vulkan.
 
 #### Ahora mismo
 
@@ -381,7 +381,7 @@ nouveau no publica núcleo, núcleo (máximo), memoria ni otros 4 datos de esta 
 
 #### Consumo y temperaturas
 
-nouveau no publica estado, punto caliente, chips de memoria ni otros 8 datos de esta tarjeta.
+Esta gráfica no tiene sensor de temperatura propio. nouveau no publica estado, chips de memoria, regulador gráfico ni otros 7 datos de esta tarjeta.
 
 #### Bibliotecas gráficas
 
@@ -681,6 +681,8 @@ SENSORES · 37 en 3 dispositivos
 - Red (Wi-Fi)
   - Temperaturas
     - Temperatura 1 · 34.0 °C · 34.0 · 34.0 · 34.0
+
+GeForce RTX 3070 Lite Hash Rate: no tiene sensor de temperatura propio.
 
 > **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.

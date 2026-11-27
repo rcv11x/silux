@@ -1620,6 +1620,7 @@
   "prov.drm.nosysfs.hint": "It happens on systems without the kernel's graphics support.",
   "prov.drm.nouveau": "nouveau does not give the card's clocks, power or usage.",
   "prov.drm.nouveau.hint": "It is the free driver: what a program like this shows of an NVIDIA (clocks, watts, CUDA cores, throttling) comes from NVML, which ships with the proprietary driver. With nouveau you are left with the temperature, the PCIe link and the memory Vulkan reports.",
+  "prov.drm.nouveau.hint.nosensor": "It's the free driver: what a program like this shows of an NVIDIA (clocks, watts, CUDA cores, throttling) comes from NVML, which ships with the proprietary driver. On this card nouveau publishes no sensor, not even the temperature: you're left with the PCIe link and the memory Vulkan reports.",
   "prov.drm.nvidia": "NVIDIA's proprietary driver does not give the card's data to the system.",
   "prov.drm.nvidia.hint": "They are read through NVML, the library the driver itself ships.",
   "prov.drm.thiscard": "this card",

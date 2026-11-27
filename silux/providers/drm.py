@@ -270,6 +270,16 @@ class DrmGpus(Provider):
                 gpu["virtual"] = True
 
             notice = BLIND_DRIVERS.get(gpu["driver"] or "")
+            if gpu["driver"] == "nouveau" and not asleep:
+                # Without the card's firmware path to its sensors (an Ampere
+                # through GSP), nouveau registers no hwmon at all: not even
+                # the temperature it gives on older cards. Looked at, not
+                # assumed from the generation.
+                hwmon = _hwmon(device)
+                gpu["no_temperature_sensor"] = not (
+                    hwmon is not None and any(hwmon.glob("temp*_input")))
+                if gpu["no_temperature_sensor"]:
+                    notice = ("prov.drm.nouveau", "prov.drm.nouveau.hint.nosensor")
             if notice:
                 draft.note(f"gpus.{index}", Need.DRIVER,
                            *(_(entry_key) for entry_key in notice), key=notice[0])
