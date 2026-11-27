@@ -160,6 +160,27 @@ No son preferencias de estilo: cada una viene de un problema concreto.
 El porqué largo de cada una y el resto de la arquitectura:
 [docs/arquitectura.md](docs/arquitectura.md).
 
+### El ciclo de cada informe de un tester (regla de oro)
+
+Cada informe que manda alguien pasa por estos cinco pasos, siempre:
+
+1. **Revisarlo a fondo**: cada página, comparada con su volcado si ya
+   existe, y el equipo identificado por su anexo, no por el nombre del
+   archivo. La revisión va a las notas privadas (`informes/`): qué falla,
+   qué se arregla, qué no y por qué, y qué pedirle al tester.
+2. **Convertirlo en volcado** (por procesador, nunca con el nombre del
+   tester) o poner al día el que ya hay, para que entre en la suite: así
+   ningún arreglo futuro lo rompe sin que salte un test.
+3. **Arreglar en la rama en curso todo lo que sea de Silux**: cada fallo
+   con su test hecho con los datos del informe, visto fallar antes, y sin
+   romper ningún otro volcado (la suite entera en verde).
+4. **Lo aprendido que vale para otros equipos** (un sensor que miente, un
+   campo del firmware poco fiable, una regla nueva), aquí abajo o a las
+   lecciones, para no repetir el error.
+5. **Solo queda sin arreglar** lo que necesita más datos del tester
+   (apuntado con qué pedirle) o lo que toca el ayudante o el módulo de Rust
+   (solo propuesta).
+
 ### Lo que enseñaron los informes de la gente
 
 Cada una salió de un fallo en un equipo que no era el nuestro. Valen para el
@@ -446,6 +467,12 @@ idiomas, con las mismas secciones y los mismos enlaces
 (`tests/test_readmes.py`): `README.md` (inglés, el de por defecto) y
 `README.es.md`, `docs/usage.md` y `docs/uso.md`, `docs/compatibility.md` y
 `docs/compatibilidad.md`. Si cambia uno, cambia el otro.
+
+**Una señal de un widget hijo no se conecta a una `lambda` que guarde la
+ventana o la página.** La conexión vive con el hijo y la `lambda` retiene a
+quien la creó: ninguna ventana cerrada se liberaba (22 MB cada una) y la
+suite llenó la memoria. Un método enlazado de un `QObject`, que Qt
+desconecta al destruirlo (`tests/test_closed_windows_go.py`).
 
 **Tests.**
 - Una comprobación que nadie ha visto fallar no es una comprobación: todo test
