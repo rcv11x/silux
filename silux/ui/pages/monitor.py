@@ -54,6 +54,8 @@ class MonitorPage(ScrollPage):
     # guarda para que el ajuste sobreviva al cierre.
     columns_resized = Signal(tuple)
     branches_changed = Signal(tuple, tuple)
+    # The sensors pinned on top changed: their keys.
+    pinned_changed = Signal(tuple)
 
     def __init__(self, palette: Palette, prefs: Preferences, tracker: Tracker, parent=None):
         super().__init__(parent)
@@ -62,6 +64,7 @@ class MonitorPage(ScrollPage):
         self._tracker = tracker
         # La última foto que ya se contó en el `Tracker` (`record`).
         self._contada: Optional[Snapshot] = None
+        self._last: Optional[Snapshot] = None
         # Las cargas de módulo que esperan a pkexec: qué módulo y qué botón.
         m = theme.METRICS
 
@@ -84,6 +87,8 @@ class MonitorPage(ScrollPage):
         self.tree = SensorTree(palette)
         self.tree.set_column_widths(prefs.sensor_columns)
         self.tree.set_collapsed(prefs.sensor_collapsed, prefs.sensor_expanded)
+        self.tree.set_pinned(prefs.sensor_pinned)
+        self.tree.pinnedChanged.connect(self._on_pinned)
         self.tree.itemExpanded.connect(lambda _item: self.tree.refresh_height())
         self.tree.itemCollapsed.connect(lambda _item: self.tree.refresh_height())
         self.tree.branchesChanged.connect(self.branches_changed)
@@ -229,7 +234,14 @@ class MonitorPage(ScrollPage):
 
     # -- actualización ------------------------------------------------------
 
+    def _on_pinned(self, keys: tuple) -> None:
+        """Drawn at once, with the last sample, and kept by the window."""
+        if self._last is not None:
+            self._apply_sensors(self._last)
+        self.pinned_changed.emit(keys)
+
     def apply(self, snapshot: Snapshot) -> None:
+        self._last = snapshot
         self.record(snapshot)
         self._apply_sensors(snapshot)
         self._apply_absent(snapshot)
@@ -340,6 +352,7 @@ class MonitorPage(ScrollPage):
         # cuál lo está es parte de la estructura; el tráfico de una interfaz
         # no, que solo decide cómo nace su rama y cambia a cada segundo.
         structure += (tuple(sorted(k for k in inactivos if not k.startswith("net/"))),)
+        structure += (self.tree.pinned,)
         if structure != self._structure:
             self.tree.rebuild(tree, inactivos)
             self._structure = structure

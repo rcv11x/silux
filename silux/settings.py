@@ -83,6 +83,8 @@ class Preferences:
     # The drive Storage's tiles show: its model and size (and its name
     # between two alike); empty for every drive.
     storage_disk: str = ""
+    # The sensors pinned on top of the tree, by key, in their order.
+    sensor_pinned: tuple[str, ...] = ()
 
     # -- validation ---------------------------------------------------------
 
@@ -117,6 +119,7 @@ class Preferences:
             welcome_shown=_yes_or_no(self.welcome_shown, False),
             nav_folded=_yes_or_no(self.nav_folded, False),
             storage_disk=str(self.storage_disk or "")[:300],
+            sensor_pinned=tuple(str(k) for k in (self.sensor_pinned or ()))[:100],
         )
 
     @property

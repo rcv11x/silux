@@ -233,11 +233,19 @@ class SensorTree(QTreeWidget):
 
     columnsResized = Signal(tuple)
     branchesChanged = Signal(tuple, tuple)
+    # The sensors pinned on top changed: their keys, in their order.
+    pinnedChanged = Signal(tuple)
 
     def __init__(self, palette: Palette, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._p = palette
         self._rows: dict[str, QTreeWidgetItem] = {}
+        # The sensors pinned on top, and their rows in that branch.
+        self._pinned: tuple[str, ...] = ()
+        self._pinned_rows: dict[str, QTreeWidgetItem] = {}
+        self.pinned_branch: Optional[QTreeWidgetItem] = None
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._row_menu)
         # The name each device branch is painted with, by its raw key.
         self._nombres: dict[str, str] = {}
         self._structure: tuple = ()
@@ -617,8 +625,11 @@ class SensorTree(QTreeWidget):
         self._abierta_por_regla.clear()
         self.clear()
         self._rows.clear()
+        self._pinned_rows.clear()
+        self.pinned_branch = None
         self._nombres.clear()
         self._orden_natural.clear()
+        self._build_pinned(tree)
 
         partido: dict = {}
         for device, categories in tree.items():
@@ -678,26 +689,7 @@ class SensorTree(QTreeWidget):
                 for sensor, etiqueta in zip(sensors, nombres):
                     nombre = (f"{etiqueta} ({render.chip_name(sensor.chip)})"
                               if varios_chips else etiqueta)
-                    row = QTreeWidgetItem(
-                        [nombre] + ["—"] * self.VALUE_COLUMNS)
-                    row.setFont(0, self._label_font)
-                    row.setIcon(0, self._icon(sensor.kind.value))
-                    for column in range(1, len(self.COLUMNS)):
-                        row.setFont(column, self._value_font)
-                        # Sin int(): la sobrecarga con entero está obsoleta
-                        # desde PySide6 6.11 y avisa por cada celda.
-                        row.setTextAlignment(
-                            column,
-                            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-                        )
-                    # El color base de la fila lo pone el árbol y no la hoja
-                    # de estilos: declararlo allí pisaría el de las celdas que
-                    # piden otro, que es justo lo que tiene que poder pasar.
-                    for column in range(len(self.COLUMNS)):
-                        row.setForeground(column, self._p.q("ink_dim"))
-                    # La columna del valor actual va sobre una banda tenue: es
-                    # la que se mira, y anclarla evita recorrer con el dedo.
-                    row.setBackground(1, QBrush(self._p.q("accent", 0.09)))
+                    row = self._sensor_row(nombre, sensor.kind.value)
                     category_item.addChild(row)
                     self._rows[sensor.key] = row
 
@@ -717,6 +709,89 @@ class SensorTree(QTreeWidget):
         self._fit_height()
         if self._filtro:
             self._aplicar_filtro()
+
+    def _sensor_row(self, nombre: str, kind: str) -> QTreeWidgetItem:
+        row = QTreeWidgetItem([nombre] + ["—"] * self.VALUE_COLUMNS)
+        row.setFont(0, self._label_font)
+        row.setIcon(0, self._icon(kind))
+        for column in range(1, len(self.COLUMNS)):
+            row.setFont(column, self._value_font)
+            # Sin int(): la sobrecarga con entero está obsoleta
+            # desde PySide6 6.11 y avisa por cada celda.
+            row.setTextAlignment(
+                column,
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+            )
+        # El color base de la fila lo pone el árbol y no la hoja
+        # de estilos: declararlo allí pisaría el de las celdas que
+        # piden otro, que es justo lo que tiene que poder pasar.
+        for column in range(len(self.COLUMNS)):
+            row.setForeground(column, self._p.q("ink_dim"))
+        # La columna del valor actual va sobre una banda tenue: es
+        # la que se mira, y anclarla evita recorrer con el dedo.
+        row.setBackground(1, QBrush(self._p.q("accent", 0.09)))
+        return row
+
+    # -- pinned on top ---------------------------------------------------------
+
+    def set_pinned(self, keys) -> None:
+        """The sensors pinned on top, by key: drawn at the next rebuild."""
+        self._pinned = tuple(keys)
+
+    @property
+    def pinned(self) -> tuple[str, ...]:
+        return self._pinned
+
+    def toggle_pinned(self, key: str) -> None:
+        """Pin `key` on top, or take it off if it was."""
+        self._pinned = (tuple(k for k in self._pinned if k != key) if key in self._pinned
+                        else self._pinned + (key,))
+        self.pinnedChanged.emit(self._pinned)
+
+    def _build_pinned(self, tree: dict) -> None:
+        """A branch above every device with the pinned sensors this machine
+        has, named with their device. One it doesn't have is kept, unseen."""
+        present = {sensor.key: (device, sensor) for device, categories in tree.items()
+                   for sensors in categories.values() for sensor in sensors}
+        pinned = [present[key] for key in self._pinned if key in present]
+        if not pinned:
+            return
+        branch = QTreeWidgetItem([_("sensors.pinned")])
+        branch.setFont(0, self._branch_font)
+        branch.setForeground(0, self._p.q("accent"))
+        branch.setFirstColumnSpanned(True)
+        branch.setToolTip(0, _("sensors.pin.tip"))
+        self.addTopLevelItem(branch)
+        for device, sensor in pinned:
+            name = f"{render.sensor_label(sensor)} · {Snapshot.device_name(tree[device])}"
+            row = self._sensor_row(name, sensor.kind.value)
+            branch.addChild(row)
+            self._pinned_rows[sensor.key] = row
+        branch.setExpanded(True)
+        self.pinned_branch = branch
+
+    def _key_of(self, item) -> Optional[str]:
+        for rows in (self._pinned_rows, self._rows):
+            for key, row in rows.items():
+                if row is item and not key.startswith("::"):
+                    return key
+        return None
+
+    def pin_menu(self, item) -> Optional[QMenu]:
+        """The menu of a sensor's row: pin it on top, or take it off. None
+        for a branch."""
+        key = self._key_of(item) if item is not None else None
+        if key is None:
+            return None
+        menu = QMenu(self)
+        action = menu.addAction(_("sensors.unpin") if key in self._pinned else _("sensors.pin"))
+        action.triggered.connect(lambda _checked=False, k=key: self.toggle_pinned(k))
+        return menu
+
+    def _row_menu(self, position) -> None:
+        menu = self.pin_menu(self.itemAt(position))
+        if menu is not None:
+            menu.exec(self.viewport().mapToGlobal(position))
 
     # -- ramas plegadas -----------------------------------------------------
 
@@ -801,6 +876,16 @@ class SensorTree(QTreeWidget):
         self._por_programa = True
         for indice in range(self.topLevelItemCount()):
             aparato = self.topLevelItem(indice)
+            if aparato is self.pinned_branch:
+                # Its rows hang from it straight, with no category between.
+                visibles = 0
+                for j in range(aparato.childCount()):
+                    fila = aparato.child(j)
+                    visible = not self._filtro or self._filtro in fila.text(0).lower()
+                    fila.setHidden(not visible)
+                    visibles += visible
+                aparato.setHidden(visibles == 0)
+                continue
             self._filtrar_rama(aparato, aparato.text(0).lower())
         self._por_programa = False
         self._fit_height()
@@ -858,9 +943,13 @@ class SensorTree(QTreeWidget):
     def update_row(self, key: str, values: list[str], tooltip: str = "",
                    alarm: str = "ok", history=None, alarm_max: str = "ok",
                    apagada: bool = False) -> None:
-        item = self._rows.get(key)
-        if item is None:
-            return
+        for rows in (self._rows, self._pinned_rows):
+            item = rows.get(key)
+            if item is not None:
+                self._paint_row(item, values, tooltip, alarm, history, alarm_max, apagada)
+
+    def _paint_row(self, item, values: list[str], tooltip: str, alarm: str, history,
+                   alarm_max: str, apagada: bool) -> None:
         for column, text in enumerate(values, start=1):
             if item.text(column) != text:
                 item.setText(column, text)

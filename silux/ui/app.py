@@ -341,6 +341,7 @@ class MainWindow(QMainWindow):
         self.monitor_page = MonitorPage(self._palette, self.prefs, self._tracker)
         self.monitor_page.columns_resized.connect(self._on_columns_resized)
         self.monitor_page.branches_changed.connect(self._on_branches_changed)
+        self.monitor_page.pinned_changed.connect(self._on_sensors_pinned)
         self.caches_page = CachesPage(self._palette, self.prefs)
         self.board_page = BoardPage(self._palette, self.prefs)
         self.memory_page = MemoryPage(self._palette, self.prefs)
@@ -1482,6 +1483,12 @@ class MainWindow(QMainWindow):
                                                  tuple(self.prefs.sensor_expanded)):
             self.prefs = replace(self.prefs, sensor_collapsed=tuple(plegadas),
                                  sensor_expanded=tuple(abiertas))
+
+    def _on_sensors_pinned(self, keys: tuple) -> None:
+        from dataclasses import replace
+
+        if tuple(keys) != tuple(self.prefs.sensor_pinned):
+            self.prefs = replace(self.prefs, sensor_pinned=tuple(keys))
 
     def _on_storage_disk(self, key: str) -> None:
         from dataclasses import replace
