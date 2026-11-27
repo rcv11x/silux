@@ -18,19 +18,18 @@ from silux.ui.widgets import Series, Sparkline
 from tests import qt
 
 
-class TestUnSoloAcento(unittest.TestCase):
-    """Revisión del autor: el AppImage y varias capturas salían con la
-    selección, las barras y las etiquetas en azul, y otras en ámbar. El
-    acuerdo era un solo acento, el ámbar de la marca, pero Ajustes seguía
-    ofreciendo seis, y un `settings.json` con «azul» teñía la interfaz entera
-    —el AppImage y `--screenshot` lo leen—, mientras que lo que se monta con
-    las preferencias de serie salía en ámbar."""
+class TestTheDefaultAccent(unittest.TestCase):
+    """The accent once came out blue in some places and amber in others: a
+    saved «azul» reached the AppImage and `--screenshot`, and what was
+    mounted with the default preferences came out amber. The accents have
+    other names now, and a saved old one is no choice (tests/test_accent.py
+    has the accent picked)."""
 
     @classmethod
     def setUpClass(cls):
         cls.app = qt.app()
 
-    def test_un_acento_guardado_ya_no_cambia_el_color(self):
+    def test_an_old_saved_accent_gives_the_default(self):
         import json
         import os
         import pathlib
@@ -49,21 +48,9 @@ class TestUnSoloAcento(unittest.TestCase):
             self.addCleanup(ventana.close)
             self.assertEqual(ventana._palette.accent, theme.DARK.accent)
 
-    def test_en_los_dos_temas_es_el_ambar(self):
+    def test_by_default_both_themes_are_amber(self):
         self.assertEqual(theme.palette_for(self.app, "dark"), theme.DARK)
         self.assertEqual(theme.palette_for(self.app, "light"), theme.LIGHT)
-
-    def test_ajustes_no_ofrece_elegirlo(self):
-        from PySide6.QtWidgets import QLabel
-
-        from silux.i18n import _
-        from silux.ui.pages.settings import SettingsPage
-
-        pagina = SettingsPage(Preferences())
-        self.addCleanup(pagina.deleteLater)
-        textos = [e.text() for e in pagina.findChildren(QLabel)]
-        self.assertFalse(any("acento" in t.lower() for t in textos), textos)
-        self.assertFalse(hasattr(pagina, "accent_box"))
 
 
 class TestLecturaDeGraficas(unittest.TestCase):

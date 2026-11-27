@@ -134,6 +134,10 @@ class _DialogoDeAvisos(QDialog):
 
 
 THEMES = (("opt.theme.system", "system"), ("opt.theme.light", "light"), ("opt.theme.dark", "dark"))
+# In the order of `settings.ACCENTS`, the default first.
+ACCENT_NAMES = (("settings.accent.amber", "amber"), ("settings.accent.blue", "blue"),
+                ("settings.accent.green", "green"), ("settings.accent.red", "red"),
+                ("settings.accent.purple", "purple"))
 UNITS = (("opt.temp.celsius", "c"), ("opt.temp.fahrenheit", "f"))
 DENSITIES = (("opt.density.spacious", "spacious"), ("opt.density.normal", "normal"), ("opt.density.compact", "compact"))
 # El tamaño de la letra va aparte de la densidad a propósito: son dos cosas
@@ -338,7 +342,7 @@ class SettingsPage(ScrollPage):
         from PySide6.QtWidgets import QApplication
 
         self._prefs = prefs
-        self._p = palette or theme.palette_for(QApplication.instance(), prefs.theme)
+        self._p = palette or theme.palette_for(QApplication.instance(), prefs.theme, prefs.accent)
         self._loading = True
         self._tarea: Optional[_Tarea] = None
         self._error_del_escritorio = ""
@@ -441,6 +445,7 @@ class SettingsPage(ScrollPage):
 
     def _build_appearance(self) -> Card:
         self.theme_box = self._combo(THEMES, self._prefs.theme)
+        self.accent_box = self._combo(ACCENT_NAMES, self._prefs.accent)
         self.density_box = self._combo(DENSITIES, self._prefs.density)
         self.font_box = self._combo(FONT_SCALES, self._prefs.font_scale)
         # Las gráficas fluidas no cambian ninguna cifra, solo cómo se pintan:
@@ -450,6 +455,7 @@ class SettingsPage(ScrollPage):
         return self._grupo(
             _("settings.card.appearance"),
             _Renglon(_("settings.theme.label"), self.theme_box),
+            _Renglon(_("settings.accent.label"), self.accent_box, _("settings.accent.help")),
             _Renglon(_("settings.density.label"), self.density_box, _("settings.density.help")),
             _Renglon(_("settings.fontsize.label"), self.font_box, _("settings.fontsize.help")),
             _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
@@ -970,6 +976,7 @@ class SettingsPage(ScrollPage):
             interval_s=self.interval.value(),
             language=self.language_box.currentData(),
             theme=self.theme_box.currentData(),
+            accent=self.accent_box.currentData(),
             temperature_unit=self.unit_box.currentData(),
             density=self.density_box.currentData(),
             font_scale=self.font_box.currentData(),

@@ -59,7 +59,7 @@ QT_QPA_PLATFORM=offscreen python3 -m silux.ui.app \
   --screenshot sensores.png --page Sensores --dark --compact --size 900x680
 ```
 
-Acepta además `--font-scale`, `--anonymous` y `--samples N` (con
+Acepta además `--font-scale`, `--accent`, `--anonymous` y `--samples N` (con
 `--interval 1`, `--samples 65` captura tras un minuto de gráficas). Una
 sección que el equipo no tiene (Batería en un sobremesa) sale con código 2.
 

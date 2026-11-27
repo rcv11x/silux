@@ -36,6 +36,10 @@ def system_language(environ: Optional[Mapping[str, str]] = None) -> str:
     return "en"
 
 
+# The accent colours, the first by default; their tones are in `ui/theme.py`.
+ACCENTS = ("amber", "blue", "green", "red", "purple")
+
+
 @dataclass(frozen=True)
 class Preferences:
     interval_s: float = 1.0
@@ -50,8 +54,9 @@ class Preferences:
     density: str = "normal"               # spacious | normal | compact
     # Larger by default: the base size reads small on a 27" 1440p monitor.
     font_scale: str = "grande"            # normal | grande | mayor | máximo
-    # There is no accent colour setting; an old settings.json with «accent»
-    # still loads, since `load` drops unknown keys.
+    # One of ACCENTS. They once had Spanish names: an old «azul» is no
+    # choice, and gives the default.
+    accent: str = "amber"
     # Link speeds are quoted in bits and download speeds in bytes; people
     # checking against a speed test want bits.
     network_unit: str = "bytes"           # bytes | bits
@@ -99,6 +104,7 @@ class Preferences:
             fluid_charts=_yes_or_no(self.fluid_charts, False),
             nav_slide=_yes_or_no(self.nav_slide, True),
             theme=self.theme if self.theme in ("system", "light", "dark") else "system",
+            accent=self.accent if self.accent in ACCENTS else ACCENTS[0],
             temperature_unit="f" if self.temperature_unit == "f" else "c",
             density=self.density if self.density in ("spacious", "normal", "compact") else "normal",
             font_scale=(self.font_scale

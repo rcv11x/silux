@@ -49,8 +49,8 @@ class TestElColorDeLoAccionable(unittest.TestCase):
     def test_el_acento_es_el_ambar_de_la_marca(self):
         from silux.ui import theme
 
-        self.assertEqual(theme.DARK.accent, "#F2994A")
-        self.assertEqual(theme.LIGHT.accent, "#C2570C")
+        self.assertEqual(theme.DARK.accent, theme.ACCENTS["amber"]["dark"][0])
+        self.assertEqual(theme.LIGHT.accent, theme.ACCENTS["amber"]["light"][0])
 
     def test_los_candados_no_son_del_color_del_acento_ni_del_aviso(self):
         from silux.ui.widgets import LockMark

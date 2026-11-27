@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
         # The sample after the one where permissions changed: what the helper
         # reads as a difference (RAPL's watts) only comes with the second.
         self._report_once_more = False
-        self._palette = theme.palette_for(QApplication.instance(), prefs.theme)
+        self._palette = theme.palette_for(QApplication.instance(), prefs.theme, prefs.accent)
         # El seguimiento de mínimos y máximos vive en la ventana, no en la
         # página: cambiar de tema reconstruye las páginas, y perder por eso el
         # histórico de una sesión de pruebas sería inaceptable.
@@ -1108,8 +1108,9 @@ class MainWindow(QMainWindow):
             # no hay forma de retraducirlos sin volver a montarlas.
             i18n.set_language(prefs.language)
 
-        appearance_changed = ((prefs.theme, prefs.density, prefs.font_scale)
-                              != (previous.theme, previous.density, previous.font_scale))
+        appearance_changed = ((prefs.theme, prefs.accent, prefs.density, prefs.font_scale)
+                              != (previous.theme, previous.accent, previous.density,
+                                  previous.font_scale))
         content_changed = (prefs.temperature_unit, prefs.show_all_features,
                            prefs.network_unit) != (
             previous.temperature_unit, previous.show_all_features,
@@ -1154,7 +1155,8 @@ class MainWindow(QMainWindow):
             if old is not None:
                 shiboken6.delete(old)
             self._palette = theme.apply(QApplication.instance(), self.prefs.theme,
-                                        self.prefs.density, self.prefs.font_scale)
+                                        self.prefs.density, self.prefs.font_scale,
+                                        self.prefs.accent)
             self._build_ui(current_row=row)
         finally:
             self.setUpdatesEnabled(True)
@@ -1875,6 +1877,7 @@ def build_parser():
     parser.add_argument("--dark", action="store_true", help=_("gui.opt.dark"))
     parser.add_argument("--light", action="store_true", help=_("gui.opt.light"))
     parser.add_argument("--compact", action="store_true", help=_("gui.opt.compact"))
+    parser.add_argument("--accent", choices=prefs_module.ACCENTS, help=_("gui.opt.accent"))
     parser.add_argument("--font-scale", metavar=_("gui.metavar.size"),
                         choices=(*TAMANOS_DE_LETRA, *TAMANOS_DE_LETRA.values()),
                         help=_("gui.opt.fontscale"))
@@ -1916,6 +1919,8 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
         prefs = replace(prefs, theme="light")
     if args.compact:
         prefs = replace(prefs, density="compact")
+    if args.accent:
+        prefs = replace(prefs, accent=args.accent)
     if args.font_scale:
         prefs = replace(prefs, font_scale=TAMANOS_DE_LETRA.get(args.font_scale,
                                                               args.font_scale))
@@ -1927,7 +1932,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     # Lo que la línea de órdenes cambió respecto a lo guardado, para que la
     # ventana no lo guarde como si fuera una preferencia.
     forzadas = {campo: (getattr(guardadas, campo), getattr(prefs, campo))
-                for campo in ("interval_s", "theme", "density", "font_scale",
+                for campo in ("interval_s", "theme", "accent", "density", "font_scale",
                               "window_width", "window_height")
                 if getattr(guardadas, campo) != getattr(prefs, campo)}
 
@@ -1951,7 +1956,7 @@ def build_app(argv: Optional[list[str]] = None) -> tuple[QApplication, MainWindo
     # si el idioma llega después se quedan con el que hubiera. Guardarlo y
     # volver a abrir el programa devolvía la interfaz al español.
     i18n.set_language(prefs.language)
-    theme.apply(app, prefs.theme, prefs.density, prefs.font_scale)
+    theme.apply(app, prefs.theme, prefs.density, prefs.font_scale, prefs.accent)
 
     return app, MainWindow(prefs, forzadas=forzadas), args
 
@@ -1982,7 +1987,7 @@ def _with_the_welcome(window: MainWindow, image, page: int):
     """The window's capture with the welcome over it, centred and the window
     dimmed, as it is seen: a dialog is a window of its own and `grab` of the
     main one leaves it out."""
-    from PySide6.QtGui import QColor, QPainter
+    from PySide6.QtGui import QPainter
 
     dialog = window.show_welcome(page)
     for _turn in range(4):
@@ -1990,7 +1995,7 @@ def _with_the_welcome(window: MainWindow, image, page: int):
     over = dialog.grab().toImage()
     ratio = image.devicePixelRatio() or 1.0
     painter = QPainter(image)
-    painter.fillRect(image.rect(), QColor(0, 0, 0, 90))
+    painter.fillRect(image.rect(), theme.VEIL)
     x = (image.width() / ratio - over.width() / (over.devicePixelRatio() or 1.0)) / 2
     y = (image.height() / ratio - over.height() / (over.devicePixelRatio() or 1.0)) / 2
     painter.drawImage(int(x), int(y), over)

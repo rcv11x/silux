@@ -94,7 +94,7 @@ QT_QPA_PLATFORM=offscreen python3 -m silux.ui.app \
 Una sección que este equipo no tiene —Batería en un sobremesa— sale con código
 2 en vez de guardar otra página.
 
-Acepta además `--font-scale`, `--anonymous` y `--samples N` (con
+Acepta además `--font-scale`, `--accent`, `--anonymous` y `--samples N` (con
 `--interval 1`, `--samples 65` captura tras un minuto de gráficas).
 
 ## Las reglas que sostienen el diseño
@@ -427,7 +427,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2349 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2357 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.

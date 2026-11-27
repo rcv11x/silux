@@ -99,7 +99,7 @@ LIGHT = Palette(
     bg="#F4F5F7", surface="#FFFFFF", surface_alt="#F0F2F5",
     line="#E2E5EA", line_soft="#ECEEF2",
     ink="#1B2028", ink_dim="#3A4250", muted="#667080",
-    accent="#C2570C", accent_soft="#D46A1C", accent_wash="#FBEBDD",
+    accent="#B04E0C", accent_soft="#96420A", accent_wash="#FBEBDD",
     ok="#2A6E52", warn="#8A6408", crit="#93362E", info="#245F9E",
     disabled="#A7AEBA", series_b="#6A47C8", series_c="#0E8077",
 )
@@ -989,18 +989,52 @@ def _draw_sensor_glyph(painter: QPainter, kind: str, color: QColor, box: float) 
         painter.drawEllipse(QRectF(5 * unit, 5 * unit, 6 * unit, 6 * unit))
 
 
-def palette_for(app: QApplication, choice: str) -> Palette:
-    """El tema resuelto. Es el único sitio del que se saca una paleta.
+# Each accent: the colour; its hover, lighter on dark and darker on light,
+# where a lighter one would lose the text on it; and a wash for the badges
+# and the open section. By hand, not derived: the same hue needs other
+# values on each background. Each reads at 4.5:1 (tests/test_accent.py).
+ACCENTS: dict[str, dict[str, tuple[str, str, str]]] = {
+    "amber":  {"dark": ("#F2994A", "#F7B77D", "#2B2017"),
+               "light": ("#B04E0C", "#96420A", "#FBEBDD")},
+    "blue":   {"dark": ("#5AA9E6", "#85C3F0", "#12212E"),
+               "light": ("#1D6EB6", "#185C98", "#E3EEF8")},
+    "green":  {"dark": ("#5FBF8B", "#8AD4AC", "#10241A"),
+               "light": ("#1F7A4D", "#1A6640", "#E2F2E9")},
+    "red":    {"dark": ("#E57373", "#F09999", "#2E1618"),
+               "light": ("#B23A3A", "#973131", "#FAE7E7")},
+    "purple": {"dark": ("#A98BE0", "#C0A9EC", "#201A2E"),
+               "light": ("#6A45B0", "#5A3A96", "#EDE7F8")},
+}
+ACCENT_DEFAULT = "amber"
+# What would read as the accent beside it: what is actionable and the
+# padlocks go in blue, and a chart's second series in purple.
+ACCENT_CLASHES: dict[str, dict[str, dict[str, str]]] = {
+    "blue": {"dark": {"info": "#B49CFF"}, "light": {"info": "#6A47C8"}},
+    "purple": {"dark": {"series_b": "#5AA9E6"}, "light": {"series_b": "#1D6EB6"}},
+}
+# The dark veil behind a dialog in a capture.
+VEIL = QColor(0, 0, 0, 90)
 
-    El acento es uno, el ámbar de la marca, y va en la paleta de cada tema.
-    Hubo seis a elegir en Ajustes, y bastaba un «azul» guardado para que el
-    AppImage saliera de un color y las capturas de otro.
-    """
-    return resolve(app, choice)
+
+def tinted(base: Palette, accent: str) -> Palette:
+    """`base` with the accent picked, and what clashes with it moved."""
+    side = "dark" if base.bg == DARK.bg else "light"
+    tones = ACCENTS.get(accent) or ACCENTS[ACCENT_DEFAULT]
+    strong, hover, wash = tones[side]
+    clashes = ACCENT_CLASHES.get(accent, {}).get(side, {})
+    return dataclasses.replace(base, accent=strong, accent_soft=hover, accent_wash=wash,
+                               **clashes)
+
+
+def palette_for(app: QApplication, choice: str, accent: str = ACCENT_DEFAULT) -> Palette:
+    """The theme resolved and in its accent: the only place a palette comes
+    from. The window, the style sheet and what is painted by hand all take
+    it from here, so a saved accent can't reach some and not others."""
+    return tinted(resolve(app, choice), accent)
 
 
 def apply(app: QApplication, choice: str, density: str,
-          font_scale: str = "normal") -> Palette:
+          font_scale: str = "normal", accent: str = ACCENT_DEFAULT) -> Palette:
     """Deja la aplicación entera con el tema pedido y devuelve la paleta.
 
     El estilo Fusion se fija a propósito: es el único que se comporta igual en
@@ -1008,7 +1042,7 @@ def apply(app: QApplication, choice: str, density: str,
     estilos, la integración nativa aporta menos que la previsibilidad.
     """
     set_density(density, font_scale)
-    palette = palette_for(app, choice)
+    palette = palette_for(app, choice, accent)
     app.setStyle("Fusion")
     app.setPalette(qt_palette(palette))
     app.setStyleSheet(stylesheet(palette))
