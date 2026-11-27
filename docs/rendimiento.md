@@ -181,8 +181,33 @@ de Gráficos, que recibe la muestra entera aunque no se vea. Las
 recolocaciones que quedan (de 4 a 19 por muestra, de `setText`) no mueven
 nada y cuestan de 0,2 a 1,8 ms por muestra.
 
+## Cambiar de tema, de densidad o de letra
+
+Qt vuelve a pulir cada widget vivo cuando cambia la hoja de estilos. Las
+páginas viejas se borran antes de aplicarla, y no se pulen justo antes de
+tirarlas. Eso deja el cambio en la mitad de tiempo.
+
+| | |
+|---|---|
+| Equipo | i5-10400, Fedora, Python 3.14, PySide6 6.12, sin pantalla |
+| Volcado | `5800x3d`, ventana de 1400 × 900 |
+| Medida | un cambio en una ventana recién abierta, más su repintado |
+
+| Página abierta y cambio | Antes | Después |
+|---|---|---|
+| Inicio, a claro | 2,0 s | 0,9 s |
+| Almacenamiento, a claro | 2,5 s | 1,1 s |
+| Gráficos, a letra grande | 2,0 s | 0,9 s |
+| Ajustes, a claro y letra grande | 2,0 s | 0,9 s |
+
+Lo que queda es montar las catorce páginas otra vez (0,74 s). Montar solo
+la visible y las demás al entrar en ellas lo bajaría a unos 0,2 s.
+
 ## Lo que queda
 
+- **Montar solo la página que se ve** al cambiar de tema o de letra: las
+  otras trece suman 0,6 s en este equipo, y más en uno lento. Toca cómo se
+  cablea cada página con la ventana (unas 120 referencias).
 - **El suelo es el muestreo**: con la ventana escondida, el 65 % de lo que
   gasta silux es leer el equipo cada segundo (sensores, discos, red, la
   gráfica). Hace falta para las gráficas y los mínimos y máximos.

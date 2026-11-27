@@ -32,6 +32,7 @@ from .guarda import comprobar as _comprobar_procesador
 
 _comprobar_procesador()
 
+import shiboken6
 from PySide6.QtCore import (
     QAbstractAnimation,
     QEasingCurve,
@@ -345,6 +346,8 @@ class MainWindow(QMainWindow):
         # cuarenta temporizadores despertando por su cuenta cuestan más que
         # todo lo que se dibuja.
         self._congelado = False
+        # A theme, density or font waiting for the next turn (`_on_preferences`).
+        self._appearance_pending = False
         self._desde_la_muestra = QElapsedTimer()
         # Lo que tarda de verdad entre muestra y muestra, que no es lo que se
         # pidió: el hilo recorre sysfs, hwmon y los discos, y eso lleva su
@@ -376,14 +379,17 @@ class MainWindow(QMainWindow):
 
     # -- construcción -------------------------------------------------------
 
-    def _build_ui(self) -> None:
+    def _build_ui(self, current_row: Optional[int] = None) -> None:
+        """Every page, anew. `current_row` comes from a caller that has
+        already taken the old pages away (`_apply_appearance`)."""
         m = theme.METRICS
         # El suelo depende de la densidad, así que se reajusta al reconstruir.
         self.setMinimumSize(m.min_window_w, m.min_window_h)
-        current_row = getattr(self, "nav", None).currentRow() if hasattr(self, "nav") else 0
-        if hasattr(self, "settings_page"):
-            # Lo mismo con la entrada de menú que se está instalando.
-            self.settings_page.wait_for_tasks()
+        if current_row is None:
+            current_row = self.nav.currentRow() if hasattr(self, "nav") else 0
+            if hasattr(self, "settings_page"):
+                # Lo mismo con la entrada de menú que se está instalando.
+                self.settings_page.wait_for_tasks()
 
         central = QWidget()
         central.setObjectName("Root")
@@ -1117,11 +1123,41 @@ class MainWindow(QMainWindow):
             self._guardar(self.prefs)
 
         if appearance_changed:
-            self._palette = theme.apply(QApplication.instance(), prefs.theme,
-                                        prefs.density, prefs.font_scale)
-            self._build_ui()
+            if self._sent_from_a_page():
+                # The control that sent it is on a page this change deletes,
+                # and nothing can be deleted inside its own signal.
+                if not self._appearance_pending:
+                    self._appearance_pending = True
+                    QTimer.singleShot(0, self, self._apply_appearance)
+            else:
+                self._apply_appearance()
         elif content_changed or prefs.language != previous.language:
             self._build_ui()
+
+    def _sent_from_a_page(self) -> bool:
+        sender = self.sender()
+        central = self.centralWidget()
+        return (isinstance(sender, QWidget) and central is not None
+                and (sender is central or central.isAncestorOf(sender)))
+
+    def _apply_appearance(self) -> None:
+        """The theme, density or font, applied. Qt repolishes every widget
+        alive when the style sheet changes, so the old pages go first:
+        polishing them just before throwing them away took four fifths of
+        the change."""
+        self._appearance_pending = False
+        row = self.nav.currentRow()
+        self.settings_page.wait_for_tasks()
+        self.setUpdatesEnabled(False)
+        try:
+            old = self.centralWidget()
+            if old is not None:
+                shiboken6.delete(old)
+            self._palette = theme.apply(QApplication.instance(), self.prefs.theme,
+                                        self.prefs.density, self.prefs.font_scale)
+            self._build_ui(current_row=row)
+        finally:
+            self.setUpdatesEnabled(True)
 
     def _aplicar_fluidez(self) -> None:
         """Enciende o apaga el deslizamiento de las gráficas y las barras."""
