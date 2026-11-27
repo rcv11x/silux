@@ -54,7 +54,8 @@ From source, the same with `uv run python -m silux.cli`.
 ```
 
 Or from the window: Settings → «View and save the report…», which shows it to
-you before saving it.
+you before saving it. «Send my report…», beside it, also copies it and opens
+#silux-app-chat on Discord for you to paste it: nothing is sent by itself.
 
 It asks for your password so the report also includes what only the
 administrator can read. At the end it carries the raw data it read, which let

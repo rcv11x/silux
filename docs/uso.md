@@ -54,7 +54,8 @@ Desde el código, lo mismo con `uv run python -m silux.cli`.
 ```
 
 O desde la ventana: Ajustes → «Ver y guardar el informe…», que te lo enseña
-antes de guardarlo.
+antes de guardarlo. «Enviar mi informe…», al lado, además lo copia y abre
+#silux-app-chat en Discord para que lo pegues: nada se envía solo.
 
 Pide la contraseña para leer también lo que solo ve el administrador. Al final
 lleva los datos en crudo que ha leído, que sirven para reproducir tu equipo en

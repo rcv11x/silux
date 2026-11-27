@@ -622,6 +622,19 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         background: transparent; border: none; border-radius: {NAV_RADIUS}px; padding: 4px;
     }}
     QToolButton#NavToggle:hover {{ background: {p.surface_alt}; }}
+    /* The sidebar's foot: «Comunidad», and the report's notice folded. */
+    QToolButton#NavFoot {{
+        background: transparent; border: none; border-radius: {NAV_RADIUS}px;
+        padding: 3px 6px; color: {p.muted};
+    }}
+    QToolButton#NavFoot:hover {{ background: {p.surface_alt}; color: {p.ink_dim}; }}
+    /* A row's «⋯»: its actions, without the menu's arrow. */
+    QToolButton#RowMenu {{
+        background: transparent; border: none; border-radius: {NAV_RADIUS}px;
+        padding: 0px 8px; color: {p.muted};
+    }}
+    QToolButton#RowMenu:hover {{ background: {p.surface_alt}; color: {p.ink}; }}
+    QToolButton#RowMenu::menu-indicator {{ image: none; width: 0px; }}
     QListWidget#Nav::item:disabled {{ color: {p.disabled}; }}
 
     /* A table's row picked (a drive in Storage): in the accent. */

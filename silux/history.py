@@ -37,6 +37,11 @@ def history_path() -> pathlib.Path:
     return data_dir() / "benchmarks.json"
 
 
+def reports_dir() -> pathlib.Path:
+    """Where «Enviar mi informe» keeps each report it prepares."""
+    return data_dir() / "informes"
+
+
 def same_duration(a: float, b: float) -> bool:
     """Whether two runs asked for the same duration per measurement.
 

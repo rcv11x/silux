@@ -470,6 +470,7 @@ class MainWindow(QMainWindow):
         self.settings_page.permanent_requested.connect(self._on_permanent_requested)
         self.settings_page.remove_helper_requested.connect(self._quitar_ayudante)
         self.settings_page.report_requested.connect(self._on_report_requested)
+        self.settings_page.send_report_requested.connect(self._on_send_report_requested)
         self.settings_page.share_copy_requested.connect(self._on_share_copy)
         self.home_page.share_copy_requested.connect(self._on_share_copy)
         self.settings_page.share_save_requested.connect(self._on_share_save)
@@ -592,22 +593,101 @@ class MainWindow(QMainWindow):
         self.nav_toggle.clicked.connect(self._toggle_nav)
         cabecera.addWidget(self.nav_toggle, 0, Qt.AlignmentFlag.AlignVCenter)
 
-        # La versión y la copia, al pie: arriba eran dos renglones entre el
-        # nombre y la navegación, y son de lo que se mira una vez.
+        # At the foot, from the top: one notice (a new version, else asking
+        # for this version's report), «Comunidad», and the version.
         column.addLayout(cabecera)
         column.addWidget(self.nav, 1)
-        column.addWidget(version)
-        column.addWidget(self.build_label)
-        # The new version's notice, by the version. It leads to Settings,
-        # where it is installed.
+        # The new version's notice leads to Settings, where it is installed.
         self.update_button = Button()
         self.update_button.setObjectName("Primary")
         self.update_button.clicked.connect(self.show_updates)
         column.addWidget(self.update_button)
+        lado_pie = max(12, m.small_pt + 5)
+        self.report_notice = QWidget()
+        notice_row = QHBoxLayout(self.report_notice)
+        notice_row.setContentsMargins(0, 0, 0, 0)
+        notice_row.setSpacing(2)
+        self.report_ask = Button(_("sidebar.report.ask"))
+        self.report_ask.setObjectName("GhostButton")
+        self.report_ask.clicked.connect(self._on_send_report_requested)
+        self.report_dismiss = self._foot_button("", lado_pie)
+        self.report_dismiss.setText("×")
+        self.report_dismiss.setToolTip(_("sidebar.report.dismiss"))
+        self.report_dismiss.clicked.connect(self.report_answered)
+        # Folded, its icon; the question is its tooltip.
+        self.report_icon = self._foot_button("report", lado_pie)
+        self.report_icon.setToolTip(_("sidebar.report.ask"))
+        self.report_icon.clicked.connect(self._on_send_report_requested)
+        notice_row.addWidget(self.report_ask, 1)
+        notice_row.addWidget(self.report_dismiss, 0, Qt.AlignmentFlag.AlignTop)
+        notice_row.addWidget(self.report_icon, 1, Qt.AlignmentFlag.AlignHCenter)
+        column.addWidget(self.report_notice)
+        self.community_button = self._foot_button("community", lado_pie)
+        self.community_button.setText(_("sidebar.community"))
+        self.community_button.clicked.connect(self._open_community)
+        column.addWidget(self.community_button, 0, Qt.AlignmentFlag.AlignLeft)
+        self._nav_column = column
+        column.addWidget(version)
+        column.addWidget(self.build_label)
         self.nav_panel = panel
         self.set_nav_folded(self.prefs.nav_folded)
         self._pintar_version_nueva()
         return panel
+
+    def _foot_button(self, icon: str, side: int) -> QToolButton:
+        button = QToolButton()
+        button.setObjectName("NavFoot")
+        button.setAutoRaise(True)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        button.setFont(ui_font(theme.METRICS.small_pt))
+        if icon:
+            button.setIconSize(QSize(side, side))
+            button.setIcon(icons.foot_icon(icon, self._palette.muted, side))
+        return button
+
+    def _open_community(self) -> None:
+        from .pages.settings import COMMUNITY_URL
+        system_env.open_path(COMMUNITY_URL)
+
+    def report_answered(self) -> None:
+        """Sent or dismissed: not asked again until the next version."""
+        from dataclasses import replace
+
+        if self.prefs.report_pending:
+            self.prefs = replace(self.prefs, report_pending="")
+            self._guardar(self.prefs)
+        self._paint_foot()
+
+    def _note_this_version(self) -> None:
+        """Updated since the last run, this version's report is asked for,
+        once. Settings from before this was kept are not a first run."""
+        from dataclasses import replace
+
+        previous = self.prefs.last_run_version
+        if previous == __version__:
+            return
+        updated = bool(previous) or self.prefs.welcome_shown
+        self.prefs = replace(self.prefs, last_run_version=__version__,
+                             report_pending=__version__ if updated else self.prefs.report_pending)
+        self._guardar(self.prefs)
+        self._paint_foot()
+
+    def _paint_foot(self) -> None:
+        """One notice at a time, the new version's first; folded, icons."""
+        folded = self._nav_delegate.folded
+        asking = (self.prefs.report_pending == __version__
+                  and not self.update_button.isVisibleTo(self.nav_panel))
+        self.report_notice.setVisible(asking)
+        self.report_ask.setVisible(not folded)
+        self.report_dismiss.setVisible(not folded)
+        self.report_icon.setVisible(folded)
+        self.community_button.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonIconOnly if folded
+            else Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.community_button.setToolTip(_("sidebar.community.tip"))
+        self._nav_column.setAlignment(self.community_button, Qt.AlignmentFlag.AlignHCenter
+                                      if folded else Qt.AlignmentFlag.AlignLeft)
 
     def _toggle_nav(self) -> None:
         # A bound method, not a lambda: a lambda holding the window, on a
@@ -677,6 +757,7 @@ class MainWindow(QMainWindow):
 
     def start(self) -> None:
         self.sampler.start()
+        self._note_this_version()
         if self.prefs.check_updates:
             # A little after opening: the machine comes first.
             self._check_at_start.start(3000)
@@ -695,6 +776,7 @@ class MainWindow(QMainWindow):
             return self._welcome
         dialog = WelcomeDialog(self.prefs, self._palette, self, page=page)
         dialog.changed.connect(self._on_welcome_choice)
+        dialog.report_requested.connect(self._on_welcome_report)
         dialog.finished.connect(self._welcome_done)
         self._welcome = dialog
         dialog.open()
@@ -704,6 +786,9 @@ class MainWindow(QMainWindow):
         self._on_settings_changed(prefs)
         # After the signal that brought it: the combo that sent it goes too.
         QTimer.singleShot(0, self, self._rebuild_welcome)
+
+    def _on_welcome_report(self) -> None:
+        self.open_report(send=True, over=self._welcome)
 
     def _rebuild_welcome(self) -> None:
         if getattr(self, "_welcome", None) is not None:
@@ -717,6 +802,13 @@ class MainWindow(QMainWindow):
         self._guardar(self.prefs)
         if dialog is not None and dialog.menu_wanted:
             self.settings_page.add_to_menu()
+        preview = self._report_preview
+        if dialog is not None and preview is not None and preview.parentWidget() is dialog:
+            # Opened over the welcome, it would go with it.
+            visible = preview.isVisible()
+            preview.setParent(self, preview.windowFlags())
+            if visible:
+                preview.show()
         if dialog is not None:
             dialog.deleteLater()
 
@@ -890,17 +982,31 @@ class MainWindow(QMainWindow):
 
     def _on_report_requested(self) -> None:
         """The full report, shown before it is saved."""
+        self.open_report(send=False)
+
+    def _on_send_report_requested(self) -> None:
+        self.open_report(send=True)
+
+    def open_report(self, send: bool, over: Optional[QWidget] = None) -> None:
+        """The full report, shown before it is saved or sent. `over` is the
+        dialog it is asked from: over the welcome, a dialog of the window
+        would wait for the welcome to close."""
         from PySide6.QtWidgets import QMessageBox
 
         from .report_preview import ReportPreviewDialog
 
+        owner = over or self
         if self._last_snapshot is None:
-            QMessageBox.information(self, _("app.report.card"), _("app.noreading"))
+            QMessageBox.information(owner, _("app.report.card"), _("app.noreading"))
             return
         if self._report_preview is None:
-            self._report_preview = ReportPreviewDialog(self)
+            self._report_preview = ReportPreviewDialog(owner)
             self._report_preview.save_requested.connect(self._save_report)
+            self._report_preview.send_requested.connect(self._send_report)
             self._report_preview.permissions_requested.connect(self._on_elevation_requested)
+        elif self._report_preview.parentWidget() is not owner:
+            self._report_preview.setParent(owner, self._report_preview.windowFlags())
+        self._report_preview.set_sending(send)
         self._report_missing = None
         self._refresh_report_preview(self._last_snapshot)
         self._report_preview.start_annex()
@@ -934,21 +1040,48 @@ class MainWindow(QMainWindow):
     def _save_report(self) -> None:
         from PySide6.QtWidgets import QFileDialog, QMessageBox
 
+        # Over the preview: it can be open over the welcome.
+        dialog = self._report_preview
         sugerido = str(pathlib.Path.home() / "informe-silux.md")
         destino, _filtro = QFileDialog.getSaveFileName(
-            self, _("app.report.title"), sugerido, _("app.report.filter"))
+            dialog, _("app.report.title"), sugerido, _("app.report.filter"))
         if not destino:
             return
         try:
-            pathlib.Path(destino).write_text(self._report_preview.report(), encoding="utf-8")
+            pathlib.Path(destino).write_text(dialog.report(), encoding="utf-8")
         except OSError as error:
-            QMessageBox.warning(self, _("app.report.card"),
+            QMessageBox.warning(dialog, _("app.report.card"),
                                 _("app.report.failed").format(error=render.home_path(error)))
             return
         QMessageBox.information(
-            self, _("app.report.card"),
+            dialog, _("app.report.card"),
             _("app.report.saved").format(ruta=render.home_path(destino)),
         )
+
+    def _send_report(self) -> None:
+        """Saved in the data folder, copied, and Discord opened: the person
+        pastes it there. Nothing is sent from here."""
+        from PySide6.QtWidgets import QMessageBox
+
+        from .. import history
+        from .pages.settings import COMMUNITY_URL
+
+        dialog = self._report_preview
+        text = dialog.report()
+        path = history.reports_dir() / time.strftime(
+            f"informe-silux-{__version__}-%Y%m%d-%H%M%S.md")
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        except OSError as error:
+            QMessageBox.warning(dialog, _("app.report.card"),
+                                _("app.report.failed").format(error=render.home_path(error)))
+            return
+        QApplication.clipboard().setText(text)
+        system_env.open_path(COMMUNITY_URL)
+        self.report_answered()
+        QMessageBox.information(dialog, _("app.report.card"),
+                                _("app.report.sent").format(ruta=render.home_path(path)))
 
     def _tarjeta(self):
         """La imagen del equipo, o None si todavía no hay lectura."""
@@ -1068,6 +1201,8 @@ class MainWindow(QMainWindow):
             self.update_button.setText("↑" if folded else text)
             self.update_button.setToolTip(text if folded else "")
         self.update_button.setVisible(nueva is not None)
+        if hasattr(self, "report_notice"):
+            self._paint_foot()
         # Called while the pages are rebuilt too, before the new Settings.
         page = getattr(self, "settings_page", None)
         if page is not None and shiboken6.isValid(page):
@@ -1929,7 +2064,7 @@ def build_parser():
     parser.add_argument("--page", metavar=_("gui.metavar.page"), help=_("gui.opt.page"))
     parser.add_argument("--tab", choices=[key for key, _name in BENCHMARK_TABS],
                         help=_("gui.opt.tab"))
-    parser.add_argument("--welcome", type=int, choices=(1, 2), metavar="N",
+    parser.add_argument("--welcome", type=int, choices=(1, 2, 3), metavar="N",
                         help=_("gui.opt.welcome"))
     for espanol, ingles in (("--intervalo", "--interval"), ("--oscuro", "--dark"),
                             ("--claro", "--light"), ("--compacto", "--compact"),

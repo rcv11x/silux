@@ -106,6 +106,20 @@ def nav_icon(seccion: str, color: str, color_abierta: str, lado: int) -> QIcon:
     return icono
 
 
+# The sidebar's foot: where people who use Silux talk, and the report to send.
+FOOT = {
+    "community": ('<path d="M3.5 4.5 H16.5 V12.5 H9.5 L6 15.5 V12.5 H3.5 Z"/>'
+                  '<path d="M7 8.5 H7.01 M10 8.5 H10.01 M13 8.5 H13.01"/>'),
+    "report": ('<rect x="3" y="5" width="14" height="10" rx="1.5"/>'
+               '<path d="M3.5 5.5 L10 10.5 L16.5 5.5"/>'),
+}
+
+
+def foot_icon(name: str, color: str, lado: int) -> QIcon:
+    """An icon of the sidebar's foot, in the bar's own strokes."""
+    return QIcon(_de_trazo(FOOT[name], color, lado))
+
+
 def sidebar_icon(folded: bool, color: str, lado: int) -> QIcon:
     """The fold button's icon: to fold the bar, or to open it again."""
     return QIcon(_de_trazo(SIDEBAR["unfold" if folded else "fold"], color, lado))

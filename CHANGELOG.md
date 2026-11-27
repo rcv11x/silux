@@ -21,6 +21,7 @@ que hace falta.
 - Silux pasa a rolling release: cada versión se llama por el día en que sale, y la última es la que hay que usar
 - Silux avisa cuando hay una versión nueva: al abrirse pregunta a GitHub, sin mandar nada del equipo, y se puede apagar en Ajustes
 - Color de acento en Ajustes: ámbar, azul, verde, frambuesa o morado, legibles en claro y en oscuro, y todo cambia a la vez
+- «Enviar mi informe»: se guarda, se copia y se abre el Discord para pegarlo; nada se envía solo
 - La salud de cada disco de un vistazo en Almacenamiento, y un desplegable para elegir qué unidad enseñan sus fichas
 - Dispositivos dice qué no tiene driver y, de lo que se conoce, qué instalar
 - Todo crece con el tamaño de letra de Ajustes, y cambiar de tema o de letra tarda la mitad
@@ -59,6 +60,11 @@ que hace falta.
 - Con la base cambiada a mano, la fila «Base» de CPU dice que está fijada en la BIOS y cuál es la de fábrica
 - Lo que falta por permisos en una página sale en un solo aviso con un solo botón, y no en uno por dato
 - En una ventana estrecha, los desplegables de la prueba de disco quedan alineados en columna
+- «Enviar mi informe», en Ajustes → Compartir e informes: enseña el informe, lo guarda en tu carpeta de datos, lo copia y abre #silux-app-chat en Discord para que lo pegues o arrastres; nada se envía solo
+- Tras actualizar, la barra lateral pregunta una vez «¿Nos mandas el informe de esta versión?»; se descarta con la × hasta la versión siguiente, y un aviso de versión nueva va antes
+- «Comunidad» en la barra lateral, encima de la versión: abre el Discord; con la barra plegada, su icono
+- La bienvenida tiene el color de acento junto al tema, un paso que cuenta qué lleva el informe (sin el nombre del equipo ni números de serie) con su botón, y al final «Buscar actualizaciones al iniciar»
+- Ajustes abre la carpeta de datos (historial de pruebas, registros e informes) y la de los ajustes
 - En Gráficos, lo que el driver no da se dice en una frase corta por tarjeta, sin contar datos, y una tarjeta que se queda vacía no sale
 - Una NVIDIA enseña su estado de rendimiento (P0 a P15) en Relojes
 - Un dispositivo USB que no escribe su nombre sale con el de usb.ids, o como «Dispositivo USB 046d:c52b»

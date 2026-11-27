@@ -91,6 +91,10 @@ class Preferences:
     storage_disk: str = ""
     # The sensors pinned on top of the tree, by key, in their order.
     sensor_pinned: tuple[str, ...] = ()
+    # The version that last opened, and the one whose report the sidebar asks
+    # for after an update (empty once sent or dismissed).
+    last_run_version: str = ""
+    report_pending: str = ""
 
     # -- validation ---------------------------------------------------------
 
@@ -127,6 +131,8 @@ class Preferences:
             nav_folded=_yes_or_no(self.nav_folded, False),
             storage_disk=str(self.storage_disk or "")[:300],
             sensor_pinned=tuple(str(k) for k in (self.sensor_pinned or ()))[:100],
+            last_run_version=str(self.last_run_version or "")[:40],
+            report_pending=str(self.report_pending or "")[:40],
         )
 
     @property

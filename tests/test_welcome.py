@@ -168,15 +168,16 @@ class TestTheDialog(unittest.TestCase):
         theme.apply(self.app, prefs.theme, prefs.density, prefs.font_scale)
 
         needs = {}
-        for page in (0, 1):
+        for page in (0, 1, 2):
             dialog = self.window.show_welcome(page=page)
             self._settle()
             needs[page] = dialog.minimumSizeHint().height()
             dialog.reject()
             self._settle()
-        self.assertNotEqual(needs[0], needs[1])
-        dialog = self.window.show_welcome(page=1)
-        for button, page in ((dialog.back_button, 0), (dialog.next_button, 1)):
+        self.assertNotEqual(needs[0], needs[2])
+        dialog = self.window.show_welcome(page=2)
+        for button, page in ((dialog.back_button, 1), (dialog.report_back_button, 0),
+                             (dialog.next_button, 1), (dialog.report_next_button, 2)):
             button.click()
             self._settle()
             self.assertEqual(dialog.minimumSizeHint().height(), needs[page])
@@ -190,7 +191,7 @@ class TestTheDialog(unittest.TestCase):
         dialog.font_box.setCurrentIndex(dialog.font_box.findData("large"))
         self._settle()
         dialog = self.window._welcome
-        for page in (0, 1):
+        for page in (0, 1, 2):
             dialog._go(page)
             muted = [w for w in dialog.findChildren(QLabel)
                      if w.objectName() == "Muted" and w.isVisible()]

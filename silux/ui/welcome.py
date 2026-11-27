@@ -1,6 +1,7 @@
-"""The first time Silux opens: how to see it, the menu entry and permissions.
+"""The first time Silux opens: how to see it, the report, the menu entry,
+updates and permissions.
 
-Two screens and a button to skip them. What the system already says comes
+Three screens and a button to skip them. What the system already says comes
 chosen: its language, and the desktop's theme. Each choice goes through the
 same path as Settings, so the window behind changes as it is picked. Nothing
 is written to the system unless the menu switch is turned on and «Start»
@@ -30,7 +31,7 @@ from .. import desktop, i18n
 from ..i18n import _
 from ..settings import Preferences
 from . import theme
-from .pages.settings import FONT_SCALES, THEMES, Interruptor
+from .pages.settings import ACCENT_NAMES, FONT_SCALES, THEMES, Interruptor
 from .theme import Palette, ui_font
 from .widgets import Button, ElidingComboBox, clear_layout
 
@@ -83,6 +84,7 @@ class WelcomeDialog(QDialog):
     out in a corner of the screen on a large window."""
 
     changed = Signal(object)           # Preferences, as they are picked
+    report_requested = Signal()        # «Enviar mi informe», over this dialog
 
     def __init__(self, prefs: Preferences, palette: Palette,
                  parent: Optional[QWidget] = None, page: int = 0):
@@ -123,6 +125,7 @@ class WelcomeDialog(QDialog):
         self.setMinimumWidth(QFontMetrics(ui_font(m.base_pt)).horizontalAdvance("M") * 34)
         self.pages = _Screens()
         self.pages.addWidget(self._first())
+        self.pages.addWidget(self._report())
         self.pages.addWidget(self._second())
         self._root.addWidget(self.pages)
         self._go(self._page)
@@ -180,6 +183,8 @@ class WelcomeDialog(QDialog):
                                              in i18n.available().items()),
                                         self._prefs.language)
         self.theme_box = self._combo(themes, self._prefs.theme)
+        self.accent_box = self._combo([(_(key), value) for key, value in ACCENT_NAMES],
+                                      self._prefs.accent)
         self.font_box = self._combo([(_(key), value) for key, value in FONT_SCALES],
                                     self._prefs.font_scale)
         grid = QGridLayout()
@@ -187,6 +192,7 @@ class WelcomeDialog(QDialog):
         grid.setVerticalSpacing(m.card_gap)
         for row, (key, box) in enumerate((("welcome.language", self.language_box),
                                           ("welcome.theme", self.theme_box),
+                                          ("welcome.accent", self.accent_box),
                                           ("welcome.font", self.font_box))):
             name = QLabel(_(key))
             name.setFont(ui_font(m.base_pt))
@@ -199,6 +205,27 @@ class WelcomeDialog(QDialog):
         layout.addLayout(self._buttons((_("welcome.skip"), self.reject),
                                        (_("welcome.next"), lambda: self._go(1))))
         self.skip_button, self.next_button = self._last_buttons
+        return page
+
+    def _report(self) -> QWidget:
+        """What the report holds, and the button to send it now."""
+        m = theme.METRICS
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(m.card_gap + 4)
+        layout.addWidget(self._title(_("welcome.report.title")))
+        layout.addWidget(self._paragraph(_("welcome.report")))
+        self.report_button = Button(_("settings.report.send"))
+        self.report_button.clicked.connect(self.report_requested.emit)
+        row = QHBoxLayout()
+        row.addWidget(self.report_button)
+        row.addStretch(1)
+        layout.addLayout(row)
+        layout.addStretch(1)
+        layout.addLayout(self._buttons((_("welcome.back"), lambda: self._go(0)),
+                                       (_("welcome.next"), lambda: self._go(2))))
+        self.report_back_button, self.report_next_button = self._last_buttons
         return page
 
     def _second(self) -> QWidget:
@@ -223,12 +250,24 @@ class WelcomeDialog(QDialog):
             row.addWidget(self.menu_switch, 0, Qt.AlignmentFlag.AlignVCenter)
             layout.addLayout(row)
 
+        # Applied as it is switched, like the choices of the first screen.
+        row = QHBoxLayout()
+        name = QLabel(_("settings.updates.label"))
+        name.setFont(ui_font(m.base_pt))
+        name.setWordWrap(True)
+        row.addWidget(name, 1)
+        self.updates_switch = Interruptor(self._p)
+        self.updates_switch.setChecked(self._prefs.check_updates)
+        self.updates_switch.toggled.connect(self._pick)
+        row.addWidget(self.updates_switch, 0, Qt.AlignmentFlag.AlignVCenter)
+        layout.addLayout(row)
+
         permissions = QLabel(_("welcome.permissions.title"))
         permissions.setFont(ui_font(m.base_pt, QFont.Weight.DemiBold))
         layout.addWidget(permissions)
         layout.addWidget(self._paragraph(_("welcome.permissions")))
         layout.addStretch(1)
-        layout.addLayout(self._buttons((_("welcome.back"), lambda: self._go(0)),
+        layout.addLayout(self._buttons((_("welcome.back"), lambda: self._go(1)),
                                        (_("welcome.start"), self._start)))
         self.back_button, self.start_button = self._last_buttons
         return page
@@ -247,8 +286,9 @@ class WelcomeDialog(QDialog):
     def _pick(self, *_args) -> None:
         prefs = dataclasses.replace(
             self._prefs, language=self.language_box.currentData(),
-            theme=self.theme_box.currentData(),
-            font_scale=self.font_box.currentData()).normalized()
+            theme=self.theme_box.currentData(), accent=self.accent_box.currentData(),
+            font_scale=self.font_box.currentData(),
+            check_updates=self.updates_switch.isChecked()).normalized()
         if prefs != self._prefs:
             self._prefs = prefs
             self.changed.emit(prefs)

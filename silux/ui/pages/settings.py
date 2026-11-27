@@ -330,6 +330,7 @@ class SettingsPage(ScrollPage):
     # La página de ajustes no tiene la foto del hardware; la pide y ya la
     # guarda la ventana, que sí la tiene.
     report_requested = Signal()
+    send_report_requested = Signal()
     share_copy_requested = Signal()
     share_save_requested = Signal()
     # Los permisos los pide la ventana, que es quien sabe hacerlo; la página
@@ -568,14 +569,47 @@ class SettingsPage(ScrollPage):
         fila.addWidget(copiar)
         fila.addWidget(guardar)
 
-        informe = Button(_("settings.report.button"))
-        informe.setToolTip(_("settings.tip.report"))
-        informe.clicked.connect(self.report_requested.emit)
+        ver = Button(_("settings.report.button"))
+        ver.setToolTip(_("settings.tip.report"))
+        ver.clicked.connect(self.report_requested.emit)
+        enviar = Button(_("settings.report.send"))
+        enviar.setObjectName("Primary")
+        enviar.setToolTip(_("report.preview.send.tip"))
+        enviar.clicked.connect(self.send_report_requested.emit)
+        informe = QWidget()
+        fila = QHBoxLayout(informe)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(ver)
+        fila.addWidget(enviar)
+        # Two folders, as XDG keeps them: what Silux saved, and its settings.
+        datos = Button(_("settings.data.button"))
+        datos.setToolTip(_("settings.data.tip"))
+        datos.clicked.connect(self._open_data_folder)
+        ajustes = Button(_("settings.data.config"))
+        ajustes.setToolTip(_("settings.data.config.tip"))
+        ajustes.clicked.connect(self._open_config_folder)
+        carpetas = QWidget()
+        fila = QHBoxLayout(carpetas)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.addWidget(datos)
+        fila.addWidget(ajustes)
         return self._grupo(
             _("settings.group.share"),
             _Renglon(_("settings.share.image"), imagen, _("settings.share.image.help")),
             _Renglon(_("settings.share.report"), informe, _("settings.share.report.help")),
+            _Renglon(_("settings.data"), carpetas),
         )
+
+    def _open_data_folder(self) -> None:
+        from ... import history
+        folder = history.data_dir()
+        folder.mkdir(parents=True, exist_ok=True)
+        system_env.open_path(str(folder))
+
+    def _open_config_folder(self) -> None:
+        folder = config_path().parent
+        folder.mkdir(parents=True, exist_ok=True)
+        system_env.open_path(str(folder))
 
     def _build_updates(self) -> Card:
         """Checking for new versions, at startup and by hand, and the button

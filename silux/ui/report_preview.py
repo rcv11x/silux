@@ -1,7 +1,10 @@
 """What the report will say, shown before it is saved.
 
 People are asked to send their report, and they should see what goes in it
-first: every page as the window shows it, without the machine's name,
+first, also when they send it: nothing leaves by itself, it is saved, copied
+and Discord opened for them to paste it.
+
+What goes in it: every page as the window shows it, without the machine's name,
 addresses or serial numbers. When some data needs administrator rights, the
 dialog says how many are missing and asks for them right there; when they
 arrive, the window refreshes the text (rule 9).
@@ -47,6 +50,8 @@ def github_breaks(markdown: str) -> str:
 
 class ReportPreviewDialog(QDialog):
     save_requested = Signal()
+    # Saved, copied and Discord opened: the person pastes it there.
+    send_requested = Signal()
     permissions_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -83,8 +88,10 @@ class ReportPreviewDialog(QDialog):
         self._annex: tuple[Optional[str], Optional[str]] = (None, None)
 
         self.save_button = Button(_("report.preview.save"))
-        self.save_button.setDefault(True)
         self.save_button.clicked.connect(self.save_requested.emit)
+        self.send_button = Button(_("report.preview.send"))
+        self.send_button.setToolTip(_("report.preview.send.tip"))
+        self.send_button.clicked.connect(self.send_requested.emit)
         close = Button(_("perm.explain.close"))
         close.clicked.connect(self.close)
         # Where it shows whatever the reader is scrolled to: «Guardar…» waits
@@ -96,8 +103,20 @@ class ReportPreviewDialog(QDialog):
         buttons.addStretch(1)
         buttons.addWidget(close)
         buttons.addWidget(self.save_button)
+        buttons.addWidget(self.send_button)
         layout.addLayout(buttons)
+        self.set_sending(False)
         self.resize(900, 700)
+
+    def set_sending(self, sending: bool) -> None:
+        """Opened to send it, «Mandar» is the button Enter presses."""
+        self.sending = sending
+        self._default()
+
+    def _default(self) -> None:
+        # Again once enabled: a disabled default button loses it on show.
+        self.send_button.setDefault(self.sending)
+        self.save_button.setDefault(not self.sending)
 
     def set_report(self, text: str, missing: int) -> None:
         """Show this report; `missing` is how many data need permissions."""
@@ -115,6 +134,8 @@ class ReportPreviewDialog(QDialog):
             self._report.rstrip("\n") + "\n" + annex.section(*self._annex, preview=True)))
         bar.setValue(position)
         self.save_button.setEnabled(not self.annex_pending())
+        self.send_button.setEnabled(not self.annex_pending())
+        self._default()
         block, reason = self._annex
         self.annex_status.setText(
             _("report.annex.preparing") if self.annex_pending()
