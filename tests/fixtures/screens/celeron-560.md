@@ -1,14 +1,14 @@
 ## Inicio
 
 Dell Vostro A840
-Linux Mint 22.3 · Linux 6.14.0-37-generic · XFCE · x11 · encendido 5 min
+Linux Mint 22.3 · Linux 6.14.0-37-generic · XFCE · x11 · encendido 34 min
 silux-pc
 
 ### Procesador
 
 Intel Celeron 560
 1 núcleo · 1 hilo
-1.63 GHz 70.0 °C
+97.8 % 1.63 GHz 63.0 °C
 
 ### Gráfica
 
@@ -18,20 +18,20 @@ El uso, con permisos.
 
 ### Memoria
 
-1.0 GiB de 1.9 GiB
-55 % ocupada
-Aplicaciones 918.1 MiB · Caché 936.6 MiB · Buffers 2.7 MiB · Libre 98.2 MiB
+953.3 MiB de 1.9 GiB
+49 % ocupada
+Aplicaciones 801.1 MiB · Caché 624.4 MiB · Buffers 3.3 MiB · Libre 526.8 MiB
 
 ### Almacenamiento
 
 408 GB en 3 unidades
 1 × SSD · 1 × HDD · 1 × Memoria flash
-109 GB libres
-Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
+105 GB libres
+Ocupado 95.7 GB · Libre 105 GB · Reservado 15.3 GB · Sin montar 192 GB
 
 ### Temperaturas
 
-Procesador 70.0 °C
+Procesador 63.0 °C
 lo más caliente ahora
 Esta gráfica no tiene sensor de temperatura propio.
 
@@ -56,12 +56,12 @@ Intel Celeron 560
 1 núcleo · 1 hilo · 1 socket
 x86_64
 - Frecuencia: 1.63 GHz
-- Uso: —
-- Temperatura: 70 °C
+- Uso: 98 % (carga 0.95)
+- Temperatura: 63 °C
 
 ### Núcleos lógicos
 
-- CPU 0: 1.63 GHz  70°
+- CPU 0: 1.63 GHz  63° · 97.8 %
 
 ### Potencia y reposo
 
@@ -215,19 +215,19 @@ El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmwa
 1.9 GiB utilizables
 1 módulo leído de su chip SPD, catalogado a 667 MT/s · el resto no se ha podido leer; se sabe con permisos
 DDR2 · 667 MT/s
-Aplicaciones 918.1 MiB · Caché 936.6 MiB · Buffers 2.7 MiB · Libre 98.2 MiB
-Disponible 884.3 MiB · sin intercambio
+Aplicaciones 801.1 MiB · Caché 624.4 MiB · Buffers 3.3 MiB · Libre 526.8 MiB
+Disponible 1002.2 MiB · sin intercambio
 
 #### Desglose del uso
 
 - Total: 1.9 GiB
-- Usada: 1.0 GiB (55 %)
-- Disponible: 884.3 MiB
-- Aplicaciones: 918.1 MiB
-- Caché: 936.6 MiB
-- Buffers: 2.7 MiB
-- Compartida: 169.7 MiB
-- Libre: 98.2 MiB
+- Usada: 953.3 MiB (49 %)
+- Disponible: 1002.2 MiB
+- Aplicaciones: 801.1 MiB
+- Caché: 624.4 MiB
+- Buffers: 3.3 MiB
+- Compartida: 123.2 MiB
+- Libre: 526.8 MiB
 - Intercambio: sin swap
 
 En este equipo la memoria la controla el chipset de la placa, no el procesador: hasta qué velocidad llega lo decide la placa.
@@ -343,13 +343,13 @@ Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria
 ## Almacenamiento
 
 408 GB en 3 unidades
-92.0 GB ocupados en 1 partición montada
+95.7 GB ocupados en 1 partición montada
 1 × SSD · 1 × HDD · 1 × Memoria flash
-Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 192 GB
+Ocupado 95.7 GB · Libre 105 GB · Reservado 15.3 GB · Sin montar 192 GB
 Unidad Todas las unidades
-- Leyendo: 0 B/s (suma de 3 unidades)
+- Leyendo: 32.8 kB/s (suma de 3 unidades)
 - Escribiendo: 0 B/s (suma de 3 unidades)
-- Espacio libre: 109 GB (en 1 partición)
+- Espacio libre: 105 GB (en 1 partición)
 - Más caliente: — (ningún disco publica su temperatura)
 
 ### Estado de los discos
@@ -366,25 +366,26 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 | UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
 |---|---|---|---|---|---|---|---|
-| sdc | SSD PLUS 240 GB | SSD | 240 GB | 92.0 GB | — | 0 B/s | 0 B/s |
+| sdc | SanDisk SSD PLUS 240 GB | SSD | 240 GB | 95.7 GB | — | 0 B/s | 0 B/s |
 | sda | ST9160827AS | HDD | 160 GB | — | — | 0 B/s | 0 B/s |
-| sdb | Cruzer U | Memoria flash | 8.0 GB | — | — | 0 B/s | 0 B/s |
+| sdb | Cruzer U | Memoria flash | 8.0 GB | — | — | 32.8 kB/s | 0 B/s |
 
 ### Particiones montadas
 
 | PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
 |---|---|---|---|---|---|
-| sdc1 | ext4 | /media/unidad1 | 216 GB | 92.0 GB (43 %) | 109 GB |
+| sdc1 | ext4 | /media/unidad1 | 216 GB | 95.7 GB (44 %) | 105 GB |
 
-### sdc · SSD PLUS 240 GB
+### sdc · SanDisk SSD PLUS 240 GB
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
-Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
-- Modelo: SSD PLUS 240 GB
+Ocupado 95.7 GB · Libre 105 GB · Reservado 15.3 GB · Sin montar 24.0 GB
+- Modelo: SanDisk SSD PLUS 240 GB
 - Fabricante: SanDisk
 - Tipo: SSD
 - Conexión: USB
+- Adaptador USB: SanDisk
 - Enlace: USB 480 Mb/s
 - Capacidad: 240 GB
 - Temperatura: (necesita permisos)
@@ -394,7 +395,7 @@ Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
 
 #### Firmware y sectores
 
-- Firmware: 1.02
+- Firmware: UF3600RL
 - Sector lógico: 512 B
 - Sector físico: 512 B
 - Planificador: mq-deadline
@@ -406,6 +407,7 @@ La salud la guarda cada disco y solo la lee el administrador.
 - Modelo: ST9160827AS
 - Tipo: HDD
 - Conexión: SATA
+- Enlace: SATA 3 Gb/s
 - Capacidad: 160 GB
 - Temperatura: (necesita permisos)
 - Horas encendido: (necesita permisos)
@@ -471,7 +473,7 @@ Ninguna interfaz tiene salida a la red.
 
 - Estado: sin señal
 - Tipo: Wi-Fi
-- Dirección física: 00:00:5e:00:53:af
+- Dirección física: 00:00:5e:00:53:b0
 - MTU: 1500
 - Driver: ath5k
 - Modelo: Qualcomm Atheros AR242x / AR542x Wireless Network Adapter (PCI-Express)
@@ -481,7 +483,7 @@ Ninguna interfaz tiene salida a la red.
 
 | INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
 |---|---|---|---|---|---|---|
-| lo | 0 B/s | 0 B/s | 111 kB | 111 kB | 3 088 | 0 |
+| lo | 0 B/s | 0 B/s | 770 kB | 770 kB | 21 656 | 0 |
 
 ### lo
 
@@ -525,12 +527,12 @@ Este equipo no tiene adaptador Bluetooth.
 ## Batería
 
 Batería sin datos
-El firmware declara una batería, pero no da su capacidad ni su carga, y la tensión que da, 20.48 V, es imposible en una de 14.80 V nominales.
+El firmware declara una batería, pero no da su capacidad, su carga ni su tensión.
 
 ## Sistema
 
 Linux Mint 22.3
-silux-pc · encendido 5 min
+silux-pc · encendido 34 min
 Linux 6.14.0-37-generic · XFCE · x11
 
 ### Sistema operativo
@@ -557,10 +559,10 @@ Esta distribución no declara variante.
 ### Actividad
 
 - Encendido desde: (hora de arranque)
-- Tiempo encendido: 5 min
-- Procesos: 183
-- Hilos: 441
-- Archivos abiertos: 1 952
+- Tiempo encendido: 34 min
+- Procesos: 177
+- Hilos: 427
+- Archivos abiertos: 1 888
 
 ### Vulnerabilidades del procesador
 
@@ -587,8 +589,8 @@ Esta distribución no declara variante.
 
 ### Arranque
 
-- Kernel: 32.1 s
-- Espacio de usuario: 290.3 s
+- Kernel: 31.8 s
+- Espacio de usuario: 262.4 s
 - Línea de arranque: BOOT_IMAGE=/casper/vmlinuz boot=casper initrd=/casper/initrd.lz uuid=… username=mint hostname=… quiet splash --
 
 Falta cuánto tardan el firmware y el cargador: ni el gestor de arranque ni el firmware lo publican.
@@ -601,29 +603,32 @@ Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2
 
 ## Sensores
 
-SENSORES · 10 en 5 dispositivos
+SENSORES · 12 en 5 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - Intel Celeron 560
   - Temperaturas
-    - Núcleo 0 · 70.0 °C · 70.0 · 70.0 · 70.0
+    - Núcleo 0 · 63.0 °C · 63.0 · 63.0 · 63.0
+  - Uso
+    - Total · 97.8 % · 97.8 · 97.8 · 97.8
+    - CPU 0 · 97.8 % · 97.8 · 97.8 · 97.8
   - Relojes
-    - CPU 0 · 1630.1 MHz · 1630.1 · 1630.1 · 1630.1
+    - CPU 0 · 1627.3 MHz · 1627.3 · 1627.3 · 1627.3
 - Dell Vostro A840
   - Temperaturas
-    - Temperatura 1 · 70.5 °C · 70.5 · 70.5 · 70.5
+    - Temperatura 1 · 69.5 °C · 69.5 · 69.5 · 69.5
 - dell_smm
   - Temperaturas
-    - CPU (dell_smm) · 70.0 °C · 70.0 · 70.0 · 70.0
-    - CPU (dell_smm) · 63.0 °C · 63.0 · 63.0 · 63.0
-    - Other (dell_smm) · 43.0 °C · 43.0 · 43.0 · 43.0
+    - CPU (dell_smm) · 67.0 °C · 67.0 · 67.0 · 67.0
+    - CPU (dell_smm) · 60.0 °C · 60.0 · 60.0 · 60.0
+    - Other (dell_smm) · 47.0 °C · 47.0 · 47.0 · 47.0
   - Ventiladores
-    - Processor Fan · 4699 RPM · 4699 · 4699 · 4699
+    - Processor Fan · 4618 RPM · 4618 · 4618 · 4618
 - Memoria
   - Uso
-    - RAM usada · 54.8 % · 54.8 · 54.8 · 54.8
+    - RAM usada · 48.7 % · 48.7 · 48.7 · 48.7
 - Batería
   - Voltajes
-    - Tensión · 20.481 V · 20.481 · 20.481 · 20.481
+    - Tensión · 0.000 V · 0.000 · 0.000 · 0.000
   - Corrientes
     - Corriente · 0.00 A · 0.00 · 0.00 · 0.00
 

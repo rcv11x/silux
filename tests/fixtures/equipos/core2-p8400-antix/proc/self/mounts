@@ -1,0 +1,2 @@
+/dev/sda2 / ext4 rw,noatime 0 0
+/dev/sdb1 /media/unidad1 ext4 rw,nosuid,nodev,noexec,noatime,stripe=8191 0 0

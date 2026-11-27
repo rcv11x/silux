@@ -1,0 +1,357 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   16,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483683,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   10620690,
+   1050624,
+   2130194955,
+   395049983
+  ],
+  "0:2147483649:0": [
+   10620690,
+   536870912,
+   1975662591,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1702525266,
+   540483694,
+   808466485
+  ],
+  "0:2147483651:0": [
+   758653016,
+   1701998403,
+   1869762592,
+   1936942435
+  ],
+  "0:2147483652:0": [
+   538997359,
+   538976288,
+   538976288,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   563910569,
+   4195996,
+   16
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "drm_modes": {
+  "card1": {}
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [
+    {
+     "compute_units": 46,
+     "driver_version": "595.99.02",
+     "global_memory_bytes": 8215658496,
+     "max_clock_mhz": 1755,
+     "name": "NVIDIA GeForce RTX 3070",
+     "platform": "NVIDIA CUDA",
+     "platform_version": "OpenCL 3.0 CUDA 13.2.87",
+     "vendor": "NVIDIA Corporation",
+     "version": "OpenCL 3.0 CUDA"
+    }
+   ],
+   "opengl": {
+    "egl_vendor": "NVIDIA",
+    "egl_version": "1.5",
+    "glsl": "4.60 NVIDIA",
+    "renderer": "NVIDIA GeForce RTX 3070/PCIe/SSE2",
+    "vendor": "NVIDIA Corporation",
+    "version": "4.6.0 NVIDIA 595.99.02"
+   },
+   "vaapi": [],
+   "vulkan": [
+    {
+     "api_version": "1.4.329",
+     "device_id": 9352,
+     "device_memory_bytes": 8847884288,
+     "driver_version": 2497233024,
+     "instance_version": "1.3.275",
+     "kind": "dedicada",
+     "name": "NVIDIA GeForce RTX 3070",
+     "vendor_id": 4318
+    },
+    {
+     "api_version": "1.4.318",
+     "device_id": 0,
+     "device_memory_bytes": 33548877824,
+     "driver_version": 104865800,
+     "instance_version": "1.3.275",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_asahi.so",
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libGLX_nvidia.so.0",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "br-1ef30eb41dfc:0x8915": "192.168.1.120",
+  "br-1ef30eb41dfc:0x891b": "255.255.0.0",
+  "docker0:0x8915": "192.168.1.120",
+  "docker0:0x891b": "255.255.0.0",
+  "enp5s0:0x8915": null,
+  "enp5s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "veth02e3069:0x8915": null,
+  "veth02e3069:0x891b": null,
+  "virbr0:0x8915": "192.168.1.120",
+  "virbr0:0x891b": "255.255.255.0",
+  "wlp4s0:0x8915": "192.168.1.120",
+  "wlp4s0:0x891b": "255.255.255.0"
+ },
+ "nvml": {
+  "abierta": true,
+  "tarjetas": [
+   {
+    "busy_percent": 0.0,
+    "compute_processes": 0,
+    "core_hz": 1245000000,
+    "core_max_hz": 2100000000,
+    "cuda_cores": 5888,
+    "decode_busy_percent": 0.0,
+    "driver_version": "595.99.02",
+    "encode_busy_percent": 0.0,
+    "fan_percent": 0.0,
+    "index": 0,
+    "link_generation": 4,
+    "link_width": 16,
+    "max_link_generation": 4,
+    "max_link_width": 16,
+    "memory_bus_bits": 256,
+    "memory_busy_percent": 1.0,
+    "memory_hz": 5001000000,
+    "memory_max_hz": 7001000000,
+    "memory_total_bytes": 8589934592,
+    "memory_used_bytes": 776601600,
+    "name": "NVIDIA GeForce RTX 3070",
+    "pci_slot": "0000:09:00.0",
+    "power_answers": [
+     [
+      "nvmlDeviceGetPowerUsage",
+      "43888 mW"
+     ],
+     [
+      "field 185",
+      "not asked"
+     ],
+     [
+      "field 186",
+      "not asked"
+     ],
+     [
+      "nvmlDeviceGetSamples",
+      "NVML_ERROR_NOT_FOUND (6)"
+     ],
+     [
+      "nvmlDeviceGetTotalEnergyConsumption",
+      "15583287 mJ"
+     ],
+     [
+      "ceiling",
+      "330.0 W, 1.5 x 220.0 W"
+     ]
+    ],
+    "power_cap_default_w": 220.0,
+    "power_cap_max_w": 220.0,
+    "power_cap_min_w": 100.0,
+    "power_cap_w": 220.0,
+    "power_discarded_source": null,
+    "power_discarded_w": null,
+    "power_error": null,
+    "power_estimate_samples": null,
+    "power_estimate_w": null,
+    "power_estimate_window_s": null,
+    "power_source": "nvmlDeviceGetPowerUsage",
+    "power_w": 43.9,
+    "serial": null,
+    "temp_c": 47.0,
+    "throttle_reasons": [],
+    "throttled": false,
+    "uuid": "0000000000000000000000000000000000000000",
+    "vbios": "94.04.46.00.F2",
+    "video_hz": 1080000000
+   }
+  ]
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "nvml": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1022:1480|1022:790e": {
+   "1022:1480": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Starship/Matisse Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "1022:1487|1022:149c|1022:7901|10de:228b|10de:2488|10ec:8168|1987:5031|8086:2526": {
+   "1022:1487": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Starship/Matisse HD Audio Controller"
+   ],
+   "1022:149c": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Matisse USB 3.0 Host Controller"
+   ],
+   "1022:7901": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH SATA Controller [AHCI mode]"
+   ],
+   "10de:228b": [
+    "NVIDIA Corporation",
+    "GA104 High Definition Audio Controller"
+   ],
+   "10de:2488": [
+    "NVIDIA Corporation",
+    "GA104 [GeForce RTX 3070 Lite Hash Rate]"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "8086:2526": [
+    "Intel Corporation",
+    "Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak]"
+   ]
+  },
+  "10de:2488|10de:2488:1462:3909": {
+   "10de:2488": [
+    "NVIDIA Corporation",
+    "GA104 [GeForce RTX 3070 Lite Hash Rate]"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "8086:2526": {
+   "8086:2526": [
+    "Intel Corporation",
+    "Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak]"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1462": "Micro-Star International Co., Ltd. [MSI]"
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "bspwm",
+   "DISPLAY": ":0",
+   "GDMSESSION": "bspwm",
+   "SHELL": "/usr/bin/zsh",
+   "WAYLAND_DISPLAY": null,
+   "XDG_CURRENT_DESKTOP": null,
+   "XDG_SESSION_TYPE": "x11"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 638,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "7.0.0-44-generic",
+   "system": "Linux",
+   "version": "#44~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov 10 20:33:11 UTC 2"
+  }
+ },
+ "realpath": {
+  "/dev/nvme0n1p1": "/dev/nvme0n1p1",
+  "/dev/nvme0n1p2": "/dev/nvme0n1p2"
+ },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo: 1976305    7865    0    0    0     0          0         0  1976305    7865    0    0    0     0       0          0\nenp5s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\nwlp4s0: 133567668  113427    0    0    0     0          0         0 30269384   26403    0    0    0     0       0          0\nvirbr0:       0       0    0    0    0     0          0         0        0       0    0   85    0     0       0          0\nbr-2bc5cfd0c6ac:     168       6    0    0    0     0          0         0    27075     158    0    5    0     0       0          0\nbr-90f11d2b7027:    9816     154    0    0    0     0          0         0   567919     304    0    5    0     0       0          0\nbr-d59a7f5c39bf:      84       3    0    0    0     0          0         0    26821     157    0    6    0     0       0          0\nbr-e00e5bcbead6:    9848     156    0    0    0     0          0         0   568123     310    0    6    0     0       0          0\nbr-eecc153111a2:    3342      31    0    0    0     0          0         0   131714     186    0    5    0     0       0          0\nbr-1ef30eb41dfc:      84       3    0    0    0     0          0         0    27167     159    0    5    0     0       0          0\nbr-2d07c6febafd:  135778    1338    0    0    0     0          0         0  3911682    1512    0    5    0     0       0          0\nbr-45472d690294:      84       3    0    0    0     0          0         0    27167     159    0    5    0     0       0          0\ndocker0:      84       3    0    0    0     0          0         0    27142     156    0    4    0     0       0          0\nveth391275d:     126       3    0    0    0     0          0         0    34299     205    0    0    0     0       0          0\nveth4b02fe7:   11552     144    0    0    0     0          0         0   575471     360    0    0    0     0       0          0\nvetha1fa764:     126       3    0    0    0     0          0         0    34204     201    0    0    0     0       0          0\nveth39bc8e0:     126       3    0    0    0     0          0         0    34263     206    0    0    0     0       0          0\nveth9c90290:     126       3    0    0    0     0          0         0    34541     217    0    0    0     0       0          0\nvethbeb74f0:   55531     176    0    0    0     0          0         0    51634     401    0    0    0     0       0          0\nveth02e3069:     126       3    0    0    0     0          0         0    33927     204    0    0    0     0       0          0\nveth4262c28:     126       3    0    0    0     0          0         0    33883     202    0    0    0     0       0          0\nveth2ff3597:  439734    1163    0    0    0     0          0         0   191779    1412    0    0    0     0       0          0\nvethacc4ff8:  154510    1338    0    0    0     0          0         0  3918814    1558    0    0    0     0       0          0\nveth4757648:     126       3    0    0    0     0          0         0    34481     207    0    0    0     0       0          0\nvethe6d7a34:   20605     217    0    0    0     0          0         0   193943     405    0    0    0     0       0          0\nveth13dce45:  157748    1205    0    0    0     0          0         0   473681    1368    0    0    0     0       0          0\nveth7b2f5a4:   11486     143    0    0    0     0          0         0   575649     367    0    0    0     0       0          0\nvethc023aba:  725990    1581    0    0    0     0          0         0   247696    1891    0    0    0     0       0          0\nvethfe4ecc2:     126       3    0    0    0     0          0         0    34115     209    0    0    0     0       0          0\nveth040bd65:  213587    1682    0    0    0     0          0         0   760127    1790    0    0    0     0       0          0\nveth371a7d3:     126       3    0    0    0     0          0         0    34193     211    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  341441 153 39144 1213073 18770 0 144 0 0 0\ncpu0 21521 13 2993 74102 1857 0 2 0 0 0\ncpu1 18669 6 1478 80266 425 0 1 0 0 0\ncpu2 32150 34 5924 58180 4254 0 5 0 0 0\ncpu3 18882 12 2135 78847 961 0 1 0 0 0\ncpu4 32179 25 5289 59535 3540 0 3 0 0 0\ncpu5 18318 4 1916 79833 787 0 1 0 0 0\ncpu6 19618 8 2394 77714 1084 0 9 0 0 0\ncpu7 17854 5 1979 79749 474 0 2 0 0 0\ncpu8 19311 5 1856 79261 482 0 1 0 0 0\ncpu9 17200 6 1417 82169 196 0 0 0 0 0\ncpu10 26016 6 2959 70243 1699 0 1 0 0 0\ncpu11 18021 7 1462 81046 323 0 107 0 0 0\ncpu12 28153 4 2707 68487 1540 0 0 0 0 0\ncpu13 17497 1 1807 80966 709 0 3 0 0 0\ncpu14 18660 3 1474 80616 238 0 1 0 0 0\ncpu15 17384 7 1348 82052 193 0 1 0 0 0\nintr 14311255 139 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 105 0 1 1 1 0 1 0 1 0 1 13979 271 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 19843 0 78440 47992 261842 77357 1018429 213856 249489 63369 307674 43863 145268 28173 959496 273036 379954 104733 0 0 0 48647 0 4540 0 17366 202073 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 21188570\nbtime 1795749749\nprocesses 43228\nprocs_running 4\nprocs_blocked 0\nsoftirq 4350276 14016 346566 5 72169 20835 0 2193 1592561 2 2301929\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon1/temp1_input": "40875\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon1/temp3_input": "41250\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "4197929\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "1938462\n",
+  "/sys/devices/system/cpu/cpufreq/policy10/scaling_cur_freq": "1938462\n",
+  "/sys/devices/system/cpu/cpufreq/policy11/scaling_cur_freq": "4198542\n",
+  "/sys/devices/system/cpu/cpufreq/policy12/scaling_cur_freq": "1938462\n",
+  "/sys/devices/system/cpu/cpufreq/policy13/scaling_cur_freq": "1938462\n",
+  "/sys/devices/system/cpu/cpufreq/policy14/scaling_cur_freq": "4197879\n",
+  "/sys/devices/system/cpu/cpufreq/policy15/scaling_cur_freq": "4199062\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "4199910\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "4195553\n",
+  "/sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq": "4199993\n",
+  "/sys/devices/system/cpu/cpufreq/policy5/scaling_cur_freq": "4198975\n",
+  "/sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq": "4197145\n",
+  "/sys/devices/system/cpu/cpufreq/policy7/scaling_cur_freq": "4199726\n",
+  "/sys/devices/system/cpu/cpufreq/policy8/scaling_cur_freq": "4198072\n",
+  "/sys/devices/system/cpu/cpufreq/policy9/scaling_cur_freq": "4196035\n"
+ },
+ "statfs": {
+  "/": [
+   58471424,
+   17305345,
+   14225365,
+   4096
+  ],
+  "/boot/efi": [
+   124934,
+   123362,
+   123362,
+   4096
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 14289325,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 2431180
+  }
+ }
+}

@@ -1,0 +1,651 @@
+## Inicio
+
+Dell Latitude E6400
+Debian GNU/Linux 13 (trixie) · Linux 5.10.240-antix.1-amd64-smp · icewm · x11 · encendido 3 min
+silux-pc
+
+### Procesador
+
+Intel Core2 Duo P8400
+2 núcleos · 2 hilos · Core 2 Duo (Penryn-3M)
+606 MHz 34.0 °C
+
+### Gráfica
+
+Quadro NVS 160M
+PCIe 1.0 × 16
+49.0 °C
+
+### Memoria
+
+726.7 MiB de 3.8 GiB
+19 % ocupada
+Aplicaciones 420.8 MiB · Caché 414.2 MiB · Buffers 39.1 MiB · Libre 3.0 GiB
+
+### Almacenamiento
+
+740 GB en 2 unidades
+1 × SSD · 1 × HDD
+530 GB libres
+Ocupado 136 GB · Libre 530 GB · Reservado 49.4 GB · Sin montar 24.0 GB
+
+### Temperaturas
+
+Gráfica 49.0 °C
+lo más caliente ahora
+Procesador 34.0 °C
+
+### Red
+
+wlan1 · 192.168.1.120
+Intel WiFi Link 5100
+↓ 0 B/s ↑ 0 B/s
+
+### Placa base
+
+BIOS heredada
+BIOS A34 · 2013-06-04
+
+> **Faltan 3 datos que este equipo sí tiene**
+> Detalle de los módulos de memoria
+> Encapsulado del procesador
+> Salud de los discos
+
+## CPU
+
+Intel Core2 Duo P8400
+2 núcleos · 2 hilos · 1 socket
+Core 2 Duo (Penryn-3M) · 45 nm · x86_64
+- Frecuencia: 0.61 GHz (800 MHz – 2.27 GHz)
+- Uso: —
+- Temperatura: 34 °C
+
+### Núcleos lógicos
+
+- CPU 0: 607 MHz  34°
+- CPU 1: 605 MHz  34°
+
+### Potencia y reposo
+
+- Frenos por temperatura: ninguno desde el arranque
+
+### Procesador
+
+- Fabricante: Intel
+- Especificación: Intel(R) Core(TM)2 Duo CPU P8400 @ 2.26GHz
+- Nombre en clave: Core 2 Duo (Penryn-3M)
+- Tecnología: 45 nm
+- Encapsulado: (necesita permisos)
+- Arquitectura: x86_64
+- Núcleos: 2
+- Hilos: 2
+- Virtualización: VT-x (soportada)
+
+#### Identificación (CPUID)
+
+- Familia: 6 (0x6)
+- Modelo: 23 (0x17)
+- Stepping: 6
+- Firma CPUID: 0x00010676
+- Microcódigo: 0x610
+
+### Relojes
+
+- Frecuencia: 606 MHz
+- Base: 2.26 GHz
+- Mínima: 800 MHz
+- Máxima (kernel): 2.27 GHz
+- Driver: acpi-cpufreq
+- Gobernador: schedutil
+
+Este procesador no tiene turbo: su frecuencia más alta es la base. acpi-cpufreq no ofrece preferencia de energía: la dan intel_pstate en modo activo con HWP y amd-pstate en modo activo.
+
+### Jerarquía de caché
+
+- L1 datos: 2 × 32 KiB, 8 vías línea 64 B · 1 hilo
+- L1 instr.: 2 × 32 KiB, 8 vías línea 64 B · 1 hilo
+- L2: 3 MiB, 12 vías línea 64 B · 2 hilos
+
+### Juego de instrucciones
+
+MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · VT-x
+26 banderas detectadas por CPUID · 19 no destacadas
+
+> **Este equipo no lo expone**
+> Este equipo no publica su reloj de referencia (BCLK).
+> Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del procesador. Deducirlo del reloj base únicamente es fiable en plataformas con ACPI CPPC, donde son 100 MHz.
+
+> **Este equipo no lo expone**
+> Este procesador no publica su frecuencia máxima de fábrica.
+> La dan CPUID 0x16, en los Intel desde la sexta generación, y ACPI CPPC; este no tiene ninguno de los dos. La máxima que aplica el kernel sí está, en su fila.
+
+> **Hace falta elevar permisos**
+> El encapsulado de «Core 2 Duo (Penryn-3M)» no está en la tabla de esta versión de Silux.
+> Con permisos se lee de la tabla del firmware (SMBIOS), que suele decirlo.
+
+> **Este equipo no lo expone**
+> Esta CPU no expone contadores de energía RAPL.
+> Llegó con los Intel de 2011 (Sandy Bridge) y con los AMD Zen: los anteriores, los ARM y las máquinas virtuales no lo tienen.
+
+> **Este equipo no lo expone**
+> Este procesador no publica el voltaje del núcleo.
+> Intel lo pone en el registro que se lee a partir de los Core de segunda generación (Sandy Bridge); en uno anterior no está, con permisos o sin ellos.
+
+## Cachés
+
+3.1 MiB de caché en total
+3 cachés distintas sobre 2 núcleos y 2 hilos
+L1 datos 64 KiB · L1 instr. 64 KiB · L2 3 MiB
+
+### Quién comparte qué
+
+Cada bloque es una instancia física de caché; su anchura son las CPUs lógicas que la comparten.
+
+### Detalle por nivel
+
+| NIVEL | TAMAÑO | Nº | TOTAL | VÍAS | LÍNEA | CONJUNTOS | COMPARTEN |
+|---|---|---|---|---|---|---|---|
+| L1 datos | 32 KiB | 2 | 64 KiB | 8 | 64 B | 64 | 1 hilo |
+| L1 instr. | 32 KiB | 2 | 64 KiB | 8 | 64 B | 64 | 1 hilo |
+| L2 | 3 MiB | 1 | 3 MiB | 12 | 64 B | 4096 | 2 hilos |
+
+### Vías y conjuntos
+
+Una caché de N vías guarda cada dirección en uno de N sitios posibles. Más vías reducen los choques entre datos que compiten por el mismo conjunto, a costa de una búsqueda más cara.
+
+### Línea
+
+La unidad mínima que viaja entre memoria y caché. Leer un solo byte trae la línea entera, y por eso recorrer datos contiguos es mucho más rápido que saltar por la memoria.
+
+## Placa base
+
+Dell Latitude E6400
+Portátil
+BIOS heredada
+
+### Placa base
+
+- Fabricante: Dell
+- Modelo: 0TN284
+- Chasis: Portátil
+- Fabricante del chasis: Dell
+
+El firmware de esta placa no dice su revisión.
+
+### Firmware
+
+- Tipo: BIOS heredada
+- Fabricante: Dell
+- Versión: A34
+- Fecha: 2013-06-04
+- Revisión de la BIOS: 3.4
+- TPM: no detectado
+
+Con BIOS heredada no hay arranque seguro: es cosa de UEFI.
+
+### Chipset
+
+- Identificación PCI: ICH9M-E LPC Interface Controller
+- Controlador de memoria: Mobile 4 Series Chipset Memory Controller Hub
+
+Su identificación PCI da el nombre en clave del chipset, no un modelo comercial.
+
+### Equipo
+
+- Fabricante: Dell
+- Modelo: Latitude E6400
+
+### Plataforma
+
+- IOMMU: sin activar
+- Códec de sonido: IDT 92HD71B7X
+
+### Dispositivos PCIe
+
+| TIPO | DISPOSITIVO | ENLACE | MÁXIMO | DRIVER |
+|---|---|---|---|---|
+| Gráfica | Quadro NVS 160M | PCIe 1.0 × 16 | PCIe 1.0 × 16 | nouveau |
+| Ethernet | Intel 82567LM Gigabit Network Connection | en la placa |  | e1000e |
+| Wifi | Qualcomm Atheros AR242x / AR542x Wireless Network Adapter (PCI-Express) | PCIe 1.0 × 1 | PCIe 1.0 × 1 | ath5k |
+| Wifi | Intel WiFi Link 5100 | PCIe 1.0 × 1 | PCIe 1.0 × 1 | iwlwifi |
+| SATA | 82801 Mobile SATA Controller [RAID mode] | en la placa |  | ahci |
+| USB | 82801I (ICH9 Family) USB UHCI Controller #4 | en la placa |  | uhci_hcd |
+| USB | 82801I (ICH9 Family) USB UHCI Controller #5 | en la placa |  | uhci_hcd |
+| USB | 82801I (ICH9 Family) USB UHCI Controller #6 | en la placa |  | uhci_hcd |
+| USB | 82801I (ICH9 Family) USB2 EHCI Controller #2 | en la placa |  | ehci-pci |
+| USB | 82801I (ICH9 Family) USB UHCI Controller #1 | en la placa |  | uhci_hcd |
+| USB | 82801I (ICH9 Family) USB UHCI Controller #2 | en la placa |  | uhci_hcd |
+| USB | 82801I (ICH9 Family) USB UHCI Controller #3 | en la placa |  | uhci_hcd |
+| USB | 82801I (ICH9 Family) USB2 EHCI Controller #1 | en la placa |  | ehci-pci |
+| Sonido | 82801I (ICH9 Family) HD Audio Controller | en la placa |  | snd_hda_intel |
+
+El nombre de cada ranura («PCIEX16», «M2A_CPU») está en la tabla del firmware y sale al dar permisos.
+
+## Memoria
+
+3.8 GiB utilizables
+El detalle por módulo necesita permisos de administrador
+Aplicaciones 420.8 MiB · Caché 414.2 MiB · Buffers 39.1 MiB · Libre 3.0 GiB
+Disponible 3.1 GiB · intercambio 0 B de 5.7 GiB
+
+#### Desglose del uso
+
+- Total: 3.8 GiB
+- Usada: 726.7 MiB (19 %)
+- Disponible: 3.1 GiB
+- Aplicaciones: 420.8 MiB
+- Caché: 414.2 MiB
+- Buffers: 39.1 MiB
+- Compartida: 14.6 MiB
+- Libre: 3.0 GiB
+- Intercambio: 5.7 GiB
+- Intercambio usado: 0 B (0 %)
+
+En este equipo la memoria la controla el chipset de la placa, no el procesador: hasta qué velocidad llega lo decide la placa.
+
+### Última prueba de memoria
+
+Sin medir todavía.
+
+### Lo que falta necesita permisos
+
+El detalle de los módulos está en la tabla SMBIOS, que el kernel reserva al administrador porque junto a esos campos van los números de serie del equipo.
+El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesador: no ejecuta órdenes ni escribe nada.
+
+> **Este equipo no lo expone**
+> El bus de la memoria está, pero el kernel no ha registrado ningún chip SPD en él.
+> Sin un chip registrado no hay driver que cargar: cargar ee1004 o spd5118 no cambiaría nada.
+
+> **Este equipo no lo expone**
+> Este equipo no publica cuánto tráfico mueve el controlador de memoria.
+> Solo lo publican los procesadores Intel. En AMD el kernel no le pone nombre a esos contadores, y una cifra deducida a ciegas sería peor que ninguna.
+
+## Gráficos
+
+### Quadro NVS 160M
+
+Dell · G98M · PCIe 1.0 × 16
+nouveau · Mesa 25.0.7 · principal
+- Temperatura: 49 °C
+
+> **Falta un driver**
+> nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
+> Es el driver libre: lo que enseña un programa como este de una NVIDIA (relojes, vatios, núcleos CUDA, recortes) sale de NVML, que viene con el driver propietario. Con nouveau quedan la temperatura, el enlace PCIe y la memoria que dice Vulkan.
+
+#### Ahora mismo
+
+Esta gráfica no publica cuánto se usa su motor gráfico, su decodificador de video ni su codificador de video.
+
+#### Tarjeta
+
+- Fabricante: NVIDIA
+- Ensamblada por: Dell
+- Nombre en clave: G98M
+- Driver: nouveau
+- Versión del driver: Mesa 25.0.7
+
+Ni su driver (nouveau) ni la base de datos de dispositivos PCI dan unidades de proceso, ROPs (unidades de salida de render), motores de sombreado ni BIOS de video de esta tarjeta.
+
+##### Identificadores
+
+- Identificador: 10DE:06EB
+- Subsistema: 1028:0233
+- Ranura PCI: 0000:01:00.0
+- Nodo DRM: card0
+
+#### Memoria de video
+
+nouveau no publica total, tipo, bus ni otros 6 datos de esta tarjeta.
+
+#### Relojes y enlace
+
+- Enlace: PCIe 1.0 × 16
+- Enlace (máximo): PCIe 1.0 × 16
+
+nouveau no publica núcleo, núcleo (máximo), memoria ni otros 4 datos de esta tarjeta.
+
+#### Consumo y temperaturas
+
+- Ventilador: 31.0 %
+
+nouveau no publica estado, punto caliente, chips de memoria ni otros 7 datos de esta tarjeta.
+
+#### Bibliotecas gráficas
+
+| API | VERSIÓN | DRIVER | DETALLE |
+|---|---|---|---|
+| OpenGL | 3.3 | 25.0.7-2 | GLSL 3.30 |
+
+#### Monitores y salidas de video
+
+| SALIDA | MONITOR | RESOLUCIÓN | REFRESCO | TAMAÑO | COLOR Y HDR | FABRICADO |
+|---|---|---|---|---|---|---|
+| LVDS-1 | LG Philips | 1440 × 900 | 60.2 Hz | 14.1" | — | 2008 |
+
+3 salidas libres: DP-1, DP-2, VGA-1
+
+> **Falta un paquete del sistema**
+> Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre.
+> Viene en el paquete hwdata.
+
+## Almacenamiento
+
+740 GB en 2 unidades
+136 GB ocupados en 2 particiones montadas
+1 × SSD · 1 × HDD
+Ocupado 136 GB · Libre 530 GB · Reservado 49.4 GB · Sin montar 24.0 GB
+Unidad Todas las unidades
+- Leyendo: 0 B/s (suma de 2 unidades)
+- Escribiendo: 0 B/s (suma de 2 unidades)
+- Espacio libre: 530 GB (en 2 particiones)
+- Más caliente: — (ningún disco publica su temperatura)
+
+### Estado de los discos
+
+Las horas de encendido, los terabytes escritos y el desgaste los guarda cada disco en sus propios contadores de diagnóstico. El kernel reserva esos comandos al administrador porque son los mismos que sirven para borrar un disco.
+El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.
+
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
+
+### Unidades
+
+| UNIDAD | MODELO | TIPO | CAPACIDAD | OCUPADO | TEMPERATURA | LEYENDO | ESCRIBIENDO |
+|---|---|---|---|---|---|---|---|
+| sda | WDC WD5000LPVX-2 | HDD | 500 GB | 44.2 GB | — | 0 B/s | 0 B/s |
+| sdb | SSD PLUS 240 GB | SSD | 240 GB | 92.0 GB | — | 0 B/s | 0 B/s |
+
+### Particiones montadas
+
+| PARTICIÓN | SISTEMA | MONTADA EN | TAMAÑO | USADO | LIBRE |
+|---|---|---|---|---|---|
+| sda2 | ext4 | / | 500 GB | 44.2 GB (9 %) | 422 GB |
+| sdb1 | ext4 | /media/unidad1 | 216 GB | 92.0 GB (43 %) | 109 GB |
+
+### sda · WDC WD5000LPVX-2
+
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
+Ocupado 44.2 GB · Libre 422 GB · Reservado 34.0 GB
+- Modelo: WDC WD5000LPVX-2
+- Fabricante: Western Digital
+- Tipo: HDD
+- Conexión: SATA
+- Capacidad: 500 GB
+- Temperatura: (necesita permisos)
+- Horas encendido: (necesita permisos)
+- Escrito en total: (necesita permisos)
+
+Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de un SSD.
+
+#### Firmware y sectores
+
+- Firmware: 1A01
+- Sector lógico: 512 B
+- Sector físico: 4096 B
+- Planificador: mq-deadline
+
+### sdb · SSD PLUS 240 GB
+
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
+Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
+- Modelo: SSD PLUS 240 GB
+- Fabricante: SanDisk
+- Tipo: SSD
+- Conexión: USB
+- Enlace: USB 480 Mb/s
+- Capacidad: 240 GB
+- Temperatura: (necesita permisos)
+- Horas encendido: (necesita permisos)
+- Escrito en total: (necesita permisos)
+- Vida restante: (necesita permisos)
+
+#### Firmware y sectores
+
+- Firmware: 1.02
+- Sector lógico: 512 B
+- Sector físico: 512 B
+- Planificador: mq-deadline
+
+## Red
+
+wlan1 · 192.168.1.120
+Intel WiFi Link 5100
+puerta 192.168.1.1 · 1 de 3 activas
+- Bajando: 0 B/s (ninguno descartado)
+- Subiendo: 0 B/s
+- Recibido: 83.8 kB (199 paquetes)
+- Enviado: 4.0 kB (29 paquetes)
+
+### Tráfico por interfaz
+
+1 MB/s son 8 Mb/s: los tests de velocidad usan bits.
+
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
+|---|---|---|---|---|---|---|
+| wlan1 | 0 B/s | 0 B/s | 83.8 kB | 4.0 kB | 228 | 0 |
+| eth0 | 0 B/s | 0 B/s | 0 B | 0 B | 0 | 0 |
+| wlan0 | 0 B/s | 0 B/s | 0 B | 0 B | 0 | 0 |
+
+### wlan1
+
+- Estado: activa
+- Tipo: Wi-Fi
+- Dirección IPv4: 192.168.1.120
+- Máscara: 255.255.255.0
+- Puerta de enlace: 192.168.1.1
+- Dirección IPv6: 2001:db8::11
+- Dirección física: 00:00:5e:00:53:af
+- MTU: 1500
+- Driver: iwlwifi
+- Modelo: Intel WiFi Link 5100
+- Ranura PCI: 0000:0c:00.0
+
+### eth0
+
+- Estado: sin cable
+- Tipo: Ethernet
+- Dirección física: 00:00:5e:00:53:af
+- MTU: 1500
+- Driver: e1000e
+- Modelo: Intel 82567LM Gigabit Network Connection
+- Ranura PCI: 0000:00:19.0
+
+### wlan0
+
+- Estado: sin señal
+- Tipo: Wi-Fi
+- Dirección física: 00:00:5e:00:53:af
+- MTU: 1500
+- Driver: ath5k
+- Modelo: Qualcomm Atheros AR242x / AR542x Wireless Network Adapter (PCI-Express)
+- Ranura PCI: 0000:0b:00.0
+
+### Interfaces virtuales
+
+| INTERFAZ | BAJANDO | SUBIENDO | RECIBIDO | ENVIADO | PAQUETES | DESCARTADOS |
+|---|---|---|---|---|---|---|
+| lo | 0 B/s | 0 B/s | 240 B | 240 B | 8 | 0 |
+
+### lo
+
+- Estado: activa
+- Tipo: Bucle local
+- Dirección IPv4: 127.0.0.1
+- Máscara: 255.0.0.0
+- Dirección IPv6: ::1
+- Dirección física: 00:00:00:00:00:00
+- MTU: 65536
+
+No tiene driver, modelo ni ranura PCI: es una interfaz virtual, sin tarjeta detrás.
+
+## Dispositivos
+
+2 dispositivos USB
+1 tarjeta de sonido · 0 cámaras · sin Bluetooth
+
+### USB
+
+*DISPOSITIVO · VELOCIDAD*
+- Almacenamiento · Alta velocidad · 480 Mb/s
+- Dispositivo · Velocidad completa · 12 Mb/s
+
+Cada cosa cuelga del concentrador al que está enchufada. El número de serie no se lee.
+
+### Sonido
+
+| TARJETA | DÓNDE |
+|---|---|
+| Placa base · IDT 92HD71B7X | en la placa |
+
+### Cámaras
+
+Este equipo no tiene ninguna cámara.
+
+### Bluetooth
+
+Este equipo no tiene adaptador Bluetooth.
+
+## Sistema
+
+Debian GNU/Linux 13 (trixie)
+silux-pc · encendido 3 min
+Linux 5.10.240-antix.1-amd64-smp · icewm · x11
+
+### Sistema operativo
+
+- Distribución: Debian GNU/Linux 13 (trixie)
+- Versión: 13
+- Identificador: debian
+- Nombre del equipo: silux-pc
+
+Esta distribución no declara variante.
+
+### Kernel y entorno
+
+- Kernel: Linux 5.10.240-antix.1-amd64-smp
+- Arquitectura: x86_64
+- Compilación: #1 SMP Sat Aug 23 16:01:11 EEST 2025 · gcc 14.3.0
+- Init: runit
+- Escritorio: icewm
+- Sesión: x11
+- Shell: zsh
+- Gráficos: Mesa 25.0.7
+- Kernel contaminado: un módulo con licencia no compatible con la GPL (wl) · un módulo de fuera del kernel (wl) · un módulo sin firmar (wl)
+
+### Actividad
+
+- Encendido desde: (hora de arranque)
+- Tiempo encendido: 3 min
+- Procesos: 190
+- Hilos: 214
+- Archivos abiertos: 2 112
+
+### Vulnerabilidades del procesador
+
+- Conocidas por este kernel: 16
+- No afectan a este procesador: 8
+- Mitigadas: 5
+- Sin mitigar: 2
+- Sin saber (el kernel no lo sabe): 1
+
+#### Las que afectan a este procesador, como las describe el kernel
+
+- itlb_multihit: KVM: Mitigation: VMX unsupported
+- l1tf: Mitigation: PTE Inversion
+- mds: Vulnerable: Clear CPU buffers attempted, no microcode; SMT disabled
+- meltdown: Mitigation: PTI
+- mmio_stale_data: Unknown: No mitigations
+- spec_store_bypass: Vulnerable
+- spectre_v1: Mitigation: usercopy/swapgs barriers and __user pointer sanitization
+- spectre_v2: Mitigation: Retpolines, STIBP: disabled, RSB filling, PBRSB-eIBRS: Not affected
+
+### Intercambio
+
+- zram0 (en memoria): 0 B de 5.7 GiB · lz4 · comprime 64.0 a 1 · prioridad 100
+
+### Arranque
+
+- Línea de arranque: BOOT_IMAGE=/boot/vmlinuz-5.10.240-antix.1-amd64-smp root=… ro quiet selinux=0
+
+Falta cuánto tardan el firmware y el cargador: ni el gestor de arranque ni el firmware lo publican. Falta cuánto tardan el kernel y el espacio de usuario: eso lo mide systemd, y este sistema arranca con runit.
+
+> **Kernel anterior a 5.15**
+> Tu kernel (5.10) es anterior a Linux 5.15, el mínimo que admite Silux: puede faltar algún dato sin que se diga por qué.
+
+## Rendimiento
+
+Prueba de rendimiento
+Mide el procesador con cinco cargas distintas, primero en un solo hilo y después en todos. Lo interesante no es solo la cifra: es que cada carga escala de una forma, y ahí se ve qué aprovecha los hilos y qué se queda esperando a la memoria. Mientras dura, el equipo irá al máximo.
+Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2 min
+
+## Sensores
+
+SENSORES · 19 en 6 dispositivos
+*Sensor · Actual · Mín · Máx · Media*
+- Intel Core2 Duo P8400
+  - Temperaturas
+    - Núcleo 0 · 34.0 °C · 34.0 · 34.0 · 34.0
+    - Núcleo 1 · 34.0 °C · 34.0 · 34.0 · 34.0
+  - Relojes
+    - CPU 0 · 607.1 MHz · 607.1 · 607.1 · 607.1
+    - CPU 1 · 605.3 MHz · 605.3 · 605.3 · 605.3
+- Dell Latitude E6400
+  - Temperaturas
+    - Temperatura 1 · 35.5 °C · 35.5 · 35.5 · 35.5
+- dell_smm
+  - Temperaturas
+    - CPU · 35.0 °C · 35.0 · 35.0 · 35.0
+    - SODIMM · 38.0 °C · 38.0 · 38.0 · 38.0
+    - Other · 37.0 °C · 37.0 · 37.0 · 37.0
+    - GPU · 48.0 °C · 48.0 · 48.0 · 48.0
+  - Ventiladores
+    - Processor Fan · 0 RPM · 0 · 0 · 0
+- Memoria
+  - Uso
+    - RAM usada · 18.6 % · 18.6 · 18.6 · 18.6
+    - Intercambio usado · 0.0 % · 0.0 · 0.0 · 0.0
+- Quadro NVS 160M
+  - Temperaturas
+    - Temperatura 1 · 49.0 °C · 49.0 · 49.0 · 49.0
+  - Uso
+    - Ventilador · 31.0 % · 31.0 · 31.0 · 31.0
+  - Voltajes
+    - GPU core · 0.900 V · 0.900 · 0.900 · 0.900
+- Red (wlan1)
+  - Tráfico
+    - Bajada · 0.0 kB/s · 0.0 · 0.0 · 0.0
+    - Subida · 0.0 kB/s · 0.0 · 0.0 · 0.0
+    - Recibido · 0.0 MB · 0.0 · 0.0 · 0.0
+    - Enviado · 0.0 MB · 0.0 · 0.0 · 0.0
+
+> **Falta un driver del kernel**
+> Cargando drivetemp tendrías la temperatura de los discos SATA. «Cargar ahora» lo carga hasta que se apague el equipo, con la contraseña de administrador.
+> Para que se cargue siempre:
+> echo drivetemp | sudo tee /etc/modules-load.d/drivetemp.conf
+
+## Diagnóstico
+
+**Módulos del kernel que ampliarían lo que se ve:**
+
+- `drivetemp`: la temperatura de los discos SATA
+  `sudo modprobe drivetemp`
+
+**Datos que faltan:**
+
+- `cpu.clocks.bus_hz` (este equipo no lo expone): Este equipo no publica su reloj de referencia (BCLK).
+- `cpu.clocks.max_turbo_hz` (este equipo no lo expone): Este procesador no publica su frecuencia máxima de fábrica.
+- `gpus.0` (falta un módulo del kernel): nouveau no da las frecuencias, el consumo ni el uso de la tarjeta.
+- `gpus.packages.pnpids` (falta un paquete del sistema): Falta pnp.ids: el fabricante de cada monitor sale con su código de tres letras y no con su nombre. Viene en el paquete hwdata.
+- `privileged.pkexec` (falta un paquete del sistema): Falta pkexec: no hay forma de pedir permisos, y lo que los necesita no sale (los módulos de memoria, el voltaje, el diagnóstico de los discos). Viene en el paquete pkexec. Sin systemd, polkit necesita además libpam-elogind, que trae elogind, y un agente de polkit en la sesión que pida la contraseña, como lxpolkit; después hay que volver a iniciar sesión.
+- `system.kernel` (kernel anterior a 5.15): Tu kernel (5.10) es anterior a Linux 5.15, el mínimo que admite Silux: puede faltar algún dato sin que se diga por qué.
+- `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
+- `cpu.socket` (requiere permisos de administrador): El encapsulado de «Core 2 Duo (Penryn-3M)» no está en la tabla de esta versión de Silux.
+- `spd` (este equipo no lo expone): El bus de la memoria está, pero el kernel no ha registrado ningún chip SPD en él.
+- `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
+- `cpu.power` (este equipo no lo expone): Esta CPU no expone contadores de energía RAPL.
+- `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
+- `cpu.voltage_v` (este equipo no lo expone): Este procesador no publica el voltaje del núcleo.

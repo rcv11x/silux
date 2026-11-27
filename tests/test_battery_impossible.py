@@ -28,6 +28,18 @@ except ImportError:                                    # pragma: no cover
 VOSTRO = EQUIPOS / "celeron-560"
 BAT0 = "sys/devices/LNXSYSTM:00/LNXSYBUS:00/PNP0C0A:00/power_supply/BAT0"
 
+
+def vostro_at_20_v():
+    """The Vostro's dump with its battery as its prueba9 report read it,
+    20.48 V for a pack of 14.8 V nominal; by the prueba13 it reads 0 V."""
+    import shutil
+
+    tmp = tempfile.mkdtemp(prefix="silux-vostro-")
+    copy = pathlib.Path(tmp) / "celeron-560"
+    shutil.copytree(VOSTRO, copy, symlinks=True)
+    (copy / BAT0 / "voltage_now").write_text("20481000\n")
+    return copy
+
 # The same battery as its prueba7 report recorded it: no voltage at all.
 BEFORE = {"charge_now": "0", "current_now": "1000", "cycle_count": "0",
           "manufacturer": "", "model_name": "\x01", "present": "1",
@@ -84,8 +96,12 @@ class TestWhatAPackCanRead(unittest.TestCase):
     def test_the_vostro_has_no_data(self):
         b = foto(VOSTRO)[0].batteries[0]
         self.assertTrue(b.without_data)
+        self.assertEqual((b.voltage_v, b.design_voltage_v), (None, 14.8))
+        earlier = vostro_at_20_v()
+        self.addCleanup(__import__("shutil").rmtree, earlier.parent)
+        b = foto(earlier)[0].batteries[0]
         self.assertEqual((b.impossible_voltage_v, b.design_voltage_v), (20.481, 14.8))
-        self.assertIn("- Tensión descartada: 20.48 V", report.build(foto(VOSTRO)[0]))
+        self.assertIn("- Tensión descartada: 20.48 V", report.build(foto(earlier)[0]))
 
 
 @unittest.skipIf(QApplication is None, "no PySide6")
@@ -105,7 +121,9 @@ class TestOnThePage(unittest.TestCase):
             return visible_texts(window.stack.currentWidget())
 
     def test_the_impossible_voltage_is_said_not_shown(self):
-        texts = self._page(foto(VOSTRO)[0])
+        earlier = vostro_at_20_v()
+        self.addCleanup(__import__("shutil").rmtree, earlier.parent)
+        texts = self._page(foto(earlier)[0])
         self.assertIn(_("bat.nodata.title"), texts)
         self.assertIn(_("bat.nodata.impossible").format(tension="20.48 V",
                                                         nominal="14.80 V"), texts)

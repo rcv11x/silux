@@ -13,7 +13,7 @@ class TestOnAntiX(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.snapshot = foto(EQUIPOS / "core2-p8400")[0]
+        cls.snapshot = foto(EQUIPOS / "core2-p8400-antix")[0]
 
     def test_the_notice_names_what_polkit_needs(self):
         note = next(n for n in self.snapshot.notes if n.path == "privileged.pkexec")

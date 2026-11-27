@@ -73,18 +73,18 @@
     "glsl": "3.30",
     "renderer": "NV98",
     "vendor": "Mesa",
-    "version": "3.3 (Compatibility Profile) Mesa 25.0.7-2+deb13u1"
+    "version": "3.3 (Compatibility Profile) Mesa 25.0.7-0ubuntu0.24.04.2"
    },
    "vaapi": [],
    "vulkan": [
     {
      "api_version": "1.4.305",
      "device_id": 0,
-     "device_memory_bytes": 4098551808,
+     "device_memory_bytes": 4090880000,
      "driver_version": 1,
-     "instance_version": "1.4.309",
+     "instance_version": "1.3.275",
      "kind": "CPU",
-     "name": "llvmpipe (LLVM 19.1.7, 128 bits)",
+     "name": "llvmpipe (LLVM 20.1.2, 128 bits)",
      "vendor_id": 65541
     }
    ],
@@ -101,14 +101,14 @@
   }
  },
  "ioctl_red": {
-  "eth0:0x8915": null,
-  "eth0:0x891b": null,
+  "enp0s25:0x8915": null,
+  "enp0s25:0x891b": null,
   "lo:0x8915": "127.0.0.1",
   "lo:0x891b": "255.0.0.0",
-  "wlan0:0x8915": null,
-  "wlan0:0x891b": null,
-  "wlan1:0x8915": "192.168.1.120",
-  "wlan1:0x891b": "255.255.255.0"
+  "wlp11s0:0x8915": null,
+  "wlp11s0:0x891b": null,
+  "wlp12s0:0x8915": null,
+  "wlp12s0:0x891b": null
  },
  "modinfo": {
   "drivetemp": true
@@ -122,9 +122,10 @@
   "opencl": true,
   "opengl": true,
   "pci.ids": true,
-  "pkexec": false,
-  "pnp.ids": false,
+  "pkexec": true,
+  "pnp.ids": true,
   "python3": true,
+  "systemctl": true,
   "vaapi": true,
   "vulkan": true,
   "xdg-open": true
@@ -228,43 +229,74 @@
  },
  "plataforma": {
   "entorno": {
-   "DESKTOP_SESSION": null,
+   "DESKTOP_SESSION": "xfce",
    "DISPLAY": ":0.0",
-   "GDMSESSION": null,
-   "SHELL": "/usr/bin/zsh",
+   "GDMSESSION": "xfce",
+   "SHELL": "/bin/bash",
    "WAYLAND_DISPLAY": null,
-   "XDG_CURRENT_DESKTOP": "icewm",
-   "XDG_SESSION_TYPE": null
+   "XDG_CURRENT_DESKTOP": "XFCE",
+   "XDG_SESSION_TYPE": "x11"
   },
   "machine": "x86_64",
-  "procesos": 190,
+  "procesos": 198,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
-   "release": "5.10.240-antix.1-amd64-smp",
+   "release": "6.14.0-37-generic",
    "system": "Linux",
-   "version": "#1 SMP Sat Aug 23 16:01:11 EEST 2025"
+   "version": "#37~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Nov 20 10:25:38 UTC 2"
   }
  },
  "realpath": {
+  "/dev/mapper/ventoy": "/dev/mapper/ventoy",
   "/dev/sda2": "/dev/sda2",
-  "/dev/sdb1": "/dev/sdb1"
+  "/dev/sdc1": "/dev/sdc1"
+ },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo: 1748975   24616    0    0    0     0          0         0  1748975   24616    0    0    0     0       0          0\nenp0s25:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\nwlp12s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\nwlp11s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  120330 4232 70361 614919 108949 0 2967 0 0 0\ncpu0 53419 2513 33387 312261 57889 0 300 0 0 0\ncpu1 66911 1719 36974 302658 51060 0 2666 0 0 0\nintr 5086227 710202 16 0 0 0 0 0 0 1 188 0 0 27235 0 0 0 6671 70588 0 0 178787 61494 57 0 5751 2300 384750 157097 8918 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 4846683\nbtime 1764094562\nprocesses 6652\nprocs_running 2\nprocs_blocked 0\nsoftirq 1954310 118 260309 4 410680 39003 0 162069 607459 0 474668\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon4/in0_input": "900\n",
+  "/sys/devices/pci0000:00/0000:00:01.0/0000:01:00.0/hwmon/hwmon4/temp1_input": "51000\n",
+  "/sys/devices/pci0000:00/0000:00:1d.1/usb7/7-1/7-1:1.0/host7/target7:0:0/7:0:0:0/block/sdc/stat": "    1207      915   100598    92037     7535      374  1638144  1621606        0   889476  1713643        0        0        0        0        0        0\n",
+  "/sys/devices/pci0000:00/0000:00:1d.7/usb2/2-2/2-2:1.0/host0/target0:0:0/0:0:0:0/block/sdb/stat": "   49655      476  5935698   342242        0        0        0        0        0   173031   342242        0        0        0        0        0        0\n",
+  "/sys/devices/pci0000:00/0000:00:1f.2/ata1/host1/target1:0:0/1:0:0:0/block/sda/stat": "    1206      884    29402    22579        9        7      128      219        0     6326    23014        0        0        0        0        3      215\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon2/temp2_input": "34000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon2/temp3_input": "34000\n",
+  "/sys/devices/platform/dell_smm_hwmon/hwmon/hwmon3/fan1_input": "3010\n",
+  "/sys/devices/platform/dell_smm_hwmon/hwmon/hwmon3/temp1_input": "35000\n",
+  "/sys/devices/platform/dell_smm_hwmon/hwmon/hwmon3/temp2_input": "44000\n",
+  "/sys/devices/platform/dell_smm_hwmon/hwmon/hwmon3/temp3_input": "47000\n",
+  "/sys/devices/platform/dell_smm_hwmon/hwmon/hwmon3/temp4_input": "49000\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state0/time": "1014725\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state1/time": "48472\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state2/time": "57181458\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state3/time": "3607818251\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state0/time": "75768\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state1/time": "19314\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state2/time": "76266014\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state3/time": "3418660317\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "615345\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "610072\n"
  },
  "statfs": {
-  "/": [
+  "/media/unidad3": [
    119898538,
-   109095385,
-   102986496,
+   109095372,
+   102986483,
    4096
   ],
-  "/media/unidad1": [
+  "/media/unidad4": [
    51633842,
-   29166173,
-   26525113,
+   28275930,
+   25634870,
    4096
   ]
  },
  "systemd": {
-  "arranque": null
+  "arranque": {
+   "FinishTimestampMonotonic": 322837190,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 28000898
+  }
  }
 }

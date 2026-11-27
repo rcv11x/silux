@@ -1110,7 +1110,7 @@ class GpuSection(QWidget):
         self.tile_usage.set_detail(
             _("gpu.tile.video").format(
                 pct=render.percent(gpu.video_busy_percent))
-            if gpu.video_busy_percent else "")
+            if gpu.video_busy_percent is not None else "")
 
     def _apply_tiles_rest(self, gpu: Gpu, candado) -> None:
         relojes = gpu.clocks
@@ -1132,7 +1132,7 @@ class GpuSection(QWidget):
         elif relojes.memory_hz:
             self.tile_clock.set_detail(_("gpu.tile.memclock").format(
                 valor=render.hz(relojes.memory_hz)))
-        elif gpu.sleep_percent and not dormida:
+        elif gpu.sleep_percent is not None and not dormida:
             # Awake, its clock is the mean of when it ran; how long it slept
             # is told here, not averaged into it as 0 MHz.
             self.tile_clock.set_detail(_("gpu.tile.asleep").format(

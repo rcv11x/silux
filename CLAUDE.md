@@ -360,10 +360,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   que no dependen de la zlib de cada distribución. `score.VERSION` y
   `db/scores.json` van siempre en el mismo commit. [docs/benchmark.md](docs/benchmark.md)
 - Qué se ha validado contra qué pieza y qué se escribió a ciegas (NVIDIA sí,
-  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay veintiséis
+  ARM no): [docs/equipos-probados.md](docs/equipos-probados.md). Hay veintinueve
   equipos volcados para la suite: dos del i5-10400 (en reposo y con turbo),
   el Ryzen 7 5800X3D, una máquina QEMU/KVM como la de un probador
-  (`qemu-kvm`, hecha aquí con QEMU), y veintidós importados del anexo de un
+  (`qemu-kvm`, hecha aquí con QEMU), y veinticinco importados del anexo de un
   informe: un ThinkPad T14 (`i5-1135g7`), un sobremesa con Gentoo,
   OpenRC y una RTX 4060 (`i7-10700f`), un Lenovo LOQ híbrido con una RTX
   4050 (`i5-12450h`), un portátil con un Celeron N4000 (`celeron-n4000`),
@@ -372,8 +372,9 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   firmware (`ryzen3-4100`), un i5-3330 con DDR3 de dos velocidades
   (`i5-3330`), un Acer con DDR3L y una partición de intercambio
   (`i5-5200u`), un ThinkPad T480s con batería y umbrales de carga
-  (`i5-8350u`), un Core 2 Duo con antiX, runit, BIOS heredada y una
-  Quadro con nouveau (`core2-p8400`), un Celeron 560 de un núcleo con DDR2
+  (`i5-8350u`), un Core 2 Duo con BIOS heredada y una Quadro con nouveau,
+  con Mint en vivo (`core2-p8400`) y con antiX, runit y un kernel 5.10
+  (`core2-p8400-antix`), un Celeron 560 de un núcleo con DDR2
   (`celeron-560`), un ASUS con Optimus y la GeForce dormida (`i7-4710hq`),
   un sobremesa con un Celeron G3900, una Wi-Fi USB y una tele por HDMI
   (`celeron-g3900`), un HP con Fedora y GNOME (`i3-1115g4`), un Ryzen 5
@@ -384,8 +385,10 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
   diez unidades (`i7-12700kf`), un Ryzen 5 9600X con dos NVMe del mismo
   modelo (`ryzen5-9600x`), un i7-6700K con dos gráficas dedicadas y la
   integrada para una máquina virtual (`i7-6700k`), un Ryzen 9 7900 con su
-  integrada y un solo SPD de dos (`ryzen9-7900`) y un i7-12700 con su UHD
-  770 (`i7-12700`).
+  integrada y un solo SPD de dos (`ryzen9-7900`), un i7-12700 con su UHD
+  770 (`i7-12700`) y un Ryzen 7 5800X con la base cambiada en la BIOS y el
+  turbo apagado y una RTX 3070, con el driver de NVIDIA (`ryzen7-5800x`) y
+  con nouveau desde Mint en vivo (`ryzen7-5800x-nouveau`).
 - Lo que enseña cada volcado, página a página, está en
   `tests/fixtures/screens/`: un cambio que lo altera falla en
   `test_screen_references` hasta que se rehace con

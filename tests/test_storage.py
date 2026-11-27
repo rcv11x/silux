@@ -144,16 +144,17 @@ class TestAnEmptyCardReaderInADump(unittest.TestCase):
         from tests.test_equipos import EQUIPOS, shared_snapshot
         from tests.test_interface_language import visible_texts
 
-        # The T480s's SD reader, empty: sdb, removable and of size 0.
+        # The T480s's SD reader, empty: sdb, removable and of size 0. Its
+        # other drive, sdc, is an SSD by USB.
         snapshot = shared_snapshot(EQUIPOS / "i5-8350u")
-        self.assertEqual([d.name for d in snapshot.disks], ["sda"])
+        self.assertEqual([d.name for d in snapshot.disks], ["sda", "sdc"])
         qt.app()
         with pantalla.Ventana(snapshot) as window:
             window.select_section("Almacenamiento")
             page = window.stack.currentWidget()
             rows = [[cell.full_text() for cell in cells] for cells in page.disks._cells]
             texts = visible_texts(page)
-        self.assertEqual([row[:2] for row in rows], [["sda", "Netac SSD 240GB"]])
+        self.assertEqual([row[0] for row in rows], ["sda", "sdc"])
         self.assertFalse([t for t in texts if "SD/MMC" in t or t == "sdb"])
 
 

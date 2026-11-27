@@ -304,7 +304,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 PowerColor · Navi 44 · PCIe 4.0 × 16
 amdgpu · Mesa 25.0.7 · 15.9 GiB · 32 CU · principal
-- Uso: 4 %
+- Uso: 4 % (video 0.0 %)
 - Frecuencia: 52 MHz (memoria 908 MHz)
 - Temperatura: 35 °C (punto caliente 37.0 °C)
 - Consumo: 13 W (de 175 W)

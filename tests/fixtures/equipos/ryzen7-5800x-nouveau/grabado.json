@@ -1,0 +1,265 @@
+{
+ "cpuid": {
+  "*:0:0": [
+   16,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "*:2147483648:0": [
+   2147483683,
+   1752462657,
+   1145913699,
+   1769238117
+  ],
+  "0:1:0": [
+   10620690,
+   1050624,
+   2130194955,
+   395049983
+  ],
+  "0:2147483649:0": [
+   10620690,
+   536870912,
+   1975662591,
+   802421759
+  ],
+  "0:2147483650:0": [
+   541347137,
+   1702525266,
+   540483694,
+   808466485
+  ],
+  "0:2147483651:0": [
+   758653016,
+   1701998403,
+   1869762592,
+   1936942435
+  ],
+  "0:2147483652:0": [
+   538997359,
+   538976288,
+   538976288,
+   2105376
+  ],
+  "0:7:0": [
+   0,
+   563910569,
+   4195996,
+   16
+  ],
+  "0:7:1": [
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "drm_modes": {
+  "card1": {
+   "DP-3": {
+    "height": 1440,
+    "refresh_hz": 164.55,
+    "width": 2560
+   }
+  }
+ },
+ "gpuapi": {
+  "consultar": {
+   "opencl": [],
+   "opengl": {
+    "egl_vendor": "Mesa Project",
+    "egl_version": "1.5",
+    "glsl": "4.30",
+    "renderer": "NV174",
+    "vendor": "Mesa",
+    "version": "4.3 (Compatibility Profile) Mesa 25.0.7-0ubuntu0.24.04.2"
+   },
+   "vaapi": [],
+   "vulkan": [
+    {
+     "api_version": "1.4.305",
+     "device_id": 9352,
+     "device_memory_bytes": 8858370048,
+     "driver_version": 104857607,
+     "instance_version": "1.3.275",
+     "kind": "dedicada",
+     "name": "NVIDIA GeForce RTX 3070 (NVK GA104)",
+     "vendor_id": 4318
+    },
+    {
+     "api_version": "1.4.305",
+     "device_id": 0,
+     "device_memory_bytes": 33553936384,
+     "driver_version": 1,
+     "instance_version": "1.3.275",
+     "kind": "CPU",
+     "name": "llvmpipe (LLVM 20.1.2, 256 bits)",
+     "vendor_id": 65541
+    }
+   ],
+   "vulkan_icds": [
+    "libvulkan_gfxstream.so",
+    "libvulkan_intel_hasvk.so",
+    "libvulkan_intel.so",
+    "libvulkan_lvp.so",
+    "libvulkan_nouveau.so",
+    "libvulkan_radeon.so",
+    "libvulkan_virtio.so"
+   ],
+   "vulkan_rejected": []
+  }
+ },
+ "ioctl_red": {
+  "enp4s0:0x8915": null,
+  "enp4s0:0x891b": null,
+  "lo:0x8915": "127.0.0.1",
+  "lo:0x891b": "255.0.0.0",
+  "wlp3s0:0x8915": null,
+  "wlp3s0:0x891b": null
+ },
+ "nvml": {
+  "abierta": false
+ },
+ "paquetes": {
+  "egl": true,
+  "kmod": true,
+  "opencl": true,
+  "opengl": true,
+  "pci.ids": true,
+  "pkexec": true,
+  "pnp.ids": true,
+  "python3": true,
+  "systemctl": true,
+  "vaapi": true,
+  "vulkan": true,
+  "xdg-open": true
+ },
+ "pciids": {
+  "1022:1480|1022:790e": {
+   "1022:1480": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Starship/Matisse Root Complex"
+   ],
+   "1022:790e": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH LPC Bridge"
+   ]
+  },
+  "1022:1487|1022:149c|1022:7901|10de:228b|10de:2488|10ec:8168|8086:2526": {
+   "1022:1487": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Starship/Matisse HD Audio Controller"
+   ],
+   "1022:149c": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "Matisse USB 3.0 Host Controller"
+   ],
+   "1022:7901": [
+    "Advanced Micro Devices, Inc. [AMD]",
+    "FCH SATA Controller [AHCI mode]"
+   ],
+   "10de:228b": [
+    "NVIDIA Corporation",
+    "GA104 High Definition Audio Controller"
+   ],
+   "10de:2488": [
+    "NVIDIA Corporation",
+    "GA104 [GeForce RTX 3070 Lite Hash Rate]"
+   ],
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ],
+   "8086:2526": [
+    "Intel Corporation",
+    "Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak]"
+   ]
+  },
+  "10de:2488|10de:2488:1462:3909": {
+   "10de:2488": [
+    "NVIDIA Corporation",
+    "GA104 [GeForce RTX 3070 Lite Hash Rate]"
+   ]
+  },
+  "10ec:8168": {
+   "10ec:8168": [
+    "Realtek Semiconductor Co., Ltd.",
+    "RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller"
+   ]
+  },
+  "8086:2526": {
+   "8086:2526": [
+    "Intel Corporation",
+    "Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak]"
+   ]
+  }
+ },
+ "pciids_fabricante": {
+  "1462": "Micro-Star International Co., Ltd. [MSI]"
+ },
+ "plataforma": {
+  "entorno": {
+   "DESKTOP_SESSION": "xfce",
+   "DISPLAY": ":0.0",
+   "GDMSESSION": "xfce",
+   "SHELL": "/bin/bash",
+   "WAYLAND_DISPLAY": null,
+   "XDG_CURRENT_DESKTOP": "XFCE",
+   "XDG_SESSION_TYPE": "x11"
+  },
+  "kvm": true,
+  "machine": "x86_64",
+  "procesos": 328,
+  "uname": {
+   "machine": "x86_64",
+   "node": "silux-pc",
+   "release": "6.14.0-37-generic",
+   "system": "Linux",
+   "version": "#37~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Nov 20 10:25:38 UTC 2"
+  }
+ },
+ "realpath": {
+  "/dev/mapper/ventoy": "/dev/mapper/ventoy",
+  "/dev/sdb1": "/dev/sdb1"
+ },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo:  126871    1775    0    0    0     0          0         0   126871    1775    0    0    0     0       0          0\nenp4s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\nwlp3s0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  7201 440 6015 492772 29718 0 39 0 0 0\ncpu0 348 4 280 32381 518 0 0 0 0 0\ncpu1 1461 2 176 31740 166 0 0 0 0 0\ncpu2 597 33 842 24563 7473 0 0 0 0 0\ncpu3 311 2 224 32724 283 0 0 0 0 0\ncpu4 441 7 526 28542 3999 0 0 0 0 0\ncpu5 303 0 198 32878 163 0 0 0 0 0\ncpu6 317 2 220 32680 321 0 0 0 0 0\ncpu7 289 0 134 32901 139 0 0 0 0 0\ncpu8 342 2 337 32484 385 0 0 0 0 0\ncpu9 298 0 113 33008 134 0 0 0 0 0\ncpu10 558 73 672 29785 2445 0 1 0 0 0\ncpu11 331 5 434 31259 1159 0 32 0 0 0\ncpu12 659 279 1000 20516 11023 0 0 0 0 0\ncpu13 313 5 322 32504 395 0 0 0 0 0\ncpu14 336 6 344 32392 462 0 0 0 0 0\ncpu15 292 13 188 32405 643 0 1 0 0 0\nintr 1631767 141 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 1 1 1 0 1 0 1 0 1 2895 369 0 0 0 0 0 0 0 0 629535 0 0 0 0 0 0 0 0 0 0 0 0 0 842 0 61658 3323 0 16608 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 2360408\nbtime 1795725076\nprocesses 2857\nprocs_running 1\nprocs_blocked 0\nsoftirq 1175265 2986 74274 4 2574 210736 0 629943 157999 0 96749\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0a:00.3/usb5/5-4/5-4:1.0/host2/target2:0:0/2:0:0:0/block/sda/stat": "   49523      554  5925630   253644        0        0        0        0        0   130344   253644        0        0        0        0        0        0\n",
+  "/sys/devices/pci0000:00/0000:00:08.1/0000:0a:00.3/usb6/6-1/6-1:1.0/host3/target3:0:0/3:0:0:0/block/sdb/stat": "  125499      884 25262918    80775    45959       59 10176608    90388        0   125349   172136        0        0        0        0       35      973\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon0/temp1_input": "40250\n",
+  "/sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon0/temp3_input": "35750\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy10/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy11/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy12/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy13/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy14/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy15/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy5/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy6/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy7/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy8/scaling_cur_freq": "1938000\n",
+  "/sys/devices/system/cpu/cpufreq/policy9/scaling_cur_freq": "1938000\n"
+ },
+ "statfs": {
+  "/media/unidad3": [
+   51633842,
+   28276028,
+   25634968,
+   4096
+  ]
+ },
+ "systemd": {
+  "arranque": {
+   "FinishTimestampMonotonic": 150496021,
+   "InitRDTimestampMonotonic": 0,
+   "UserspaceTimestampMonotonic": 8623966
+  }
+ }
+}

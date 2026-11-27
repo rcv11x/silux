@@ -1,1 +1,1 @@
-BOOT_IMAGE=/boot/vmlinuz-5.10.240-antix.1-amd64-smp root=… ro quiet selinux=0
+BOOT_IMAGE=/casper/vmlinuz boot=casper initrd=/casper/initrd.lz uuid=… username=mint hostname=… quiet splash --

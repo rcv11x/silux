@@ -268,7 +268,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 ASUS · en el procesador
 i915 · Mesa 25.2.8 · 12 EU · integrada · principal
 - Uso: (necesita permisos)
-- Frecuencia: 350 MHz
+- Frecuencia: 350 MHz (en reposo el 0.0 % del tiempo)
 - Temperatura del paquete: 42 °C (compartida con la CPU)
 - Consumo: (necesita permisos)
 

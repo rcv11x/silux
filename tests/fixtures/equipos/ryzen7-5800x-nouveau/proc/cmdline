@@ -1,0 +1,1 @@
+BOOT_IMAGE=/casper/vmlinuz boot=casper uuid=… username=mint hostname=… iso-scan/filename= quiet splash --

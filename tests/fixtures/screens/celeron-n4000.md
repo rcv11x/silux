@@ -263,7 +263,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 Lenovo · GeminiLake · en el procesador
 i915 · Mesa 25.2.6 · 12 EU · integrada · principal
 - Uso: (necesita permisos)
-- Frecuencia: 100 MHz
+- Frecuencia: 100 MHz (en reposo el 0.0 % del tiempo)
 - Temperatura del paquete: 41 °C (compartida con la CPU)
 - Consumo: (necesita permisos)
 

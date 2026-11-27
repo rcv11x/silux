@@ -34,6 +34,7 @@ que hace falta.
 - En Rendimiento, los desplegables, sus etiquetas, «Medir también la escritura» y los botones del historial iban con una letra más pequeña que el resto
 - Con la letra más grande de Ajustes, los botones y los desplegables se quedaban del tamaño de siempre
 - En Sensores, el globo del consumo del procesador decía «intel-rapl · rapl/package_w», también en un Ryzen: ahora dice «RAPL del kernel (powercap)»
+- En Gráficos, la línea bajo el uso o la frecuencia de una integrada de Intel aparecía y desaparecía al pasar por 0, y la página se movía
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

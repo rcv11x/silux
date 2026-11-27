@@ -84,7 +84,7 @@ Node 0x10 [Audio Output] wcaps 0xd0c05: Stereo Amp-Out R/L
     ControlAmp: chs=3, dir=Out, idx=0, ofs=0
   Device: name="92HD71B7X Analog", type="Audio", device=0
   Amp-Out caps: N/A
-  Amp-Out vals:  [0x64 0x64]
+  Amp-Out vals:  [0x60 0x60]
   Converter: stream=0, channel=0
   Power states: 
   Power: setting=D0, actual=D0
@@ -134,13 +134,13 @@ Node 0x16 [Audio Mixer] wcaps 0x200100: Mono
   Connection: 1
      0x15
 Node 0x17 [Audio Mixer] wcaps 0x20010b: Stereo Amp-In
-  Control: name="Dock Mic Playback Volume", index=0, device=0
-    ControlAmp: chs=3, dir=In, idx=3, ofs=0
-  Control: name="Dock Mic Playback Switch", index=0, device=0
-    ControlAmp: chs=3, dir=In, idx=3, ofs=0
   Control: name="Mic Playback Volume", index=0, device=0
     ControlAmp: chs=3, dir=In, idx=3, ofs=0
   Control: name="Mic Playback Switch", index=0, device=0
+    ControlAmp: chs=3, dir=In, idx=3, ofs=0
+  Control: name="Dock Mic Playback Volume", index=0, device=0
+    ControlAmp: chs=3, dir=In, idx=3, ofs=0
+  Control: name="Dock Mic Playback Switch", index=0, device=0
     ControlAmp: chs=3, dir=In, idx=3, ofs=0
   Amp-In caps: ofs=0x17, nsteps=0x1f, stepsize=0x05, mute=1
   Amp-In vals:  [0x80 0x80] [0x80 0x80] [0x80 0x80] [0x80 0x80] [0x80 0x80]
@@ -164,12 +164,12 @@ Node 0x19 [Pin Complex] wcaps 0x40000d: Stereo Amp-Out
     DefAssociation = 0xf, Sequence = 0x4
   Pin-ctls: 0x00:
 Node 0x1a [Audio Selector] wcaps 0x30010d: Stereo Amp-Out
-  Control: name="Dock Mic Boost Volume", index=0, device=0
+  Control: name="Mic Boost Volume", index=0, device=0
     ControlAmp: chs=3, dir=Out, idx=0, ofs=0
   Amp-Out caps: ofs=0x00, nsteps=0x03, stepsize=0x27, mute=0
   Amp-Out vals:  [0x00 0x00]
   Connection: 3
-     0x0b* 0x0c 0x0e
+     0x0b 0x0c 0x0e*
 Node 0x1b [Audio Selector] wcaps 0x30010d: Stereo Amp-Out
   Amp-Out caps: ofs=0x00, nsteps=0x03, stepsize=0x27, mute=0
   Amp-Out vals:  [0x00 0x00]
@@ -245,6 +245,10 @@ Node 0x25 [Audio Selector] wcaps 0x300101: Stereo
   Connection: 3
      0x22* 0x1c 0x1d
 Node 0x26 [Beep Generator Widget] wcaps 0x70000c: Mono Amp-Out
+  Control: name="Beep Playback Switch", index=0, device=0
+    ControlAmp: chs=1, dir=Out, idx=0, ofs=0
+  Control: name="Beep Playback Volume", index=0, device=0
+    ControlAmp: chs=1, dir=Out, idx=0, ofs=0
   Amp-Out caps: ofs=0x03, nsteps=0x03, stepsize=0x17, mute=1
   Amp-Out vals:  [0x00]
 Node 0x27 [Pin Complex] wcaps 0x400000: Mono

@@ -49,7 +49,7 @@ FILLER = {"5800x3d": True, "i5-10400": True, "i5-10400-turbo": True,
           "i5-3330": True,
           # Each follows its processor: 35.5 °C with the cores at 35, and
           # 74 °C with thinkpad_acpi's CPU at 74.
-          "core2-p8400": False, "i5-8350u": False,
+          "core2-p8400": False, "core2-p8400-antix": False, "i5-8350u": False,
           # 67.5 °C with the core at 67, and 55 °C with ASUS's sensor at 55.
           "celeron-560": False, "i7-4710hq": False,
           # 27.8 and 29.8 °C again, with the package at 39.

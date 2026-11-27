@@ -18,7 +18,7 @@ try:
 except ImportError:                                    # pragma: no cover
     QApplication = None
 
-OLD_KERNEL = EQUIPOS / "core2-p8400"               # 5.10
+OLD_KERNEL = EQUIPOS / "core2-p8400-antix"               # 5.10
 
 
 class TestTheHeading(unittest.TestCase):

@@ -127,7 +127,7 @@
     {
      "api_version": "1.3.318",
      "device_id": 5654,
-     "device_memory_bytes": 8232599552,
+     "device_memory_bytes": 8232587264,
      "driver_version": 104865800,
      "instance_version": "1.3.275",
      "kind": "integrada",
@@ -137,7 +137,7 @@
     {
      "api_version": "1.4.318",
      "device_id": 0,
-     "device_memory_bytes": 8232599552,
+     "device_memory_bytes": 8232587264,
      "driver_version": 104865800,
      "instance_version": "1.3.275",
      "kind": "CPU",
@@ -173,8 +173,8 @@
   "enp2s0f1:0x891b": null,
   "lo:0x8915": "127.0.0.1",
   "lo:0x891b": "255.0.0.0",
-  "veth87c829f:0x8915": null,
-  "veth87c829f:0x891b": null,
+  "veth0ca0a80:0x8915": null,
+  "veth0ca0a80:0x891b": null,
   "wlp3s0:0x8915": "192.168.1.120",
   "wlp3s0:0x891b": "255.255.255.0"
  },
@@ -277,7 +277,7 @@
   },
   "kvm": true,
   "machine": "x86_64",
-  "procesos": 257,
+  "procesos": 228,
   "uname": {
    "machine": "x86_64",
    "node": "silux-pc",
@@ -291,11 +291,63 @@
   "/dev/sda3": "/dev/sda3",
   "/dev/sdb1": "/dev/sdb1"
  },
+ "segunda_lectura": {
+  "/proc/self/net/dev": "Inter-|   Receive                                                |  Transmit\n face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed\n    lo:   19796     213    0    0    0     0          0         0    19796     213    0    0    0     0       0          0\nenp2s0f1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0\nwlp3s0: 11916760    8357    0    0    0     0          0         0   470006    5054    0    0    0     0       0          0\ndocker0:      84       3    0    0    0     0          0         0    11587      73    0   11    0     0       0          0\nveth0ca0a80:     126       3    0    0    0     0          0         0    18622     121    0    0    0     0       0          0\n",
+  "/proc/stat": "cpu  10699 271 6634 120905 48535 0 178 0 0 0\ncpu0 2319 140 1861 29362 12969 0 108 0 0 0\ncpu1 3759 77 1681 29996 11064 0 65 0 0 0\ncpu2 2165 24 1587 32223 10909 0 2 0 0 0\ncpu3 2455 29 1504 29322 13590 0 2 0 0 0\nintr 770732 0 26 0 0 0 0 0 57831 0 6 0 0 0 0 0 0 0 0 1029 0 0 0 0 37 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4804 27 0 1 1 1714 0 0 0 0 3 55210 0 25 17926 14525 805 5709 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 953576\nbtime 1795725646\nprocesses 17837\nprocs_running 1\nprocs_blocked 0\nsoftirq 496991 15004 104738 3 22321 56678 0 1575 194158 61 102453\n",
+  "/sys/devices/pci0000:00/0000:00:02.0/drm/card1/gt/gt0/rc6_residency_ms": "502374\n",
+  "/sys/devices/pci0000:00/0000:00:02.0/drm/card1/gt/gt0/rps_act_freq_mhz": "300\n",
+  "/sys/devices/pci0000:00/0000:00:02.0/drm/card1/power/rc6_residency_ms": "502375\n",
+  "/sys/devices/pci0000:00/0000:00:14.0/usb3/3-1/3-1:1.0/host2/target2:0:0/2:0:0:0/block/sdb/stat": "     468      884   120454     6557        6        2       64        9        0      287     6575        0        0        0        0        3        8\n",
+  "/sys/devices/pci0000:00/0000:00:1f.2/ata2/host1/target1:0:0/1:0:0:0/block/sda/stat": "   25712     4729  8165558  1649551    29051     3899  8409154   459128        0   272985  2192943        0        0        0        0     1482    84264\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp1_input": "45000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp2_input": "45000\n",
+  "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp3_input": "43000\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state0/time": "1828923\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state1/time": "879365\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state2/time": "9440040\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state3/time": "5476706\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state4/time": "3521497\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state5/time": "28757354\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state6/time": "4478311\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state7/time": "189124122\n",
+  "/sys/devices/system/cpu/cpu0/cpuidle/state8/time": "178084620\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state0/time": "1933469\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state1/time": "6565383\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state2/time": "10723320\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state3/time": "6304898\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state4/time": "3592516\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state5/time": "25490105\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state6/time": "6133611\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state7/time": "197389905\n",
+  "/sys/devices/system/cpu/cpu1/cpuidle/state8/time": "150296844\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state0/time": "3700042\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state1/time": "778283\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state2/time": "9116215\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state3/time": "3708266\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state4/time": "2118082\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state5/time": "22560135\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state6/time": "2465678\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state7/time": "146390559\n",
+  "/sys/devices/system/cpu/cpu2/cpuidle/state8/time": "239030028\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state0/time": "3838834\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state1/time": "892245\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state2/time": "9464955\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state3/time": "4005571\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state4/time": "2237462\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state5/time": "22354098\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state6/time": "2567492\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state7/time": "148575487\n",
+  "/sys/devices/system/cpu/cpu3/cpuidle/state8/time": "233891817\n",
+  "/sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq": "1097448\n",
+  "/sys/devices/system/cpu/cpufreq/policy1/scaling_cur_freq": "861996\n",
+  "/sys/devices/system/cpu/cpufreq/policy2/scaling_cur_freq": "500000\n",
+  "/sys/devices/system/cpu/cpufreq/policy3/scaling_cur_freq": "500000\n"
+ },
  "statfs": {
   "/": [
    118891265,
-   62274293,
-   61936188,
+   62048368,
+   61710487,
    4096
   ],
   "/boot/efi": [
@@ -306,16 +358,16 @@
   ],
   "/media/unidad21": [
    51633842,
-   29166083,
-   26525023,
+   28275971,
+   25634911,
    4096
   ]
  },
  "systemd": {
   "arranque": {
-   "FinishTimestampMonotonic": 88242387,
+   "FinishTimestampMonotonic": 101069192,
    "InitRDTimestampMonotonic": 0,
-   "UserspaceTimestampMonotonic": 14496687
+   "UserspaceTimestampMonotonic": 14355828
   }
  }
 }
