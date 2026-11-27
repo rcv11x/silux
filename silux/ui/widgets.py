@@ -572,6 +572,9 @@ class Card(QFrame):
         outer.setSpacing(m.card_gap)
 
         self._title_label: Optional[QLabel] = None
+        self._icon_label: Optional[QLabel] = None
+        # The section whose icon the title took.
+        self.icon_section: Optional[str] = None
         if title:
             # Como viene escrito, sin pasarlo a mayúsculas: «nvme0n1» y
             # «enp6s0» son nombres, y «NVME0N1» no lo es de nada.
@@ -580,7 +583,17 @@ class Card(QFrame):
             # A long title in a wide font is wider than a narrow window's
             # page: in two lines rather than pushing the page off the edge.
             self._title_label.setWordWrap(True)
-            outer.addWidget(self._title_label)
+            # Its section's icon, small and grey, as in the sidebar: taken
+            # on show from the page (`card_icon`), or given to the card.
+            self._icon_label = QLabel()
+            self._icon_label.setObjectName("CardIcon")
+            self._icon_label.hide()
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(max(6, m.card_gap - 2))
+            row.addWidget(self._icon_label, 0, Qt.AlignmentFlag.AlignTop)
+            row.addWidget(self._title_label, 1)
+            outer.addLayout(row)
 
         self.body = QVBoxLayout()
         self.body.setContentsMargins(0, 0, 0, 0)
@@ -594,6 +607,37 @@ class Card(QFrame):
         """Cambia el título de la tarjeta si la tenía."""
         if self._title_label is not None:
             self._title_label.setText(title)
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        if self._icon_label is not None and self._icon_label.pixmap().isNull():
+            self._take_icon()
+
+    def _take_icon(self) -> None:
+        """The section's icon of the nearest widget that names one."""
+        from . import icons
+
+        holder: Optional[QWidget] = self
+        while holder is not None and not holder.property("card_icon"):
+            holder = holder.parentWidget()
+        if holder is None or not holder.property("card_icon_color"):
+            return
+        side = card_icon_side(self._title_label)
+        pixmap = icons.nav_pixmap(holder.property("card_icon"),
+                                  holder.property("card_icon_color"), side)
+        if pixmap is None:
+            return
+        self.icon_section = holder.property("card_icon")
+        self._icon_label.setPixmap(pixmap)
+        # As tall as the title's first line, the icon in its middle.
+        self._icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._icon_label.setFixedSize(side, max(side, self._title_label.fontMetrics().height()))
+        self._icon_label.show()
+
+
+def card_icon_side(title: QLabel) -> int:
+    """As tall as the title's capitals and a little more, from its font."""
+    return max(12, round(title.fontMetrics().height() * 0.8))
 
 
 class Badge(QLabel):

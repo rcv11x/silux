@@ -14,6 +14,7 @@ empaquetador se para si ese complemento no entra en el AppImage.
 from __future__ import annotations
 
 import pathlib
+from typing import Optional
 
 from PySide6.QtCore import QBuffer, QByteArray, QSize
 from PySide6.QtGui import QIcon, QImage, QImageReader, QPixmap
@@ -118,6 +119,12 @@ FOOT = {
 def foot_icon(name: str, color: str, lado: int) -> QIcon:
     """An icon of the sidebar's foot, in the bar's own strokes."""
     return QIcon(_de_trazo(FOOT[name], color, lado))
+
+
+def nav_pixmap(seccion: str, color: str, lado: int) -> Optional[QPixmap]:
+    """A section's icon as a picture, for a card's title; None without one."""
+    cuerpo = NAV.get(seccion)
+    return _de_trazo(cuerpo, color, lado) if cuerpo is not None else None
 
 
 def sidebar_icon(folded: bool, color: str, lado: int) -> QIcon:

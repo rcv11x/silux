@@ -474,11 +474,15 @@ class MainWindow(QMainWindow):
         self.settings_page.share_copy_requested.connect(self._on_share_copy)
         self.home_page.share_copy_requested.connect(self._on_share_copy)
         self.settings_page.share_save_requested.connect(self._on_share_save)
-        for page in (self.home_page, self.cpu_page, self.caches_page, self.board_page,
-                     self.memory_page, self.graphics_page, self.storage_page,
-                     self.network_page, self.devices_page, self.battery_page,
-                     self.system_page, self.benchmarks_page,
-                     self.monitor_page, self.settings_page):
+        pages = (self.home_page, self.cpu_page, self.caches_page, self.board_page,
+                 self.memory_page, self.graphics_page, self.storage_page,
+                 self.network_page, self.devices_page, self.battery_page,
+                 self.system_page, self.benchmarks_page,
+                 self.monitor_page, self.settings_page)
+        for page, (section, _enabled) in zip(pages, SECTIONS):
+            # Each card's title takes its section's icon (`widgets.Card`).
+            page.setProperty("card_icon", section)
+            page.setProperty("card_icon_color", self._palette.muted)
             self.stack.addWidget(page)
         self._atrasadas: set = set()
         self.stack.currentChanged.connect(self._poner_al_dia)

@@ -68,6 +68,7 @@ que hace falta.
 - Ajustes abre la carpeta de datos (historial de pruebas, registros e informes) y la de los ajustes
 - Sistema enseña los paquetes instalados (pacman o dpkg, y Flatpak y Snap), la versión del escritorio («KDE Plasma 6.8.3»), el control de acceso (SELinux, AppArmor), la zona horaria, el idioma y región, la carga media, los servicios que fallan y los errores del kernel desde el arranque, agrupados con cuántas veces salió cada uno
 - Sistema ya no deja huecos: las vulnerabilidades y el intercambio van uno encima del otro, junto al arranque
+- Cada tarjeta lleva junto al título el icono gris de su sección; en Inicio, el de la sección a la que lleva
 - Rendimiento → Procesador se ve como Memoria y Disco: las opciones a la izquierda y «Ejecutar la prueba» en el color de acento a la derecha; «Renombrar» y «Borrar» de cada prueba van en su menú «⋯»
 - En Sensores, la columna «Último minuto» llega siempre hasta el borde, también después de arrastrar las demás
 - En Memoria, por qué no se lee el chip SPD de los módulos va en un aviso propio y más corto

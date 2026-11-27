@@ -428,5 +428,6 @@ def _de_layout(disposicion, raiz, saltar=None, level: int = 3) -> list[str]:
         if item.widget() is not None:
             lineas += _lineas(item.widget(), raiz, level)
         elif item.layout() is not None:
-            lineas += _de_layout(item.layout(), raiz, level=level)
+            # A card's title can sit in a row of its own, beside its icon.
+            lineas += _de_layout(item.layout(), raiz, saltar=saltar, level=level)
     return lineas

@@ -191,13 +191,13 @@ class HomePage(ScrollPage):
         layout.addWidget(self._cabecera())
 
         arriba = ResponsiveRow(min_item_width=300)
-        self.cpu = self._tarjeta(arriba, _("home.card.cpu"), _("nav.cpu"))
-        self.gpu = self._tarjeta(arriba, _("home.card.gpu"), _("nav.graphics"))
+        self.cpu = self._tarjeta(arriba, _("home.card.cpu"), "nav.cpu")
+        self.gpu = self._tarjeta(arriba, _("home.card.gpu"), "nav.graphics")
         layout.addWidget(arriba)
 
         abajo = ResponsiveRow(min_item_width=300)
-        self.memoria = self._tarjeta(abajo, _("nav.memory"), _("nav.memory"), cuerpo="barra")
-        self.discos = self._tarjeta(abajo, _("nav.storage"), _("nav.storage"),
+        self.memoria = self._tarjeta(abajo, _("nav.memory"), "nav.memory", cuerpo="barra")
+        self.discos = self._tarjeta(abajo, _("nav.storage"), "nav.storage",
                                     cuerpo="barra")
         layout.addWidget(abajo)
 
@@ -205,9 +205,9 @@ class HomePage(ScrollPage):
         # cuatro. Tres más, de lo que se viene a mirar sin saber dónde está:
         # qué va caliente, por dónde sale la red y qué placa es.
         tercera = ResponsiveRow(min_item_width=240)
-        self.temperaturas = self._tarjeta(tercera, _("home.card.temps"), _("nav.sensors"))
-        self.red = self._tarjeta(tercera, _("nav.network"), _("nav.network"))
-        self.placa = self._tarjeta(tercera, _("nav.board"), _("nav.board"), cuerpo=None)
+        self.temperaturas = self._tarjeta(tercera, _("home.card.temps"), "nav.sensors")
+        self.red = self._tarjeta(tercera, _("nav.network"), "nav.network")
+        self.placa = self._tarjeta(tercera, _("nav.board"), "nav.board", cuerpo=None)
         layout.addWidget(tercera)
         layout.addWidget(self.permission_notice)
 
@@ -217,7 +217,10 @@ class HomePage(ScrollPage):
 
     def _tarjeta(self, host: ResponsiveRow, titulo: str, seccion: str,
                  cuerpo: Optional[str] = "grafica") -> _TarjetaResumen:
-        tarjeta = _TarjetaResumen(titulo, seccion, self._p, cuerpo=cuerpo)
+        tarjeta = _TarjetaResumen(titulo, _(seccion), self._p, cuerpo=cuerpo)
+        # The icon of the section it leads to, not Home's.
+        tarjeta.setProperty("card_icon", seccion)
+        tarjeta.setProperty("card_icon_color", self._p.muted)
         tarjeta.pulsada.connect(self.seccion_pedida)
         host.add(tarjeta)
         return tarjeta
