@@ -331,9 +331,9 @@ amdgpu · Mesa 25.0.7 · 15.9 GiB · 32 CU · principal
 - Infinity Cache: 32 MiB
 - Unidades de sombreado: 2 048 (calculado)
 - Unidades de texturas: 128 (calculado)
-- Cálculo FP32: 22.9 TFLOPS (calculado)
-- Relleno de píxeles: 178.6 Gpíxeles/s (calculado)
-- Relleno de texturas: 357.1 Gtexels/s (calculado)
+- Cálculo FP32: 22.9 TFLOPS (calculado a 2.79 GHz)
+- Relleno de píxeles: 178.6 Gpíxeles/s (calculado a 2.79 GHz)
+- Relleno de texturas: 357.1 Gtexels/s (calculado a 2.79 GHz)
 
 ##### Identificadores
 

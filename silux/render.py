@@ -1241,20 +1241,22 @@ def gpu_figure_rows(figures) -> list[tuple[str, str, str]]:
     each value saying it is calculated."""
     calculated = _("gpu.calculated")
     clock = hz(figures.clock_hz)
+    # A figure that depends on the clock says which one, in its own text.
+    at_clock = _("gpu.calculated.at").format(clock=clock)
     rows = [
         ("gpu.field.units", f"{thousands(figures.shading_units)} {calculated}",
          _("gpu.tip.units").format(cus=thousands(figures.shading_units // 64))),
         ("gpu.field.tmus", f"{thousands(figures.texture_units)} {calculated}",
          _("gpu.tip.tmus")),
-        ("gpu.field.fp32", f"{tflops(figures.tflops)} {calculated}",
+        ("gpu.field.fp32", f"{tflops(figures.tflops)} {at_clock}",
          _("gpu.tip.fp32").format(units=thousands(figures.shading_units),
                                   ops=figures.operations, clock=clock)),
-        ("gpu.field.texels", f"{fill_rate(figures.gigatexels, 'gpu.texels')} {calculated}",
+        ("gpu.field.texels", f"{fill_rate(figures.gigatexels, 'gpu.texels')} {at_clock}",
          _("gpu.tip.texels").format(clock=clock)),
     ]
     if figures.gigapixels is not None:
         rows.insert(3, ("gpu.field.pixels",
-                        f"{fill_rate(figures.gigapixels, 'gpu.pixels')} {calculated}",
+                        f"{fill_rate(figures.gigapixels, 'gpu.pixels')} {at_clock}",
                         _("gpu.tip.pixels").format(clock=clock)))
     return rows
 

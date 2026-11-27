@@ -771,6 +771,7 @@
   "gpu.asleep.short": "dormida",
   "gpu.bus.bits": "{n} bits",
   "gpu.calculated": "(calculado)",
+  "gpu.calculated.at": "(calculado a {clock})",
   "gpu.card.apis": "Bibliotecas gráficas",
   "gpu.card.card": "Tarjeta",
   "gpu.card.clocks": "Relojes y enlace",

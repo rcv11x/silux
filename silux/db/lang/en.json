@@ -771,6 +771,7 @@
   "gpu.asleep.short": "asleep",
   "gpu.bus.bits": "{n}-bit",
   "gpu.calculated": "(calculated)",
+  "gpu.calculated.at": "(calculated at {clock})",
   "gpu.card.apis": "Graphics libraries",
   "gpu.card.card": "Card",
   "gpu.card.clocks": "Clocks and link",

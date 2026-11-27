@@ -53,14 +53,41 @@ class TestOnThePage(unittest.TestCase):
             geometry.settle(app)
             section = window.graphics_page.findChildren(GpuSection)[0]
             figures = gpu_figures.of(gpu)
-            for field, text in (("gpu.field.units", render.thousands(figures.shading_units)),
-                                ("gpu.field.fp32", render.tflops(figures.tflops))):
+            at_clock = _("gpu.calculated.at").format(clock=render.hz(figures.clock_hz))
+            for field, text, said in (
+                    ("gpu.field.units", render.thousands(figures.shading_units),
+                     _("gpu.calculated")),
+                    ("gpu.field.fp32", render.tflops(figures.tflops), at_clock)):
                 label = section.card.value_label(_(field))
                 with self.subTest(field=field):
                     self.assertFalse(label.isHidden())
                     self.assertIn(text, label.full_text())
-                    self.assertIn(_("gpu.calculated"), label.full_text())
+                    self.assertIn(said, label.full_text())
                     self.assertTrue(label.toolTip())
+
+    def test_a_figure_of_the_clock_says_which_clock(self):
+        """«41.3 TFLOPS (calculado a 2.52 GHz)»: in the text, not only on
+        hover, since the maker's sheet uses its own, higher clock."""
+        from silux import render
+        from silux.i18n import _
+        from silux.ui.pages.graphics import GpuSection
+        from tests import geometry, pantalla, qt
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        app = qt.app()
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
+        figures = gpu_figures.of(snapshot.gpus[snapshot.working_gpu])
+        at_clock = _("gpu.calculated.at").format(clock=render.hz(figures.clock_hz))
+        with pantalla.Ventana(snapshot) as window:
+            window.select_section("Gráficos")
+            geometry.settle(app)
+            card = window.graphics_page.findChildren(GpuSection)[0].card
+            self.assertEqual(card.value_label(_("gpu.field.fp32")).full_text(),
+                             f"{render.tflops(figures.tflops)} {at_clock}")
+            for field in ("gpu.field.texels", "gpu.field.pixels"):
+                with self.subTest(field=field):
+                    self.assertTrue(card.value_label(_(field)).full_text().endswith(at_clock))
+            self.assertNotIn(at_clock, card.value_label(_("gpu.field.units")).full_text())
 
 
 if __name__ == "__main__":

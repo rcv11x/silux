@@ -21,7 +21,7 @@ que hace falta.
 - En Sensores, clic derecho en un sensor para fijarlo arriba, en su propia rama con el nombre de su aparato; se recuerda
 - La salud de cada disco de un vistazo, en su tarjeta de Almacenamiento: «Bien», «Vigilar» o «Haz copia ya», con el porqué, solo con lo que declara el propio disco o la especificación de NVMe; en SATA llega como mucho a «Vigilar»
 - Dispositivos lista lo que no tiene driver del kernel (una wifi, un controlador USB, el sonido) con su ID y qué se puede hacer; un driver que se carga se ve al momento
-- En una Radeon, Gráficos calcula las unidades de sombreado y de texturas, los TFLOPS en FP32 y los rellenos de píxeles y texturas, cada cifra marcada como calculada y con su fórmula al pasar el ratón
+- En una Radeon, Gráficos calcula las unidades de sombreado y de texturas, los TFLOPS en FP32 y los rellenos de píxeles y texturas, cada cifra marcada como calculada, con el reloj al que se calculó («41.3 TFLOPS (calculado a 2.52 GHz)») y su fórmula al pasar el ratón
 - La prueba de disco tiene un perfil «Personalizado»: patrón, bloque y cola a elegir, con un hilo; su comparación con la vez anterior y su historial van solo con pruebas iguales
 - Los botones, desplegables y casillas llevan la letra del resto del programa en todas las páginas y crecen con el tamaño de letra de Ajustes; un botón que no cabe parte su texto en dos líneas
 - Los desplegables miden lo que su opción más larga, con un mínimo y un tope, y no se estiran a todo el ancho
