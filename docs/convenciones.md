@@ -125,7 +125,7 @@ que declara el paquete, y hay un test que lo vigila. Como mucho una versión
 al día: la versión es la fecha y no hay formato para dos.
 
 Se publica como release normal, no *prerelease*, con la versión como
-etiqueta y como título: así sale como «Latest» en GitHub y la encuentran las
+etiqueta (sin «v») y como título: así sale como «Latest» en GitHub y la encuentran las
 copias de las pruebas, en cualquier canal (`docs/arquitectura.md`).
 
 Debajo del título de cada versión, una línea «Con informes de Ana, Luis y

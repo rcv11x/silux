@@ -519,7 +519,7 @@ desconecta al destruirlo (`tests/test_closed_windows_go.py`).
   (`2026.11.28`), del día en que se publica y puesta al publicar, junto con la
   entrada del CHANGELOG. Como mucho una al día: si hiciera falta otra el
   mismo día, se pregunta al autor. Se publica como release normal (no
-  *prerelease*), con la versión de etiqueta y de título, y la etiqueta en el
+  *prerelease*), con la versión de etiqueta (sin «v») y de título, y la etiqueta en el
   commit de publicar: GitHub ordena por el día de ese commit, y así las
   copias de las pruebas la encuentran en cualquier canal
   (`tests/test_date_versions_on_old_updaters.py`). Sin canales.
