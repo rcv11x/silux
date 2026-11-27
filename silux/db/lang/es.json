@@ -1924,6 +1924,7 @@
   "share.cores.one": "{n} núcleo",
   "share.dialog": "Guardar la imagen del equipo",
   "share.failed": "No se pudo guardar la imagen",
+  "share.memory.swap": "{size} de intercambio",
   "share.modules": "{n} módulos",
   "share.modules.one": "{n} módulo",
   "share.saved": "Imagen guardada en {ruta}",

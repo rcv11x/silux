@@ -1924,6 +1924,7 @@
   "share.cores.one": "{n} core",
   "share.dialog": "Save the system image",
   "share.failed": "The image could not be saved",
+  "share.memory.swap": "{size} of swap",
   "share.modules": "{n} modules",
   "share.modules.one": "{n} module",
   "share.saved": "Image saved to {ruta}",

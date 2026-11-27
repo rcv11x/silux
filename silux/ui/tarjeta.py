@@ -96,6 +96,10 @@ def _fila(snapshot: Snapshot) -> list[tuple[str, str, str]]:
                 render.counted("share.modules", len(snapshot.spd)),
                 spd.dram_type or "",
             ) if x)
+        elif memoria.swap_total_bytes:
+            # The modules need permissions; the swap is known, and the row
+            # keeps the two lines of the others.
+            detalle = _("share.memory.swap").format(size=render.size(memoria.swap_total_bytes))
         filas.append((_("nav.memory"), render.size(memoria.total_bytes), detalle))
 
     if (nombre := snapshot.board.display_name):

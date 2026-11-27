@@ -165,3 +165,21 @@ class TestTheDisksRow(unittest.TestCase):
         self.assertEqual(row[2], " · ".join(render.disk_kinds(snapshot.disks)))
         self.assertIn("1 × SSD", row[2])
         self.assertNotIn("Flash", row[2])
+
+
+class TestTheMemoryRow(unittest.TestCase):
+    """Without permissions the modules aren't read: the row says the swap,
+    which is known, instead of standing without a line under it."""
+
+    def test_without_modules_it_says_the_swap(self):
+        from silux import render
+        from silux.i18n import _
+        from silux.ui.tarjeta import _fila
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        snapshot = shared_snapshot(EQUIPOS / "5800x3d")
+        self.assertFalse(snapshot.modules or snapshot.spd)
+        self.assertTrue(snapshot.system.memory.swap_total_bytes)
+        [row] = [r for r in _fila(snapshot) if r[0] == _("nav.memory")]
+        self.assertEqual(row[2], _("share.memory.swap").format(
+            size=render.size(snapshot.system.memory.swap_total_bytes)))
