@@ -428,7 +428,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2376 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2372 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
@@ -515,12 +515,14 @@ desconecta al destruirlo (`tests/test_closed_windows_go.py`).
   ha medido, y se espera respuesta.
 - **Lo que depende de que alguien se acuerde de subir un número no es una
   comprobación.** Se compara el contenido.
-- **GitHub ordena las releases por el día del commit de su etiqueta y, dentro
-  del mismo día, por el nombre como texto**: «0.4.0rc10» salió debajo de
-  «0.4.0rc9» y «0.4.0rc8», publicadas el mismo día. No se publica una versión
-  el día de otra cuyo nombre ordene por encima como texto, y después de
-  publicar se mira que salga la primera en la página. «Buscar ahora» compara
-  versiones, no ese orden (`updates.latest`).
+- **Rolling release, la versión es la fecha**: `AAAA.M.D` sin ceros delante
+  (`2026.11.28`), del día en que se publica y puesta al publicar, junto con la
+  entrada del CHANGELOG. Como mucho una al día: si hiciera falta otra el
+  mismo día, se pregunta al autor. Se publica como release normal (no
+  *prerelease*), con la versión de etiqueta y de título, y la etiqueta en el
+  commit de publicar: GitHub ordena por el día de ese commit, y así las
+  copias de las pruebas la encuentran en cualquier canal
+  (`tests/test_date_versions_on_old_updaters.py`). Sin canales.
 - Lo local de quien trabaja aquí (sus notas, su equipo, su forma de trabajar)
   va en `CLAUDE.local.md`, que no se publica.
 
@@ -580,7 +582,8 @@ del repositorio.
   sitio.
 
 **Las notas de una versión y su entrada del CHANGELOG** (desde la prueba13;
-las anteriores se quedan como están), como las de Waywallen o Heroic:
+las anteriores se quedan como están; desde la primera por fecha, el título es
+`## AAAA.M.D`), como las de Waywallen o Heroic:
 
 - El CHANGELOG está en español: su entrada lleva Lo destacado, Mejoras,
   Arreglos y Problemas conocidos. Las notas de la versión llevan los dos
