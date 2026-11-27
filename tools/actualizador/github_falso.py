@@ -22,15 +22,15 @@ from mitmproxy import ctx, http
 # Los dos tipos con el mismo archivo: así se prueba también el `-compat`,
 # que busca el suyo y no el normal.
 NOMBRES = ("silux-x86_64.AppImage", "silux-x86_64-compat.AppImage")
-# La final de la prueba1 (0.4.0rc1): es justo el salto que se quiere probar.
-ETIQUETA = "v0.4.0"
+# The first version numbered by its date: the jump from a prueba to be tried.
+ETIQUETA = "2026.11.28"
 DESCARGA = f"https://github.com/rcv11x/silux/releases/download/{ETIQUETA}"
 OBJETOS = "https://objects.githubusercontent.com/github-production-release-asset/silux"
 
 
 def load(loader):
     loader.add_option("modo", str, "bien", "bien, sha-mal o http")
-    loader.add_option("nuevo", str, "", "el AppImage que se publica como v0.4.0")
+    loader.add_option("nuevo", str, "", "el AppImage que se publica como 2026.11.28")
 
 
 def request(flow: http.HTTPFlow) -> None:

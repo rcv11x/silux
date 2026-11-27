@@ -77,8 +77,8 @@ class Release:
 
 # -- versions -----------------------------------------------------------------
 
-# «0.4.0rc1» is the 0.4-prueba1: understood to tell what is ahead, but never
-# offered as a version to update to.
+# A version is the day it was published, «2026.11.28»: three numbers, like
+# the pruebas before it, «0.4.0rc14», which are read to compare with.
 _VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(?:rc(\d+))?")
 
 
@@ -103,38 +103,28 @@ def _sort_key(text: str) -> Optional[tuple[int, ...]]:
     return base + ((0, int(rc)) if rc is not None else (1, 0))
 
 
-CHANNELS = ("stable", "testing")
+def latest(releases: object) -> Optional[Release]:
+    """The highest version published as a normal release in the list the
+    API gives.
 
-
-def channel_for(preference: str, current: str = __version__) -> str:
-    """The channel to look in. Without a choice, a test version follows the
-    tests: whoever runs the 0.4-prueba2 gets the prueba3 with «Buscar
-    ahora», and a final, only finals."""
-    if preference in CHANNELS:
-        return preference
-    return "testing" if (_sort_key(current) or (0, 0, 0, 1))[3] == 0 else "stable"
-
-
-def latest(releases: object, channel: str = "stable") -> Optional[Release]:
-    """The highest published release in the list the API gives.
-
-    Drafts are left out, and anything not shaped as expected: the reply comes
-    from outside and nothing is taken for granted. The test versions (marked
-    *prerelease*, or tagged «rcN») only on the testing channel.
+    A rolling release has no channels: every version is published as a
+    normal release. Drafts and prereleases are left out (the pruebas were
+    prereleases, and are behind anyway), and anything not shaped as
+    expected: the reply comes from outside and nothing is taken for granted.
     """
     best: Optional[Release] = None
     for entry in releases if isinstance(releases, list) else ():
         if not isinstance(entry, dict):
             continue
-        if entry.get("draft"):
+        if entry.get("draft") or entry.get("prerelease"):
             continue
         match = _VERSION.fullmatch(str(entry.get("tag_name") or "").strip())
         if match is None:
             continue
         version = tuple(int(n) for n in match.groups()[:3])
         rc = int(match.group(4)) if match.group(4) is not None else None
-        if (entry.get("prerelease") or rc is not None) and channel != "testing":
-            continue
+        if rc is not None:
+            continue                     # a prueba is never offered
         assets_by_name = {}
         for asset in entry.get("assets") or ():
             if isinstance(asset, dict) and asset.get("name") and asset.get("browser_download_url"):
@@ -308,14 +298,14 @@ def _open_download(opener: Opener, url: str) -> BinaryIO:
         raise _network_error(error) from error
 
 
-def check(opener: Opener = open_url, channel: str = "stable") -> Optional[Release]:
-    """The latest release published on that channel; None if there is none."""
+def check(opener: Opener = open_url) -> Optional[Release]:
+    """The latest release published; None if there is none."""
     data = _read_all(opener, API_URL, MAX_LIST_BYTES)
     try:
         releases = json.loads(data.decode("utf-8"))
     except ValueError as error:
         raise UpdateError("badreply", str(error)) from error
-    return latest(releases, channel)
+    return latest(releases)
 
 
 def parse_sums(text: str) -> dict[str, str]:

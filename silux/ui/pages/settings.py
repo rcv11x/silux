@@ -158,8 +158,6 @@ FONT_SCALES = (("opt.density.normal", "normal"), ("opt.font.large", "grande"),
                ("opt.font.larger", "mayor"), ("opt.font.largest", "máximo"))
 NETWORK_UNITS = (("opt.net.bytes", "bytes"),
                  ("opt.net.bits", "bits"))
-UPDATE_CHANNELS = (("opt.channel.stable", "stable"),
-                   ("opt.channel.testing", "testing"))
 
 # The number boxes' least width; they all end up as wide as the widest asks
 # (`_igualar_controles`).
@@ -586,8 +584,6 @@ class SettingsPage(ScrollPage):
         """Checking for new versions, at startup and by hand, and the button
         that installs the one found."""
         self.check_updates = self._interruptor(self._prefs.check_updates)
-        self.update_channel = self._combo(
-            UPDATE_CHANNELS, updates.channel_for(self._prefs.update_channel))
         self.update_now = Button(_("settings.updates.now"))
         self.update_now.clicked.connect(self.update_check_requested.emit)
         self.update_status = QLabel("")
@@ -603,8 +599,6 @@ class SettingsPage(ScrollPage):
             _("settings.group.updates"),
             _Renglon(_("settings.updates.label"), self.check_updates,
                      _("settings.updates.help")),
-            _Renglon(_("settings.updates.channel"), self.update_channel,
-                     _("settings.updates.channel.help")),
             _Renglon(_("settings.updates.manual"), self.update_now),
         )
         card.body.addWidget(self.update_status)
@@ -1052,10 +1046,6 @@ class SettingsPage(ScrollPage):
             show_all_features=self.all_features.isChecked(),
             fluid_charts=self.fluid_charts.isChecked(),
             check_updates=self.check_updates.isChecked(),
-            # What the running version would follow anyway stays unchosen:
-            # a test version that later installs its final goes to finals.
-            update_channel=("" if self.update_channel.currentData()
-                            == updates.channel_for("") else self.update_channel.currentData()),
         ).normalized()
 
     def _emit(self, *_args) -> None:

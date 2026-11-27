@@ -2418,12 +2418,10 @@ TEST_RELEASE = "prueba"
 
 
 def version(full: str) -> str:
-    """The version as shown: «0.4», not «0.4.0»; «0.4.1» for a fix release;
-    «0.4-prueba1» for 0.4's first test release, in every language.
-
-    Underneath it's always x.y.z (pyproject, the tag and `--version`, which
-    are for machines). To whoever looks at the window or reads the report,
-    the third number only says something when it isn't zero.
+    """The version as shown. Since the rolling release it is the day it was
+    published, «2026.11.28», shown as it is. Before it: «0.4», not «0.4.0»;
+    «0.4.1» for a fix release; «0.4-prueba1» for a prueba, in every
+    language.
     """
     # A test version goes as PEP 440 asks («0.4.0rc1») and is shown by its
     # release's name: «0.4-prueba1».

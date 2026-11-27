@@ -1030,8 +1030,7 @@ class MainWindow(QMainWindow):
         if self._tarea_de_red is not None and self._tarea_de_red.isRunning():
             return
         self.settings_page.set_update_status(_("updates.checking"), buscando=True)
-        canal = updates.channel_for(self.prefs.update_channel)
-        self._lanzar(lambda: self._buscar_version(channel=canal), self._buscada)
+        self._lanzar(self._buscar_version, self._buscada)
 
     def _lanzar(self, funcion, al_acabar) -> None:
         tarea = _TareaDeRed(funcion, self)

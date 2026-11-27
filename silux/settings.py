@@ -65,9 +65,6 @@ class Preferences:
     # Set once check_updates has been switched on for files from before it
     # was on by default: switched off after that, it stays off.
     check_updates_migrated: bool = True
-    # «stable» or «testing»; empty follows the running build (a test build
-    # looks for test builds).
-    update_channel: str = ""
     # Empty follows the system's language (`system_language`).
     language: str = field(default_factory=lambda: system_language())
     # One width per sensor tree column; empty sizes them to their content.
@@ -114,8 +111,6 @@ class Preferences:
             show_all_features=_yes_or_no(self.show_all_features, False),
             check_updates=_yes_or_no(self.check_updates, True),
             check_updates_migrated=_yes_or_no(self.check_updates_migrated, True),
-            update_channel=(self.update_channel
-                            if self.update_channel in ("stable", "testing") else ""),
             language=(str(self.language).lower()
                       if str(self.language).lower() in available() else system_language()),
             sensor_columns=tuple(min(900, max(30, int(w))) for w in (self.sensor_columns or ())),
@@ -160,7 +155,8 @@ def load() -> Preferences:
     """The saved preferences, field by field.
 
     An unreadable file, or one that isn't a JSON object, gives the defaults;
-    a bad field keeps its default without spoiling the rest.
+    a bad field keeps its default without spoiling the rest, and one no longer
+    kept (the update channel, before the rolling release) is left out.
     """
     try:
         raw: Any = json.loads(config_path().read_text(encoding="utf-8"))

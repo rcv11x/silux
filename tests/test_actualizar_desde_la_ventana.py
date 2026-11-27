@@ -158,22 +158,6 @@ class TestLaVentana(unittest.TestCase):
                          _("updates.latest").format(version=render.version(__version__)))
         self.assertNotIn("rc", v.settings_page.update_status.text())
 
-    def test_a_test_version_looks_in_the_test_channel(self):
-        # Whoever runs the prueba2 gets the prueba3 with «Buscar ahora».
-        from unittest import mock
-        v = self.ventana()
-        pedido = []
-        prueba3 = updates.Release(version=(99, 0, 0), tag="99.0.0rc3", url="u", prerelease=3)
-        v._buscar_version = lambda channel="stable": pedido.append(channel) or prueba3
-        with mock.patch.object(updates, "__version__", "0.4.0rc2"), \
-                mock.patch.object(updates, "channel_for",
-                                  lambda pref, current="0.4.0rc2": updates.CHANNELS[1]
-                                  if pref in ("", "testing") else "stable"):
-            v.buscar_actualizacion()
-            self.esperar(v)
-        self.assertEqual(pedido, ["testing"])
-        self.assertIn("99.0-prueba3", v.settings_page.update_status.text())
-
     def test_un_error_de_red_se_dice(self):
         v = self.ventana()
         def falla(channel="stable"):
