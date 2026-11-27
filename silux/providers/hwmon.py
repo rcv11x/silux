@@ -57,12 +57,14 @@ MEASUREMENTS: dict[str, tuple[SensorKind, float]] = {
 ALTERNATIVES = ("_average",)
 
 # Which device each chip belongs to. Order matters: the first rule wins.
-CPU_CHIP = re.compile(r"^(coretemp|k10temp|k8temp|zenpower|cpu_thermal)$")
+CPU_CHIP = re.compile(r"^(coretemp|k10temp|k8temp|zenpower|cpu_thermal|fam15h_power)$")
 # The `*_wmi` ones are the sensors the board maker exposes through its own
-# interface, next to the same board named by its Super I/O.
+# interface, next to the same board named by its Super I/O; a laptop maker's
+# firmware (dell_smm, thinkpad, hp) and the chipset's sensor (pch_*) are the
+# machine's too.
 BOARD_CHIP = re.compile(
     r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt|asus|acpitz|thermal"
-    r"|\w+_wmi)")
+    r"|\w+_wmi|dell_smm|thinkpad|hp$|pch_\w+)")
 # Drivers that read not their own chip but another driver's, another way:
 # `gigabyte_wmi` asks the board's firmware for its Super I/O's temperatures,
 # which `it87` reads directly. Only what is known goes here, and even so the

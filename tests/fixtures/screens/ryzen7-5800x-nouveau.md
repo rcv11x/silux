@@ -200,7 +200,6 @@ El firmware de esta placa no dice su revisión ni el fabricante del chasis. Es u
 
 - IOMMU: activa · 28 grupos
 - Virtualización: activa (AMD-V), en uso por KVM
-- Chip de sensores: ASUS
 - Códec de sonido: Realtek ALCS1200A
 
 ### Dispositivos PCIe

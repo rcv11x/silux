@@ -131,9 +131,11 @@ class TestLaMarcaYNoLaRazonSocial(unittest.TestCase):
 class TestElNombreDeUnChip(unittest.TestCase):
 
     def test_sin_la_direccion_que_le_pega_el_kernel(self):
+        # A maker's firmware and the ACPI table, in plain words.
         casos = {"it8688_40050607": "it8688", "r8169_0_600:00": "r8169",
-                 "gigabyte_wmi": "gigabyte_wmi", "k10temp": "k10temp",
-                 "nct6798": "nct6798", "acpitz": "acpitz", "nvme": "nvme",
+                 "gigabyte_wmi": "Gigabyte", "k10temp": "k10temp",
+                 "nct6798": "nct6798", "acpitz": "ACPI", "nvme": "nvme",
+                 "dell_smm": "Dell", "thinkpad": "ThinkPad",
                  "hidpp_battery_0": "hidpp_battery_0", "iwlwifi_1": "iwlwifi_1"}
         for crudo, limpio in casos.items():
             with self.subTest(chip=crudo):

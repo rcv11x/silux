@@ -584,7 +584,7 @@ Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2
 
 ## Sensores
 
-SENSORES · 19 en 6 dispositivos
+SENSORES · 19 en 5 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - Intel Core2 Duo P8400
   - Temperaturas
@@ -596,8 +596,6 @@ SENSORES · 19 en 6 dispositivos
 - Dell Latitude E6400
   - Temperaturas
     - Temperatura 1 · 35.5 °C · 35.5 · 35.5 · 35.5
-- dell_smm
-  - Temperaturas
     - CPU · 35.0 °C · 35.0 · 35.0 · 35.0
     - SODIMM · 38.0 °C · 38.0 · 38.0 · 38.0
     - Other · 37.0 °C · 37.0 · 37.0 · 37.0

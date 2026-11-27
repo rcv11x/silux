@@ -40,6 +40,9 @@ que hace falta.
 - Con nouveau, una GeForce que no publica ningún sensor (una RTX 3070) salía con «Temperatura: —» y un aviso que prometía la temperatura: ahora dice que esa tarjeta no la da
 - En la terminal, las categorías de Sensores salían como claves («cat.temperature») y quién montó la gráfica con su razón social («Micro-Star International Co., Ltd. [MSI]»)
 - Una wifi Atheros AR242x salía como «Ethernet» en los dispositivos PCIe de Placa base: declara esa clase, pero es inalámbrica
+- En Sensores, los sensores del firmware de un portátil salían como un aparato con el nombre del kernel («dell_smm», «thinkpad», «hp»), con dos «CPU (dell_smm)» iguales: ahora van con el equipo, numerados si se llaman igual, y el chip se nombra en palabras («ACPI», «Dell») solo cuando hace falta
+- El ventilador de un portátil salía como «cpu_fan»: ahora «Ventilador del procesador»
+- Placa base decía «Chip de sensores: ASUS» en placas sin driver de Super I/O: era el firmware de la placa
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

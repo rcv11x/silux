@@ -272,13 +272,8 @@ la memoria) no va: está propuesto en las notas
     con 1725 RPM en una RX 550 (`pwm1_enable` 2) y 100 % con 0 RPM en una GTX
     1060 con nouveau (volcados `ryzen9-7900` e `i7-6700k`). Gráficos ya decide
     por las RPM.
-  - Sensores · baja · cuando dos etiquetas chocan bajo un dispositivo, el
-    árbol les pega el nombre del chip hwmon («Temperatura 1 (gigabyte_wmi)»,
-    «(acpitz)»): un nodo en pantalla. Y la fila del voltaje del núcleo en
-    reposo dice «en reposo» con cifras en mínimo, máximo y media.
-  - Placa base · baja · «Chip de sensores: ASUS» por los hwmon `asus` de
-    `eeepc-wmi` y `asus-nb-wmi`, que no tienen ningún sensor:
-    `pci._sensor_chip` (volcado `ryzen5-9600x`).
+  - Sensores · baja · la fila del voltaje del núcleo en reposo dice «en
+    reposo» con cifras en mínimo, máximo y media.
   - Gráficos · baja · un monitor Vestel sale con la razón social entera
     («Vestel Elektronik Sanayi ve Ticaret A. S.»): `render.maker` no conoce
     la forma «A. S.».

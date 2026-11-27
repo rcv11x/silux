@@ -684,9 +684,21 @@ class SensorTree(QTreeWidget):
                 # Donde ningún nombre se repite, el chip sobra: en la gráfica
                 # «Borde (amdgpu)» no dice nada que «Borde» no diga.
                 nombres = [render.sensor_label(x) for x in sensors]
-                varios_chips = len(set(nombres)) < len(nombres)
+                varios_chips = any(
+                    len({s.chip for s, n in zip(sensors, nombres) if n == nombre}) > 1
+                    for nombre in set(nombres))
+                # Two readings of one chip with the same name («CPU» twice in
+                # a Dell's firmware) are told apart by their order: the chip's
+                # name would say nothing.
+                vistos: dict = {}
+                repetidos = {(n, s.chip) for s, n in zip(sensors, nombres)
+                             if sum(1 for t, m in zip(sensors, nombres)
+                                    if m == n and t.chip == s.chip) > 1}
 
                 for sensor, etiqueta in zip(sensors, nombres):
+                    if (etiqueta, sensor.chip) in repetidos:
+                        vistos[(etiqueta, sensor.chip)] = vistos.get((etiqueta, sensor.chip), 0) + 1
+                        etiqueta = f"{etiqueta} {vistos[(etiqueta, sensor.chip)]}"
                     nombre = (f"{etiqueta} ({render.chip_name(sensor.chip)})"
                               if varios_chips else etiqueta)
                     row = self._sensor_row(nombre, sensor.kind.value)

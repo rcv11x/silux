@@ -39,6 +39,9 @@ ORDER = ("gpu", "nvme", "ethernet", "wifi", "sata", "usb", "audio")
 _ADDRESS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]")
 
 
+# A board's own sensor chips: Super I/Os and the LM family.
+SENSOR_CHIP = re.compile(r"^(nct\d+|it\d+|w836\d+|f71\d+|smsc|lm\d+|nzxt)")
+
 # Devices whose only driver doesn't come with the kernel, by PCI ID, and
 # that driver. Broadcom's `wl` (broadcom-sta) lists the BCM43142, for which
 # the kernel has none.
@@ -220,12 +223,12 @@ class PlatformInfo(Provider):
 
     @staticmethod
     def _sensor_chip() -> Optional[str]:
-        from .hwmon import BOARD_CHIP
-
+        """The board's sensor chip: a Super I/O or a sensor of its own. Not
+        a maker's firmware interface (asus, dell_smm, thinkpad, the `*_wmi`),
+        which reads another driver's chip or none."""
         for path in sorted(glob.glob(os.path.join(sysroot.path("/sys/class/hwmon"), "*", "name"))):
             name = read_text(sysroot.unrooted(path)) or ""
-            if BOARD_CHIP.match(name) and not name.startswith(("acpitz", "thermal")) \
-                    and not name.endswith("_wmi"):
+            if SENSOR_CHIP.match(name):
                 return name
         return None
 

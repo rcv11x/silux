@@ -1803,6 +1803,8 @@
   "sensor.edge": "Edge",
   "sensor.energy": "Energy",
   "sensor.fan": "Fan",
+  "sensor.fan.cpu": "Processor fan",
+  "sensor.fan.gpu": "Graphics fan",
   "sensor.gpu.core": "Core usage",
   "sensor.gpu.mem": "Memory usage",
   "sensor.gpu.video": "Video engine usage",

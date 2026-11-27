@@ -818,7 +818,7 @@ class TestEtiquetasRepetidas(unittest.TestCase):
                                  self._sensor("gigabyte_wmi", "Temperatura 1")])
         self.assertEqual(self._nombres(arbol),
                          ["Temperatura 1 (it8688)",
-                          "Temperatura 1 (gigabyte_wmi)"])
+                          "Temperatura 1 (Gigabyte)"])
 
     def test_las_que_no_se_repiten_se_quedan_como_estaban(self):
         """El chip entre paréntesis en todas sería ruido."""

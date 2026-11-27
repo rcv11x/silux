@@ -198,7 +198,6 @@ El firmware de esta placa no dice el fabricante del chasis. Es una placa suelta:
 - IOMMU: activa · 33 grupos
 - Virtualización: activa (AMD-V), en uso por KVM
 - Direcciones por encima de 4 GiB (Above 4G Decoding): activo · 4 dispositivos lo usan
-- Chip de sensores: ASUS
 - Códec de sonido: Realtek ALC897
 
 ### Dispositivos PCIe

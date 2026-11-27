@@ -603,7 +603,7 @@ Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2
 
 ## Sensores
 
-SENSORES · 12 en 5 dispositivos
+SENSORES · 12 en 4 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - Intel Celeron 560
   - Temperaturas
@@ -616,11 +616,9 @@ SENSORES · 12 en 5 dispositivos
 - Dell Vostro A840
   - Temperaturas
     - Temperatura 1 · 69.5 °C · 69.5 · 69.5 · 69.5
-- dell_smm
-  - Temperaturas
-    - CPU (dell_smm) · 67.0 °C · 67.0 · 67.0 · 67.0
-    - CPU (dell_smm) · 60.0 °C · 60.0 · 60.0 · 60.0
-    - Other (dell_smm) · 47.0 °C · 47.0 · 47.0 · 47.0
+    - CPU 1 · 67.0 °C · 67.0 · 67.0 · 67.0
+    - CPU 2 · 60.0 °C · 60.0 · 60.0 · 60.0
+    - Other · 47.0 °C · 47.0 · 47.0 · 47.0
   - Ventiladores
     - Processor Fan · 4618 RPM · 4618 · 4618 · 4618
 - Memoria

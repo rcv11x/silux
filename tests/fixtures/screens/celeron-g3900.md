@@ -191,7 +191,6 @@ El firmware de esta placa no dice su revisión ni el fabricante del chasis. Es u
 ### Plataforma
 
 - IOMMU: sin activar
-- Chip de sensores: ASUS
 - Códec de sonido: Realtek ALC887-VD
 
 ### Dispositivos PCIe
@@ -628,7 +627,7 @@ SENSORES · 13 en 4 dispositivos
     - Enviado · 22.0 MB · 22.0 · 22.0 · 22.0
 
 HD Graphics 510: no tiene sensor de temperatura propio.
-acpitz: 27.8 °C, 29.8 °C fijos no es una medida. Es el número que devuelve el firmware por una zona térmica que no conectó a ningún sensor.
+ACPI: 27.8 °C, 29.8 °C fijos no es una medida. Es el número que devuelve el firmware por una zona térmica que no conectó a ningún sensor.
 
 > **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.

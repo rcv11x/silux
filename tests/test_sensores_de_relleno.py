@@ -268,7 +268,9 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         for nombre, valor in (("5800x3d", "16.8"), ("i5-10400", "27.8")):
             with self.subTest(equipo=nombre):
                 pie = self._pagina(self.fotos[nombre]).absent.text()
-                self.assertIn("acpitz", pie)
+                # The ACPI table's zone, in plain words (`render.chip_name`).
+                self.assertIn("ACPI", pie)
+                self.assertNotIn("acpitz", pie)
                 self.assertIn(valor, pie)
 
     def test_la_fila_lo_dice_al_pasar_el_raton_y_va_apagada(self):
@@ -285,11 +287,11 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
     def test_el_pie_nombra_los_chips_con_temperaturas_sin_nombre(self):
         pie = self._pagina(self.fotos["5800x3d"]).absent.text()
         frase = next(f for f in pie.split("\n") if "temperatura" in f.lower()
-                     and "gigabyte_wmi" in f)
+                     and "Gigabyte" in f)
         self.assertIn("it8688", frase)
         # El de relleno tiene su propia frase, y una tarjeta de red con una
         # sola temperatura no tiene nada que distinguir.
-        self.assertNotIn("acpitz", frase)
+        self.assertNotIn("ACPI", frase)
         self.assertNotIn("r8169", frase)
 
     def test_en_el_intel_no_hay_nada_que_decir_de_temperaturas_sin_nombre(self):

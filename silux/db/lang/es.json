@@ -1803,6 +1803,8 @@
   "sensor.edge": "Borde",
   "sensor.energy": "Energía",
   "sensor.fan": "Ventilador",
+  "sensor.fan.cpu": "Ventilador del procesador",
+  "sensor.fan.gpu": "Ventilador de la gráfica",
   "sensor.gpu.core": "Uso del núcleo",
   "sensor.gpu.mem": "Uso de la memoria",
   "sensor.gpu.video": "Uso del motor de video",

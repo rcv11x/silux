@@ -613,7 +613,13 @@ def sensor_label(sensor) -> str:
             key = {"performance": "sensor.core.p", "efficiency": "sensor.core.e"}.get(
                 sensor.core_type or "", "sensor.core")
             return _(key).format(n=int(match.group(1)))
+    # A laptop's firmware names its fans as the kernel's attributes do.
+    if (key := _FAN_LABELS.get(sensor.label)) is not None:
+        return _(key)
     return sensor.label
+
+
+_FAN_LABELS = {"cpu_fan": "sensor.fan.cpu", "gpu_fan": "sensor.fan.gpu"}
 
 
 def idle_name(name: str) -> str:
@@ -1052,9 +1058,17 @@ def sensor_source(sensor) -> str:
     return f"{sensor.chip} · {sensor.key}"
 
 
+# What a chip is called on screen when two readings of a device need it:
+# the maker or the table, not the kernel's driver name.
+_CHIP_NAMES = {"acpitz": "ACPI", "asus": "ASUS", "dell_smm": "Dell", "thinkpad": "ThinkPad",
+               "hp": "HP", "gigabyte_wmi": "Gigabyte", "asus_wmi_sensors": "ASUS"}
+
+
 def chip_name(chip: str) -> str:
-    """A sensor chip's name without the address the kernel appends."""
-    return _CHIP_ADDRESS.sub("", chip)
+    """A sensor chip's name without the address the kernel appends, and in
+    plain words where it is a maker's firmware or the ACPI table."""
+    bare = _CHIP_ADDRESS.sub("", chip)
+    return _CHIP_NAMES.get(bare, bare)
 
 
 def placeholder_note(chip: str, readings, fahrenheit: bool = False) -> str:

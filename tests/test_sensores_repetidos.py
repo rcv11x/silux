@@ -126,7 +126,7 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
         # no solo las tres cuyo nombre coincide con una de ACPI.
         self.assertEqual([n for n in nombres if "(" not in n], [])
         self.assertEqual(sum(1 for n in nombres if n.endswith("(it8688)")), 6)
-        self.assertEqual(sum(1 for n in nombres if n.endswith("(acpitz)")), 3)
+        self.assertEqual(sum(1 for n in nombres if n.endswith("(ACPI)")), 3)
         # Y donde solo hay un chip, ninguna.
         ventiladores = pagina.tree._rows[f"::{placa}/cat.fan"]
         self.assertFalse([ventiladores.child(i).text(0) for i in range(ventiladores.childCount())
@@ -137,7 +137,7 @@ class TestEnLaPaginaDeSensores(unittest.TestCase):
                           if "(" in grafica.child(i).text(0)])
 
         pie = pagina.absent.text()
-        self.assertIn(_("sensors.mirror").format(espejo="gigabyte_wmi", chip="it8688", n=6), pie)
+        self.assertIn(_("sensors.mirror").format(espejo="Gigabyte", chip="it8688", n=6), pie)
         # El que se esconde no sale además como «numera sin decir dónde».
         sin_nombre = [l for l in pie.split("\n")
                       if l == _("sensors.unnamed.temps").format(chips="it8688")]
