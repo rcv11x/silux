@@ -60,7 +60,7 @@
   "app.report.card": "Informe",
   "app.report.failed": "No se pudo guardar:\n{error}",
   "app.report.filter": "Markdown (*.md);;Texto (*.txt)",
-  "app.report.saved": "Guardado en {ruta}\n\nNo incluye el nombre del equipo, las direcciones IP y MAC ni los números de serie. Mándalo en un issue de GitHub (la plantilla «Mi CPU y placa») o en el canal #silux-pruebas del Discord de UniversoLinux.",
+  "app.report.saved": "Guardado en {ruta}\n\nNo incluye el nombre del equipo, las direcciones IP y MAC ni los números de serie. Mándalo en un issue de GitHub (la plantilla «Mi CPU y placa») o en el canal #silux-app-chat del Discord de UniversoLinux.",
   "app.report.title": "Guardar informe del equipo",
   "app.sample.failed": "Fallo en el muestreo: {msg}",
   "app.sampling": "Iniciando el muestreo…",

@@ -63,5 +63,5 @@ addresses and every serial number: look it over and attach it to an
 [issue](https://github.com/rcv11x/silux/issues) (so that Silux recognises your
 machine better, with the
 [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml)
-template), or share it in the #silux-pruebas channel on the UniversoLinux
+template), or share it in the #silux-app-chat channel on the UniversoLinux
 Discord.

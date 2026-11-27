@@ -63,4 +63,4 @@ ni números de serie: revísalo y adjúntalo en un
 [issue](https://github.com/rcv11x/silux/issues) (para que Silux reconozca mejor
 tu equipo, con la plantilla
 [«Mi CPU y placa»](https://github.com/rcv11x/silux/issues/new?template=mi-cpu-y-placa.yml))
-o en el canal #silux-pruebas del Discord de UniversoLinux.
+o en el canal #silux-app-chat del Discord de UniversoLinux.

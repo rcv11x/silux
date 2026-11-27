@@ -60,7 +60,7 @@
   "app.report.card": "Report",
   "app.report.failed": "Could not save:\n{error}",
   "app.report.filter": "Markdown (*.md);;Text (*.txt)",
-  "app.report.saved": "Saved to {ruta}\n\nIt doesn't include the machine's name, its IP and MAC addresses or serial numbers. Send it in a GitHub issue (the «My CPU and board» template) or in the #silux-pruebas channel of the UniversoLinux Discord.",
+  "app.report.saved": "Saved to {ruta}\n\nIt doesn't include the machine's name, its IP and MAC addresses or serial numbers. Send it in a GitHub issue (the «My CPU and board» template) or in the #silux-app-chat channel of the UniversoLinux Discord.",
   "app.report.title": "Save machine report",
   "app.sample.failed": "Sampling failed: {msg}",
   "app.sampling": "Starting the sampler…",
