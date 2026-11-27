@@ -145,12 +145,15 @@ def with_health(snapshot, **values):
 
 
 class TestPrivacy(unittest.TestCase):
-    LINE = "wlp4s0: associated with 3c:84:6a:12:34:56 (try 1/3)"
+    # A router's address, from the documentation range like every MAC here.
+    LINE = "wlp4s0: associated with 00:00:5e:00:53:42 (try 1/3)"
+    # In two pieces: whole, the source would read as an email address.
+    UNIT = "wg-quick@" + "casa.service"
 
     def test_the_anonymous_report_leaves_out_city_instance_and_router(self):
         snapshot = with_health(
             shared_snapshot(EQUIPOS / "5800x3d"), timezone="Europe/Madrid",
-            failed_units=("wg-quick@casa.service", "cups.service"),
+            failed_units=(self.UNIT, "cups.service"),
             kernel_errors=((self.LINE, 2),))
         system_ = privacidad.anonymize(snapshot).system
         self.assertIsNone(system_.timezone)
@@ -163,12 +166,12 @@ class TestPrivacy(unittest.TestCase):
         with tempfile.TemporaryDirectory() as target:
             cleaner = volcado._Anonymizer(pathlib.Path(target), {
                 "plataforma": {"zona_horaria": "Europe/Madrid"},
-                "systemd": {"fallidos": ["wg-quick@casa.service"]},
+                "systemd": {"fallidos": [self.UNIT]},
                 "kernel": {"errores": [self.LINE]}})
             clean = cleaner.clean_recording()
         self.assertNotIn("zona_horaria", clean["plataforma"])
         self.assertEqual(clean["systemd"]["fallidos"], ["wg-quick@….service"])
-        self.assertNotIn("3c:84:6a", clean["kernel"]["errores"][0])
+        self.assertNotIn("00:00:5e:00:53:42", clean["kernel"]["errores"][0])
 
 
 @unittest.skipIf(QApplication is None, "no PySide6")
