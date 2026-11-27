@@ -1010,25 +1010,17 @@ def lowercase_label(label: str) -> str:
     return label[:1].lower() + label[1:] if first[1:].islower() else label
 
 
-# Beyond this many, a foot names the first and counts the rest.
-NAMED_AT_THE_FOOT = 4
+# One sentence per card of a graphics card's page, by its group.
+SILENT_GPU = {"card": "gpu.na.silent.card", "memory": "gpu.na.silent.memory",
+              "clocks": "gpu.na.silent.clocks", "sensors": "gpu.na.silent.sensors"}
 
 
-def silent_gpu_rows(labels: list[str], driver: Optional[str],
-                    card: bool = False) -> tuple[str, str]:
-    """«nouveau no publica núcleo, memoria…» and its tooltip: what a graphics
-    card's driver gives no value for, from the rows' own names. The card's
-    identity can be missing from the PCI database too. A long list names
-    three and counts the rest; the tooltip has them all."""
-    names = [lowercase_label(label) for label in labels]
-    tooltip = ""
-    if len(names) > NAMED_AT_THE_FOOT:
-        tooltip = "\n".join(labels)
-        names = names[:3] + [counted("gpu.na.silent.more", len(names) - 3)]
-    sentence = _("gpu.na.silent.card" if card else "gpu.na.silent").format(
-        driver=driver or _("gpu.na.silent.nodriver"),
-        campos=enumeration(names, "list.nor"))
-    return sentence, tooltip
+def silent_gpu_rows(labels: list[str], driver: Optional[str], group: str) -> tuple[str, str]:
+    """«nouveau no da más sensores» and its tooltip: one short sentence for
+    what a card's driver gives no value for, without listing or counting
+    them; the tooltip names each row."""
+    sentence = _(SILENT_GPU[group]).format(driver=driver or _("gpu.na.silent.nodriver"))
+    return sentence, "\n".join(labels)
 
 
 def interface_missing(interface) -> list[str]:

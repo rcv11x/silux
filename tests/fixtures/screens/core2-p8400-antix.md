@@ -283,7 +283,7 @@ Esta gráfica no publica cuánto se usa su motor gráfico, su decodificador de v
 - Driver: nouveau
 - Versión del driver: Mesa 25.0.7
 
-Ni su driver (nouveau) ni la base de datos de dispositivos PCI dan unidades de proceso, ROPs (unidades de salida de render), motores de sombreado ni BIOS de video de esta tarjeta.
+nouveau no da más datos de esta tarjeta.
 
 ##### Identificadores
 
@@ -292,22 +292,18 @@ Ni su driver (nouveau) ni la base de datos de dispositivos PCI dan unidades de p
 - Ranura PCI: 0000:01:00.0
 - Nodo DRM: card0
 
-#### Memoria de video
-
-nouveau no publica total, tipo, bus ni otros 6 datos de esta tarjeta.
-
 #### Relojes y enlace
 
 - Enlace: PCIe 1.0 × 16
 - Enlace (máximo): PCIe 1.0 × 16
 
-nouveau no publica núcleo, núcleo (máximo), memoria ni otros 4 datos de esta tarjeta.
+nouveau no da más relojes.
 
 #### Consumo y temperaturas
 
 - Ventilador: 31.0 %
 
-nouveau no publica estado, punto caliente, chips de memoria ni otros 7 datos de esta tarjeta.
+nouveau no da más sensores.
 
 #### Bibliotecas gráficas
 

@@ -945,6 +945,9 @@ class GpuSection(QWidget):
             pie.setText(pies[nombre])
             pie.setToolTip(globos.get(nombre, ""))
             pie.setVisible(bool(pies[nombre]))
+        # A card with no row left goes: the notice above says why.
+        empty = {nombre for nombre, _grids, campos, _pie in grupos
+                 if all(c in escondidos[nombre] for c in campos)}
 
         # En una integrada de Intel, de «Consumo y temperaturas» solo queda el
         # uso del motor de video, que ya es una fila de la tabla de motores:
@@ -955,10 +958,10 @@ class GpuSection(QWidget):
         propios = [c for c in SENSOR_FIELDS
                    if c not in escondidos["sensors"] and c != "gpu.sensor.videouse"]
         solo_el_video = bool(gpu.engines) and not propios
-        self.sensor_card.setVisible(not solo_el_video and not asleep)
+        self.sensor_card.setVisible(not solo_el_video and not asleep and "sensors" not in empty)
         # Asleep, the cards that would only hold dashes wait for it to wake.
-        self.memory.parentWidget().setVisible(not asleep)
-        self.clocks.parentWidget().setVisible(not asleep)
+        self.memory.parentWidget().setVisible(not asleep and "memory" not in empty)
+        self.clocks.parentWidget().setVisible(not asleep and "clocks" not in empty)
         self.api_card.setVisible(not (asleep and not gpu.apis))
         self.display_card.setVisible(not (asleep and not gpu.displays))
         fuera = pie_de_sensores(ocultos["sensors"]) if solo_el_video else ""

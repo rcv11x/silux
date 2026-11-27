@@ -306,7 +306,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Visible por la CPU: 512 MiB
 - Memoria del sistema (GTT): 139.8 MiB de 1.6 GiB
 
-Una integrada no tiene Resizable BAR: el procesador ya ve toda su memoria. amdgpu no publica chips de esta tarjeta.
+Una integrada no tiene Resizable BAR: el procesador ya ve toda su memoria. amdgpu no da más datos de su memoria.
 
 #### Relojes y enlace
 
@@ -316,7 +316,7 @@ Una integrada no tiene Resizable BAR: el procesador ya ve toda su memoria. amdgp
 - Memoria (máximo): 1200 MHz
 - Perfil de rendimiento: auto
 
-Va dentro del procesador: el enlace PCIe que publica el kernel es interno, no el de una ranura. amdgpu no publica SoC de esta tarjeta.
+Va dentro del procesador: el enlace PCIe que publica el kernel es interno, no el de una ranura. amdgpu no da más relojes.
 
 ##### Para expertos
 
@@ -326,10 +326,6 @@ Va dentro del procesador: el enlace PCIe que publica el kernel es interno, no el
 - OverDrive: activado: el driver deja cambiar relojes y voltajes
 
 ▸ marca el escalón en uso.
-
-#### Consumo y temperaturas
-
-Los reguladores de voltaje y el ventilador son de una tarjeta aparte: esta se alimenta y se refrigera con el resto del equipo. En una APU, el consumo que da el driver es el del procesador entero y su segunda temperatura es la del SoC: ninguna de las dos es de la gráfica. amdgpu no publica estado, chips de memoria, voltaje ni otros 3 datos de esta tarjeta.
 
 #### Códecs de video por hardware
 

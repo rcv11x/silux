@@ -299,7 +299,7 @@ Esta gráfica no publica cuánto se usa su motor de video.
 - Driver: i915
 - Versión del driver: Mesa 25.0.7
 
-i915 no cuenta ROPs ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo. Ni su driver (i915) ni la base de datos de dispositivos PCI dan nombre en clave ni unidades de proceso de esta tarjeta.
+i915 no cuenta ROPs ni motores de sombreado: el recuento de Intel son las unidades de ejecución. Una integrada de Intel no tiene BIOS de video propia: va dentro del firmware del equipo. i915 no da más datos de esta tarjeta.
 
 ##### Identificadores
 
@@ -308,13 +308,6 @@ i915 no cuenta ROPs ni motores de sombreado: el recuento de Intel son las unidad
 - Ranura PCI: 0000:00:02.0
 - Nodo DRM: card0
 
-#### Memoria de video
-
-Una integrada no tiene memoria propia: usa la del sistema, así que no hay tipo, bus, ancho de banda, tasa de datos ni Resizable BAR que contar. i915 no publica memoria del sistema (GTT) de esta tarjeta.
-
-#### Relojes y enlace
-
-Sin memoria de video propia no hay reloj de memoria que enseñar. No tiene reloj de SoC ni perfil de rendimiento, y va dentro del procesador: no cuelga de un enlace PCIe. i915 no publica núcleo ni núcleo (máximo) de esta tarjeta.
 Una integrada no tiene reguladores de voltaje, ventilador, SoC aparte ni memoria propia. Esta no publica su temperatura, su voltaje ni si se está frenando.
 
 #### Motores gráficos

@@ -227,18 +227,6 @@ Es una gráfica emulada por el hipervisor: no tiene nombre en clave ni unidades 
 - Nodo DRM: card0
 - BIOS de video: —
 
-#### Memoria de video
-
-No tiene memoria de video propia.
-
-#### Relojes y enlace
-
-No tiene relojes ni enlace PCIe: no hay silicio debajo.
-
-#### Consumo y temperaturas
-
-Tampoco temperaturas, voltajes, ventilador ni consumo.
-
 #### Bibliotecas gráficas
 
 | API | VERSIÓN | DRIVER | DETALLE |

@@ -59,6 +59,7 @@ que hace falta.
 - Con la base cambiada a mano, la fila «Base» de CPU dice que está fijada en la BIOS y cuál es la de fábrica
 - Lo que falta por permisos en una página sale en un solo aviso con un solo botón, y no en uno por dato
 - En una ventana estrecha, los desplegables de la prueba de disco quedan alineados en columna
+- En Gráficos, lo que el driver no da se dice en una frase corta por tarjeta, sin contar datos, y una tarjeta que se queda vacía no sale
 - Un dispositivo USB que no escribe su nombre sale con el de usb.ids, o como «Dispositivo USB 046d:c52b»
 - Los avisos de permisos dicen qué se lee con ellos («El consumo del procesador se lee con permisos de administrador») sin registros ni CVE
 
