@@ -122,6 +122,10 @@ class PciDevices(Provider):
             kind = CLASSES.get(code)
             if kind is None:
                 continue
+            if kind == "ethernet" and os.path.isdir(os.path.join(path, "ieee80211")):
+                # Some wireless cards declare the Ethernet class (an Atheros
+                # AR242x): the wireless stack hangs its radio from them.
+                kind = "wifi"
             raws.append({"slot": slot, "kind": kind, "class_code": code,
                            "ids": (_hex(f"{base}/vendor"), _hex(f"{base}/device"))})
         pairs = [c["ids"] for c in raws if None not in c["ids"]]
