@@ -380,6 +380,7 @@ class MainWindow(QMainWindow):
         self.memory_page.benchmark_requested.connect(self._open_memory_test)
         self.memory_page.set_last_test(self.benchmarks_page.memory_tab.result)
         self.storage_page.disk_test_requested.connect(self._open_disk_test)
+        self.storage_page.disk_chosen.connect(self._on_storage_disk)
         self.storage_page.set_disk_tests(self.benchmarks_page.disk_tab.history)
         self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
@@ -1481,6 +1482,12 @@ class MainWindow(QMainWindow):
                                                  tuple(self.prefs.sensor_expanded)):
             self.prefs = replace(self.prefs, sensor_collapsed=tuple(plegadas),
                                  sensor_expanded=tuple(abiertas))
+
+    def _on_storage_disk(self, key: str) -> None:
+        from dataclasses import replace
+
+        if key != self.prefs.storage_disk:
+            self.prefs = replace(self.prefs, storage_disk=key)
 
     def _on_columns_resized(self, widths: tuple) -> None:
         from dataclasses import replace

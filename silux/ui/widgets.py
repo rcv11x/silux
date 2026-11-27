@@ -1097,6 +1097,23 @@ class Sparkline(QWidget):
     def series(self) -> Optional[Series]:
         return self._series
 
+    @property
+    def capacity(self) -> int:
+        """How many points it shows."""
+        return self._values.maxlen or 0
+
+    @property
+    def points(self) -> int:
+        return len(self._values)
+
+    def replay(self, series: Series, values) -> None:
+        """Draw `series` from `values`, its history: what was kept of it
+        while another series was shown."""
+        self._series = series
+        self.clear()
+        for value in values:
+            self.push(value)
+
     def push(self, value: Optional[float]) -> None:
         """A point of its series. None (no datum) adds nothing, and a value
         that cannot be in its unit is not of it: it does not get in."""
@@ -1641,6 +1658,13 @@ class StatTile(Card):
         self.body.addWidget(self.caption)
         self.body.addWidget(self.detail)
         self.body.addWidget(self.chart)
+
+    def add_under_caption(self, widget: QWidget) -> None:
+        """`widget` on a line of its own under the tile's name: what the tile
+        is of. Beside the figure, with the largest letter, the two didn't fit
+        a narrow window."""
+        self.body.insertWidget(self.body.indexOf(self.caption) + 1, widget, 0,
+                               Qt.AlignmentFlag.AlignLeft)
 
     def set_unit(self, unit: str) -> None:
         if self.unit.text() != unit:
@@ -2768,10 +2792,13 @@ class Table(QScrollArea):
 
     # Alguien ha pulsado el candado de una celda: quiere los permisos.
     locked_clicked = Signal()
+    # With `pick_rows`: the row pressed.
+    row_picked = Signal(int)
 
     def __init__(self, headers: Sequence[str], numeric: Sequence[bool] = (),
                  parent: Optional[QWidget] = None, cede: Sequence[int] = (),
-                 spare: Sequence[int] = (), short: Optional[dict[int, str]] = None):
+                 spare: Sequence[int] = (), short: Optional[dict[int, str]] = None,
+                 pick_rows: bool = False):
         """`cede`: las columnas de texto que pueden salir recortadas, con
         puntos suspensivos, cuando la tabla no cabe (`_encajar`).
 
@@ -2779,9 +2806,14 @@ class Table(QScrollArea):
         where nothing else makes it fit.
 
         `short`: a shorter title for a column, shown where the full ones
-        don't fit on two lines; the full one goes into its tooltip."""
+        don't fit on two lines; the full one goes into its tooltip.
+
+        `pick_rows`: a row pressed is picked (`row_picked`) instead of the
+        cell copied, and the one picked is marked (`set_picked`)."""
         super().__init__(parent)
         self._headers = list(headers)
+        self._pick_rows = pick_rows
+        self._picked: Optional[int] = None
         # (fila, columna) → su candado, para las celdas que lo han tenido.
         self._candados: dict[tuple[int, int], "LockMark"] = {}
         self._cede = tuple(cede)
@@ -2845,6 +2877,34 @@ class Table(QScrollArea):
         # valor la columna se ensancha si hace falta; nunca se encoge, o la
         # tabla bailaría a cada muestreo.
         self._anchos = [0] * len(self._headers)
+
+    def set_picked(self, row: Optional[int]) -> None:
+        """Mark `row` as the one picked; None marks none."""
+        if row != self._picked:
+            self._picked = row
+            self._mark_picked()
+
+    @property
+    def picked(self) -> Optional[int]:
+        return self._picked
+
+    def _mark_picked(self) -> None:
+        for index, row in enumerate(self._cells):
+            mark = index == self._picked
+            for cell in row:
+                if cell.property("picked") != mark:
+                    cell.setProperty("picked", mark)
+                    cell.style().unpolish(cell)
+                    cell.style().polish(cell)
+
+    def eventFilter(self, watched, event) -> bool:  # noqa: N802
+        if (self._pick_rows and event.type() == QEvent.Type.MouseButtonRelease
+                and event.button() == Qt.MouseButton.LeftButton):
+            for index, row in enumerate(self._cells):
+                if watched in row:
+                    self.row_picked.emit(index)
+                    break
+        return super().eventFilter(watched, event)
 
     def set_cell_tone(self, fila: int, columna: int, tono: str) -> None:
         """A cell's tone: «yes», «no» or none.
@@ -2964,7 +3024,11 @@ class Table(QScrollArea):
                 label.setMinimumHeight(label.fontMetrics().height())
                 # Aquí viven los modelos de disco, las direcciones y las
                 # referencias de los módulos: lo que uno pega en un buscador.
-                label.hacer_copiable()
+                if self._pick_rows:
+                    label.setCursor(Qt.CursorShape.PointingHandCursor)
+                    label.installEventFilter(self)
+                else:
+                    label.hacer_copiable()
                 if column < len(self._numeric) and self._numeric[column]:
                     label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if tip:
@@ -2973,6 +3037,7 @@ class Table(QScrollArea):
                 fila.append(label)
             self._cells.append(fila)
         self._rows = len(rows)
+        self._mark_picked()
         self._poner_candados(locked)
         self._ajustar_anchos(rows)
         self._fit_height()

@@ -604,6 +604,9 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QListWidget#Nav::item:hover:!selected {{ background: {p.surface_alt}; color: {p.ink_dim}; }}
     QListWidget#Nav::item:disabled {{ color: {p.disabled}; }}
 
+    /* A table's row picked (a drive in Storage): in the accent. */
+    QLabel#FieldValue[picked="true"], QLabel#FieldName[picked="true"] {{ color: {p.accent}; }}
+
     QScrollArea {{ background: transparent; border: none; }}
     QScrollArea > QWidget > QWidget {{ background: transparent; }}
     QScrollBar:vertical {{ background: transparent; width: 9px; margin: 2px; }}

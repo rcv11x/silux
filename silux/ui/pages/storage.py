@@ -12,10 +12,18 @@ disco, y la pregunta «dónde está montado /home» no se hace por disco.
 from __future__ import annotations
 
 import time
+from collections import deque
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ... import render, thermal
 from ...i18n import _
@@ -26,6 +34,7 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Card,
     ChipRow,
+    ElidingComboBox,
     FoldingRow,
     InfoGrid,
     ModuleNotices,
@@ -75,6 +84,19 @@ def _orden(disco: Disk) -> tuple:
     return (disco.removable, arranque, PRIORIDAD.get(disco.kind or "", 9), disco.name)
 
 
+# The tiles' choice of every drive.
+ALL_DISKS = ""
+
+
+def disk_choice_key(disk: Disk, disks) -> str:
+    """How a disk chosen for the tiles is found again: its model and size,
+    since `sda` changes between boots and plugs; its name only between two
+    alike. Its serial number isn't read."""
+    base = f"{disk.model or ''}|{disk.size_bytes or 0}"
+    twins = sum(1 for other in disks if f"{other.model or ''}|{other.size_bytes or 0}" == base)
+    return f"{base}|{disk.name}" if twins > 1 else base
+
+
 def _sum_known(rates) -> Optional[float]:
     """The sum of the rates measured, or None if none was: a disk with no
     rate yet is not «0 B/s»."""
@@ -93,6 +115,8 @@ class StoragePage(ScrollPage):
     permission_dismissed = Signal()
     # A disk's last test asked to be opened in Performance: its name.
     disk_test_requested = Signal(str)
+    # The drive the tiles show was chosen: its key, ALL_DISKS for all.
+    disk_chosen = Signal(str)
 
     def __init__(self, palette: Palette, prefs: Preferences, parent=None):
         super().__init__(parent)
@@ -111,6 +135,13 @@ class StoragePage(ScrollPage):
         self._disk_tests: tuple = ()
         self._models: dict = {}
         self._prefs = prefs
+        # The drive the tiles show (its `disk_choice_key`), and each drive's
+        # history since Silux opened, by name: what its tiles' charts are
+        # drawn again from when it is chosen.
+        self._chosen = prefs.storage_disk
+        self._histories: dict[str, dict[str, deque]] = {}
+        self._choices: tuple = ()
+        self._discos: list = []
         m = theme.METRICS
 
         self.setWidgetResizable(True)
@@ -141,7 +172,9 @@ class StoragePage(ScrollPage):
         disk_card = Card(_("storage.card.disks"))
         self.disks = Table([_(h) for h in DISK_HEADERS],
                            numeric=(False, False, False, True, True, True, True, True),
-                           cede=(1,))      # el modelo, antes que cortar las cifras
+                           cede=(1,),      # el modelo, antes que cortar las cifras
+                           pick_rows=True)
+        self.disks.row_picked.connect(self._on_row_picked)
         disk_card.body.addWidget(self.disks)
         layout.addWidget(disk_card)
 
@@ -211,7 +244,29 @@ class StoragePage(ScrollPage):
         self.tile_write.chart.set_formatter(render.rate, intervalo)
         self.tile_temp.chart.set_formatter(
             lambda v: render.temperature(v, self._prefs.fahrenheit), intervalo)
-        return fila
+        # Which drive the reading and writing tiles show: every one, or one.
+        self.choice_boxes = []
+        for tile in (self.tile_read, self.tile_write):
+            box = ElidingComboBox(widest=40)
+            # Narrow, it gives up its width before the figure beside it.
+            box.setSizeAdjustPolicy(
+                QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            box.setMinimumContentsLength(8)
+            box.setToolTip(_("storage.disks.tip"))
+            box.activated.connect(self._on_choice_box)
+            tile.add_under_caption(box)
+            self.choice_boxes.append(box)
+        # Said once when the drive chosen goes.
+        self.chosen_gone = QLabel("")
+        self.chosen_gone.setObjectName("Muted")
+        self.chosen_gone.setWordWrap(True)
+        self.chosen_gone.hide()
+        column = QWidget()
+        inside = QVBoxLayout(column)
+        inside.setContentsMargins(0, 0, 0, 0)
+        inside.addWidget(fila)
+        inside.addWidget(self.chosen_gone)
+        return column
 
     def _build_elevation(self) -> Card:
         """La tarjeta que explica qué falta y por qué, con su botón."""
@@ -309,7 +364,113 @@ class StoragePage(ScrollPage):
             return
         self._contada = snapshot
         self._first_reading = snapshot.first_reading
-        self._apply_tiles(sorted(snapshot.disks, key=_orden))
+        discos = sorted(snapshot.disks, key=_orden)
+        self._remember(discos)
+        self._fill_choices(discos)
+        self._apply_tiles(discos)
+
+    # -- one drive at a time ---------------------------------------------------
+
+    def _history(self, name: str) -> dict[str, deque]:
+        capacity = self.tile_read.chart.capacity
+        return self._histories.setdefault(
+            name, {kind: deque(maxlen=capacity) for kind in ("read", "write", "temp")})
+
+    def _remember(self, discos) -> None:
+        """Each drive's reading, writing and temperature, and every drive's
+        sum, kept for its charts whether or not it is the one shown."""
+        for disco in discos:
+            history = self._history(disco.name)
+            history["read"].append(disco.io.read_rate_bps)
+            history["write"].append(disco.io.write_rate_bps)
+            history["temp"].append(disco.temp_c)
+        every = self._history(ALL_DISKS)
+        every["read"].append(_sum_known(x.io.read_rate_bps for x in discos))
+        every["write"].append(_sum_known(x.io.write_rate_bps for x in discos))
+        present = {x.name for x in discos} | {ALL_DISKS}
+        for name in [n for n in self._histories if n not in present]:
+            del self._histories[name]
+
+    def _chosen_disk(self, discos) -> Optional[Disk]:
+        if self._chosen == ALL_DISKS:
+            return None
+        return next((x for x in discos if disk_choice_key(x, discos) == self._chosen), None)
+
+    def _fill_choices(self, discos) -> None:
+        """The choice boxes: rebuilt only when the drives change."""
+        choices = tuple((disk_choice_key(x, discos), f"{x.name} · {x.model or x.name}")
+                        for x in discos)
+        if choices != self._choices:
+            self._choices = choices
+            for box in self.choice_boxes:
+                box.blockSignals(True)
+                box.clear()
+                box.addItem(_("storage.disks.all"), ALL_DISKS)
+                for key, label in choices:
+                    box.addItem(label, key)
+                box.blockSignals(False)
+                box.updateGeometry()
+        chosen = self._chosen_disk(discos)
+        if self._chosen != ALL_DISKS and chosen is None:
+            # Gone while shown: back to every drive, said once. Not there
+            # when Silux opened: every drive, without a word.
+            if any(key == self._chosen for key, _label in getattr(self, "_seen", ())):
+                gone = next(label for key, label in self._seen if key == self._chosen)
+                self.chosen_gone.setText(_("storage.disks.gone").format(disk=gone))
+                self.chosen_gone.show()
+            self._chosen = ALL_DISKS
+            self._replay(discos)
+        self._seen = choices
+        for box in self.choice_boxes:
+            index = box.findData(self._chosen)
+            if index >= 0 and box.currentIndex() != index:
+                box.blockSignals(True)
+                box.setCurrentIndex(index)
+                box.blockSignals(False)
+
+    def _on_choice_box(self, index: int) -> None:
+        box = self.sender()
+        self.choose(box.itemData(index) if box is not None else ALL_DISKS)
+
+    def _on_row_picked(self, row: int) -> None:
+        if 0 <= row < len(self._discos):
+            key = disk_choice_key(self._discos[row], self._discos)
+            # The row already chosen, pressed again: every drive.
+            self.choose(ALL_DISKS if key == self._chosen else key)
+
+    def choose(self, key: str) -> None:
+        """Show `key`'s drive in the tiles, ALL_DISKS for every one, with its
+        history since Silux opened; remembered by the window."""
+        if key == self._chosen:
+            return
+        self._chosen = key
+        self.chosen_gone.hide()
+        discos = self._discos
+        self._fill_choices(discos)
+        self._replay(discos)
+        self._apply_tiles(discos, push=False)
+        self._mark_row(discos)
+        self.disk_chosen.emit(key)
+
+    def _replay(self, discos) -> None:
+        """The tiles' charts drawn again from the history of what they show
+        now: a chart draws one series, and another starts from its own."""
+        chosen = self._chosen_disk(discos)
+        name = chosen.name if chosen is not None else ALL_DISKS
+        history = self._history(name)
+        prefix = f"disk:{name}" if chosen is not None else "disks"
+        self.tile_read.chart.replay(Series(f"{prefix}/read", "B/s"), history["read"])
+        self.tile_write.chart.replay(Series(f"{prefix}/write", "B/s"), history["write"])
+        if chosen is not None:
+            unit = render.temperature_unit(self._prefs.fahrenheit)
+            self.tile_temp.chart.replay(
+                Series(f"disk:{name}/temp", unit),
+                [render.in_temperature_unit(v, self._prefs.fahrenheit) if v is not None else None
+                 for v in history["temp"]])
+
+    def _mark_row(self, discos) -> None:
+        chosen = self._chosen_disk(discos)
+        self.disks.set_picked(discos.index(chosen) if chosen is not None else None)
 
     def _apply_avisos(self, discos) -> None:
         """Lo que cada disco dice de sí mismo, si es que dice algo.
@@ -391,21 +552,34 @@ class StoragePage(ScrollPage):
                                             sin_montar, "muted"))
         return segmentos
 
-    def _apply_tiles(self, discos) -> None:
-        # La suma de todas las unidades, no la del disco del sistema: en un
-        # equipo con cinco discos, la cifra que interesa es cuánto se está
-        # moviendo en total. Cuál se mueve va en la tabla de abajo.
-        lectura = _sum_known(x.io.read_rate_bps for x in discos)
-        escritura = _sum_known(x.io.write_rate_bps for x in discos)
+    def _apply_tiles(self, discos, push: bool = True) -> None:
+        """`push`: the figures are a new sample for the charts; not when the
+        drive shown changed and its charts were drawn from its history."""
+        self._discos = list(discos)
+        chosen = self._chosen_disk(discos)
         primera = self._first_reading
+        if chosen is not None:
+            lectura, escritura = chosen.io.read_rate_bps, chosen.io.write_rate_bps
+            prefix = f"disk:{chosen.name}"
+            # Its box already names it.
+            cuantos = ""
+        else:
+            # La suma de todas las unidades, no la del disco del sistema: en
+            # un equipo con cinco discos, la cifra que interesa es cuánto se
+            # está moviendo en total. Cuál se mueve va en la tabla de abajo.
+            lectura = _sum_known(x.io.read_rate_bps for x in discos)
+            escritura = _sum_known(x.io.write_rate_bps for x in discos)
+            prefix = "disks"
+            cuantos = _("storage.tile.sum.one" if len(discos) == 1
+                        else "storage.tile.sum").format(n=len(discos))
         self.tile_read.update_value(render.first_or(lectura, render.rate(lectura), primera),
-                                    lectura, word=lectura is None and primera,
-                                    series=Series("disks/read", "B/s"))
+                                    lectura if push else None,
+                                    word=lectura is None and primera,
+                                    series=Series(f"{prefix}/read", "B/s"))
         self.tile_write.update_value(render.first_or(escritura, render.rate(escritura), primera),
-                                     escritura, word=escritura is None and primera,
-                                     series=Series("disks/write", "B/s"))
-        cuantos = _("storage.tile.sum.one" if len(discos) == 1
-                    else "storage.tile.sum").format(n=len(discos))
+                                     escritura if push else None,
+                                     word=escritura is None and primera,
+                                     series=Series(f"{prefix}/write", "B/s"))
         self.tile_read.set_detail(cuantos)
         self.tile_write.set_detail(cuantos)
 
@@ -418,7 +592,11 @@ class StoragePage(ScrollPage):
             _("storage.tile.inparts.one" if len(libres) == 1
               else "storage.tile.inparts").format(n=len(libres)) if libres else "")
 
-        temperaturas = [(x.temp_c, x) for x in discos if x.temp_c is not None]
+        # The hottest drive's, or the one chosen's.
+        temperaturas = [(x.temp_c, x) for x in ([chosen] if chosen is not None else discos)
+                        if x.temp_c is not None]
+        self.tile_temp.set_label(_("storage.tile.temperature") if chosen is not None
+                                 else _("storage.tile.hottest"))
         # The unit with or without a figure: it kept «°C» in °F when no disk
         # gave its temperature.
         self.tile_temp.set_unit(render.temperature_unit(self._prefs.fahrenheit))
@@ -432,7 +610,7 @@ class StoragePage(ScrollPage):
             mostrado = render.in_temperature_unit(valor, self._prefs.fahrenheit)
             unidad = render.temperature_unit(self._prefs.fahrenheit)
             # The hottest disk's: when another one is, the chart starts over.
-            self.tile_temp.update_value(render.figure(mostrado), mostrado,
+            self.tile_temp.update_value(render.figure(mostrado), mostrado if push else None,
                                         series=Series(f"disk:{disco.name}/temp", unidad))
             self.tile_temp.set_detail(disco.name)
             paint_level(self.tile_temp.value, disco.temp_level)
@@ -443,6 +621,7 @@ class StoragePage(ScrollPage):
 
     def _apply_tables(self, discos) -> None:
         d = render.DASH
+        self._discos = list(discos)
         self.disks.set_rows([
             (x.name,
              (x.model or d)[:30],
@@ -456,6 +635,7 @@ class StoragePage(ScrollPage):
                              self._first_reading))
             for x in discos
         ] or [(_("storage.none"), d, d, d, d, d, d, d)])
+        self._mark_row(discos)
         for fila, x in enumerate(discos):
             self.disks.set_cell_tooltip(fila, COLUMNA_TEMPERATURA,
                                         self._por_que_sin_temperatura(x))

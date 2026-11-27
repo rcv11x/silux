@@ -80,6 +80,9 @@ class Preferences:
     welcome_shown: bool = False
     # The sidebar folded to its icons.
     nav_folded: bool = False
+    # The drive Storage's tiles show: its model and size (and its name
+    # between two alike); empty for every drive.
+    storage_disk: str = ""
 
     # -- validation ---------------------------------------------------------
 
@@ -113,6 +116,7 @@ class Preferences:
             permission_notice_dismissed=_yes_or_no(self.permission_notice_dismissed, False),
             welcome_shown=_yes_or_no(self.welcome_shown, False),
             nav_folded=_yes_or_no(self.nav_folded, False),
+            storage_disk=str(self.storage_disk or "")[:300],
         )
 
     @property
