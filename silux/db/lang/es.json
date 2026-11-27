@@ -1863,6 +1863,7 @@
   "sensors.record.stop.one": "Detener ({n} fila)",
   "sensors.reset.button": "Reiniciar mín/máx",
   "sensors.search.placeholder": "Buscar…",
+  "sensors.source.rapl": "RAPL del kernel (powercap)",
   "sensors.tip.record": "Escribe una fila por muestreo con todos los sensores.\nSe abre en cualquier hoja de cálculo, y sirve para ver en qué\nminuto pasó algo cuando ya no estabas mirando.",
   "sensors.tip.reset": "Vuelve a empezar a contar los extremos desde este momento.\nÚtil justo antes de lanzar una prueba de carga.",
   "sensors.tip.search": "Filtra por el nombre del sensor o del aparato.\n«memoria», «9070», «ventilador»…",

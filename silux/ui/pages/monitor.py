@@ -449,7 +449,7 @@ class MonitorPage(ScrollPage):
         return sensor.value, sensor.unit
 
     def _tooltip(self, sensor: Sensor) -> str:
-        lines = [f"{sensor.chip} · {sensor.key}"]
+        lines = [render.sensor_source(sensor)]
         limits = []
         if sensor.kind is SensorKind.TEMPERATURE:
             shown = lambda v: render.temperature_whole(v, self._prefs.fahrenheit)

@@ -39,6 +39,9 @@ def _megabytes(byte: Optional[int]) -> Optional[float]:
     return round(byte / 1e6, 1) if byte else None
 
 
+# The kernel names the power capping framework «intel-rapl» on AMD too.
+RAPL_CHIP = "intel-rapl"
+
 class DerivedSensors(Provider):
     name = "derived"
     provides = "sensors.derived"
@@ -249,7 +252,7 @@ class DerivedSensors(Provider):
             if value is None:
                 continue
             sensors.append(Sensor(
-                key=f"rapl/{attribute}", chip="intel-rapl", device=device,
+                key=f"rapl/{attribute}", chip=RAPL_CHIP, device=device,
                 device_key="cpu",
                 device_kind=DeviceKind.CPU,
                 label=label, kind=SensorKind.POWER, value=value, order=order,

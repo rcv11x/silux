@@ -1863,6 +1863,7 @@
   "sensors.record.stop.one": "Stop ({n} row)",
   "sensors.reset.button": "Reset min/max",
   "sensors.search.placeholder": "Search…",
+  "sensors.source.rapl": "The kernel's RAPL (powercap)",
   "sensors.tip.record": "Writes one row per sample with every sensor.\nIt opens in any spreadsheet, and it is how you find out\nwhat minute something happened when you were not watching.",
   "sensors.tip.reset": "Starts counting the extremes again from this moment.\nUseful right before launching a load test.",
   "sensors.tip.search": "Filters by sensor or device name.\n“memory”, “9070”, “fan”…",

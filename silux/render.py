@@ -1042,6 +1042,16 @@ def network_name(interface) -> str:
 _CHIP_ADDRESS = re.compile(r"(?:_[0-9a-f]{6,}|_\d+_[0-9a-f]+:\d+)$")
 
 
+def sensor_source(sensor) -> str:
+    """Where a sensor is read, for its tooltip: its chip and input, or in
+    plain words what the kernel calls by a maker's name on any processor."""
+    from .providers.derived import RAPL_CHIP
+
+    if sensor.chip == RAPL_CHIP:
+        return _("sensors.source.rapl")
+    return f"{sensor.chip} · {sensor.key}"
+
+
 def chip_name(chip: str) -> str:
     """A sensor chip's name without the address the kernel appends."""
     return _CHIP_ADDRESS.sub("", chip)
