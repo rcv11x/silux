@@ -106,7 +106,9 @@ class TestTheAboutPage(_AList):
         self._with(json.dumps(["Ana", "Luis", "Marta"]))
         textos = self._textos()
         self.assertIn(_("about.thanks").upper(), textos)
-        self.assertIn("Ana, Luis y Marta", textos)
+        # Each in its own badge (tests/test_about.py).
+        for name in ("Ana", "Luis", "Marta"):
+            self.assertIn(name, textos)
 
     def test_without_names_there_is_no_section(self):
         self._with("[]")

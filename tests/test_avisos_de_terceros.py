@@ -162,6 +162,8 @@ class TestEnAcercaDe(unittest.TestCase):
         self.addCleanup(self.pagina.deleteLater)
         self.pagina.resize(1200, 900)
         self.pagina.show()
+        # Folded by default (tests/test_about.py): opened, it names them.
+        self.pagina.third_party.set_abierto(True)
         self.app.processEvents()
 
     def test_dice_de_donde_salen_los_datos_y_de_quien_son(self):

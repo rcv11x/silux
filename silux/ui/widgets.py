@@ -1903,11 +1903,12 @@ class ChipRow(QWidget):
 
     def set_chips(self, labels: Iterable[str], highlight_first: bool = False,
                   swatches: Optional[Sequence] = None,
-                  tooltips: Optional[Sequence[str]] = None) -> None:
+                  tooltips: Optional[Sequence[str]] = None, loud: bool = False) -> None:
         """Pone las insignias. `swatches`: un (color, borde) por insignia, o
         nada; es lo que convierte la fila en la leyenda de una barra.
-        `tooltips`: what each one is, on hover ("" for none)."""
-        chips = [(str(text), highlight_first and i == 0)
+        `tooltips`: what each one is, on hover ("" for none). `loud`: every
+        one in the accent, not only the first."""
+        chips = [(str(text), loud or (highlight_first and i == 0))
                  for i, text in enumerate(labels)]
         self._swatches = list(swatches) if swatches is not None else []
         self._tooltips = list(tooltips) if tooltips is not None else []

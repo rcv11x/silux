@@ -17,6 +17,7 @@ alguien instala la entrada desde la terminal con la página abierta, se ve.
 
 from __future__ import annotations
 
+import math
 import pathlib
 import platform
 from typing import Callable, Optional
@@ -45,17 +46,21 @@ from ..theme import Palette, ui_font
 from ..widgets import (
     Button,
     Card,
+    ChipRow,
     Divider,
     ElidingComboBox,
     FoldingRow,
+    Plegable,
     ResponsiveRow,
     ScrollPage,
     match_widths,
 )
 
+# The names in these tables that are said in the interface's language.
+TRANSLATED_NAMES = ("about.claude.name",)
 AUTORIA = (
     ("rcv11x", "about.author"),
-    ("Claude", "about.claude"),
+    ("about.claude.name", "about.claude"),
 )
 
 # The versions this copy runs on: an AppImage carries its own Python and Qt.
@@ -622,10 +627,17 @@ class SettingsPage(ScrollPage):
         fila = ResponsiveRow(min_item_width=220)
         fila.add(self._bloque(_("about.credits"), AUTORIA))
         fila.add(self._bloque(_("about.builtwith"), CONSTRUIDO_CON))
-        fila.add(self._bloque(_("about.thirdparty"), DATOS_DE_TERCEROS))
         card.body.addWidget(fila)
         if nombres := db.thanks():
             card.body.addWidget(self._gracias(nombres))
+        # Folded: a list as long as the rest of the card, which few open.
+        self.third_party = Plegable(_("about.thirdparty.fold"))
+        third = ResponsiveRow(min_item_width=220)
+        size = math.ceil(len(DATOS_DE_TERCEROS) / 3)
+        for start in range(0, len(DATOS_DE_TERCEROS), size):
+            third.add(self._bloque(None, DATOS_DE_TERCEROS[start:start + size]))
+        self.third_party.body.addWidget(third)
+        card.body.addWidget(self.third_party)
         card.body.addWidget(Divider())
 
         self.db_info = QLabel(self._texto_de_la_base())
@@ -703,11 +715,9 @@ class SettingsPage(ScrollPage):
         encabezado.setObjectName("ColumnTitle")
         columna.addWidget(encabezado)
         columna.addSpacing(2)
-        self.thanks_names = QLabel(render.enumeration(nombres))
-        self.thanks_names.setObjectName("FieldValue")
-        self.thanks_names.setFont(ui_font(m.small_pt))
-        self.thanks_names.setWordWrap(True)
-        self.thanks_names.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        # Each name in its badge, in the accent, as the chips of a part.
+        self.thanks_names = ChipRow()
+        self.thanks_names.set_chips(nombres, loud=True)
         columna.addWidget(self.thanks_names)
         porque = QLabel(_("about.thanks.why"))
         porque.setObjectName("Muted")
@@ -716,20 +726,24 @@ class SettingsPage(ScrollPage):
         columna.addWidget(porque)
         return caja
 
-    def _bloque(self, titulo: str, lineas: tuple[tuple[str, str], ...]) -> QWidget:
-        """Una columna de «cosa, para qué», con su encabezado."""
+    def _bloque(self, titulo: Optional[str], lineas: tuple[tuple[str, str], ...]) -> QWidget:
+        """A column of «thing, what for», under its heading if it has one.
+        A name that is a language key is said in the interface's language."""
         m = theme.METRICS
         caja = QWidget()
         columna = QVBoxLayout(caja)
         columna.setContentsMargins(0, 0, 0, 0)
         columna.setSpacing(3)
 
-        encabezado = QLabel(titulo.upper())
-        encabezado.setObjectName("ColumnTitle")
-        columna.addWidget(encabezado)
-        columna.addSpacing(2)
+        if titulo is not None:
+            encabezado = QLabel(titulo.upper())
+            encabezado.setObjectName("ColumnTitle")
+            columna.addWidget(encabezado)
+            columna.addSpacing(2)
 
         for nombre, clave in lineas:
+            if nombre in TRANSLATED_NAMES:
+                nombre = _(nombre)
             # El nombre y su para-qué en dos renglones alineados por la
             # izquierda: así las tres columnas se leen a la misma altura.
             titulo_linea = QLabel(nombre)
