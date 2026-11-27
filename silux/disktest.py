@@ -128,15 +128,25 @@ PROFILES = {
                  Test("random", 4 * KIB, 32), Test("random", 4 * KIB, 1)),
     # What almost every program asks of a disk: one request at a time.
     "real": (Test("sequential", MIB, 1), Test("random", 4 * KIB, 1)),
+    # The one test the user puts together: its tests go in its plan.
+    "custom": (),
 }
+CUSTOM = "custom"
+
+
+def tests_of(result: "Result") -> tuple[str, ...]:
+    """The tests a result measured, by name, in their order."""
+    return tuple(dict.fromkeys(m.name for m in result.measures))
 
 
 def previous(result: "Result", history: Sequence["Result"]) -> Optional["Result"]:
-    """The test before `result` of the same disk, engine and profile, the
-    only one its figures compare with; `history` newest first."""
+    """The test before `result` of the same disk, engine, profile and tests,
+    the only one its figures compare with; `history` newest first. Two
+    custom runs of different tests compare with nothing."""
     return next((older for older in history
                  if older.timestamp < result.timestamp and older.measured
                  and (older.profile, older.engine) == (result.profile, result.engine)
+                 and tests_of(older) == tests_of(result)
                  and older.is_of(result.disks, result.model)), None)
 
 

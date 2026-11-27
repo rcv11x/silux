@@ -110,7 +110,8 @@ class TestChoosingIt(TabCase):
     def test_it_changes_the_plan_and_what_is_said_before(self):
         tab = self.tab()
         names = [tab.profile_box.itemText(i) for i in range(tab.profile_box.count())]
-        self.assertEqual(names, [_("disktest.profile.standard"), _("disktest.profile.real")])
+        self.assertEqual(names, [_("disktest.profile.standard"), _("disktest.profile.real"),
+                                 _("disktest.profile.custom")])
         self.assertIn("4 min 40 s", tab.about.text())
         tab.profile_box.setCurrentIndex(tab.profile_box.findData("real"))
         tab.profile_box.activated.emit(tab.profile_box.currentIndex())

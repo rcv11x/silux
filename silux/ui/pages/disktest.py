@@ -173,8 +173,16 @@ COLUMNS = {"read": "disktest.col.read", "write": "disktest.col.write"}
 FILE_STEPS = {"reserve": ("disktest.step.reserve", "disktest.step.reserve.left"),
               "fill": ("disktest.step.fill", "disktest.step.fill.left")}
 ENGINES = {"uring": "disktest.engine.uring", "threads": "disktest.engine.threads"}
-PROFILE_NAMES = {"standard": "disktest.profile.standard", "real": "disktest.profile.real"}
-PROFILE_TIPS = {"standard": "disktest.profile.standard.tip", "real": "disktest.profile.real.tip"}
+PROFILE_NAMES = {"standard": "disktest.profile.standard", "real": "disktest.profile.real",
+                 "custom": "disktest.profile.custom"}
+PROFILE_TIPS = {"standard": "disktest.profile.standard.tip", "real": "disktest.profile.real.tip",
+                "custom": "disktest.profile.custom.tip"}
+# What a custom test can ask: its pattern, its block and its queue. One
+# thread until the engine runs several rings.
+PATTERNS = (("sequential", "disktest.kind.sequential.short"),
+            ("random", "disktest.kind.random.short"))
+BLOCKS = (4 * 1024, 16 * 1024, 64 * 1024, 128 * 1024, MIB, 4 * MIB)
+DEPTHS = (1, 2, 4, 8, 16, 32, 64)
 FACT_NAMES = {"single": "disktest.fact.single", "link": "disktest.fact.link",
               "heat": "disktest.fact.heat"}
 SEQUENTIAL, SINGLE = "SEQ1M Q8T1", "RND4K Q1T1"
@@ -737,6 +745,19 @@ class DiskTestTab(ScrollPage):
                                          _(PROFILE_TIPS[profile]), Qt.ItemDataRole.ToolTipRole)
         TipsBeside(self.profile_box)
         self.profile_box.activated.connect(self._describe)
+        self.profile_box.activated.connect(self._show_custom)
+        self.pattern_box = QComboBox()
+        for pattern, key in PATTERNS:
+            self.pattern_box.addItem(_(key), pattern)
+        self.block_box = QComboBox()
+        for block in BLOCKS:
+            self.block_box.addItem(render.file_size(block), block)
+        self.block_box.setCurrentIndex(BLOCKS.index(MIB))
+        self.depth_box = QComboBox()
+        for depth in DEPTHS:
+            self.depth_box.addItem(str(depth), depth)
+        for box in (self.pattern_box, self.block_box, self.depth_box):
+            box.activated.connect(self._describe)
         self.size_box = QComboBox()
         for size in FILE_SIZES:
             self.size_box.addItem(render.file_size(size), size)
@@ -769,6 +790,20 @@ class DiskTestTab(ScrollPage):
             options.add_widget(pair)
         options.add_widget(self.write_box)
         options.add_stretch(1)
+        # The custom test's choices, on a row of their own under the profile.
+        self.custom_row = FoldingRow()
+        for caption, box in (("disktest.option.pattern", self.pattern_box),
+                             ("disktest.option.block", self.block_box),
+                             ("disktest.option.depth", self.depth_box)):
+            pair = QWidget()
+            inside = QHBoxLayout(pair)
+            inside.setContentsMargins(0, 0, 8, 0)
+            inside.setSpacing(6)
+            inside.addWidget(self._caption(caption))
+            inside.addWidget(box)
+            self.custom_row.add_widget(pair)
+        self.custom_row.add_stretch(1)
+        self.custom_row.hide()
         # At the end of the choices, on the right: the one thing to press.
         self.run_button = QPushButton(_("memtest.button.run"))
         self.run_button.setObjectName("Primary")
@@ -799,6 +834,7 @@ class DiskTestTab(ScrollPage):
         rows.addWidget(intro)
         rows.addLayout(where)
         rows.addWidget(options)
+        rows.addWidget(self.custom_row)
         card.body.addLayout(rows)
         card.body.addSpacing(theme.METRICS.card_gap)
         card.body.addWidget(Divider())
@@ -910,11 +946,19 @@ class DiskTestTab(ScrollPage):
             return None
         place = disktest.where(folder)
         partition = self._partition_at(place.mountpoint if place is not None else None)
+        profile = self.profile_box.currentData()
+        custom = {"tests": (disktest.Test(self.pattern_box.currentData(),
+                                           self.block_box.currentData(),
+                                           self.depth_box.currentData()),)} \
+            if profile == disktest.CUSTOM else {}
         return disktest.make_plan(
-            folder, place, profile=self.profile_box.currentData(),
+            folder, place, profile=profile,
             size_bytes=partition.size_bytes if partition is not None else None,
             bytes_=self.size_box.currentData(), laps=self.laps_box.currentData(),
-            write=self.write_box.isChecked())
+            write=self.write_box.isChecked(), **custom)
+
+    def _show_custom(self) -> None:
+        self.custom_row.setVisible(self.profile_box.currentData() == disktest.CUSTOM)
 
     def _partition_at(self, mountpoint: Optional[str]):
         """The partition mounted there, as the last sample read it."""
@@ -1525,20 +1569,23 @@ class DiskTestTab(ScrollPage):
         model = self._model_of(disks)
         groups: dict[tuple, list[disktest.Result]] = {}
         for result in (r for r in self._history if r.is_of(disks, model)):
+            # A custom run goes with those of its same tests only.
+            tests = disktest.tests_of(result) if result.profile == disktest.CUSTOM else ()
             groups.setdefault((result.model or " + ".join(result.disks), result.engine,
-                               result.profile), []).append(result)
+                               result.profile, tests), []).append(result)
         fahrenheit = self._prefs.fahrenheit
-        for (disk, engine, profile), results in groups.items():
-            sequential = disktest.headline_test(profile)
+        for (disk, engine, profile, own), results in groups.items():
+            names = own or (disktest.headline_test(profile), SINGLE)
+            sequential = names[0]
             found = {name: next((m for r in results for m in r.measures
                                  if name in (m.name, m.stands_for)), None)
-                     for name in (sequential, SINGLE)}
+                     for name in names}
             ran = {name: m.name if m else name for name, m in found.items()}
             known = {t.name: t for tests in disktest.PROFILES.values() for t in tests}
             tests = {name: m.test if m else known[name] for name, m in found.items()}
             writes = any(m.direction == "write" for r in results for m in r.measures)
             columns = [(sequential, "read")] + ([(sequential, "write")] if writes else []) \
-                + [(SINGLE, "read")]
+                + [(name, "read") for name in names[1:]]
             # With more than one test, each figure with how much it moved from
             # the one before, in a column of its own: in grey where that is
             # noise. In a narrow window those go first.
