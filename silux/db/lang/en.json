@@ -2142,7 +2142,6 @@
   "storage.field.trim": "TRIM",
   "storage.field.written": "Total written",
   "storage.health.attention": "{n} drives need attention",
-  "storage.health.attention.hint": "Why, and what to do, in each drive's card below.",
   "storage.health.attention.one": "A drive needs attention",
   "storage.health.body": "Power-on hours, terabytes written and wear are kept by each drive in its own diagnostic counters. The kernel reserves those commands for the administrator because they are the same ones used to erase a drive.",
   "storage.health.hint": "The helper that gets launched only knows how to ask for diagnostics and read a few system tables: it runs no commands and writes nothing.",

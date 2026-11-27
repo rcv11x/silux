@@ -153,8 +153,14 @@ class TestSaidOnce(unittest.TestCase):
             notices = [n for n in page.findChildren(Notice) if n.isVisibleTo(page)
                        and n.parentWidget() is page.widget()]
             self.assertEqual(len(notices), 1)
-            text = " ".join(pantalla.textos_de(notices[0]))
             disks = {d.name: d for d in read.disks}
+            # Its title and a line per drive, nothing more.
+            self.assertEqual(pantalla.textos_de(notices[0]), [
+                render.counted("storage.health.attention", 2),
+                "\n".join(f"{render.disk_label(disks[name])}: "
+                          f"{render.disk_health_level(disk_health.verdict(healths[name]).level)}"
+                          for name in ("nvme0n1", "nvme1n1"))])
+            text = " ".join(pantalla.textos_de(notices[0]))
             for name in ("nvme0n1", "nvme1n1"):
                 with self.subTest(disk=name):
                     self.assertIn(render.disk_label(disks[name]), text)

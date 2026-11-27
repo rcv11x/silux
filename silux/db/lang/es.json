@@ -2142,7 +2142,6 @@
   "storage.field.trim": "TRIM",
   "storage.field.written": "Escrito en total",
   "storage.health.attention": "{n} discos piden atención",
-  "storage.health.attention.hint": "El porqué y qué hacer, en la tarjeta de cada uno, más abajo.",
   "storage.health.attention.one": "Un disco pide atención",
   "storage.health.body": "Las horas de encendido, los terabytes escritos y el desgaste los guarda cada disco en sus propios contadores de diagnóstico. El kernel reserva esos comandos al administrador porque son los mismos que sirven para borrar un disco.",
   "storage.health.hint": "El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sistema: no ejecuta órdenes ni escribe nada.",

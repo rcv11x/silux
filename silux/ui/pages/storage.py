@@ -477,8 +477,8 @@ class StoragePage(ScrollPage):
         self.disks.set_picked(discos.index(chosen) if chosen is not None else None)
 
     def _apply_avisos(self, discos) -> None:
-        """Above the tables, which drives need attention and how much: why,
-        and what to do, go in each drive's card, once."""
+        """Above the tables, which drives need attention and how much, a
+        line each: why, and what to do, go in each drive's card, once."""
         locked = self._candado is not None
         verdicts = [(disco, disk_health.verdict(disco.health, locked=locked)) for disco in discos]
         flagged = [(disco, verdict.level) for disco, verdict in verdicts
@@ -495,7 +495,6 @@ class StoragePage(ScrollPage):
             render.counted("storage.health.attention", len(flagged)),
             "\n".join(f"{render.disk_label(d)}: {render.disk_health_level(level)}"
                       for d, level in flagged),
-            hint=_("storage.health.attention.hint"),
             tone="bad" if any(level == disk_health.BACKUP for _d, level in flagged) else "warn",
         ))
 
