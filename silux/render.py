@@ -2559,6 +2559,31 @@ def gpu_sleep(gpu) -> str:
     return percent(gpu.sleep_percent)
 
 
+# How GPU-Z and TechPowerUp's database give a card's memory clock: GDDR6's
+# is its data rate over 8 (an RX 9070 XT's 20.1 Gbps, 2518 MHz). amdgpu gives
+# GDDR6's over 16, half that figure; the other types as they do.
+AMD_MEMORY_CLOCK_SCALE = {"GDDR6": 2}
+
+
+def gpu_memory_clock(gpu, driver_hz: Optional[int], rate: bool = False) -> str:
+    """A memory clock the driver gives, as GPU-Z writes it: «2516 MHz»; with
+    `rate`, the rate data moves at beside it, «2516 MHz · 20.1 Gbps
+    efectivos». Only where the memory type is known: NVML says none, and an
+    NVIDIA's stays as nvidia-smi gives it."""
+    from .amdgpu import TRANSFERS
+
+    if driver_hz is None:
+        return DASH
+    if gpu.vendor != "AMD":
+        return hz(driver_hz)
+    kind = gpu.memory.kind or ""
+    text = f"{driver_hz * AMD_MEMORY_CLOCK_SCALE.get(kind, 1) / 1e6:.0f} MHz"
+    if rate and (transfers := TRANSFERS.get(kind)):
+        return _("gpu.clock.memrate").format(
+            clock=text, rate=f"{driver_hz * transfers / 1e9:.1f} Gbps")
+    return text
+
+
 def throttle_state(gpu) -> str:
     """Whether the card is throttling, and for what reasons."""
     if gpu.throttled is None:

@@ -1325,15 +1325,16 @@ class TestCuadrosDeLaGrafica(unittest.TestCase):
 
     def test_el_reloj_de_memoria_y_su_tasa_de_datos_no_son_lo_mismo(self):
         """Una GDDR6 a 1258 MHz mueve 20 Gbps: dieciséis transferencias por
-        ciclo. En el detalle va la efectiva, que es la que se compara con lo
-        que anuncia el fabricante."""
+        ciclo. En el detalle va el reloj como lo dan GPU-Z y TechPowerUp, la
+        tasa entre ocho, el mismo que en Relojes."""
         seccion = self._seccion(Gpu(
-            name="RX 9070 XT",
+            name="RX 9070 XT", vendor="AMD",
+            memory=GpuMemory(kind="GDDR6"),
             clocks=GpuClocks(core_hz=2_609_000_000,
                              memory_hz=1_258_000_000,
                              memory_effective_hz=2_517_000_000),
         ))
-        self.assertIn("2.52 GHz", seccion.tile_clock.detail.full_text())
+        self.assertIn("2516 MHz", seccion.tile_clock.detail.full_text())
 
     def test_el_bus_de_memoria_no_es_la_vram_ocupada(self):
         """Una tarjeta con la VRAM llena y el bus parado tiene datos cargados

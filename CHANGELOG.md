@@ -48,6 +48,7 @@ que hace falta.
 - Al cambiar un ajuste, la barra de estado dice «Ajuste guardado» durante dos segundos
 - «Mostrar todas las instrucciones» se aplica al momento: solo se rehace la lista de CPU, y Ajustes se queda donde estaba
 - Acerca de Silux tiene la comunidad: UniversoLinux en Discord (#silux-app-chat)
+- En una Radeon, el reloj de la memoria va como lo dan GPU-Z y TechPowerUp, el mismo en la ficha y en Relojes: «2516 MHz · 20.1 Gbps efectivos»
 
 ### Arreglos
 

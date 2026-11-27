@@ -320,8 +320,8 @@ Una integrada no tiene Resizable BAR: el procesador ya ve toda su memoria. amdgp
 
 - Núcleo: 400 MHz
 - Núcleo (máximo): 1.10 GHz
-- Memoria: 933 MHz
-- Memoria (máximo): 1.20 GHz
+- Memoria: 933 MHz · 1.9 Gbps efectivos
+- Memoria (máximo): 1200 MHz
 - Perfil de rendimiento: auto
 
 Va dentro del procesador: el enlace PCIe que publica el kernel es interno, no el de una ranura. amdgpu no publica SoC de esta tarjeta.

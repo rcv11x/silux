@@ -752,10 +752,10 @@ class GpuSection(QWidget):
                    if gpu.clocks.efficient_hz == gpu.clocks.silicon_min_hz else None))
         k(_("gpu.clock.limits"), render.gpu_clock_limits(gpu.clocks) or d,
           tooltip=_("gpu.tip.limits"))
-        k(_("gpu.clock.memory"), render.hz(gpu.clocks.memory_hz))
+        k(_("gpu.clock.memory"), render.gpu_memory_clock(gpu, gpu.clocks.memory_hz, rate=True))
         k(_("gpu.clock.memeff"), render.hz(gpu.clocks.memory_effective_hz),
           tooltip=_("gpu.tip.memeff"))
-        k(_("gpu.clock.memmax"), render.hz(gpu.clocks.memory_max_hz))
+        k(_("gpu.clock.memmax"), render.gpu_memory_clock(gpu, gpu.clocks.memory_max_hz))
         k("SoC", render.hz(gpu.clocks.soc_hz))
         k(_("gpu.clock.profile"), gpu.clocks.performance_level or d)
         k(_("gpu.clock.link"), render.pcie_link(gpu.link),
@@ -1124,15 +1124,14 @@ class GpuSection(QWidget):
         # que la curva diga «va al máximo» en vez de solo «va subiendo».
         if relojes.core_max_hz:
             self.tile_clock.chart.set_range(0, relojes.core_max_hz / 1e6)
-        # Las dos cifras de la memoria son ciertas y distintas: el reloj y la
-        # tasa de datos, que en GDDR6 son dieciséis transferencias por ciclo.
-        if relojes.memory_effective_hz:
+        # The same figure as Clocks' memory row, as GPU-Z writes it.
+        if relojes.memory_hz:
+            self.tile_clock.set_detail(_("gpu.tile.memclock").format(
+                valor=render.gpu_memory_clock(gpu, relojes.memory_hz)))
+        elif relojes.memory_effective_hz:
             self.tile_clock.set_detail(
                 _("gpu.tile.memclock").format(
                     valor=render.hz(relojes.memory_effective_hz)))
-        elif relojes.memory_hz:
-            self.tile_clock.set_detail(_("gpu.tile.memclock").format(
-                valor=render.hz(relojes.memory_hz)))
         elif gpu.sleep_percent is not None and not dormida:
             # Awake, its clock is the mean of when it ran; how long it slept
             # is told here, not averaged into it as 0 MHz.

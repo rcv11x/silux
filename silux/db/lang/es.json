@@ -803,6 +803,7 @@
   "gpu.clock.memeff": "Memoria (efectiva)",
   "gpu.clock.memmax": "Memoria (máximo)",
   "gpu.clock.memory": "Memoria",
+  "gpu.clock.memrate": "{clock} · {rate} efectivos",
   "gpu.clock.profile": "Perfil de rendimiento",
   "gpu.clock.silmax": "Máxima (silicio)",
   "gpu.clock.silmin": "Mínima (silicio)",
