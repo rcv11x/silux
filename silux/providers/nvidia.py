@@ -221,9 +221,9 @@ def _say_why_no_power(draft: Draft, index: int, card: nvml.NvidiaGpu, woke: bool
         draft.note(path, Need.HARDWARE, _("prov.nvml.estimate"),
                    detail=card.power_error or "", key="nvml.estimate")
     elif card.power_sensor is False:
-        draft.note(path, Need.HARDWARE, _("prov.nvml.nosensor"), what=_("what.gpu.power"),
-                   detail=card.power_error or "", key="nvml.nosensor",
-                   title=_("prov.nvml.nosensor.title"))
+        # «Sin sensor» on the power tile says it; what each way answered goes
+        # to the report with the card.
+        return
     else:
         draft.note(path, Need.HARDWARE, _("prov.nvml.nopower"), what=_("what.gpu.power"),
                    detail=card.power_error or "", key="nvml.nopower")

@@ -1680,8 +1680,6 @@
   "prov.nvml.lefttosleep.hint": "If a program starts using it, or it stays on for another reason, Silux reads it again within a few seconds.",
   "prov.nvml.lefttosleep.title": "Silux isn't reading it",
   "prov.nvml.nopower": "The NVIDIA driver does not give this card's power draw.",
-  "prov.nvml.nosensor": "This card has no power sensor: the NVIDIA driver says it doesn't support that reading.",
-  "prov.nvml.nosensor.title": "No power sensor",
   "prov.procfs.nostat": "The system does not publish the processor's usage.",
   "prov.rapl.container": "Inside a container the processor's energy counters (RAPL) can't be seen.",
   "prov.rapl.container.hint": "Podman and Docker hide them for security. Outside the container they show.",

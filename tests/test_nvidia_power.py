@@ -183,6 +183,7 @@ class TestACardWithASensor(unittest.TestCase):
 
 def collect_1050_ti(card):
     draft = Draft()
+    # As DRM leaves it from pci.ids: the name, and the chip as its codename.
     draft.gpu(0).update(pci_slot=fake_nvml.SLOT, vendor="NVIDIA", driver="nvidia",
                         name="GP107 [GeForce GTX 1050 Ti]", drm_node="card1",
                         integrated=False)
@@ -209,11 +210,11 @@ class TestACardWithNoSensor(unittest.TestCase):
         self.assertIn("119 samples", answers["nvmlDeviceGetSamples"])
         self.assertEqual(answers["nvmlDeviceGetArchitecture"], str(fake_nvml.PASCAL))
 
-    def test_its_note_says_it_has_no_sensor(self):
+    def test_no_notice_repeats_its_tile(self):
+        # «Sin sensor» and the limit are on the power tile: a notice saying
+        # the same above the cards was said twice.
         draft = collect_1050_ti(fake_nvml.gtx_1050_ti_instant())
-        notes = [n for n in draft.notes if n.path == "gpus.0.power_w"]
-        self.assertEqual([n.key for n in notes], ["nvml.nosensor"])
-        self.assertEqual(notes[0].title, _("prov.nvml.nosensor.title"))
+        self.assertFalse([n for n in draft.notes if n.path == "gpus.0.power_w"])
         self.assertIs(draft.gpus[0]["power_sensor"], False)
         self.assertEqual(draft.gpus[0]["power_cap_w"], 75.0)
 
@@ -230,7 +231,6 @@ class TestACardWithNoSensor(unittest.TestCase):
                 self.assertEqual(tile.value.text(), _("gpu.tile.nosensor"))
                 self.assertEqual(tile.detail.full_text(),
                                  _("gpu.tile.limit").format(limit=render.limit_watts(75.0)))
-                self.assertIn(_("prov.nvml.nosensor"), " ".join(texts["nav.graphics"]))
                 for key, page_texts in texts.items():
                     self.assertFalse([t for t in page_texts if "36" in t and "W" in t], key)
 
