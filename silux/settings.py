@@ -78,6 +78,8 @@ class Preferences:
     permission_notice_dismissed: bool = False
     # The welcome of the first time, seen (or skipped).
     welcome_shown: bool = False
+    # The sidebar folded to its icons.
+    nav_folded: bool = False
 
     # -- validation ---------------------------------------------------------
 
@@ -110,6 +112,7 @@ class Preferences:
             window_height=min(2160, max(320, int(self.window_height))),
             permission_notice_dismissed=_yes_or_no(self.permission_notice_dismissed, False),
             welcome_shown=_yes_or_no(self.welcome_shown, False),
+            nav_folded=_yes_or_no(self.nav_folded, False),
         )
 
     @property

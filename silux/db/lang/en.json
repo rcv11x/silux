@@ -1947,6 +1947,8 @@
   "share.tip": "An image summarising this machine, ready to paste into a chat or a forum.\nIt carries no hostname, addresses or serial numbers.",
   "share.units": "{tam} across {n} drives",
   "share.units.one": "{tam} on {n} drive",
+  "sidebar.fold": "Fold the sidebar to its icons",
+  "sidebar.unfold": "Show the sections' names",
   "smart.attr.1": "Read errors",
   "smart.attr.12": "Power cycles",
   "smart.attr.187": "Uncorrected errors",

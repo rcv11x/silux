@@ -45,6 +45,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStackedWidget,
     QStatusBar,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QVBoxLayout,
     QWidget,
 )
@@ -119,6 +121,23 @@ FOTOGRAMA_MINIMO_MS = 7
 # de cómo se ejecute: ver `desktop.current_launcher`.
 DESKTOP_ID = "silux"
 BUNDLED_ICON = pathlib.Path(__file__).parent / "assets" / "silux.svg"
+
+
+class NavDelegate(QStyledItemDelegate):
+    """The sidebar's rows: with their names, or folded to their icons.
+
+    Folded, the name is left out of what is painted and measured, not out of
+    the item: the sections are still found by their names."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.folded = False
+
+    def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        super().initStyleOption(option, index)
+        if self.folded:
+            option.text = ""
+            option.features &= ~QStyleOptionViewItem.ViewItemFeature.HasDisplay
 
 
 def application_icon() -> QIcon:
@@ -425,14 +444,17 @@ class MainWindow(QMainWindow):
         wordmark = QLabel("Silux")
         wordmark.setObjectName("Headline")
         wordmark.setWordWrap(True)
+        self.wordmark = wordmark
         cabecera = QHBoxLayout()
         cabecera.setContentsMargins(10, 4, 0, 6)
         cabecera.setSpacing(8)
         cabecera.addWidget(self.brand_mark)
         cabecera.addWidget(wordmark)
         cabecera.addStretch(1)
+        self._nav_header = cabecera
 
         version = QLabel(_("app.version").format(v=render.version(__version__)))
+        self.version_label = version
         version.setObjectName("Muted")
         version.setFont(ui_font(max(7, m.small_pt - 1)))
         version.setContentsMargins(10, 0, 0, 0 if build_id() else 4)
@@ -452,6 +474,8 @@ class MainWindow(QMainWindow):
         self.nav.setFont(ui_font(m.base_pt))
         self.nav.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._nav_delegate = NavDelegate(self.nav)
+        self.nav.setItemDelegate(self._nav_delegate)
 
         # Un icono por sección, gris, y en ámbar el de la que está abierta.
         lado_icono = max(14, m.base_pt + 7)
@@ -474,7 +498,15 @@ class MainWindow(QMainWindow):
             self.nav.addItem(item)
         self.nav.setCurrentRow(0)
         self.nav.currentRowChanged.connect(self._on_section)
-        panel.setFixedWidth(max(m.nav_width, self._ancho_de_la_barra()))
+        self._open_nav_width = max(m.nav_width, self._ancho_de_la_barra())
+        panel.setFixedWidth(self._open_nav_width)
+
+        # Up by the mark, where a way to fold the bar is looked for.
+        self.nav_toggle = QPushButton()
+        self.nav_toggle.setObjectName("GhostButton")
+        self.nav_toggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.nav_toggle.clicked.connect(self._toggle_nav)
+        cabecera.addWidget(self.nav_toggle, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # La versión y la copia, al pie: arriba eran dos renglones entre el
         # nombre y la navegación, y son de lo que se mira una vez.
@@ -488,8 +520,41 @@ class MainWindow(QMainWindow):
         self.update_button.setObjectName("Primary")
         self.update_button.clicked.connect(self._actualizar)
         column.addWidget(self.update_button)
+        self.nav_panel = panel
+        self.set_nav_folded(self.prefs.nav_folded)
         self._pintar_version_nueva()
         return panel
+
+    def _toggle_nav(self) -> None:
+        # A bound method, not a lambda: a lambda holding the window, on a
+        # signal of its own child, kept every closed window alive.
+        self.set_nav_folded(not self._nav_delegate.folded)
+
+    def set_nav_folded(self, folded: bool) -> None:
+        """Fold the sidebar to its icons, or open it with their names. Each
+        icon names its section when the pointer is over it; how it was left
+        is kept in the preferences."""
+        from dataclasses import replace
+
+        self._nav_delegate.folded = folded
+        for row in range(self.nav.count()):
+            item = self.nav.item(row)
+            if item.flags() & Qt.ItemFlag.ItemIsEnabled:
+                item.setToolTip(item.text() if folded else "")
+        self.wordmark.setVisible(not folded)
+        # Folded, the button goes under the mark: beside it, it wouldn't fit.
+        self._nav_header.setDirection(QHBoxLayout.Direction.TopToBottom if folded
+                                      else QHBoxLayout.Direction.LeftToRight)
+        self.version_label.setVisible(not folded)
+        self.build_label.setVisible(not folded and bool(build_id()))
+        self.nav_toggle.setText("»" if folded else "«")
+        self.nav_toggle.setToolTip(_("sidebar.unfold") if folded else _("sidebar.fold"))
+        self.nav.doItemsLayout()
+        self.nav_panel.setFixedWidth(self._ancho_de_la_barra() if folded
+                                     else self._open_nav_width)
+        self._pintar_version_nueva()
+        if folded != self.prefs.nav_folded:
+            self.prefs = replace(self.prefs, nav_folded=folded)
 
     def _ancho_de_la_barra(self) -> int:
         """Lo que pide el nombre de sección más largo, con su icono.
@@ -506,8 +571,10 @@ class MainWindow(QMainWindow):
         gruesa.setWeight(QFont.Weight.DemiBold)
         gruesa = QFontMetricsF(gruesa)
         nombres = [self.nav.item(i).text() for i in range(self.nav.count())]
-        engorde = max((gruesa.horizontalAdvance(n) - normal.horizontalAdvance(n)
-                       for n in nombres), default=0)
+        # Folded there are no names to thicken.
+        engorde = 0 if self._nav_delegate.folded else max(
+            (gruesa.horizontalAdvance(n) - normal.horizontalAdvance(n) for n in nombres),
+            default=0)
         return (math.ceil(self.nav.sizeHintForColumn(0) + engorde)
                 + 2 * self.nav.frameWidth() + 2 * theme.NAV_PADDING
                 + 2 * self.MARGEN_DE_LA_BARRA + 2)
@@ -863,8 +930,11 @@ class MainWindow(QMainWindow):
     def _pintar_version_nueva(self) -> None:
         nueva = getattr(self, "_version_nueva", None)
         if nueva is not None:
-            self.update_button.setText(
-                _("updates.button").format(version=render.version(nueva.version_text)))
+            text = _("updates.button").format(version=render.version(nueva.version_text))
+            # Folded, an arrow that says the rest when the pointer is on it.
+            folded = self._nav_delegate.folded
+            self.update_button.setText("↑" if folded else text)
+            self.update_button.setToolTip(text if folded else "")
         self.update_button.setVisible(nueva is not None)
 
     def _actualizar(self) -> None:
