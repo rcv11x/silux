@@ -46,6 +46,7 @@ que hace falta.
 - Una batería que no da su tensión, o da una imposible, salía en Sensores con «0.000 V» o esa tensión, mientras Batería decía que no la da
 - Una GeForce de la revisión «Lite Hash Rate» llevaba eso en el nombre: ahora «GeForce RTX 3070 LHR», como la vende NVIDIA
 - Los frenos por temperatura salían sin separador de miles y con «(0.0 s)» cuando el kernel los cuenta sin su tiempo: ahora «128 753 en los núcleos»
+- En el diagnóstico de un disco SATA, la temperatura del atributo 194 (y la del aire, 190) salía como un número enorme («en crudo 176 094 576 668»): ahora como smartctl, «28 °C, mín 14, máx 41»; y el 192 tiene su nombre, «Apagados sin cerrar bien»
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

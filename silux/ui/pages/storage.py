@@ -927,7 +927,7 @@ class StoragePage(ScrollPage):
         pliegue = self._smart.get(disco.name)
         if pliegue is None:
             return
-        filas = tuple(render.smart_rows(disco.health)) \
+        filas = tuple(render.smart_rows(disco.health, self._prefs.fahrenheit)) \
             if disco.health.power_on_hours is not None else ()
         pliegue.setVisible(bool(filas))
         nombres = tuple(n for n, _v in filas)

@@ -1640,18 +1640,49 @@ def trim(disk) -> Optional[str]:
 # The rest are shown with their number: their name depends on the maker.
 SMART_COMMON = {
     1: "smart.attr.1", 5: "smart.attr.5", 9: "smart.attr.9", 12: "smart.attr.12",
-    187: "smart.attr.187", 188: "smart.attr.188", 194: "smart.attr.194",
+    187: "smart.attr.187", 188: "smart.attr.188", 190: "smart.attr.190",
+    192: "smart.attr.192", 194: "smart.attr.194",
     197: "smart.attr.197", 198: "smart.attr.198", 199: "smart.attr.199",
     241: "smart.attr.241", 242: "smart.attr.242",
 }
 
 
-def smart_rows(health) -> list[tuple[str, str]]:
+# The attributes whose raw value packs a temperature, as smartctl reads them
+# by default («tempminmax»): the current one in the lowest byte, and the
+# lowest and highest the drive kept in bytes 2 and 4.
+PACKED_TEMPERATURES = (190, 194)
+
+
+def _packed_temperature(raw: int) -> Optional[tuple[int, Optional[int], Optional[int]]]:
+    now, low, high = raw & 0xFF, (raw >> 16) & 0xFF, (raw >> 32) & 0xFF
+    if not 0 < now < 128:
+        return None
+    if 0 < low <= now <= high < 128:
+        return now, low, high
+    return now, None, None
+
+
+def smart_temperature(raw: int, fahrenheit: bool = False) -> Optional[str]:
+    """«27 °C, mín 14, máx 41» from a packed raw value; None if it holds no
+    temperature."""
+    packed = _packed_temperature(raw)
+    if packed is None:
+        return None
+    now, low, high = packed
+    if low is None:
+        return temperature_whole(now, fahrenheit)
+    figure = lambda v: f"{round(in_temperature_unit(v, fahrenheit)):.0f}"
+    return _("smart.attr.temperature").format(
+        now=temperature_whole(now, fahrenheit), low=figure(low), high=figure(high))
+
+
+def smart_rows(health, fahrenheit: bool = False) -> list[tuple[str, str]]:
     """A disk's whole diagnosis, in rows of name and value.
 
     First what has a fixed name (NVMe's comes so from the standard) and
     then, on SATA, the attribute table as is: number, name if it's a common
-    one, normalized value and raw counter.
+    one, normalized value and raw counter; a temperature packed in the raw
+    value, decoded as smartctl does.
     """
     rows: list[tuple[str, str]] = []
     for key, value in (
@@ -1666,7 +1697,9 @@ def smart_rows(health) -> list[tuple[str, str]]:
             rows.append((_(key), thousands(value) if isinstance(value, int) else str(value)))
     for number, normalized, raw in health.attributes:
         name = _(SMART_COMMON[number]) if number in SMART_COMMON else _("smart.attr.other")
-        rows.append((f"{number} · {name}", _("smart.attr.value").format(
+        decoded = (smart_temperature(raw, fahrenheit) if number in PACKED_TEMPERATURES
+                   else None)
+        rows.append((f"{number} · {name}", decoded or _("smart.attr.value").format(
             normalizado=normalized, crudo=thousands(raw))))
     return rows
 
