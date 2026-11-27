@@ -12,6 +12,14 @@ que hace falta.
 
 ## Sin publicar
 
+### Lo destacado
+
+- Color de acento en Ajustes: ámbar, azul, verde, rojo o morado, legibles en claro y en oscuro, y todo cambia a la vez
+- La salud de cada disco de un vistazo en Almacenamiento, y un desplegable para elegir qué unidad enseñan sus fichas
+- Dispositivos dice qué no tiene driver y, de lo que se conoce, qué instalar
+- Todo crece con el tamaño de letra de Ajustes, y cambiar de tema o de letra tarda la mitad
+- Arreglos de los informes de la prueba13: el turbo apagado en la BIOS, una GeForce con nouveau, los sensores del firmware de los portátiles
+
 ### Mejoras
 
 - Las pruebas de disco y de memoria se comparten como imagen: «Copiar como imagen» y «Guardar…» bajo su resultado, sin la carpeta donde se hizo ni el nombre del equipo
@@ -56,6 +64,17 @@ que hace falta.
 - Los frenos por temperatura salían sin separador de miles y con «(0.0 s)» cuando el kernel los cuenta sin su tiempo: ahora «128 753 en los núcleos»
 - En el diagnóstico de un disco SATA, la temperatura del atributo 194 (y la del aire, 190) salía como un número enorme («en crudo 176 094 576 668»): ahora como smartctl, «28 °C, mín 14, máx 41»; y el 192 tiene su nombre, «Apagados sin cerrar bien»
 - Un SSD que no publica su desgaste como manda el estándar (un KIOXIA EXCERIA, con su atributo 173 al 141 %) decía «Vida restante —»: ahora dice que el disco no lo publica
+
+### Problemas conocidos
+
+- En un disco SATA, la tarjeta dice «Temperatura —» si no está cargado drivetemp, aunque su diagnóstico traiga la temperatura
+- Las esquinas de los avisos, con su raya de color a la izquierda, salen escalonadas
+- En btrfs, la escritura aleatoria 4K con 32 peticiones sale un 12-15 % por debajo de fio
+- En btrfs, la lectura secuencial con 8 peticiones por io_uring sale un 5 % por debajo de fio
+- En procesadores con dos tipos de núcleo o dos CCD, la prueba de memoria mide solo uno
+- El camino AVX-512 de la prueba de memoria funciona, pero aún no se ha comparado con otras herramientas
+- Que una NVIDIA de portátil se quede dormida solo se ha probado en un modelo
+- En KDE, Dolphin puede no enseñar el icono del AppImage
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 
