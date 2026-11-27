@@ -2255,6 +2255,12 @@ def disk_reason(reason) -> str:
     return reason.code
 
 
+def disk_label(disk) -> str:
+    """«nvme0n1 · KINGSTON SNV3S500G»: its device and its model, which tell
+    apart two drives of the same model."""
+    return f"{disk.name} · {disk.model}" if disk.model else disk.name
+
+
 def disk_warnings(health) -> list[tuple[str, str]]:
     """What a disk is saying about itself, as `(level, sentence)`: its
     health's reasons (`disk_health`), «crítico» those that mean «back it up

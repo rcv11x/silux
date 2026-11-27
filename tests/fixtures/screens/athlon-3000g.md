@@ -402,7 +402,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 | sda2 | ext4 | / | 499 GB | 8.2 GB (2 %) | 457 GB |
 | sdb1 | exfat | /media/unidad1 | 124 GB | 63.6 GB (51 %) | 60.1 GB |
 
-### sda
+### sda · WDC WD5000LPVX-0
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -425,7 +425,7 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 - Sector físico: 4096 B
 - Planificador: mq-deadline
 
-### sdb
+### sdb · DataTraveler 3.0
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.

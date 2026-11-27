@@ -395,7 +395,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 | sda6 | vfat | /boot/efi | 10.0 GB | 9.5 MB (0 %) | 10.0 GB |
 | sdb1 | exfat | /media/unidad1 | 124 GB | — | — |
 
-### sda
+### sda · SAMSUNG MZ7LN256
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -418,7 +418,7 @@ Ocupado 35.4 GB · Libre 67.4 GB · Reservado 7.2 GB · Intercambio 4.9 GB · Si
 - Planificador: mq-deadline
 - TRIM: lo admite · fstrim.timer activado
 
-### sdb
+### sdb · DataTraveler 3.0
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.

@@ -448,7 +448,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 | nvme0n1p2 | btrfs | / | 996 GB | 214 GB (22 %) | 780 GB |
 | sda2 | ntfs3 | /media/unidad1 | 1.0 TB | 13.6 GB (1 %) | 987 GB |
 
-### nvme0n1
+### nvme0n1 · KINGSTON SNV2S1000G
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -473,7 +473,7 @@ Ocupado 214 GB · Libre 784 GB
 - Planificador: kyber
 - TRIM: lo admite · montado con discard · fstrim.timer activado
 
-### sda
+### sda · WDC WD10JPCX-24U
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.

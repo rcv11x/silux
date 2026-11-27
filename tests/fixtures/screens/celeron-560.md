@@ -376,7 +376,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 |---|---|---|---|---|---|
 | sdc1 | ext4 | /media/unidad1 | 216 GB | 92.0 GB (43 %) | 109 GB |
 
-### sdc
+### sdc · SSD PLUS 240 GB
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -399,7 +399,7 @@ Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
 - Sector físico: 512 B
 - Planificador: mq-deadline
 
-### sda
+### sda · ST9160827AS
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -420,7 +420,7 @@ El disco no dice su fabricante, ni en su modelo ni en lo que publica el kernel. 
 - Sector físico: 512 B
 - Planificador: mq-deadline
 
-### sdb
+### sdb · Cruzer U
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.

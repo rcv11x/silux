@@ -278,7 +278,7 @@ Unidad Todas las unidades
 | sda1 | ext4 | / | 34.2 GB | 2.8 GB (8 %) | 30.8 GB |
 | sda15 | vfat | /boot/efi | 130 MB | 9.3 MB (7 %) | 120 MB |
 
-### sda
+### sda · QEMU HARDDISK
 
 ● Sin datos
 Un disco virtual no tiene diagnóstico propio: lo tiene el disco del equipo que lo aloja.

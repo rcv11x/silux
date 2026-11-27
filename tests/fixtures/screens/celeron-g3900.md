@@ -390,7 +390,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 | sda1 | vfat | /boot/efi | 537 MB | 6.4 MB (1 %) | 529 MB |
 | sda2 | ext4 | / | 250 GB | 46.2 GB (18 %) | 186 GB |
 
-### sda
+### sda · CT250MX500SSD1
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -413,7 +413,7 @@ Ocupado 46.3 GB · Libre 186 GB · Reservado 17.5 GB
 - Planificador: mq-deadline
 - TRIM: lo admite · fstrim.timer activado
 
-### sdb
+### sdb · TOSHIBA DT01ACA0
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.

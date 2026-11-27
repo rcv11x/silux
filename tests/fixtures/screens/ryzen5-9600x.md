@@ -455,7 +455,7 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 | nvme1n1p1 | ext4 | /media/unidad1 | 500 GB | 426 GB (85 %) | 40.0 GB |
 | sda1 | ntfs3 | /media/unidad2 | 1.0 TB | 955 GB (96 %) | 45.3 GB |
 
-### nvme0n1
+### nvme0n1 · KINGSTON SNV3S500G
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -480,7 +480,7 @@ Ocupado 443 GB · Libre 23.3 GB · Reservado 34.0 GB
 - Planificador: none
 - TRIM: lo admite · fstrim.timer activado
 
-### nvme1n1
+### nvme1n1 · KINGSTON SNV3S500G
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.
@@ -505,7 +505,7 @@ Ocupado 426 GB · Libre 40.0 GB · Reservado 34.0 GB
 - Planificador: none
 - TRIM: lo admite · fstrim.timer activado
 
-### sda
+### sda · SanDisk SSD PLUS 1000GB
 
 ● Con permisos
 La salud la guarda cada disco y solo la lee el administrador.

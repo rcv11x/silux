@@ -102,7 +102,9 @@ class TestOnScreen(unittest.TestCase):
 
         app = qt.app()
         snapshot = shared_snapshot(EQUIPOS / "ryzen5-9600x")
-        healths = {"nvme0n1": nvme(critical_warning=1), "nvme1n1": nvme(media_errors=2),
+        # Bit 0 with the spare below its threshold, as a drive sets it.
+        healths = {"nvme0n1": nvme(critical_warning=1, spare_percent=5),
+                   "nvme1n1": nvme(media_errors=2),
                    "sda": DiskHealth(power_on_hours=3148, reallocated_sectors=0,
                                      attributes=((5, 100, 0),))}
         read = dataclasses.replace(snapshot, disks=tuple(
@@ -123,3 +125,40 @@ class TestOnScreen(unittest.TestCase):
                     self.assertTrue(why.text())
             self.assertEqual(page._health["sda"][1].text(), _("disk.health.fine.text"))
             self.assertIn(_("disk.health.watch.hint"), page._health["nvme1n1"][1].text())
+
+
+class TestSaidOnce(unittest.TestCase):
+    """Why a drive needs attention is said once, in its card. Above the
+    tables, one summary that names each drive by its device too: the two
+    KINGSTON SNV3S500G of this dump read alike by their model alone."""
+
+    def test_one_summary_on_top_and_the_reasons_in_the_cards(self):
+        import dataclasses
+
+        from silux import render
+        from silux.ui.widgets import Notice
+        from tests import geometry, pantalla, qt
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+
+        app = qt.app()
+        snapshot = shared_snapshot(EQUIPOS / "ryzen5-9600x")
+        healths = {"nvme0n1": nvme(critical_warning=1, spare_percent=5),
+                   "nvme1n1": nvme(media_errors=2)}
+        read = dataclasses.replace(snapshot, disks=tuple(
+            dataclasses.replace(d, health=healths.get(d.name, d.health)) for d in snapshot.disks))
+        with pantalla.Ventana(read) as window:
+            window.select_section("Almacenamiento")
+            geometry.settle(app)
+            page = window.storage_page
+            notices = [n for n in page.findChildren(Notice) if n.isVisibleTo(page)
+                       and n.parentWidget() is page.widget()]
+            self.assertEqual(len(notices), 1)
+            text = " ".join(pantalla.textos_de(notices[0]))
+            disks = {d.name: d for d in read.disks}
+            for name in ("nvme0n1", "nvme1n1"):
+                with self.subTest(disk=name):
+                    self.assertIn(render.disk_label(disks[name]), text)
+                    reason = render.disk_health_text(disk_health.verdict(healths[name]))
+                    self.assertNotIn(reason.split(".")[0], text)
+                    card_title = render.disk_label(disks[name])
+                    self.assertIn(card_title, pantalla.textos_de(page))

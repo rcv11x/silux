@@ -403,8 +403,7 @@ class StoragePage(ScrollPage):
 
     def _fill_choices(self, discos) -> None:
         """The choice boxes: rebuilt only when the drives change."""
-        choices = tuple((disk_choice_key(x, discos), f"{x.name} · {x.model or x.name}")
-                        for x in discos)
+        choices = tuple((disk_choice_key(x, discos), render.disk_label(x)) for x in discos)
         if choices != self._choices:
             self._choices = choices
             box = self.choice_box
@@ -478,28 +477,27 @@ class StoragePage(ScrollPage):
         self.disks.set_picked(discos.index(chosen) if chosen is not None else None)
 
     def _apply_avisos(self, discos) -> None:
-        """Lo que cada disco dice de sí mismo, si es que dice algo.
-
-        El registro de salud se leía entero y no salía ni una línea: el campo
-        por el que un NVMe avisa de que va camino de perder datos estaba ahí
-        sin que lo mirara nadie.
-        """
-        filas = [(disco, nivel, texto)
-                 for disco in discos
-                 for nivel, texto in render.disk_warnings(disco.health)]
-        firma = tuple((d.name, n, t) for d, n, t in filas)
+        """Above the tables, which drives need attention and how much: why,
+        and what to do, go in each drive's card, once."""
+        locked = self._candado is not None
+        verdicts = [(disco, disk_health.verdict(disco.health, locked=locked)) for disco in discos]
+        flagged = [(disco, verdict.level) for disco, verdict in verdicts
+                   if verdict.level in (disk_health.BACKUP, disk_health.WATCH)]
+        firma = tuple((d.name, d.model, level) for d, level in flagged)
         if firma == self._avisos_signature:
             return
         self._avisos_signature = firma
 
         clear_layout(self._avisos_host)
-        for disco, nivel, texto in filas:
-            self._avisos_host.addWidget(Notice(
-                disco.display_name if hasattr(disco, "display_name") else disco.name,
-                texto,
-                hint=_("storage.warn.hint"),
-                tone="bad" if nivel == "crítico" else "warn",
-            ))
+        if not flagged:
+            return
+        self._avisos_host.addWidget(Notice(
+            render.counted("storage.health.attention", len(flagged)),
+            "\n".join(f"{render.disk_label(d)}: {render.disk_health_level(level)}"
+                      for d, level in flagged),
+            hint=_("storage.health.attention.hint"),
+            tone="bad" if any(level == disk_health.BACKUP for _d, level in flagged) else "warn",
+        ))
 
     def _apply_header(self, discos) -> None:
         if not discos:
@@ -677,7 +675,7 @@ class StoragePage(ScrollPage):
             fila = ResponsiveRow(min_item_width=360)
             self._health.clear()
             for disco in discos:
-                card = Card(disco.name)
+                card = Card(render.disk_label(disco))
                 # Its health at a glance, first: a level and why.
                 level = QLabel("")
                 level.setFont(ui_font(theme.METRICS.base_pt, QFont.Weight.DemiBold))
