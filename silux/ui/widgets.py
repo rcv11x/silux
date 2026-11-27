@@ -309,6 +309,13 @@ class FoldingRow(QWidget):
     def add_stretch(self, stretch: int = 1) -> None:
         self._box.addStretch(stretch)
 
+    def has_widget(self, widget: QWidget) -> bool:
+        return self._box.indexOf(widget) >= 0
+
+    def remove_widget(self, widget: QWidget) -> None:
+        self._box.removeWidget(widget)
+        self.updateGeometry()
+
     def set_margins(self, left: int, top: int, right: int, bottom: int) -> None:
         self._box.setContentsMargins(left, top, right, bottom)
 

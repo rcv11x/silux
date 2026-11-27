@@ -775,7 +775,7 @@ class DiskTestTab(ScrollPage):
         where.addWidget(self._caption("disktest.option.where"))
         where.addWidget(self.place_box)
         where.addStretch(1)
-        options = FoldingRow()
+        self.options = options = FoldingRow()
         for caption, box in (("disktest.option.profile", self.profile_box),
                              ("disktest.option.size", self.size_box),
                              ("disktest.option.laps", self.laps_box)):
@@ -959,7 +959,15 @@ class DiskTestTab(ScrollPage):
             write=self.write_box.isChecked(), **custom)
 
     def _show_custom(self) -> None:
-        self.custom_row.setVisible(self.profile_box.currentData() == disktest.CUSTOM)
+        custom = self.profile_box.currentData() == disktest.CUSTOM
+        self.custom_row.setVisible(custom)
+        # «Start» after every choice: at the end of the custom ones when they
+        # show, or a narrow window left it above them.
+        row, other = (self.custom_row, self.options) if custom else (self.options, self.custom_row)
+        for button in (self.run_button, self.cancel_button):
+            if other.has_widget(button):
+                other.remove_widget(button)
+                row.add_widget(button)
 
     def _partition_at(self, mountpoint: Optional[str]):
         """The partition mounted there, as the last sample read it."""
