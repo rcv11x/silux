@@ -58,6 +58,16 @@ NAV = {
 }
 
 
+# The button that folds the sidebar: a window with its side column, and an
+# arrow towards where the column goes.
+SIDEBAR = {
+    "fold": ('<rect x="2.5" y="3.5" width="15" height="13" rx="2"/>'
+             '<path d="M7.5 3.5V16.5 M13.5 7.5 L11 10 L13.5 12.5"/>'),
+    "unfold": ('<rect x="2.5" y="3.5" width="15" height="13" rx="2"/>'
+               '<path d="M7.5 3.5V16.5 M11 7.5 L13.5 10 L11 12.5"/>'),
+}
+
+
 def _leer(svg: bytes, lado: int, escala: float = 2.0) -> QPixmap:
     """Un SVG pintado a `lado` píxeles, nítido también en pantallas densas."""
     bufer = QBuffer()
@@ -94,6 +104,11 @@ def nav_icon(seccion: str, color: str, color_abierta: str, lado: int) -> QIcon:
     icono.addPixmap(_de_trazo(cuerpo, color, lado), QIcon.Mode.Normal)
     icono.addPixmap(_de_trazo(cuerpo, color_abierta, lado), QIcon.Mode.Selected)
     return icono
+
+
+def sidebar_icon(folded: bool, color: str, lado: int) -> QIcon:
+    """The fold button's icon: to fold the bar, or to open it again."""
+    return QIcon(_de_trazo(SIDEBAR["unfold" if folded else "fold"], color, lado))
 
 
 def mark(oscuro: bool, lado: int) -> QPixmap:

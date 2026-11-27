@@ -609,6 +609,12 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         font-weight: 600;
     }}
     QListWidget#Nav::item:hover:!selected {{ background: {p.surface_alt}; color: {p.ink_dim}; }}
+    /* The button that folds the bar: its icon alone, on the rows' soft
+       background when the pointer is on it. */
+    QToolButton#NavToggle {{
+        background: transparent; border: none; border-radius: 8px; padding: 4px;
+    }}
+    QToolButton#NavToggle:hover {{ background: {p.surface_alt}; }}
     QListWidget#Nav::item:disabled {{ color: {p.disabled}; }}
 
     /* A table's row picked (a drive in Storage): in the accent. */

@@ -42,11 +42,11 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
-    QPushButton,
     QStackedWidget,
     QStatusBar,
     QStyledItemDelegate,
     QStyleOptionViewItem,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -506,8 +506,11 @@ class MainWindow(QMainWindow):
         panel.setFixedWidth(self._open_nav_width)
 
         # Up by the mark, where a way to fold the bar is looked for.
-        self.nav_toggle = QPushButton()
-        self.nav_toggle.setObjectName("GhostButton")
+        self.nav_toggle = QToolButton()
+        self.nav_toggle.setObjectName("NavToggle")
+        self.nav_toggle.setAutoRaise(True)
+        self.nav_toggle.setIconSize(QSize(lado_icono, lado_icono))
+        self.nav_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
         self.nav_toggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.nav_toggle.clicked.connect(self._toggle_nav)
         cabecera.addWidget(self.nav_toggle, 0, Qt.AlignmentFlag.AlignVCenter)
@@ -551,7 +554,8 @@ class MainWindow(QMainWindow):
                                       else QHBoxLayout.Direction.LeftToRight)
         self.version_label.setVisible(not folded)
         self.build_label.setVisible(not folded and bool(build_id()))
-        self.nav_toggle.setText("»" if folded else "«")
+        self.nav_toggle.setIcon(icons.sidebar_icon(folded, self._palette.muted,
+                                                   self.nav_toggle.iconSize().width()))
         self.nav_toggle.setToolTip(_("sidebar.unfold") if folded else _("sidebar.fold"))
         self.nav.doItemsLayout()
         self.nav_panel.setFixedWidth(self._ancho_de_la_barra() if folded

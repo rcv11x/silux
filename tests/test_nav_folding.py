@@ -27,6 +27,30 @@ class Case(unittest.TestCase):
         geometry.settle(self.app)
 
 
+class TestTheButtonIsAnIcon(Case):
+    def test_an_icon_without_a_border_and_its_tooltip(self):
+        """The sidebar's own kind of icon, no square with «« » in it, and the
+        rows' soft background on hover (`QToolButton#NavToggle`)."""
+        from PySide6.QtWidgets import QToolButton
+
+        from silux.i18n import _
+
+        window = self.window()
+        toggle = window.nav_toggle
+        self.assertIsInstance(toggle, QToolButton)
+        self.assertEqual(toggle.objectName(), "NavToggle")
+        self.assertEqual(toggle.text(), "")
+        self.assertFalse(toggle.icon().isNull())
+        self.assertEqual(toggle.toolTip(), _("sidebar.fold"))
+        side = toggle.iconSize().width()
+        before = toggle.icon().pixmap(side).toImage()
+        self.fold(window)
+        self.assertEqual(toggle.toolTip(), _("sidebar.unfold"))
+        self.assertNotEqual(toggle.icon().pixmap(side).toImage(), before)
+        from silux.ui import theme
+        self.assertIn("QToolButton#NavToggle:hover", theme.stylesheet(theme.DARK))
+
+
 class TestFolding(Case):
     def test_the_button_leaves_only_the_icons(self):
         window = self.window()
