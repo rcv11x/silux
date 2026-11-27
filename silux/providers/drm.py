@@ -281,9 +281,9 @@ class DrmGpus(Provider):
                 # the temperature it gives on older cards. Looked at, not
                 # assumed from the generation.
                 hwmon = _hwmon(device)
-                gpu["no_temperature_sensor"] = not (
+                gpu["temperature_unpublished"] = not (
                     hwmon is not None and any(hwmon.glob("temp*_input")))
-                if gpu["no_temperature_sensor"]:
+                if gpu["temperature_unpublished"]:
                     notice = ("prov.drm.nouveau", "prov.drm.nouveau.hint.nosensor")
             if notice:
                 draft.note(f"gpus.{index}", Need.DRIVER,

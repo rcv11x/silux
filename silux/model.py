@@ -1531,6 +1531,9 @@ class Gpu:
     # as failing to read it, and painted differently: what doesn't exist is
     # hidden and named at the foot, not left with a dash.
     no_temperature_sensor: bool = False
+    # The card has its sensor and its driver publishes no temperature for
+    # it (nouveau without hwmon). Hidden too, and named as the driver's.
+    temperature_unpublished: bool = False
     # Such a card inside the processor: the temperature of the package it
     # shares with the CPU. Never its own, and never shown as if it were.
     package_temp_c: Optional[float] = None

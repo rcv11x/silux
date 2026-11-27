@@ -32,7 +32,7 @@ Ocupado 95.7 GB · Libre 105 GB · Reservado 15.3 GB · Sin montar 32.0 GB
 
 Procesador 40.2 °C
 lo más caliente ahora
-Esta gráfica no tiene sensor de temperatura propio.
+nouveau no publica la temperatura de la gráfica.
 
 ### Red
 
@@ -380,7 +380,7 @@ nouveau no publica núcleo, núcleo (máximo), memoria ni otros 4 datos de esta 
 
 #### Consumo y temperaturas
 
-Esta gráfica no tiene sensor de temperatura propio. nouveau no publica estado, chips de memoria, regulador gráfico ni otros 7 datos de esta tarjeta.
+nouveau no publica estado, punto caliente, chips de memoria ni otros 8 datos de esta tarjeta.
 
 #### Bibliotecas gráficas
 
@@ -681,7 +681,7 @@ SENSORES · 37 en 3 dispositivos
   - Temperaturas
     - Temperatura 1 · 34.0 °C · 34.0 · 34.0 · 34.0
 
-GeForce RTX 3070 LHR: no tiene sensor de temperatura propio.
+GeForce RTX 3070 LHR: nouveau no publica su temperatura.
 
 > **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.

@@ -925,7 +925,8 @@ class GpuSection(QWidget):
         # la página. Queda dicho al pie de «Consumo y temperaturas». Se deriva
         # de lo que ya decidió `no_aplica` en vez de repetir aquí la condición.
         asleep = gpu.resting
-        self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.virtual or asleep)
+        self.tile_temp.setVisible(not ((gpu.no_temperature_sensor or gpu.temperature_unpublished
+                                        or gpu.virtual or asleep)
                                        and gpu.temp_c is None and gpu.package_temp_c is None))
         # nouveau gives no usage, clock or power, and the notice above the
         # card says so: three big dashes said nothing more.

@@ -268,6 +268,10 @@ class MonitorPage(ScrollPage):
         faltan = [_("sensors.absent.gputemp").format(nombre=render.gpu_name(gpu))
                   for gpu in snapshot.gpus
                   if gpu.no_temperature_sensor and gpu.temp_c is None]
+        faltan += [_("sensors.absent.gputemp.driver").format(nombre=render.gpu_name(gpu),
+                                                              driver=gpu.driver)
+                   for gpu in snapshot.gpus
+                   if gpu.temperature_unpublished and gpu.temp_c is None]
         # Los canales que el driver no nombra: «Tensión 0, 1, 2…». No se les
         # pone nombre aquí porque no se sabe: en un Super I/O, qué llega a cada
         # entrada lo decidió quien diseñó la placa. Se dice de qué chip son.

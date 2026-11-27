@@ -525,9 +525,12 @@ class HomePage(ScrollPage):
 
         # La gráfica que no publica su temperatura no deja un hueco entre las
         # cifras: se dice aquí abajo, que no es lo mismo que no haberla leído.
-        pie = (_("gpu.na.notemp") if grafica is not None
-               and grafica.no_temperature_sensor
-               and grafica.temp_c is None else "")
+        pie = ""
+        if grafica is not None and grafica.temp_c is None:
+            if grafica.no_temperature_sensor:
+                pie = _("gpu.na.notemp")
+            elif grafica.temperature_unpublished:
+                pie = _("gpu.na.unpublished.temp").format(driver=grafica.driver)
         if not lecturas:
             self.temperaturas.poner(_("home.temp.none"), "", "", pie)
             return
