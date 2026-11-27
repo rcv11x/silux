@@ -120,11 +120,23 @@ class TestThePillIsPainted(unittest.TestCase):
         app = self.app
         with pantalla.Ventana(shared_snapshot(EQUIPOS / "i5-10400")) as window:
             window.nav.setCurrentRow(2)
-            _wait(app, 0.3)
+            # With smooth motion, on by default, it slides first: at rest is
+            # once that is over, however long a busy machine takes.
+            glide = window.nav.glide.animation
+            end = time.monotonic() + 5
+            while glide.state() == QAbstractAnimation.State.Running and time.monotonic() < end:
+                app.processEvents()
+            self.assertEqual(glide.state(), QAbstractAnimation.State.Stopped)
+            geometry.settle(app)
             image = window.nav.viewport().grab().toImage()
             opened = window.nav.visualItemRect(window.nav.item(2))
             other = window.nav.visualItemRect(window.nav.item(4))
             x = opened.right() - 12
+            for row in (opened, other):
+                # A point outside the image reads as #000000 on both rows.
+                self.assertTrue(image.rect().contains(x, row.center().y()),
+                                f"{image.size()}, row {row}, nav visible "
+                                f"{window.nav.isVisible()}, window {window.size()}")
             self.assertNotEqual(image.pixelColor(x, opened.center().y()).name(),
                                 image.pixelColor(x, other.center().y()).name())
 
