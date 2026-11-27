@@ -43,6 +43,7 @@ que hace falta.
 - En Sensores, los sensores del firmware de un portátil salían como un aparato con el nombre del kernel («dell_smm», «thinkpad», «hp»), con dos «CPU (dell_smm)» iguales: ahora van con el equipo, numerados si se llaman igual, y el chip se nombra en palabras («ACPI», «Dell») solo cuando hace falta
 - El ventilador de un portátil salía como «cpu_fan»: ahora «Ventilador del procesador»
 - Placa base decía «Chip de sensores: ASUS» en placas sin driver de Super I/O: era el firmware de la placa
+- Una batería que no da su tensión, o da una imposible, salía en Sensores con «0.000 V» o esa tensión, mientras Batería decía que no la da
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

@@ -34,6 +34,7 @@ from ..model import (
 )
 from ..system_env import system_environment
 from .base import Draft, Provider, frozen_gpu, is_virtual_machine, mean, read_int, read_text
+from .battery import readable_voltage
 from .dmi import PORTABLE_CHASSIS
 
 HWMON = pathlib.Path("/sys/class/hwmon")
@@ -737,6 +738,10 @@ class HwmonSensors(Provider):
             supply = _power_supply_kind(name)
             key = (_power_supply_key(*supply) if supply
                      else f"power-supply:{name}")
+            if name in batteries and readable_voltage(entry) is None:
+                # A pack that reads no voltage, or an impossible one: Batería
+                # says it can't read it, and its 0 V and 0 A are no reading.
+                continue
             if name in ports:
                 # Nothing plugged in: it reads 0 V and 0 A, which says nothing.
                 if read_int(str(entry / "online")) == 0:

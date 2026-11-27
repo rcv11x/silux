@@ -123,6 +123,16 @@ def _conservation_mode(entry: pathlib.Path) -> Optional[bool]:
     return None
 
 
+def readable_voltage(entry: pathlib.Path) -> Optional[float]:
+    """The pack's voltage, or None when it reads none or one no pack of its
+    nominal has (Sensors leaves out what Batería says it can't read)."""
+    voltage = read_int(str(entry / "voltage_now"))
+    volts = round(voltage / 1e6, 3) if voltage else None
+    design = read_int(str(entry / "voltage_min_design"))
+    design_volts = round(design / 1e6, 3) if design else None
+    return volts if _plausible(volts, design_volts) else None
+
+
 def _read(entry: pathlib.Path) -> Battery:
     voltage = read_int(str(entry / "voltage_now"))
     volts = round(voltage / 1e6, 3) if voltage else None

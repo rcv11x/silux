@@ -148,3 +148,22 @@ class TestOnThePage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNotInSensors(unittest.TestCase):
+    """The Vostro's battery read 0 V (and 0 A) in its prueba13 report: Batería
+    said it gives no voltage while Sensors showed «0.000 V» and «0.00 A». An
+    impossible voltage (its prueba9's 20.48 V) neither."""
+
+    def test_a_pack_without_a_readable_voltage_is_not_a_sensor(self):
+        import shutil
+
+        self.assertFalse([s for s in foto(VOSTRO)[0].sensors if s.device_key.startswith("bat")
+                          or "BAT0" in s.key])
+        earlier = vostro_at_20_v()
+        self.addCleanup(shutil.rmtree, earlier.parent)
+        self.assertFalse([s for s in foto(earlier)[0].sensors if "BAT0" in s.key])
+
+    def test_a_readable_one_still_is(self):
+        snapshot = foto(EQUIPOS / "i5-8350u")[0]
+        self.assertTrue([s for s in snapshot.sensors if "BAT0" in s.key])

@@ -603,7 +603,7 @@ Cada medida: 15 s · sostenida · la medida de referencia · la prueba entera, 2
 
 ## Sensores
 
-SENSORES · 12 en 4 dispositivos
+SENSORES · 10 en 3 dispositivos
 *Sensor · Actual · Mín · Máx · Media*
 - Intel Celeron 560
   - Temperaturas
@@ -624,11 +624,6 @@ SENSORES · 12 en 4 dispositivos
 - Memoria
   - Uso
     - RAM usada · 48.7 % · 48.7 · 48.7 · 48.7
-- Batería
-  - Voltajes
-    - Tensión · 0.000 V · 0.000 · 0.000 · 0.000
-  - Corrientes
-    - Corriente · 0.00 A · 0.00 · 0.00 · 0.00
 
 Mobile GM965/GL960 Integrated Graphics: no tiene sensor de temperatura propio.
 
