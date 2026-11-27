@@ -25,7 +25,7 @@ user sees is produced in `silux.render`, never earlier.
 # the build identifier, and a hash can't be compared at a glance. What
 # changes in each version is in CHANGELOG.md, and a test won't let this
 # number go up without writing it there.
-__version__ = "0.4.0rc13"
+__version__ = "0.4.0rc14"
 
 
 def build_id() -> str:
