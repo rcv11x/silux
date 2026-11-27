@@ -321,7 +321,10 @@ class FoldingRow(QWidget):
     def _row_width(self) -> int:
         pieces = self._pieces()
         margins = self._box.contentsMargins()
-        return (sum(p.minimumSize().width() for p in pieces)
+        # A button counts whole: the row becomes a column before a button
+        # breaks its words.
+        return (sum(p.sizeHint().width() if isinstance(p.widget(), Button)
+                    else p.minimumSize().width() for p in pieces)
                 + self._box.spacing() * max(len(pieces) - 1, 0)
                 + margins.left() + margins.right())
 
@@ -611,6 +614,82 @@ class Badge(QLabel):
         painter.drawRoundedRect(
             QRectF(zona.left() + 0.5, zona.center().y() - lado / 2 + 0.5, lado, lado), 2, 2)
         painter.end()
+
+
+class Button(QPushButton):
+    """The interface's push button: one line while it fits, its words on
+    more lines when the row is narrower.
+
+    With the largest font, «Leer con permisos de administrador» was wider
+    than a notice at the narrowest window, and a push button never shrinks
+    below its text. `text()` gives the whole text, however it is broken.
+    """
+
+    def __init__(self, text: str = "", parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self._whole = ""
+        self._lines = 1
+        # Below its one line's width when it has to: a push button's own
+        # policy never shrinks. Its height is its lines'.
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.setText(text)
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        self._whole = text or ""
+        self._lines = 1
+        super().setText(self._whole)
+        self.updateGeometry()
+
+    def text(self) -> str:
+        return self._whole
+
+    def _size_for(self, lines: list[str]) -> QSize:
+        from PySide6.QtWidgets import QStyleOptionButton
+
+        metrics = self.fontMetrics()
+        option = QStyleOptionButton()
+        self.initStyleOption(option)
+        option.text = "\n".join(lines)
+        inside = QSize(max((metrics.horizontalAdvance(line) for line in lines), default=0),
+                       metrics.height() * max(1, len(lines)))
+        return self.style().sizeFromContents(
+            QStyle.ContentsType.CT_PushButton, option, inside, self)
+
+    def _lines_for(self, width: int) -> list[str]:
+        """The text broken by words so that it fits in `width` pixels."""
+        words = self._whole.split()
+        if not words or self._size_for([self._whole]).width() <= width:
+            return [self._whole]
+        room = width - self._size_for([""]).width()
+        metrics = self.fontMetrics()
+        lines: list[str] = []
+        for word in words:
+            if lines and metrics.horizontalAdvance(f"{lines[-1]} {word}") <= room:
+                lines[-1] = f"{lines[-1]} {word}"
+            else:
+                lines.append(word)
+        return lines
+
+    def _height(self) -> int:
+        lines = [self._whole] if self._lines == 1 else ["x"] * self._lines
+        return self._size_for(lines).height()
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        return QSize(self._size_for([self._whole]).width(), self._height())
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        widest = max(self._whole.split() or [""], key=self.fontMetrics().horizontalAdvance)
+        return QSize(self._size_for([widest]).width(), self._height())
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        lines = self._lines_for(self.width())
+        shown = "\n".join(lines)
+        if super().text() != shown:
+            super().setText(shown)
+        if len(lines) != self._lines:
+            self._lines = len(lines)
+            self.updateGeometry()
 
 
 class FoldButton(QPushButton):
@@ -2002,7 +2081,7 @@ class Notice(QFrame):
 
         self.action_button: Optional[QPushButton] = None
         if action:
-            self.action_button = QPushButton(action)
+            self.action_button = Button(action)
             self.action_button.clicked.connect(self.action_clicked)
             fila = FoldingRow()
             fila.set_margins(0, 6, 0, 0)
@@ -2193,9 +2272,9 @@ def dismiss_buttons() -> tuple[QPushButton, QPushButton]:
     Dos botones de texto y no un aspa: un aspa no dice si es por ahora o para
     siempre, y son dos cosas distintas. Quien los usa conecta cada uno.
     """
-    luego = QPushButton(_("perm.notice.later"))
+    luego = Button(_("perm.notice.later"))
     luego.setToolTip(_("perm.notice.later.tip"))
-    nunca = QPushButton(_("perm.notice.never"))
+    nunca = Button(_("perm.notice.never"))
     nunca.setToolTip(_("perm.notice.never.tip"))
     for boton in (luego, nunca):
         boton.setObjectName("TextButton")
@@ -2249,12 +2328,12 @@ class PermissionNotice(QFrame):
         layout.addLayout(self._lista)
         self.lines: list[QLabel] = []
 
-        self.grant_button = QPushButton(_("perm.notice.grant"))
+        self.grant_button = Button(_("perm.notice.grant"))
         self.grant_button.setObjectName("Primary")
         self.grant_button.clicked.connect(self.grant_requested)
         # Al lado del que pide la contraseña: quien duda si pulsarlo es quien
         # quiere saber antes qué va a pasar.
-        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button = Button(_("perm.notice.explain"))
         self.explain_button.setObjectName("GhostButton")
         self.explain_button.clicked.connect(self.explain_requested)
         self.snooze_button, self.dismiss_button = dismiss_buttons()
@@ -2327,7 +2406,7 @@ def boton_de_permiso_permanente() -> QPushButton:
     esconde si no hay nada que actualizar. Instalarlo por primera vez se
     ofrece en «Qué hace esto».
     """
-    boton = QPushButton(_("perm.replace.button"))
+    boton = Button(_("perm.replace.button"))
     # When it shows it is what brings the data back: the main button, as in
     # Home's notice.
     boton.setObjectName("Primary")
@@ -2581,16 +2660,23 @@ class TipsBeside(QObject):
 
 
 class ElidingComboBox(QComboBox):
-    """A combo box whose choice, where it doesn't fit, ends in «…» instead
-    of being cut halfway through a word. Open, the list shows each whole.
+    """The interface's list: as wide as its longest choice, from `shortest`
+    characters up to `widest`, never stretched to its row's width, and
+    narrower when the row is, its choice ending in «…» instead of being cut
+    halfway through a word. Open, the list shows each whole.
 
-    With `widest`, it asks for its longest choice's width, up to that many
-    characters, instead of whatever its row gives it: a folder stretched to
-    nearly 1600 px on a wide screen."""
+    A folder stretched to nearly 1600 px on a wide screen, and Storage's
+    drive list to the whole width of the page."""
 
-    def __init__(self, parent: Optional[QWidget] = None, widest: Optional[int] = None):
+    def __init__(self, parent: Optional[QWidget] = None, widest: Optional[int] = 60,
+                 shortest: int = 8):
         super().__init__(parent)
         self._widest = widest
+        # No list of Silux has icons: their room doesn't count in its least width.
+        self.setIconSize(QSize(0, 0))
+        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.setMinimumContentsLength(shortest)
+        self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
 
     def sizeHint(self) -> QSize:  # noqa: N802
         hint = super().sizeHint()
@@ -3892,8 +3978,8 @@ class ShareButtons(QWidget):
         self.note.setWordWrap(True)
         self.note.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
         self.note.hide()
-        self.copy_button = QPushButton(_("share.test.copy"))
-        self.save_button = QPushButton(_("share.test.save"))
+        self.copy_button = Button(_("share.test.copy"))
+        self.save_button = Button(_("share.test.save"))
         for button in (self.copy_button, self.save_button):
             button.setObjectName("GhostButton")
             button.setToolTip(_("share.test.tip"))

@@ -194,11 +194,10 @@ class TestLaMaqueta(unittest.TestCase):
     def test_los_desplegables_no_cortan_su_opcion(self):
         pagina = _pagina(self.app)
         self.addCleanup(pagina.deleteLater)
-        caja = pagina.network_box
-        self.assertGreaterEqual(caja.width(), caja.sizeHint().width())
-        anchos = {c.width() for c in (pagina.language_box, pagina.theme_box,
-                                      pagina.network_box, pagina.interval)}
-        self.assertEqual(len(anchos), 1, anchos)
+        # Each as wide as its longest option, like every list of Silux.
+        for caja in (pagina.language_box, pagina.theme_box, pagina.network_box):
+            with self.subTest(caja=caja.currentText()):
+                self.assertGreaterEqual(caja.width(), caja.sizeHint().width())
 
 
 @unittest.skipIf(QApplication is None, "sin PySide6")

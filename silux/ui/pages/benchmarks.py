@@ -23,6 +23,7 @@ from ...i18n import _
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
+from ..widgets import Button
 from .disktest import DiskTestRun, DiskTestTab
 from .memtest import MemoryTestRun, MemoryTestTab
 from .performance import PerformancePage
@@ -57,7 +58,7 @@ class BenchmarksPage(QWidget):
         self.buttons: dict[str, QPushButton] = {}
         self.stack = QStackedWidget()
         for key, name in TABS:
-            button = QPushButton(_(name))
+            button = Button(_(name))
             button.setObjectName("Tab")
             button.setCheckable(True)
             button.setFont(ui_font(m.base_pt))

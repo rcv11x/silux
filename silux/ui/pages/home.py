@@ -16,7 +16,7 @@ from typing import Optional, Sequence
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFontMetrics
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ... import render, thermal
 from ...i18n import _
@@ -25,6 +25,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette
 from ..widgets import (
+    Button,
     Card,
     ChipRow,
     PermissionNotice,
@@ -238,7 +239,7 @@ class HomePage(ScrollPage):
         #
         # Va en la fila de las insignias, a la derecha: en una fila para él
         # solo se llevaba un renglón entero de la cabecera.
-        self.share = QPushButton(_("share.button.copy"))
+        self.share = Button(_("share.button.copy"))
         self.share.setToolTip(_("share.tip"))
         self.share.clicked.connect(self.share_copy_requested)
         fila = QHBoxLayout()

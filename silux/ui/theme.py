@@ -164,6 +164,9 @@ class Metrics:
     cell_w: int
     cell_h: int
     nav_width: int
+    # A check box's box and a list's arrow: they grow with the text beside them.
+    indicator_px: int
+    arrow_px: int
     # Suelo de la ventana. No es el mínimo técnico (el contenido cabe en unos
     # 230 px) sino el punto por debajo del cual la aplicación deja de leerse
     # bien: los nombres de campo se recortan tanto que dejan de identificar
@@ -176,6 +179,7 @@ SPACIOUS = Metrics(
     page_margin=18, section_gap=14, card_pad_h=18, card_pad_v=15, card_gap=11,
     grid_vspace=8, grid_hspace=22, base_pt=10, small_pt=10, mono_pt=10,
     headline_px=22, tile_value_pt=20, chart_height=38, cell_w=176, cell_h=50,
+    indicator_px=15, arrow_px=14,
     nav_width=164, min_window_w=520, min_window_h=430,
 )
 
@@ -183,6 +187,7 @@ NORMAL = Metrics(
     page_margin=14, section_gap=10, card_pad_h=15, card_pad_v=12, card_gap=8,
     grid_vspace=5, grid_hspace=16, base_pt=11, small_pt=10, mono_pt=10,
     headline_px=23, tile_value_pt=20, chart_height=30, cell_w=166, cell_h=42,
+    indicator_px=15, arrow_px=14,
     nav_width=166, min_window_w=480, min_window_h=380,
 )
 
@@ -192,6 +197,7 @@ COMPACT = Metrics(
     page_margin=8, section_gap=6, card_pad_h=10, card_pad_v=8, card_gap=4,
     grid_vspace=2, grid_hspace=11, base_pt=9, small_pt=8, mono_pt=8,
     headline_px=18, tile_value_pt=15, chart_height=22, cell_w=132, cell_h=34,
+    indicator_px=15, arrow_px=14,
     nav_width=140, min_window_w=410, min_window_h=330,
 )
 
@@ -243,6 +249,7 @@ def _escalar(base: Metrics, factor: float) -> Metrics:
         tile_value_pt=entero(base.tile_value_pt),
         cell_w=entero(base.cell_w), cell_h=entero(base.cell_h),
         nav_width=entero(base.nav_width), chart_height=entero(base.chart_height),
+        indicator_px=entero(base.indicator_px), arrow_px=entero(base.arrow_px),
         min_window_w=entero(base.min_window_w), min_window_h=entero(base.min_window_h),
         page_margin=suave(base.page_margin), section_gap=suave(base.section_gap),
         card_pad_h=suave(base.card_pad_h), card_pad_v=suave(base.card_pad_v),
@@ -411,16 +418,16 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         arrows = f"""
     QCheckBox::indicator:checked {{{{ image: url({check}); }}}}
     QComboBox::down-arrow {{{{
-        image: url({arrow_down}); width: 14px; height: 14px; margin-right: 4px;
+        image: url({arrow_down}); width: {m.arrow_px}px; height: {m.arrow_px}px; margin-right: 4px;
     }}}}
     QComboBox::down-arrow:on, QComboBox::down-arrow:hover {{{{
         image: url({arrow_down_hot});
     }}}}
     QDoubleSpinBox::up-arrow, QSpinBox::up-arrow {{{{
-        image: url({arrow_up}); width: 14px; height: 14px;
+        image: url({arrow_up}); width: {m.arrow_px}px; height: {m.arrow_px}px;
     }}}}
     QDoubleSpinBox::down-arrow, QSpinBox::down-arrow {{{{
-        image: url({arrow_down}); width: 14px; height: 14px;
+        image: url({arrow_down}); width: {m.arrow_px}px; height: {m.arrow_px}px;
     }}}}
     QTreeView::branch:has-children:closed {{{{
         image: url({arrow_right}); width: 9px; height: 9px;
@@ -624,6 +631,10 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
        (1.1:1). Con `line` el contorno quedaba en 1.2:1 en oscuro y no se
        veía; `muted` da 5.4:1 en oscuro y 5.0:1 en claro, por encima del 3:1
        que pide un control (WCAG 1.4.11). Al pasar el ratón sube a `ink_dim`. */
+    /* Every control at the program's size. Without one they took the
+       desktop's, a point or two under the text around them. */
+    QComboBox, QComboBox QAbstractItemView, QAbstractButton, QLineEdit,
+    QDoubleSpinBox, QSpinBox {{ font-size: {m.base_pt}pt; }}
     QComboBox, QDoubleSpinBox, QSpinBox {{
         background: {p.surface_alt};
         color: {p.ink};
@@ -651,7 +662,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
 
     QCheckBox {{ color: {p.ink}; spacing: 8px; }}
     QCheckBox::indicator {{
-        width: 15px; height: 15px;
+        width: {m.indicator_px}px; height: {m.indicator_px}px;
         border: 1px solid {p.muted};
         border-radius: 4px;
         background: {p.surface_alt};

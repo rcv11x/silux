@@ -21,12 +21,10 @@ from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
-    QComboBox,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QSizePolicy,
     QToolTip,
     QVBoxLayout,
@@ -40,6 +38,7 @@ from ...settings import Preferences
 from .. import tarjeta, theme
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
     Divider,
     ElidingComboBox,
@@ -726,6 +725,8 @@ class DiskTestTab(ScrollPage):
 
     def _build_header(self) -> Card:
         card = Card()
+        # The labels of its lists.
+        self.captions: list[QLabel] = []
         title = QLabel(_("disktest.title"))
         title.setObjectName("Headline")
         title.setWordWrap(True)
@@ -733,12 +734,9 @@ class DiskTestTab(ScrollPage):
         intro.setObjectName("Subhead")
         intro.setWordWrap(True)
 
-        self.place_box = ElidingComboBox(widest=70)
-        self.place_box.setSizeAdjustPolicy(
-            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.place_box.setMinimumContentsLength(18)
+        self.place_box = ElidingComboBox(widest=70, shortest=18)
         self.place_box.activated.connect(self._on_place)
-        self.profile_box = QComboBox()
+        self.profile_box = ElidingComboBox()
         for profile in disktest.PROFILES:
             self.profile_box.addItem(_(PROFILE_NAMES[profile]), profile)
             self.profile_box.setItemData(self.profile_box.count() - 1,
@@ -746,24 +744,24 @@ class DiskTestTab(ScrollPage):
         TipsBeside(self.profile_box)
         self.profile_box.activated.connect(self._describe)
         self.profile_box.activated.connect(self._show_custom)
-        self.pattern_box = QComboBox()
+        self.pattern_box = ElidingComboBox()
         for pattern, key in PATTERNS:
             self.pattern_box.addItem(_(key), pattern)
-        self.block_box = QComboBox()
+        self.block_box = ElidingComboBox()
         for block in BLOCKS:
             self.block_box.addItem(render.file_size(block), block)
         self.block_box.setCurrentIndex(BLOCKS.index(MIB))
-        self.depth_box = QComboBox()
+        self.depth_box = ElidingComboBox()
         for depth in DEPTHS:
             self.depth_box.addItem(str(depth), depth)
         for box in (self.pattern_box, self.block_box, self.depth_box):
             box.activated.connect(self._describe)
-        self.size_box = QComboBox()
+        self.size_box = ElidingComboBox()
         for size in FILE_SIZES:
             self.size_box.addItem(render.file_size(size), size)
         self.size_box.setCurrentIndex(FILE_SIZES.index(disktest.FILE_BYTES))
         self.size_box.activated.connect(self._describe)
-        self.laps_box = QComboBox()
+        self.laps_box = ElidingComboBox()
         for laps in LAPS:
             self.laps_box.addItem(str(laps), laps)
         self.laps_box.setCurrentIndex(LAPS.index(disktest.LAPS))
@@ -805,10 +803,10 @@ class DiskTestTab(ScrollPage):
         self.custom_row.add_stretch(1)
         self.custom_row.hide()
         # At the end of the choices, on the right: the one thing to press.
-        self.run_button = QPushButton(_("memtest.button.run"))
+        self.run_button = Button(_("memtest.button.run"))
         self.run_button.setObjectName("Primary")
         self.run_button.clicked.connect(self.start)
-        self.cancel_button = QPushButton(_("bench.button.cancel"))
+        self.cancel_button = Button(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
         self.cancel_button.clicked.connect(self._cancel)
         self.cancel_button.hide()
@@ -820,6 +818,7 @@ class DiskTestTab(ScrollPage):
         self.about = QLabel("")
         self.about.setObjectName("Muted")
         self.about.setWordWrap(True)
+        self.about.setFont(ui_font(theme.METRICS.base_pt))
         self.blocked_note = QLabel("")
         self.blocked_note.setObjectName("Muted")
         self.blocked_note.hide()
@@ -846,6 +845,8 @@ class DiskTestTab(ScrollPage):
     def _caption(self, key: str) -> QLabel:
         label = QLabel(_(key))
         label.setObjectName("Muted")
+        label.setFont(ui_font(theme.METRICS.base_pt))
+        self.captions.append(label)
         return label
 
     def _build_result(self) -> Card:
@@ -881,7 +882,7 @@ class DiskTestTab(ScrollPage):
         self._result_notes.setSpacing(6)
         card.body.addLayout(self._result_notes)
 
-        self.detail_button = QPushButton(_("disktest.detail.show"))
+        self.detail_button = Button(_("disktest.detail.show"))
         self.detail_button.setObjectName("GhostButton")
         self.detail_button.setCheckable(True)
         self.detail_button.toggled.connect(self._toggle_detail)

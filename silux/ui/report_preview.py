@@ -20,7 +20,6 @@ from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -30,6 +29,7 @@ from .. import annex, render
 from ..i18n import _
 from . import theme
 from .background import BackgroundCommand, CommandResult
+from .widgets import Button
 
 
 def github_breaks(markdown: str) -> str:
@@ -64,7 +64,7 @@ class ReportPreviewDialog(QDialog):
         self.missing = QLabel()
         self.missing.setObjectName("Muted")
         self.missing.setWordWrap(True)
-        self.grant_button = QPushButton(_("perm.button.read"))
+        self.grant_button = Button(_("perm.button.read"))
         self.grant_button.setObjectName("GhostButton")
         self.grant_button.clicked.connect(self.permissions_requested.emit)
         missing_row = QHBoxLayout()
@@ -82,10 +82,10 @@ class ReportPreviewDialog(QDialog):
         # The block and why there is none; both None while it is made.
         self._annex: tuple[Optional[str], Optional[str]] = (None, None)
 
-        self.save_button = QPushButton(_("report.preview.save"))
+        self.save_button = Button(_("report.preview.save"))
         self.save_button.setDefault(True)
         self.save_button.clicked.connect(self.save_requested.emit)
-        close = QPushButton(_("perm.explain.close"))
+        close = Button(_("perm.explain.close"))
         close.clicked.connect(self.close)
         # Where it shows whatever the reader is scrolled to: «Guardar…» waits
         # for the annex, and a disabled button says nothing about why.

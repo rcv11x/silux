@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -33,6 +32,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
     ChipRow,
     ElidingComboBox,
@@ -219,7 +219,7 @@ class StoragePage(ScrollPage):
         # parecía una insignia más entre dos filas de insignias. Un widget y
         # no un `addSpacing`, que Qt comprime cuando falta alto.
         hueco = QWidget()
-        hueco.setFixedHeight(4)
+        hueco.setFixedHeight(theme.METRICS.card_gap // 2)
         card.body.addWidget(hueco)
         card.body.addWidget(self.total_bar)
         return card
@@ -286,13 +286,13 @@ class StoragePage(ScrollPage):
         detalle.setObjectName("Muted")
         detalle.setWordWrap(True)
 
-        self.elevation_button = QPushButton(_("perm.read.button"))
+        self.elevation_button = Button(_("perm.read.button"))
         self.elevation_button.clicked.connect(self.elevation_requested)
         self.permanent_button = boton_de_permiso_permanente()
         self.permanent_button.clicked.connect(self.permanent_requested)
         # «Qué hace esto», como en el aviso de Inicio: lo que pasa al dar
         # permisos y cómo darlos para siempre se cuenta en un sitio solo.
-        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button = Button(_("perm.notice.explain"))
         self.explain_button.setObjectName("GhostButton")
         self.explain_button.clicked.connect(self.explain_requested)
 
@@ -760,7 +760,7 @@ class StoragePage(ScrollPage):
         summary.setObjectName("Muted")
         summary.setWordWrap(True)
         summary.setFont(ui_font(theme.METRICS.small_pt))
-        link = QPushButton(_("memory.lasttest.open"))
+        link = Button(_("memory.lasttest.open"))
         link.setObjectName("TextButton")
         link.setCursor(Qt.CursorShape.PointingHandCursor)
         link.clicked.connect(lambda: self.disk_test_requested.emit(name))

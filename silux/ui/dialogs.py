@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ..i18n import _
 from . import theme
+from .widgets import Button
 
 # Los cuatro párrafos, en este orden: qué lee, qué pasa si se dan esta vez,
 # qué pasa si se dan para siempre y quién pide la contraseña. Cortos: se leen
@@ -25,6 +26,10 @@ def ajustar_tope(dialogo: QDialog) -> None:
     justo antes de enseñarse, que es cuando Qt decide el tamaño y cuando
     el tema ya ha pasado por los botones.
     """
+    # A dialog widens to what it needs: its buttons keep their text on one
+    # line, which the height worked out below counts on.
+    for boton in dialogo.findChildren(Button):
+        boton.setMinimumWidth(boton.sizeHint().width())
     pide = dialogo.layout().minimumSize().width()
     # El mínimo también: uno puesto a mano manda sobre el del contenido,
     # y con él más bajo Qt deja el diálogo más estrecho que la orden.
@@ -80,7 +85,7 @@ class PermissionsDialog(QDialog):
             layout.addWidget(parrafo)
             self.paragraphs.append(parrafo)
 
-        self.grant_button = QPushButton(_("perm.explain.grant"))
+        self.grant_button = Button(_("perm.explain.grant"))
         self.grant_button.clicked.connect(self._dar)
         # Sin la regla de polkit, la ventana de la contraseña enseña la orden
         # de `python3` con código dentro, y no se puede cambiar: pkexec elige
@@ -102,7 +107,7 @@ class PermissionsDialog(QDialog):
         self.granted_label.setVisible(concedidos)
         # Con los puntos suspensivos: abre otro diálogo, el de polkit, y no
         # es lo mismo que el de al lado.
-        self.permanent_button = QPushButton(_("perm.explain.permanent"))
+        self.permanent_button = Button(_("perm.explain.permanent"))
         self.permanent_button.clicked.connect(self._para_siempre)
         # Si el ayudante ya está instalado, «para siempre» ya está hecho.
         self.permanent_button.setVisible(permanente)
@@ -112,7 +117,7 @@ class PermissionsDialog(QDialog):
         principal = self.permanent_button if permanente else self.grant_button
         principal.setObjectName("Primary")
         principal.setDefault(True)
-        self.close_button = QPushButton(_("perm.explain.close"))
+        self.close_button = Button(_("perm.explain.close"))
         self.close_button.setObjectName("TextButton")
         self.close_button.setFlat(True)
         self.close_button.clicked.connect(self.reject)
@@ -180,9 +185,9 @@ class MoveAppImageDialog(QDialog):
             layout.addWidget(paragraph)
             self.paragraphs.append(paragraph)
 
-        self.leave_button = QPushButton(_("settings.shortcut.move.no"))
+        self.leave_button = Button(_("settings.shortcut.move.no"))
         self.leave_button.clicked.connect(lambda: self._answer("leave"))
-        self.move_button = QPushButton(_("settings.shortcut.move.yes"))
+        self.move_button = Button(_("settings.shortcut.move.yes"))
         self.move_button.setObjectName("Primary")
         self.move_button.setDefault(True)
         self.move_button.clicked.connect(lambda: self._answer("move"))

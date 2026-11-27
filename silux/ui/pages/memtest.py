@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -30,6 +29,7 @@ from ...settings import Preferences
 from .. import tarjeta, theme
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
     Fact,
     FoldingRow,
@@ -101,7 +101,8 @@ class CurveChart(QWidget):
         self._caches: tuple = ()
         # Where each cache's name went at the last paint.
         self.label_boxes: list = []
-        self.setMinimumHeight(220)
+        # Room for its axes' figures and five levels' names, at any font size.
+        self.setMinimumHeight(5 * theme.METRICS.cell_h)
 
     def set_curve(self, points, caches) -> None:
         self._points, self._caches = tuple(points), tuple(caches)
@@ -540,10 +541,10 @@ class MemoryTestTab(ScrollPage):
         self.intro = QLabel(_("memtest.intro"))
         self.intro.setObjectName("Subhead")
         self.intro.setWordWrap(True)
-        self.run_button = QPushButton(_("memtest.button.run"))
+        self.run_button = Button(_("memtest.button.run"))
         self.run_button.setObjectName("Primary")
         self.run_button.clicked.connect(self.start)
-        self.cancel_button = QPushButton(_("bench.button.cancel"))
+        self.cancel_button = Button(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
         self.cancel_button.clicked.connect(self._cancel)
         self.cancel_button.hide()
@@ -598,7 +599,7 @@ class MemoryTestTab(ScrollPage):
         self.share_lock = LockMark(self._p.info, theme.METRICS.small_pt + 3)
         self.share_lock.hacer_pulsable()
         self.share_lock.clicked.connect(self.elevation_requested)
-        self.share_button = QPushButton("")
+        self.share_button = Button("")
         self.share_button.setObjectName("LinkAction")
         self.share_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.share_button.clicked.connect(self.elevation_requested)
@@ -625,7 +626,7 @@ class MemoryTestTab(ScrollPage):
         self._result_notes.setSpacing(6)
         card.body.addLayout(self._result_notes)
 
-        self.detail_button = QPushButton(_("memtest.detail.show"))
+        self.detail_button = Button(_("memtest.detail.show"))
         self.detail_button.setObjectName("GhostButton")
         self.detail_button.setCheckable(True)
         self.detail_button.toggled.connect(self._toggle_detail)
@@ -664,7 +665,7 @@ class MemoryTestTab(ScrollPage):
              _("memtest.col.share"), _("memtest.col.frequency")],
             numeric=(False, True, True, True, True))
         card.body.addWidget(self.history)
-        self.clear_button = QPushButton(_("bench.button.clear"))
+        self.clear_button = Button(_("bench.button.clear"))
         self.clear_button.clicked.connect(self._clear_history)
         row = QHBoxLayout()
         row.addWidget(self.clear_button)

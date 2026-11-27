@@ -25,6 +25,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
     ChipRow,
     FoldButton,
@@ -209,7 +210,7 @@ class NetworkPage(ScrollPage):
 
         self._unit_buttons: dict[str, QPushButton] = {}
         for etiqueta, valor in (("MB/s", "bytes"), ("Mb/s", "bits")):
-            boton = QPushButton(etiqueta)
+            boton = Button(etiqueta)
             boton.setCheckable(True)
             boton.setChecked(self._prefs.network_unit == valor)
             boton.setCursor(Qt.CursorShape.PointingHandCursor)

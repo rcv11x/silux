@@ -23,11 +23,15 @@ que hace falta.
 - Dispositivos lista lo que no tiene driver del kernel (una wifi, un controlador USB, el sonido) con su ID y qué se puede hacer; un driver que se carga se ve al momento
 - En una Radeon, Gráficos calcula las unidades de sombreado y de texturas, los TFLOPS en FP32 y los rellenos de píxeles y texturas, cada cifra marcada como calculada y con su fórmula al pasar el ratón
 - La prueba de disco tiene un perfil «Personalizado»: patrón, bloque y cola a elegir, con un hilo; su comparación con la vez anterior y su historial van solo con pruebas iguales
+- Los botones, desplegables y casillas llevan la letra del resto del programa en todas las páginas y crecen con el tamaño de letra de Ajustes; un botón que no cabe parte su texto en dos líneas
+- Los desplegables miden lo que su opción más larga, con un mínimo y un tope, y no se estiran a todo el ancho
 
 ### Arreglos
 
 - En una ventana estrecha, el selector de secciones («Almacenam…») y el texto de la barra de estado ya no se cortan
 - En la prueba de disco, «Dónde» mide lo que su texto pide, con un tope, y no todo el ancho de la ventana
+- En Rendimiento, los desplegables, sus etiquetas, «Medir también la escritura» y los botones del historial iban con una letra más pequeña que el resto
+- Con la letra más grande de Ajustes, los botones y los desplegables se quedaban del tamaño de siempre
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

@@ -16,10 +16,8 @@ import threading
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -31,7 +29,9 @@ from .. import theme
 from ..scorebar import ScoreBar
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
+    ElidingComboBox,
     FoldingRow,
     InfoGrid,
     Notice,
@@ -162,15 +162,15 @@ class PerformancePage(ScrollPage):
         self.history_card.body.addWidget(nota)
 
         acciones = QHBoxLayout()
-        self.open_folder = QPushButton(_("bench.button.folder"))
+        self.open_folder = Button(_("bench.button.folder"))
         self.open_folder.setToolTip(str(history.history_path()))
         self.open_folder.clicked.connect(self._abrir_carpeta)
-        self.clear_history = QPushButton(_("bench.button.clear"))
+        self.clear_history = Button(_("bench.button.clear"))
         self.clear_history.clicked.connect(self._borrar_historial)
         # Solo mientras haya alguna: tras cambiar de escala el historial se
         # queda con pruebas que no se comparan con nada, y quitarlas una a una
         # es un diálogo por cada una.
-        self.clear_other_scales = QPushButton(_("bench.button.clearold"))
+        self.clear_other_scales = Button(_("bench.button.clearold"))
         self.clear_other_scales.clicked.connect(self._borrar_las_de_otra_escala)
         self.clear_other_scales.hide()
         acciones.addWidget(self.open_folder)
@@ -203,9 +203,9 @@ class PerformancePage(ScrollPage):
         subtitulo.setObjectName("Subhead")
         self.intro = subtitulo
 
-        self.run_button = QPushButton(_("bench.button.run"))
+        self.run_button = Button(_("bench.button.run"))
         self.run_button.clicked.connect(lambda: self._start(quick=False))
-        self.quick_button = QPushButton(_("bench.button.quick"))
+        self.quick_button = Button(_("bench.button.quick"))
         self.quick_button.setToolTip(
             _("bench.quick.tip")
         )
@@ -215,7 +215,7 @@ class PerformancePage(ScrollPage):
         # toma. A los cinco segundos el turbo ya subió y el disipador aún está
         # frío; a los treinta se mide con el equipo asentado, que es lo que de
         # verdad pasa mientras se juega o se compila.
-        self.duracion = QComboBox()
+        self.duracion = ElidingComboBox(shortest=12)
         for etiqueta, segundos in DURACIONES:
             # La que se puede comparar con otros equipos va marcada: sin esto,
             # elegirla era cuestión de suerte y la barra de comparación no
@@ -235,7 +235,7 @@ class PerformancePage(ScrollPage):
         # Con diez medidas y la duración a elegir, la prueba puede irse a
         # horas. Poder pararla no es un extra: es lo que hace que probar una
         # duración larga no dé miedo.
-        self.cancel_button = QPushButton(_("bench.button.cancel"))
+        self.cancel_button = Button(_("bench.button.cancel"))
         self.cancel_button.setObjectName("Danger")
         self.cancel_button.clicked.connect(self._cancelar)
         self.cancel_button.hide()
@@ -250,12 +250,15 @@ class PerformancePage(ScrollPage):
         botones.add_widget(self.cancel_button)
         botones.add_stretch(1)
         fila = FoldingRow()
-        fila.add_widget(QLabel(_("bench.label.each")))
+        self.each_caption = QLabel(_("bench.label.each"))
+        fila.add_widget(self.each_caption)
         fila.add_widget(self.duracion)
         # Cuánto tarda la prueba entera. Son diez medidas, así que «30 s» son
         # cinco minutos: la cuenta la hace nadie de cabeza mientras elige.
         self.duracion_total = QLabel("")
         self.duracion_total.setObjectName("Muted")
+        for caption in (self.each_caption, self.duracion_total):
+            caption.setFont(ui_font(theme.METRICS.base_pt))
         fila.add_widget(self.duracion_total)
         fila.add_stretch(1)
         self.duracion.currentIndexChanged.connect(self._pintar_total)
@@ -439,11 +442,11 @@ class PerformancePage(ScrollPage):
             acciones = QHBoxLayout()
             acciones.setContentsMargins(0, 0, 0, 0)
             acciones.setSpacing(4)
-            renombrar = QPushButton(_("bench.button.rename"))
+            renombrar = Button(_("bench.button.rename"))
             renombrar.setToolTip(_("bench.dialog.name.tip"))
             renombrar.clicked.connect(
                 lambda _pulsado=False, e=entrada: self._renombrar(e))
-            borrar = QPushButton(_("bench.button.delete"))
+            borrar = Button(_("bench.button.delete"))
             borrar.clicked.connect(lambda _pulsado=False, e=entrada: self._borrar_una(e))
             # As every other button, only lower: the row's text sets the height.
             for boton in (renombrar, borrar):

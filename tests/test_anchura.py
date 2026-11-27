@@ -237,17 +237,56 @@ def _cut_values(page) -> list[str]:
     return cut
 
 
-class TestTheLargestFontInANarrowWindow(unittest.TestCase):
-    """With the largest font, at the narrowest the window allows, no page of
-    any dump runs off the right edge. Header lines that didn't wrap, rows of
-    buttons, widths reserved as minimums and a row's column width scaled
-    with the font pushed every page out at 760 px."""
+def _short_controls(page) -> list[str]:
+    """The buttons, lists and boxes shown lower than their own text: a fixed
+    height that didn't grow with the font cuts them."""
+    from PySide6.QtWidgets import QAbstractButton, QComboBox
+
+    from silux.ui.widgets import Button
+
+    short = []
+    for control in page.findChildren(QAbstractButton) + page.findChildren(QComboBox):
+        if not control.isVisibleTo(page):
+            continue
+        lines = control._lines if isinstance(control, Button) else 1
+        if control.height() < control.fontMetrics().height() * lines:
+            text = control.text() if isinstance(control, QAbstractButton) else control.currentText()
+            short.append(f"{type(control).__name__} «{text[:30]}» {control.height()} px")
+    return short
+
+
+def _stretched_lists(page) -> list[str]:
+    """The lists wider than their longest choice with the list's own margin
+    and arrow, or than their least width when that is more: a list is never
+    stretched to its row's width."""
+    from PySide6.QtCore import QSize
+    from PySide6.QtWidgets import QComboBox, QStyle, QStyleOptionComboBox
+
+    wide = []
+    for box in page.findChildren(QComboBox):
+        if not box.isVisibleTo(page) or not box.count():
+            continue
+        metrics = box.fontMetrics()
+        text = max(metrics.horizontalAdvance(box.itemText(i)) for i in range(box.count()))
+        option = QStyleOptionComboBox()
+        box.initStyleOption(option)
+        whole = box.style().sizeFromContents(QStyle.ContentsType.CT_ComboBox, option,
+                                             QSize(text, box.height()), box).width()
+        if box.width() > max(whole, box.minimumSizeHint().width()) + 1:
+            wide.append(f"«{box.currentText()[:30]}» {box.width()} px of {whole}")
+    return wide
+
+
+class _EveryPageAt:
+    """Every section of a dump's window at a font size and a width: nothing
+    runs off the right edge, no value is cut and no control is cut."""
 
     @classmethod
     def setUpClass(cls):
         cls.app = _app()
 
-    def _check(self, folder, density: str = "normal"):
+    def _check(self, folder, density: str = "normal", scale: str = "máximo",
+               width: int | None = None):
         from silux.ui.app import MainWindow
         from tests.test_equipos import shared_snapshot
 
@@ -263,9 +302,9 @@ class TestTheLargestFontInANarrowWindow(unittest.TestCase):
             self.app.setStyleSheet(saved[1])
 
         self.addCleanup(restore)
-        metrics = theme.set_density(density, "máximo")
-        width = metrics.min_window_w
-        prefs = Preferences(density=density, font_scale="máximo", window_width=width,
+        metrics = theme.set_density(density, scale)
+        width = width or metrics.min_window_w
+        prefs = Preferences(density=density, font_scale=scale, window_width=width,
                             window_height=ALTO).normalized()
         theme.apply(self.app, prefs.theme, prefs.density, prefs.font_scale)
         window = MainWindow(prefs)
@@ -282,10 +321,19 @@ class TestTheLargestFontInANarrowWindow(unittest.TestCase):
         for row in range(window.nav.count()):
             window.nav.setCurrentRow(row)
             _asentar(self.app)
-            with self.subTest(dump=folder.name, density=density,
+            with self.subTest(dump=folder.name, density=density, scale=scale,
                               section=window.nav.item(row).text()):
                 self.assertEqual(probe._desbordados()[:12], [])
                 self.assertEqual(_cut_values(window.stack.currentWidget()), [])
+                self.assertEqual(_short_controls(window.stack.currentWidget()), [])
+                self.assertEqual(_stretched_lists(window.stack.currentWidget()), [])
+
+
+class TestTheLargestFontInANarrowWindow(_EveryPageAt, unittest.TestCase):
+    """With the largest font, at the narrowest the window allows, no page of
+    any dump runs off the right edge. Header lines that didn't wrap, rows of
+    buttons, widths reserved as minimums and a row's column width scaled
+    with the font pushed every page out at 760 px."""
 
     def _every_page(self, folder):
         self._check(folder)
@@ -298,6 +346,25 @@ class TestTheLargestFontInANarrowWindow(unittest.TestCase):
 
 
 per_dump(TestTheLargestFontInANarrowWindow, "every_page", TestTheLargestFontInANarrowWindow._every_page)
+
+
+# The width every font size of Settings is checked at: the narrowest window
+# the largest one allows, so the smaller ones fit with room to spare.
+EVERY_FONT_WIDTH = 720
+
+
+class TestEveryFontAt720(_EveryPageAt, unittest.TestCase):
+    """Every page of every dump fits at 720 px with every font size Settings
+    offers, its controls growing with the text and none cut. The largest is
+    `TestTheLargestFontInANarrowWindow`'s: 720 px is its narrowest window."""
+
+    def _every_page(self, folder):
+        for scale in theme.FONT_SCALES:
+            if theme._escalar(theme.NORMAL, theme.FONT_SCALES[scale]).min_window_w != EVERY_FONT_WIDTH:
+                self._check(folder, scale=scale, width=EVERY_FONT_WIDTH)
+
+
+per_dump(TestEveryFontAt720, "every_page", TestEveryFontAt720._every_page)
 
 
 def _first_snapshot(folder):

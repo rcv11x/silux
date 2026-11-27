@@ -22,7 +22,6 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -36,6 +35,7 @@ from .. import theme
 from ..sensortree import SensorTree
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
     ElidingLabel,
     FoldingRow,
@@ -148,13 +148,13 @@ class MonitorPage(ScrollPage):
         self.search.setMaximumWidth(190)
         self.search.textChanged.connect(self._buscar)
 
-        self.record_button = QPushButton(_("sensors.record.button"))
+        self.record_button = Button(_("sensors.record.button"))
         self.record_button.setToolTip(
             _("sensors.tip.record")
         )
         self.record_button.clicked.connect(self._alternar_registro)
 
-        self.reset_button = QPushButton(_("sensors.reset.button"))
+        self.reset_button = Button(_("sensors.reset.button"))
         self.reset_button.setToolTip(
             _("sensors.tip.reset")
         )

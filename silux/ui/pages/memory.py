@@ -17,7 +17,6 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -37,6 +36,7 @@ from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
 from ..widgets import (
+    Button,
     Card,
     ChipRow,
     FoldingRow,
@@ -271,7 +271,7 @@ class MemoryPage(ScrollPage):
         self.elevation_hint.setWordWrap(True)
         self.elevation_hint.setFont(ui_font(theme.METRICS.small_pt))
 
-        self.elevation_button = QPushButton(_("perm.read.button"))
+        self.elevation_button = Button(_("perm.read.button"))
         self.elevation_button.setToolTip(
             _("memory.tip.elevate")
         )
@@ -281,7 +281,7 @@ class MemoryPage(ScrollPage):
         self.permanent_button.clicked.connect(self.permanent_requested)
         # «Qué hace esto», como en el aviso de Inicio: lo que pasa al dar
         # permisos y cómo darlos para siempre se cuenta en un sitio solo.
-        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button = Button(_("perm.notice.explain"))
         self.explain_button.setObjectName("GhostButton")
         self.explain_button.clicked.connect(self.explain_requested)
 
@@ -347,7 +347,7 @@ class MemoryPage(ScrollPage):
         self.test_when.setFont(ui_font(theme.METRICS.small_pt))
         self.test_summary = QLabel("")
         self.test_summary.setWordWrap(True)
-        self.test_link = QPushButton("")
+        self.test_link = Button("")
         self.test_link.setObjectName("TextButton")
         self.test_link.setCursor(Qt.CursorShape.PointingHandCursor)
         self.test_link.clicked.connect(self.benchmark_requested)

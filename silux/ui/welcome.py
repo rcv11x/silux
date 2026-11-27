@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -33,7 +32,7 @@ from ..settings import Preferences
 from . import theme
 from .pages.settings import FONT_SCALES, THEMES, Interruptor
 from .theme import Palette, ui_font
-from .widgets import clear_layout
+from .widgets import Button, ElidingComboBox, clear_layout
 
 
 def can_add_to_menu() -> bool:
@@ -144,9 +143,9 @@ class WelcomeDialog(QDialog):
     def _buttons(self, left: tuple[str, object], right: tuple[str, object]) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setContentsMargins(0, theme.METRICS.card_gap, 0, 0)
-        back = QPushButton(left[0])
+        back = Button(left[0])
         back.clicked.connect(left[1])
-        forward = QPushButton(right[0])
+        forward = Button(right[0])
         forward.setObjectName("Primary")
         forward.setDefault(True)
         forward.clicked.connect(right[1])
@@ -157,7 +156,7 @@ class WelcomeDialog(QDialog):
         return row
 
     def _combo(self, options, current: str) -> QComboBox:
-        box = QComboBox()
+        box = ElidingComboBox()
         box.setFont(ui_font(theme.METRICS.base_pt))
         for label, value in options:
             box.addItem(label, value)

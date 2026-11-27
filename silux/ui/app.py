@@ -77,7 +77,7 @@ from .pages.storage import StoragePage
 from .pages.system import SystemPage
 from .sampler import Sampler
 from .theme import ui_font
-from .widgets import ElidingLabel
+from .widgets import Button, ElidingComboBox, ElidingLabel
 
 # (etiqueta, ¿implementada?)
 # El orden va de arriba abajo por el equipo (procesador, cachés, placa, memoria,
@@ -222,7 +222,7 @@ class MainWindow(QMainWindow):
 
         # Cuando la barra lateral se oculta por falta de ancho, este selector
         # ocupa su sitio: sin él, las secciones dejarían de ser alcanzables.
-        self._compact_nav = QComboBox()
+        self._compact_nav = ElidingComboBox()
         # As wide as its longest section: at a fixed 112 px «Almacenamiento»
         # showed «Almacenam».
         self._compact_nav.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
@@ -243,7 +243,7 @@ class MainWindow(QMainWindow):
         # querría darlos, y el único botón para hacerlo estaba dentro de tres
         # páginas concretas. Un usuario con el consumo del procesador en blanco
         # tenía el aviso en la barra y el botón en otra sección.
-        self._blocked = QPushButton("")
+        self._blocked = Button("")
         self._blocked.setObjectName("StatusAction")
         self._blocked.setCursor(Qt.CursorShape.PointingHandCursor)
         self._blocked.setToolTip(_("status.blocked.tip"))
@@ -520,7 +520,7 @@ class MainWindow(QMainWindow):
         column.addWidget(self.build_label)
         # El aviso de versión nueva, junto a la versión. No sustituye nada
         # hasta que se pulsa.
-        self.update_button = QPushButton()
+        self.update_button = Button()
         self.update_button.setObjectName("Primary")
         self.update_button.clicked.connect(self._actualizar)
         column.addWidget(self.update_button)

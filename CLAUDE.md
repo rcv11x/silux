@@ -146,6 +146,16 @@ No son preferencias de estilo: cada una viene de un problema concreto.
     de la pieza, con un resumen en Sistema; los fallos del kernel, en
     Sistema; la salud de los discos, en Almacenamiento. **Ninguna página
     nueva sin proponerla antes al autor.**
+11. **Un solo sistema de tamaños.** La letra, el alto de botones,
+    desplegables y casillas, los márgenes y los huecos salen de
+    `theme.METRICS` y de la hoja de estilos: ninguna página tiene tamaños
+    propios ni una cifra puesta a mano. Todo crece con la letra que se elige
+    en Ajustes, los controles y sus altos también, y nada se corta ni se
+    solapa. Los botones son `widgets.Button` (parte su texto en líneas si no
+    cabe) y los desplegables `widgets.ElidingComboBox`, los mismos en todas
+    las páginas. Lo vigilan `tests/test_control_size.py` y
+    `TestEveryFontAt720` (`tests/test_anchura.py`): todas las páginas de todos
+    los volcados caben a 720 px con cada letra.
 
 El porqué largo de cada una y el resto de la arquitectura:
 [docs/arquitectura.md](docs/arquitectura.md).

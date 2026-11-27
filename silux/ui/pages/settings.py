@@ -31,7 +31,6 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QSizePolicy,
     QTextBrowser,
     QVBoxLayout,
@@ -43,7 +42,15 @@ from ...i18n import _
 from ...settings import Preferences, config_path
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Card, Divider, FoldingRow, ResponsiveRow, ScrollPage
+from ..widgets import (
+    Button,
+    Card,
+    Divider,
+    ElidingComboBox,
+    FoldingRow,
+    ResponsiveRow,
+    ScrollPage,
+)
 
 AUTORIA = (
     ("rcv11x", "about.author"),
@@ -117,7 +124,7 @@ class _DialogoDeAvisos(QDialog):
         except OSError:
             self.texto.setPlainText(_("about.notices.missing"))
         capa.addWidget(self.texto)
-        cerrar = QPushButton(_("perm.explain.close"))
+        cerrar = Button(_("perm.explain.close"))
         cerrar.clicked.connect(self.close)
         abajo = QHBoxLayout()
         abajo.addStretch(1)
@@ -140,8 +147,8 @@ NETWORK_UNITS = (("opt.net.bytes", "bytes"),
 UPDATE_CHANNELS = (("opt.channel.stable", "stable"),
                    ("opt.channel.testing", "testing"))
 
-# El ancho mínimo de los desplegables; todos acaban midiendo lo que pida el
-# más ancho (`_igualar_controles`), para que la columna quede recta.
+# The number boxes' least width; they all end up as wide as the widest asks
+# (`_igualar_controles`).
 ANCHO_DEL_CONTROL = 170
 # El ancho de la columna, en anchos de letra: crece con el tamaño de la letra.
 COLUMNA_EN_LETRAS = 120
@@ -279,9 +286,7 @@ class _Renglon(FoldingRow):
         self.add_layout(textos, 1)
 
         if control is not None:
-            # Los que llevan texto dentro, con el mismo ancho: sin esto el
-            # borde derecho de la columna queda en diente de sierra.
-            if isinstance(control, (QComboBox, QDoubleSpinBox)):
+            if isinstance(control, QDoubleSpinBox):
                 control.setMinimumWidth(ANCHO_DEL_CONTROL)
             self.add_widget(control, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
@@ -376,13 +381,9 @@ class SettingsPage(ScrollPage):
         self.refresh_desktop()
 
     def _igualar_controles(self) -> None:
-        """Todos los desplegables, al ancho del que más pide.
-
-        Con un ancho fijo, «Bytes por segundo (MB/s)» salía cortado; cada uno
-        a su medida, el borde derecho de la columna quedaba en diente de
-        sierra.
-        """
-        controles = self.columna.findChildren(QComboBox) + self.columna.findChildren(QDoubleSpinBox)
+        """The number boxes, as wide as the widest asks. A list is as wide as
+        its longest choice, like every list of Silux (`ElidingComboBox`)."""
+        controles = self.columna.findChildren(QDoubleSpinBox)
         ancho = max([ANCHO_DEL_CONTROL] + [c.sizeHint().width() for c in controles])
         for control in controles:
             control.setFixedWidth(ancho)
@@ -399,7 +400,7 @@ class SettingsPage(ScrollPage):
         return card
 
     def _combo(self, opciones, actual: str) -> QComboBox:
-        caja = QComboBox()
+        caja = ElidingComboBox()
         for etiqueta, valor in opciones:
             caja.addItem(_(etiqueta), valor)
         valores = [v for _etiqueta, v in opciones]
@@ -416,7 +417,7 @@ class SettingsPage(ScrollPage):
     def _build_general(self) -> Card:
         # El idioma va el primero: es lo que cambia todo lo demás, y quien lo
         # busca no viene a mirar el tema.
-        self.language_box = QComboBox()
+        self.language_box = ElidingComboBox()
         idiomas = i18n.available()
         for codigo, nombre in idiomas.items():
             self.language_box.addItem(nombre, codigo)
@@ -426,7 +427,7 @@ class SettingsPage(ScrollPage):
 
         self.unit_box = self._combo(UNITS, self._prefs.temperature_unit)
         self.network_box = self._combo(NETWORK_UNITS, self._prefs.network_unit)
-        self.welcome_button = QPushButton(_("settings.welcome.button"))
+        self.welcome_button = Button(_("settings.welcome.button"))
         self.welcome_button.clicked.connect(self.welcome_requested)
         return self._grupo(
             _("settings.group.general"),
@@ -478,14 +479,14 @@ class SettingsPage(ScrollPage):
         self.permission_badge = Insignia(self._p)
         self.permission_row = _Renglon(_("settings.perm.state"), self.permission_badge)
 
-        self.permission_button = QPushButton(_("perm.read.button"))
+        self.permission_button = Button(_("perm.read.button"))
         self.permission_button.setObjectName("Primary")
         self.permission_button.clicked.connect(self._on_permission_button)
-        self.explain_button = QPushButton(_("perm.notice.explain"))
+        self.explain_button = Button(_("perm.notice.explain"))
         self.explain_button.clicked.connect(self.explain_requested.emit)
         # Quitar lo instalado para siempre: borra sus dos archivos, como root.
         # Antes solo se podía copiando una orden `sudo rm` del diálogo.
-        self.remove_helper_button = QPushButton(_("settings.perm.remove"))
+        self.remove_helper_button = Button(_("settings.perm.remove"))
         self.remove_helper_button.setObjectName("GhostButton")
         self.remove_helper_button.setToolTip(_("settings.perm.remove.tip"))
         self.remove_helper_button.clicked.connect(self.remove_helper_requested.emit)
@@ -513,7 +514,7 @@ class SettingsPage(ScrollPage):
                                      _("settings.shortcut.desktop.help"))
         # Only when an entry opens another copy, a file that is gone or an
         # older version: there is something to put right.
-        self.desktop_fix = QPushButton(_("settings.shortcut.fix"))
+        self.desktop_fix = Button(_("settings.shortcut.fix"))
         self.desktop_fix.clicked.connect(lambda: self._poner(
             self.menu_switch.isChecked(), self.desktop_shortcut.isChecked(), preguntar=True))
         arreglo = QWidget()
@@ -540,10 +541,10 @@ class SettingsPage(ScrollPage):
         # Juntos porque responden a la misma intención: sacar algo de aquí
         # para enseñárselo a otro. El informe es para diagnosticar y la
         # imagen para presumir, y las dos cosas acaban pegadas en un chat.
-        copiar = QPushButton(_("share.button.copy"))
+        copiar = Button(_("share.button.copy"))
         copiar.setToolTip(_("share.tip"))
         copiar.clicked.connect(self.share_copy_requested.emit)
-        guardar = QPushButton(_("share.button.save"))
+        guardar = Button(_("share.button.save"))
         guardar.setToolTip(_("share.tip"))
         guardar.clicked.connect(self.share_save_requested.emit)
         imagen = QWidget()
@@ -552,7 +553,7 @@ class SettingsPage(ScrollPage):
         fila.addWidget(copiar)
         fila.addWidget(guardar)
 
-        informe = QPushButton(_("settings.report.button"))
+        informe = Button(_("settings.report.button"))
         informe.setToolTip(_("settings.tip.report"))
         informe.clicked.connect(self.report_requested.emit)
         return self._grupo(
@@ -566,7 +567,7 @@ class SettingsPage(ScrollPage):
         self.check_updates = self._interruptor(self._prefs.check_updates)
         self.update_channel = self._combo(
             UPDATE_CHANNELS, updates.channel_for(self._prefs.update_channel))
-        self.update_now = QPushButton(_("settings.updates.now"))
+        self.update_now = Button(_("settings.updates.now"))
         self.update_now.clicked.connect(self.update_check_requested.emit)
         self.update_status = QLabel("")
         self.update_status.setObjectName("Muted")
@@ -628,7 +629,7 @@ class SettingsPage(ScrollPage):
         # Los avisos enteros, como piden las licencias de lo que va dentro: en
         # un AppImage el archivo está en un montaje temporal, así que una ruta
         # no le sirve a nadie.
-        self.notices_button = QPushButton(_("about.notices.button"))
+        self.notices_button = Button(_("about.notices.button"))
         self.notices_button.setObjectName("GhostButton")
         self.notices_button.clicked.connect(self._ver_avisos)
         self._dialogo_avisos: Optional[_DialogoDeAvisos] = None
@@ -645,7 +646,7 @@ class SettingsPage(ScrollPage):
         card.body.addWidget(path)
 
         # Al final de todo: es lo único de la página que deshace lo demás.
-        reset = QPushButton(_("settings.reset.button"))
+        reset = Button(_("settings.reset.button"))
         reset.clicked.connect(self._reset)
         abajo = QHBoxLayout()
         abajo.addStretch(1)
