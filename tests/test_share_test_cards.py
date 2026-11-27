@@ -59,21 +59,28 @@ class TestTheDiskCard(Case):
         self.assertEqual(tarjeta.DISK_UNIT, "MB/s")
         self.assertNotIn("MB/s", disk_texts(result))
 
-    def test_a_figure_reads_over_its_bar(self):
-        """In both themes, a figure over its bar is at least 4:1 against it:
-        the white ink over the dark theme's orange was 1.8."""
-        from PySide6.QtGui import QColor
-
+    def test_a_figure_has_its_own_room_beside_its_bar(self):
+        """In each cell the bar ends before its figure starts, in both
+        themes: the bars ran under «6 592» and «3 946»."""
         from silux.ui import tarjeta, theme
         from silux.ui.pages.disktest import TONES
 
-        self.assertAlmostEqual(tarjeta.contrast(QColor("#ffffff"), QColor("#000000")), 21)
+        result = disk_run("sn850x-btrfs")
+        cells = tarjeta.disk_cells(result)
         for palette in (theme.DARK, theme.LIGHT):
-            for direction, tone in TONES.items():
-                bar = tarjeta._blend(palette.q("accent"), tone, palette.q("track"))
-                with self.subTest(theme=palette.bg, direction=direction):
-                    self.assertGreaterEqual(
-                        tarjeta.contrast(tarjeta._readable_on(bar, palette), bar), 4)
+            image = tarjeta.draw_disk_test(result, palette).toImage()
+            geometry = tarjeta.disk_cell_geometry(cells, ["read", "write"])
+            for index, (name, _row) in enumerate(cells):
+                for direction, (bar, figure) in geometry(index).items():
+                    drawn = tarjeta._blend(palette.q("accent"), TONES[direction],
+                                           palette.q("track"))
+                    with self.subTest(theme=palette.bg, test=name, direction=direction):
+                        self.assertLess(bar.right(), figure.left())
+                        # Nothing of the bar's colour in the figure's room.
+                        for y in range(int(bar.top()), int(bar.bottom())):
+                            for x in range(int(figure.left()), int(figure.right())):
+                                self.assertNotEqual(image.pixelColor(x, y).rgb(), drawn.rgb(),
+                                                    (x, y))
 
     def test_its_title_is_the_disk(self):
         from silux.ui import tarjeta

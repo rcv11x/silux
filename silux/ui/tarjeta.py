@@ -295,6 +295,11 @@ def guardar(snapshot: Snapshot, palette: Palette, ruta: str,
 TABLE_HEAD = 30
 BOX = 28
 NOTE_LINE = 20
+# A bar's thickness, the room between a bar and its figure, and between the
+# two columns.
+BAR = 14
+FIGURE_GAP = 12
+CELL_GAP = 24
 COLUMN_NAMES = {"read": "disktest.col.read", "write": "disktest.col.write"}
 # Its unit, said once, over the tests' names.
 DISK_UNIT = "MB/s"
@@ -428,93 +433,92 @@ def draw_disk_test(result, palette: Palette) -> QPixmap:
     return _card(disk_title(result), disk_subtitle(result), height, body, palette)
 
 
+def _figure_font() -> QFont:
+    return _sized(17, QFont.Weight.Bold)
+
+
+def disk_cell_geometry(cells, directions):
+    """Where each cell's bar and figure go, in the card: for a row's index,
+    each direction's (bar, figure). The figure has a room of its own, as
+    wide as the widest figure of the table, beside its bar and never over
+    it: drawn over it, the bar ran under «6 592»."""
+    column = value_column([(name, "", "") for name, _row in cells])
+    left = MARGEN + PADDING + column
+    width = (ANCHO - MARGEN - PADDING - left - CELL_GAP * (len(directions) - 1)) \
+        / max(len(directions), 1)
+    metrics = QFontMetrics(_figure_font())
+    figure_width = max((metrics.horizontalAdvance(cell[0]) for _name, row in cells
+                        for cell in row.values()), default=0) + 2
+
+    def at(index: int) -> dict:
+        box_top = BODY_TOP + TABLE_HEAD + index * ALTO_FILA + 6
+        places = {}
+        for place, direction in enumerate(directions):
+            x = left + place * (width + CELL_GAP)
+            bar = QRectF(x, box_top + (BOX - BAR) / 2, width - figure_width - FIGURE_GAP, BAR)
+            places[direction] = (bar, QRectF(x + width - figure_width, box_top,
+                                             figure_width, BOX))
+        return places
+
+    return at
+
+
 def _disk_table(painter: QPainter, p: Palette, top: int, cells, directions) -> None:
     from .pages.disktest import TONES
 
     column = value_column([(name, "", "") for name, _row in cells])
-    left = MARGEN + PADDING + column
-    gap = 16
-    width = (ANCHO - MARGEN - PADDING - left - gap * (len(directions) - 1)) / max(len(directions), 1)
+    geometry = disk_cell_geometry(cells, directions)
+    heads = geometry(0)
 
     painter.setFont(_sized(9))
     painter.setPen(QColor(p.muted))
     painter.drawText(QPointF(MARGEN + PADDING, top + 20), DISK_UNIT)
     painter.setFont(_label_font())
     painter.setPen(QColor(p.accent))
-    for index, direction in enumerate(directions):
-        painter.drawText(QPointF(left + index * (width + gap), top + 20),
+    for direction in directions:
+        painter.drawText(QPointF(heads[direction][0].left(), top + 20),
                          _(COLUMN_NAMES[direction]).upper())
 
-    figure_font = _sized(17, QFont.Weight.Bold)
     centred = Qt.AlignmentFlag.AlignVCenter
+    right = Qt.AlignmentFlag.AlignRight
     for index, (name, row) in enumerate(cells):
         row_top = top + TABLE_HEAD + index * ALTO_FILA
         _band(painter, p, row_top, index)
-        box_top = row_top + 6
         painter.setFont(_label_font())
         painter.setPen(QColor(p.accent))
-        painter.drawText(QRectF(MARGEN + PADDING, box_top, column, BOX),
+        painter.drawText(QRectF(MARGEN + PADDING, row_top + 6, column, BOX),
                          Qt.AlignmentFlag.AlignLeft | centred, name.upper())
-        for place, direction in enumerate(directions):
-            x = left + place * (width + gap)
-            box = QRectF(x, box_top, width, BOX)
+        for direction, (track, room) in geometry(index).items():
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(p.track))
-            painter.drawRoundedRect(box, 5, 5)
+            painter.drawRoundedRect(track, BAR / 2, BAR / 2)
             cell = row.get(direction)
             if cell is None:
                 continue
             figure, fraction, iops = cell
-            bar = QRectF(x, box_top, max(width * fraction, BOX) if fraction is not None else 0,
-                         BOX)
-            colour = _blend(p.q("accent"), TONES[direction], p.q("track"))
-            painter.setBrush(colour)
-            painter.drawRoundedRect(bar, 5, 5)
-            # The figure over its bar in what reads on the bar, and past its
-            # end in the ink.
-            painter.setFont(figure_font)
-            text_box = box.adjusted(10, 0, -10, 0)
-            for clip, pen in ((bar, _readable_on(colour, p)),
-                              (box.adjusted(bar.width(), 0, 0, 0), p.q("ink"))):
-                painter.save()
-                painter.setClipRect(clip)
-                painter.setPen(pen)
-                painter.drawText(text_box, Qt.AlignmentFlag.AlignRight | centred, figure)
-                painter.restore()
+            if fraction is not None:
+                painter.setBrush(_blend(p.q("accent"), TONES[direction], p.q("track")))
+                painter.drawRoundedRect(QRectF(track.left(), track.top(),
+                                               max(track.width() * fraction, BAR), BAR),
+                                        BAR / 2, BAR / 2)
+            painter.setFont(_figure_font())
+            painter.setPen(QColor(p.ink))
+            painter.drawText(room, right | centred, figure)
             if iops:
                 painter.setFont(_sized(9))
                 painter.setPen(QColor(p.ink_dim))
-                painter.drawText(QRectF(x, box_top + BOX + 1, width - 10, 16),
-                                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop, iops)
+                painter.drawText(QRectF(track.left(), room.bottom() + 1,
+                                        room.right() - track.left(), 16),
+                                 right | Qt.AlignmentFlag.AlignTop, iops)
     painter.setBrush(Qt.BrushStyle.NoBrush)
 
 
 def _blend(colour: QColor, alpha: float, under: QColor) -> QColor:
-    """`colour` at `alpha` over `under`, as one opaque colour."""
+    """`colour` at `alpha` over `under`, as one opaque colour: the tab's
+    bar, drawn see-through over its track."""
     return QColor(*(round(alpha * a + (1 - alpha) * b) for a, b in (
         (colour.red(), under.red()), (colour.green(), under.green()),
         (colour.blue(), under.blue()))))
-
-
-def _luminance(colour: QColor) -> float:
-    def channel(value: int) -> float:
-        value /= 255
-        return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
-
-    return (0.2126 * channel(colour.red()) + 0.7152 * channel(colour.green())
-            + 0.0722 * channel(colour.blue()))
-
-
-def contrast(one: QColor, other: QColor) -> float:
-    """WCAG's contrast ratio, from 1 to 21."""
-    light, dark = sorted((_luminance(one), _luminance(other)), reverse=True)
-    return (light + 0.05) / (dark + 0.05)
-
-
-def _readable_on(colour: QColor, p: Palette) -> QColor:
-    """The ink or the background, whichever reads better on `colour`: on
-    the dark theme's orange, the white ink hardly did."""
-    return max((p.q("ink"), p.q("bg")), key=lambda pen: contrast(pen, colour))
 
 
 def draw_memory_test(result, cpu: str, palette: Palette) -> QPixmap:
