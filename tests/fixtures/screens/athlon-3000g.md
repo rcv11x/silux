@@ -113,7 +113,9 @@ SMT · MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · SSE4A · AVX �
 
 > **Hace falta elevar permisos**
 > El reloj base lo dice el propio procesador, y leerlo pide permisos.
-> Es su P-state 0, en un registro MSR que solo lee el administrador. Ni CPUID ni ACPI CPPC lo publican en este equipo.
+> El contador de energía RAPL existe pero no se puede leer.
+> El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
+> Es su P-state 0, en un registro MSR que solo lee el administrador. Ni CPUID ni ACPI CPPC lo publican en este equipo. Muchas distribuciones lo restringen a root desde CVE-2020-8694. Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.
 
 > **Este equipo no lo expone**
 > Este equipo no publica su reloj de referencia (BCLK).
@@ -122,14 +124,6 @@ SMT · MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · SSE4A · AVX �
 > **Este equipo no lo expone**
 > Este procesador no tiene driver de frecuencia (cpufreq).
 > Pasa cuando el firmware no le da al sistema los estados de frecuencia —en algunas placas, con Cool'n'Quiet o SpeedStep desactivados en la BIOS— o cuando su driver no ha cargado; desde aquí no se distingue cuál de las dos. Sin él, el sistema no cambia la frecuencia del procesador.
-
-> **Hace falta elevar permisos**
-> El contador de energía RAPL existe pero no se puede leer.
-> Muchas distribuciones lo restringen a root desde CVE-2020-8694.
-
-> **Hace falta elevar permisos**
-> El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
-> Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.
 
 ## Cachés
 

@@ -661,7 +661,7 @@ class GpuSection(QWidget):
 
         clear_layout(self._notices_host)
         self.elevation_buttons = []
-        for note in notes:
+        for note in render.one_permission_notice(notes):
             aviso = Notice(
                 render.permission_title(note, render.note_title(note, NEED_TITLES)),
                 note.message, note.hint,

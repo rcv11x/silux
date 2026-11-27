@@ -632,7 +632,7 @@ class CpuPage(ScrollPage):
         self._notice_signature = signature
 
         clear_layout(self._notices_host)
-        for note in notes:
+        for note in render.one_permission_notice(notes):
             # Con el botón dentro, como en Gráficos. Quien lee por qué falta el
             # consumo del procesador es quien quiere arreglarlo, y hasta ahora
             # el aviso salía aquí y el botón estaba en Memoria, en Gráficos y

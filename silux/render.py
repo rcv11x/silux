@@ -8,6 +8,7 @@ touching collection, and translating without rewriting anything.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import pathlib
 import re
@@ -24,6 +25,7 @@ from .model import (
     Edid,
     GpuApi,
     GpuMemory,
+    Need,
     NetworkInterface,
     NetworkTraffic,
     PcieLink,
@@ -784,6 +786,29 @@ def note_title(note, titles: dict) -> str:
 def permission_title(note, title: str) -> str:
     """A notice's title: the page's own, or that the helper is out of date."""
     return _("perm.outdated.title") if note.helper_outdated else title
+
+
+def one_permission_notice(notes) -> list:
+    """A page's notes with those that need permissions as one, where the
+    first of them was: each its line, the hints together, one button. Two
+    notices alike in a row, each with its button, read as the same twice."""
+    root = [n for n in notes if n.need is Need.ROOT]
+    if len(root) < 2:
+        return list(notes)
+    joined = dataclasses.replace(
+        root[0],
+        message="\n".join(dict.fromkeys(n.message for n in root if n.message)),
+        hint=" ".join(dict.fromkeys(n.hint for n in root if n.hint)),
+        helper_outdated=any(n.helper_outdated for n in root),
+        title="", key="")
+    merged, placed = [], False
+    for note in notes:
+        if note.need is not Need.ROOT:
+            merged.append(note)
+        elif not placed:
+            merged.append(joined)
+            placed = True
+    return merged
 
 
 # How the kernel names a link's duplex, and by which key it's said here.

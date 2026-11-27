@@ -51,6 +51,7 @@ que hace falta.
 - En una Radeon, el reloj de la memoria va como lo dan GPU-Z y TechPowerUp, el mismo en la ficha y en Relojes: «2516 MHz · 20.1 Gbps efectivos»
 - El estado de una gráfica dice «no está limitada» o «limitada: temperatura», en vez de «sin límites» o «recortando por…»
 - Con la base cambiada a mano, la fila «Base» de CPU dice que está fijada en la BIOS y cuál es la de fábrica
+- Lo que falta por permisos en una página sale en un solo aviso con un solo botón, y no en uno por dato
 - En una ventana estrecha, los desplegables de la prueba de disco quedan alineados en columna
 
 ### Arreglos
