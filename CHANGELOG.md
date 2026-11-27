@@ -44,6 +44,7 @@ que hace falta.
 - El informe y su anexo llevan el nombre y el ID de lo enchufado por USB y de las cámaras (nunca su número de serie), para reconocer un lector de huellas o una cámara de infrarrojos
 - «Buscar actualizaciones al iniciar» viene encendido, y se enciende una vez a quien lo tenía apagado de una versión anterior; si lo apagas después, se queda apagado
 - El aviso de versión nueva de la barra lateral, también con la barra plegada, lleva a Ajustes → Actualizaciones, donde se pulsa «Actualizar a…»
+- Al cambiar un ajuste, la barra de estado dice «Ajuste guardado» durante dos segundos
 
 ### Arreglos
 

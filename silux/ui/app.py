@@ -254,6 +254,8 @@ class MainWindow(QMainWindow):
         # Lo que se forzó por la línea de órdenes: campo -> (lo que había
         # guardado, lo que se forzó). Ver `_guardar`.
         self._forzadas = dict(forzadas or {})
+        # Whether the last save of the preferences reached the disk.
+        self._saved = True
         # La instalación del ayudante mientras espera a pkexec, o None.
         self._instalacion = None
         # El aviso de permisos de Inicio: apartado con «Ahora no», que dura lo
@@ -311,6 +313,12 @@ class MainWindow(QMainWindow):
         self._blocked.clicked.connect(self._on_elevation_requested)
         self._blocked.hide()
         self.statusBar().addPermanentWidget(self._blocked)
+
+        # A short message in place of the hint, which the next sample would
+        # otherwise write over at once.
+        self._status_message = QTimer(self)
+        self._status_message.setSingleShot(True)
+        self._status_message.timeout.connect(self._message_gone)
 
         self._sources = ElidingLabel("")
         self._sources.setObjectName("Muted")
@@ -450,7 +458,7 @@ class MainWindow(QMainWindow):
         self.storage_page.disk_chosen.connect(self._on_storage_disk)
         self.storage_page.set_disk_tests(self.benchmarks_page.disk_tab.history)
         self.settings_page = SettingsPage(self.prefs, self._palette)
-        self.settings_page.changed.connect(self._on_preferences)
+        self.settings_page.changed.connect(self._on_settings_changed)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
         self.settings_page.update_install_requested.connect(self._actualizar)
         self._pintar_version_nueva()
@@ -693,7 +701,7 @@ class MainWindow(QMainWindow):
         return dialog
 
     def _on_welcome_choice(self, prefs: Preferences) -> None:
-        self._on_preferences(prefs)
+        self._on_settings_changed(prefs)
         # After the signal that brought it: the combo that sent it goes too.
         QTimer.singleShot(0, self, self._rebuild_welcome)
 
@@ -734,6 +742,21 @@ class MainWindow(QMainWindow):
                               window_height=self.height()))
         super().closeEvent(event)
 
+    def say(self, text: str, ms: int = 2000) -> None:
+        """A message in the status bar for a moment, then the hint again."""
+        self._status.set_full_text(text)
+        self._status_message.start(ms)
+
+    def _message_gone(self) -> None:
+        hint = getattr(self, "_hint", None)
+        if hint is not None:
+            self._status.set_full_text(hint)
+
+    def _on_settings_changed(self, prefs: Preferences) -> None:
+        """A choice made in Settings or the welcome: applied, and said."""
+        self._on_preferences(prefs)
+        self.say(_("settings.saved") if self._saved else _("settings.notsaved"))
+
     def _guardar(self, prefs: Preferences) -> None:
         """Guarda las preferencias sin lo que se forzó para esta ejecución.
 
@@ -748,7 +771,7 @@ class MainWindow(QMainWindow):
         devolver = {campo: guardado
                     for campo, (guardado, forzado) in self._forzadas.items()
                     if getattr(prefs, campo) == forzado}
-        prefs_module.save(replace(prefs, **devolver) if devolver else prefs)
+        self._saved = prefs_module.save(replace(prefs, **devolver) if devolver else prefs)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
@@ -953,7 +976,7 @@ class MainWindow(QMainWindow):
         if imagen is None:
             return
         QApplication.clipboard().setPixmap(imagen)
-        self._status.set_full_text(_("share.copied"))
+        self.say(_("share.copied"))
 
     def _on_share_save(self) -> None:
         from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -1357,7 +1380,8 @@ class MainWindow(QMainWindow):
         # dmi…`): es jerga del programa, se cortaba en compacto, y quien la
         # necesita la tiene en el informe.
         self._hint = " · ".join(partes)
-        self._status.set_full_text(self._hint)
+        if not self._status_message.isActive():
+            self._status.set_full_text(self._hint)
 
     def _module_pages(self) -> list:
         return [self.cpu_page, self.monitor_page, self.storage_page, self.memory_page]
