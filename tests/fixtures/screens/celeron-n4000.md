@@ -212,7 +212,7 @@ Su identificación PCI da el nombre en clave del chipset, no un modelo comercial
 |---|---|---|---|---|
 | Gráfica | UHD Graphics 600 | en el procesador |  | i915 |
 | Ethernet | Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller | en la placa |  | r8169 |
-| Wifi | Intel Dual Band Wireless-AC 3165 Plus Bluetooth | PCIe 1.0 × 1 | PCIe 1.0 × 1 | iwlwifi |
+| Wi-Fi | Intel Dual Band Wireless-AC 3165 Plus Bluetooth | PCIe 1.0 × 1 | PCIe 1.0 × 1 | iwlwifi |
 | SATA | Celeron/Pentium Silver Processor SATA Controller | en la placa |  | ahci |
 | USB | Celeron/Pentium Silver Processor USB 3.0 xHCI Controller | en la placa |  | xhci_hcd |
 | Sonido | Celeron/Pentium Silver Processor High Definition Audio | en la placa |  | snd_hda_intel |

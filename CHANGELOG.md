@@ -78,6 +78,7 @@ que hace falta.
 - Con nouveau, una GeForce salía con más memoria de la que tiene (8.2 GiB una RTX 3070 de 8): se contaba dos veces la ventana del procesador a la VRAM
 - Con nouveau, el aviso de Gráficos se titulaba «Falta un driver» en una tarjeta que lo tiene: ahora «Con nouveau, el driver libre», con lo que da el propietario
 - Los sensores de un Dell (dell_smm) salían en inglés: «Processor Fan», «Other»
+- «Wifi» se escribía así en Placa base y Dispositivos: ahora «Wi-Fi»
 
 ### Problemas conocidos
 

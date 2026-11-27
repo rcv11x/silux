@@ -211,7 +211,7 @@ El firmware de esta placa no dice su revisión ni el fabricante del chasis. Es u
 | Gráfica | GeForce RTX 3070 LHR | PCIe 1.0 × 16 | PCIe 4.0 × 16 | nvidia |
 | NVMe | Corsair MP700 ELITE | PCIe 4.0 × 4 | PCIe 4.0 × 4 | nvme |
 | Ethernet | Realtek RTL8111/8168/8211/8411 PCI Express Gigabit Ethernet Controller | en la placa |  | r8169 |
-| Wifi | Intel Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak] | PCIe 2.0 × 1 | PCIe 2.0 × 1 | iwlwifi |
+| Wi-Fi | Intel Wi-Fi 5(802.11ac) Wireless-AC 9x6x [Thunder Peak] | PCIe 2.0 × 1 | PCIe 2.0 × 1 | iwlwifi |
 | SATA | FCH SATA Controller [AHCI mode] | en la placa |  | ahci |
 | SATA | FCH SATA Controller [AHCI mode] | en la placa |  | ahci |
 | USB | Matisse USB 3.0 Host Controller | en la placa |  | xhci_hcd |

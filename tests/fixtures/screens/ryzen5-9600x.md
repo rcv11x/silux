@@ -208,7 +208,7 @@ El firmware de esta placa no dice el fabricante del chasis. Es una placa suelta:
 | NVMe | KINGSTON SNV3S500G | PCIe 4.0 × 4 | PCIe 4.0 × 4 | nvme |
 | NVMe | KINGSTON SNV3S500G | PCIe 4.0 × 4 | PCIe 4.0 × 4 | nvme |
 | Ethernet | Realtek RTL8125 2.5GbE Controller | PCIe 2.0 × 1 | PCIe 2.0 × 1 | r8169 |
-| Wifi | Realtek RTL8852BE PCIe 802.11ax Wireless Network Controller | PCIe 1.0 × 1 | PCIe 1.0 × 1 | rtw89_8852be |
+| Wi-Fi | Realtek RTL8852BE PCIe 802.11ax Wireless Network Controller | PCIe 1.0 × 1 | PCIe 1.0 × 1 | rtw89_8852be |
 | SATA | 600 Series Chipset SATA Controller | en la placa |  | ahci |
 | USB | 600 Series Chipset USB 3.2 Controller | en la placa |  | xhci_hcd |
 | USB | Raphael/Granite Ridge USB 3.1 xHCI | en la placa |  | xhci_hcd |

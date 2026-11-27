@@ -249,7 +249,7 @@
   "board.pci.kind.nvme": "NVMe",
   "board.pci.kind.sata": "SATA",
   "board.pci.kind.usb": "USB",
-  "board.pci.kind.wifi": "Wifi",
+  "board.pci.kind.wifi": "Wi-Fi",
   "board.pci.max": "Máximo",
   "board.pci.onboard": "en la placa",
   "board.pci.onchipset": "en el chipset",

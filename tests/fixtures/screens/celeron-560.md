@@ -198,7 +198,7 @@ Su identificación PCI da el nombre en clave del chipset, no un modelo comercial
 | Gráfica | Mobile GM965/GL960 Integrated Graphics | en el chipset |  | i915 |
 | Gráfica | Mobile GM965/GL960 Integrated Graphics Controller (secondary) | en el chipset |  | — |
 | Ethernet | Realtek RTL810xE PCI Express Fast Ethernet controller | PCIe 1.0 × 1 | PCIe 1.0 × 1 | r8169 |
-| Wifi | Qualcomm Atheros AR242x / AR542x Wireless Network Adapter (PCI-Express) | PCIe 1.0 × 1 | PCIe 1.0 × 1 | ath5k |
+| Wi-Fi | Qualcomm Atheros AR242x / AR542x Wireless Network Adapter (PCI-Express) | PCIe 1.0 × 1 | PCIe 1.0 × 1 | ath5k |
 | USB | 82801H (ICH8 Family) USB UHCI Controller #4 | en la placa |  | uhci_hcd |
 | USB | 82801H (ICH8 Family) USB UHCI Controller #5 | en la placa |  | uhci_hcd |
 | USB | 82801H (ICH8 Family) USB2 EHCI Controller #2 | en la placa |  | ehci-pci |
