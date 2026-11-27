@@ -51,6 +51,7 @@ que hace falta.
 - En Sensores, la media de una lectura que no cambia podía salir una décima por encima del máximo (75.9 frente a 75.8 en un NVMe)
 - En una ventana estrecha, la tabla de pruebas anteriores de Rendimiento ensanchaba la página y cortaba el texto por la derecha: ahora se desplaza por dentro
 - La pestaña abierta de Rendimiento, en negrita, se cortaba por los bordes («Memoria», «Disco»)
+- En una ventana estrecha, el selector de secciones («Almacenam…») y el texto de la barra de estado ya no se cortan
 
 ### Problemas conocidos
 

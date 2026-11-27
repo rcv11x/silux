@@ -223,7 +223,9 @@ class MainWindow(QMainWindow):
         # Cuando la barra lateral se oculta por falta de ancho, este selector
         # ocupa su sitio: sin él, las secciones dejarían de ser alcanzables.
         self._compact_nav = QComboBox()
-        self._compact_nav.setFixedWidth(112)
+        # As wide as its longest section: at a fixed 112 px «Almacenamiento»
+        # showed «Almacenam».
+        self._compact_nav.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self._compact_nav.hide()
         self._compact_nav.currentIndexChanged.connect(self._on_compact_nav)
         self.statusBar().addWidget(self._compact_nav)
@@ -721,6 +723,28 @@ class MainWindow(QMainWindow):
         """
         return [self.nav.item(row).text() for row in range(self.nav.count())]
 
+    def _paint_blocked(self) -> None:
+        """The link to the missing data's permissions. In a narrow window,
+        how many are missing alone: whole, it pushed the text beside it
+        out; its tooltip says what it does."""
+        missing = getattr(self, "_blocked_count", 0)
+        narrow = self.width() < NAV_HIDE_BELOW
+        if missing and getattr(self, "_blocked_outdated", False):
+            self._blocked.setText(_("status.blocked.outdated"))
+        elif missing:
+            self._blocked.setText(render.counted(
+                "status.blocked.short" if narrow else "status.blocked.action", missing))
+        self._blocked.setVisible(bool(missing))
+
+    def _refresh_hint(self) -> list[str]:
+        """How often it reads, and the key that freezes it. In a narrow
+        window, beside the section selector, only how often: whole, it was
+        cut to «Se actualiza cad…»."""
+        every = f"{self.prefs.interval_s:g}"
+        if self.width() < NAV_HIDE_BELOW:
+            return [_("status.refresh.short").format(n=every)]
+        return [_("status.refresh").format(n=every), _("status.freeze")]
+
     def _sync_nav_visibility(self) -> None:
         """En ventanas estrechas la barra lateral se lleva un tercio del ancho,
         así que se cambia por el selector compacto de la barra de estado."""
@@ -729,6 +753,13 @@ class MainWindow(QMainWindow):
         roomy = self.width() >= NAV_HIDE_BELOW
         self.nav_panel.setVisible(roomy)
         self._compact_nav.setVisible(not roomy)
+        # The hint in the form for this width, at once; a message shown in
+        # its place stays.
+        self._paint_blocked()
+        hint = getattr(self, "_hint", None)
+        if hint is not None and self._status.full_text() == hint:
+            self._hint = " · ".join(self._refresh_hint())
+            self._status.set_full_text(self._hint)
         if not roomy:
             self._sync_compact_selection()
 
@@ -1182,8 +1213,7 @@ class MainWindow(QMainWindow):
 
         # La pista del atajo va aquí porque es donde se mira sin buscar. Un
         # atajo que no se ve en ningún sitio no existe para quien no lo sabe.
-        partes = [_("status.refresh").format(n=f"{self.prefs.interval_s:g}"),
-                  _("status.freeze")]
+        partes = self._refresh_hint()
         # El plural va bien puesto: «1 dato(s)» delataba que nadie lo había
         # mirado, en un programa cuyo argumento es que los datos están
         # cuidados. Y ya no es texto suelto: el mismo renglón es el botón que
@@ -1192,18 +1222,14 @@ class MainWindow(QMainWindow):
         # Se cuenta lo mismo que en el aviso de Inicio: lo que el ayudante
         # sabe leer en este equipo. El enlace sigue aquí aunque el aviso se
         # haya quitado para siempre; es lo que queda para darlos después.
-        bloqueados = len(snapshot.permission_notes)
-        if bloqueados and snapshot.privileged.outdated:
-            self._blocked.setText(_("status.blocked.outdated"))
-        elif bloqueados:
-            plantilla = (_("status.blocked.action") if bloqueados == 1
-                         else _("status.blocked.action.many"))
-            self._blocked.setText(plantilla.format(n=bloqueados))
-        self._blocked.setVisible(bool(bloqueados))
+        self._blocked_count = len(snapshot.permission_notes)
+        self._blocked_outdated = snapshot.privileged.outdated
+        self._paint_blocked()
         # Ni la cuenta de sensores ni la lista de fuentes (`cppc, cpuid,
         # dmi…`): es jerga del programa, se cortaba en compacto, y quien la
         # necesita la tiene en el informe.
-        self._status.set_full_text(" · ".join(partes))
+        self._hint = " · ".join(partes)
+        self._status.set_full_text(self._hint)
 
     def _module_pages(self) -> list:
         return [self.cpu_page, self.monitor_page, self.storage_page, self.memory_page]
