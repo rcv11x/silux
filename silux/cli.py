@@ -149,7 +149,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
     for gpu in snapshot.gpus:
         lines.append(style.bold(style.accent(f"├─ {render.gpu_name(gpu)}")))
         lines.append(_row(style, "Fabricante", gpu.vendor or render.DASH))
-        lines.append(_row(style, "Ensamblada por", gpu.subsystem_name or render.DASH))
+        lines.append(_row(style, "Ensamblada por",
+                          render.maker(gpu.subsystem_name) or render.DASH))
         lines.append(_row(style, "Nombre en clave", gpu.codename or render.DASH))
         lines.append(_row(style, "Driver", f"{gpu.driver or render.DASH}"
                           + (f" · {gpu.driver_version}" if gpu.driver_version else "")))
@@ -235,7 +236,8 @@ def dump(snapshot: Snapshot, style: Style) -> str:
         for categories in snapshot.sensor_tree().values():
             lines.append(f"  {style.bold(Snapshot.device_name(categories))}")
             for category, sensors in categories.items():
-                lines.append(f"    {style.dim(category)}")
+                # A key («cat.temperature»), translated as in the window.
+                lines.append(f"    {style.dim(_(category))}")
                 for sensor in sensors:
                     digits = 0 if sensor.kind.value in ("fan", "energy") else (
                         3 if sensor.kind.value == "voltage" else 1)

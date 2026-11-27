@@ -179,6 +179,17 @@ class TestElArbolDeSensoresEnLaTerminal(unittest.TestCase):
             self.assertNotIn("cat.", texto)
             self.assertNotIn("{", texto)
 
+    def test_the_plain_dump_neither(self):
+        """The plain dump's Sensors said «cat.temperature» too (Felix's
+        prueba13 5800X), and «Micro-Star International Co., Ltd. [MSI]» for
+        who built the card."""
+        from silux import cli
+        from tests.test_equipos import EQUIPOS, shared_snapshot
+        texto = cli.dump(shared_snapshot(EQUIPOS / "ryzen7-5800x"), cli.Style(enabled=False))
+        self.assertNotIn("cat.", texto)
+        self.assertNotIn("Co., Ltd.", texto)
+        self.assertIn("MSI", texto)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,6 +38,7 @@ que hace falta.
 - Un Ryzen con el turbo apagado en la BIOS salía como «Este procesador no tiene turbo»: ahora dice que está desactivado
 - Con la base cambiada a mano en la BIOS, CPU y la imagen del equipo daban como máxima la que el kernel calcula sobre esa base (5.36 GHz en un Ryzen 7 5800X que llega a 4.7): ahora no la dan, y dicen la base de fábrica y el turbo de AMD
 - Con nouveau, una GeForce que no publica ningún sensor (una RTX 3070) salía con «Temperatura: —» y un aviso que prometía la temperatura: ahora dice que esa tarjeta no la da
+- En la terminal, las categorías de Sensores salían como claves («cat.temperature») y quién montó la gráfica con su razón social («Micro-Star International Co., Ltd. [MSI]»)
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 
