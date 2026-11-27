@@ -22,6 +22,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import threading
 import time
 from typing import Optional
 
@@ -36,10 +37,10 @@ import shiboken6
 from PySide6.QtCore import (
     QElapsedTimer,
     QEvent,
+    QObject,
     QRectF,
     QSize,
     Qt,
-    QThread,
     QTimer,
     Signal,
 )
@@ -197,10 +198,12 @@ def application_icon() -> QIcon:
     return QIcon.fromTheme(DESKTOP_ID)
 
 
-class _TareaDeRed(QThread):
-    """Una llamada que sale a la red, fuera del hilo de la interfaz (regla 4).
+class _TareaDeRed(QObject):
+    """A call that goes on the network, out of the interface's thread (rule 4).
 
-    Contesta con `done(resultado, error)`: uno de los dos es None.
+    Answers with `done(result, error)`: one of the two is None. A daemon
+    thread, not a QThread: closing Silux while GitHub is slow to answer must
+    not wait for it, and a QThread destroyed while it runs aborts the process.
     """
 
     done = Signal(object, object)
@@ -208,14 +211,27 @@ class _TareaDeRed(QThread):
     def __init__(self, funcion, parent=None) -> None:
         super().__init__(parent)
         self._funcion = funcion
+        self._thread = threading.Thread(target=self._run, name="silux-network", daemon=True)
 
-    def run(self) -> None:  # noqa: D102 - el de QThread
+    def start(self) -> None:
+        self._thread.start()
+
+    def isRunning(self) -> bool:  # noqa: N802 - as QThread's
+        return self._thread.is_alive()
+
+    def wait(self, ms: int) -> bool:
+        self._thread.join(ms / 1000)
+        return not self._thread.is_alive()
+
+    def _run(self) -> None:
         try:
-            resultado = self._funcion()
-        except Exception as error:                     # noqa: BLE001
-            self.done.emit(None, error)
-            return
-        self.done.emit(resultado, None)
+            resultado, error = self._funcion(), None
+        except Exception as exc:                       # noqa: BLE001
+            resultado, error = None, exc
+        try:
+            self.done.emit(resultado, error)
+        except RuntimeError:
+            pass                                       # the window closed meanwhile
 
 
 # Qué dice cada motivo de `updates.UpdateError`.
@@ -309,9 +325,10 @@ class MainWindow(QMainWindow):
         self._tarea_de_red: Optional[_TareaDeRed] = None
 
         self._build_ui()
-        if prefs.check_updates:
-            # Un poco después de abrir: lo primero es enseñar el equipo.
-            QTimer.singleShot(3000, self.buscar_actualizacion)
+        # Started with the window (`start`): a capture asks GitHub nothing.
+        self._check_at_start = QTimer(self)
+        self._check_at_start.setSingleShot(True)
+        self._check_at_start.timeout.connect(self.buscar_actualizacion)
 
         self.sampler = Sampler(interval_ms=prefs.interval_ms)
         self.sampler.sampled.connect(self._on_sample)
@@ -435,6 +452,8 @@ class MainWindow(QMainWindow):
         self.settings_page = SettingsPage(self.prefs, self._palette)
         self.settings_page.changed.connect(self._on_preferences)
         self.settings_page.update_check_requested.connect(self.buscar_actualizacion)
+        self.settings_page.update_install_requested.connect(self._actualizar)
+        self._pintar_version_nueva()
         self.settings_page.relaunch_requested.connect(self._relaunch)
         self.settings_page.welcome_requested.connect(self.show_welcome)
         self.settings_page.repoint_shortcuts()
@@ -571,11 +590,11 @@ class MainWindow(QMainWindow):
         column.addWidget(self.nav, 1)
         column.addWidget(version)
         column.addWidget(self.build_label)
-        # El aviso de versión nueva, junto a la versión. No sustituye nada
-        # hasta que se pulsa.
+        # The new version's notice, by the version. It leads to Settings,
+        # where it is installed.
         self.update_button = Button()
         self.update_button.setObjectName("Primary")
-        self.update_button.clicked.connect(self._actualizar)
+        self.update_button.clicked.connect(self.show_updates)
         column.addWidget(self.update_button)
         self.nav_panel = panel
         self.set_nav_folded(self.prefs.nav_folded)
@@ -650,6 +669,9 @@ class MainWindow(QMainWindow):
 
     def start(self) -> None:
         self.sampler.start()
+        if self.prefs.check_updates:
+            # A little after opening: the machine comes first.
+            self._check_at_start.start(3000)
         if not self.prefs.welcome_shown:
             # Once the window is on screen: the welcome changes it as it goes.
             QTimer.singleShot(300, self, self.show_welcome)
@@ -1016,6 +1038,7 @@ class MainWindow(QMainWindow):
 
     def _pintar_version_nueva(self) -> None:
         nueva = getattr(self, "_version_nueva", None)
+        text = None
         if nueva is not None:
             text = _("updates.button").format(version=render.version(nueva.version_text))
             # Folded, an arrow that says the rest when the pointer is on it.
@@ -1023,6 +1046,20 @@ class MainWindow(QMainWindow):
             self.update_button.setText("↑" if folded else text)
             self.update_button.setToolTip(text if folded else "")
         self.update_button.setVisible(nueva is not None)
+        # Called while the pages are rebuilt too, before the new Settings.
+        page = getattr(self, "settings_page", None)
+        if page is not None and shiboken6.isValid(page):
+            page.set_new_version(text)
+
+    def show_updates(self) -> None:
+        """Settings, scrolled down to its updates."""
+        self.select_section("Ajustes")
+        # Once the page is laid out at the window's size.
+        QTimer.singleShot(0, self, self._scroll_to_updates)
+
+    def _scroll_to_updates(self) -> None:
+        if shiboken6.isValid(self.settings_page):
+            self.settings_page.show_updates()
 
     def _actualizar(self) -> None:
         """«Actualizar»: si esta copia se puede sustituir, se baja y se cambia."""
@@ -1037,9 +1074,10 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, _("settings.group.updates"),
                                     _("updates.manual").format(motivo=motivo, url=nueva.url))
             return
+        downloading = _("updates.downloading").format(version=render.version(nueva.version_text))
         self.update_button.setEnabled(False)
-        self.update_button.setText(
-            _("updates.downloading").format(version=render.version(nueva.version_text)))
+        self.update_button.setText(downloading)
+        self.settings_page.set_new_version(downloading, enabled=False)
         self._lanzar(lambda: self._instalar_version(nueva, ruta), self._instalada)
 
     def _instalada(self, ruta, error) -> None:

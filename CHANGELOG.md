@@ -14,6 +14,7 @@ que hace falta.
 
 ### Lo destacado
 
+- Silux avisa cuando hay una versión nueva: al abrirse pregunta a GitHub, sin mandar nada del equipo, y se puede apagar en Ajustes
 - Color de acento en Ajustes: ámbar, azul, verde, rojo o morado, legibles en claro y en oscuro, y todo cambia a la vez
 - La salud de cada disco de un vistazo en Almacenamiento, y un desplegable para elegir qué unidad enseñan sus fichas
 - Dispositivos dice qué no tiene driver y, de lo que se conoce, qué instalar
@@ -41,6 +42,8 @@ que hace falta.
 - Los botones, desplegables y casillas llevan la letra del resto del programa en todas las páginas y crecen con el tamaño de letra de Ajustes; un botón que no cabe parte su texto en dos líneas
 - Los desplegables miden lo que su opción más larga, con un mínimo y un tope, y no se estiran a todo el ancho
 - El informe y su anexo llevan el nombre y el ID de lo enchufado por USB y de las cámaras (nunca su número de serie), para reconocer un lector de huellas o una cámara de infrarrojos
+- «Buscar actualizaciones al iniciar» viene encendido, y se enciende una vez a quien lo tenía apagado de una versión anterior; si lo apagas después, se queda apagado
+- El aviso de versión nueva de la barra lateral, también con la barra plegada, lleva a Ajustes → Actualizaciones, donde se pulsa «Actualizar a…»
 
 ### Arreglos
 

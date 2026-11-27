@@ -33,6 +33,8 @@ chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
+Avisa cuando hay una versión nueva: al abrirse pregunta a GitHub por la última, sin mandar nada de tu equipo. Se puede apagar en Ajustes, y solo se actualiza cuando pulsas el botón.
+
 <sub>El normal pide glibc 2.34 o posterior y el compat glibc 2.30 o posterior, los dos con [Linux 5.15](docs/kernel.md) o posterior. En qué procesadores funciona cada uno: [compatibilidad](docs/compatibilidad.md). La terminal, el informe y cómo ejecutarlo desde el código: [uso](docs/uso.md).</sub>
 
 ## Hoja de ruta

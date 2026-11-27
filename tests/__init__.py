@@ -17,6 +17,7 @@ import atexit
 import os
 import shutil
 import tempfile
+import urllib.error
 
 CAJA = tempfile.mkdtemp(prefix="silux-tests-")
 atexit.register(shutil.rmtree, CAJA, ignore_errors=True)
@@ -37,3 +38,17 @@ os.environ["HOME"] = os.path.join(CAJA, "home")
 os.makedirs(os.path.join(CAJA, "home", "Escritorio"))
 with open(os.path.join(CAJA, "config", "user-dirs.dirs"), "w", encoding="utf-8") as _dirs:
     _dirs.write('XDG_DESKTOP_DIR="$HOME/Escritorio"\n')
+
+# The window asks GitHub for a new version on opening, and the suite never
+# reaches the network: here that question fails as with no connection. A
+# test with its own fake opener passes it, or patches `_opener`, as before.
+from silux import updates as _updates  # noqa: E402
+
+
+class _Offline:
+    def open(self, request, timeout=None):
+        raise urllib.error.URLError("the tests run offline")
+
+
+OFFLINE = _Offline()
+_updates._opener_built = OFFLINE

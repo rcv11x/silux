@@ -29,9 +29,10 @@ goes through a small helper started with `pkexec`:
 How it works and why: [docs/privilegios.md](docs/privilegios.md) (in
 Spanish).
 
-One more thing leaves the machine, and only when the user asks: the
-updater, which checks GitHub for a new version and verifies the AppImage it
-downloads.
+One more thing leaves the machine: the updater. On opening it asks GitHub
+for the latest version, sending nothing but its own version, and Settings
+turns that off. It downloads only when the user presses «Update», and
+verifies the AppImage before putting it in place.
 
 ## Reports and privacy
 

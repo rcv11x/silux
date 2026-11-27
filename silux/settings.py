@@ -59,9 +59,12 @@ class Preferences:
     # checking against a speed test want bits.
     network_unit: str = "bytes"           # bytes | bits
     show_all_features: bool = False
-    # Off by default: Silux connects to nothing unless asked
-    # (docs/arquitectura.md#el-actualizador).
-    check_updates: bool = False
+    # Asks GitHub for the latest version on opening, sending nothing about
+    # the machine (docs/arquitectura.md#el-actualizador).
+    check_updates: bool = True
+    # Set once check_updates has been switched on for files from before it
+    # was on by default: switched off after that, it stays off.
+    check_updates_migrated: bool = True
     # «stable» or «testing»; empty follows the running build (a test build
     # looks for test builds).
     update_channel: str = ""
@@ -109,7 +112,8 @@ class Preferences:
                         else "grande"),
             network_unit="bits" if self.network_unit == "bits" else "bytes",
             show_all_features=_yes_or_no(self.show_all_features, False),
-            check_updates=_yes_or_no(self.check_updates, False),
+            check_updates=_yes_or_no(self.check_updates, True),
+            check_updates_migrated=_yes_or_no(self.check_updates_migrated, True),
             update_channel=(self.update_channel
                             if self.update_channel in ("stable", "testing") else ""),
             language=(str(self.language).lower()
@@ -176,6 +180,9 @@ def load() -> Preferences:
         valid[pref_field.name] = raw[pref_field.name]
     # Saved preferences from before the welcome existed: not the first time.
     valid.setdefault("welcome_shown", True)
+    if "check_updates_migrated" not in raw:
+        # Saved when checking was off by default: on, this once.
+        valid.update(check_updates=True, check_updates_migrated=True)
     return Preferences(**valid).normalized()
 
 

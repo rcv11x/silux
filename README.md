@@ -33,6 +33,8 @@ chmod +x silux-x86_64.AppImage
 ./silux-x86_64.AppImage
 ```
 
+It tells you when there is a new version: on opening it asks GitHub for the latest release, sending nothing about your PC. You can turn that off in Settings, and it only updates when you press the button.
+
 <sub>The normal one needs glibc 2.34 or later and the compat one glibc 2.30 or later, both with [Linux 5.15](docs/kernel.md) or later. Which processors each one runs on: [compatibility](docs/compatibility.md). The terminal, reports and running from source: [usage](docs/usage.md).</sub>
 
 ## Roadmap

@@ -23,7 +23,7 @@ import platform
 from typing import Callable, Optional
 
 import PySide6
-from PySide6.QtCore import QLocale, QRectF, QSize, Qt, QThread, Signal, qVersion
+from PySide6.QtCore import QLocale, QPoint, QRectF, QSize, Qt, QThread, Signal, qVersion
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QTextCursor, QTextDocument
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -339,6 +339,8 @@ class SettingsPage(ScrollPage):
     # «Buscar ahora»: la ventana busca fuera del hilo de la interfaz y
     # contesta con `set_update_status`.
     update_check_requested = Signal()
+    # «Update to …»: the window downloads it, as from the sidebar's button.
+    update_install_requested = Signal()
     # Silux was moved to ~/AppImages: open it from there and close this one.
     relaunch_requested = Signal(str)
     welcome_requested = Signal()
@@ -577,7 +579,8 @@ class SettingsPage(ScrollPage):
         )
 
     def _build_updates(self) -> Card:
-        """Buscar versiones nuevas: apagado de serie y a petición."""
+        """Checking for new versions, at startup and by hand, and the button
+        that installs the one found."""
         self.check_updates = self._interruptor(self._prefs.check_updates)
         self.update_channel = self._combo(
             UPDATE_CHANNELS, updates.channel_for(self._prefs.update_channel))
@@ -587,6 +590,11 @@ class SettingsPage(ScrollPage):
         self.update_status.setObjectName("Muted")
         self.update_status.setWordWrap(True)
         self.update_status.hide()
+        self.update_install = Button("")
+        self.update_install.setObjectName("Primary")
+        self.update_install.clicked.connect(self.update_install_requested.emit)
+        self.update_install_row = _Renglon(_("settings.updates.new"), self.update_install)
+        self.update_install_row.hide()
         card = self._grupo(
             _("settings.group.updates"),
             _Renglon(_("settings.updates.label"), self.check_updates,
@@ -596,6 +604,8 @@ class SettingsPage(ScrollPage):
             _Renglon(_("settings.updates.manual"), self.update_now),
         )
         card.body.addWidget(self.update_status)
+        card.body.addWidget(self.update_install_row)
+        self.updates_card = card
         return card
 
     def set_update_status(self, texto: str, buscando: bool = False) -> None:
@@ -603,6 +613,18 @@ class SettingsPage(ScrollPage):
         self.update_now.setEnabled(not buscando)
         self.update_status.setText(texto)
         self.update_status.setVisible(bool(texto))
+
+    def set_new_version(self, text: Optional[str], enabled: bool = True) -> None:
+        """The install button's text, or None to hide it."""
+        if text is not None:
+            self.update_install.setText(text)
+            self.update_install.setEnabled(enabled)
+        self.update_install_row.setVisible(text is not None)
+
+    def show_updates(self) -> None:
+        """Scroll down to the updates group, its top at the page's top."""
+        top = self.updates_card.mapTo(self.widget(), QPoint(0, 0)).y()
+        self.verticalScrollBar().setValue(top - theme.METRICS.page_margin)
 
     def _build_about(self) -> Card:
         """Quién lo hace, sobre qué está construido, y dónde guarda las cosas."""

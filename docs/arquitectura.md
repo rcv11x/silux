@@ -456,14 +456,19 @@ pensado para pegarlo en un issue público) y lo dice al terminar. Con
 
 ## El actualizador
 
-`silux/updates.py` es lo único del programa que sale a la red, y solo cuando
-alguien lo pide.
+`silux/updates.py` es lo único del programa que sale a la red: pregunta por
+la última versión al abrirse y cuando se pulsa «Buscar ahora».
+
+**Cuándo se conecta:** «Buscar actualizaciones al iniciar» viene encendido,
+para que quien usa una versión de prueba se entere de la siguiente. Pregunta
+tres segundos después de abrirse, una vez. Apagado, solo «Buscar ahora» abre
+un socket. Los ajustes de antes de que viniera encendido lo encienden una
+sola vez (`check_updates_migrated`); si después se apaga, se queda apagado.
 
 **Lo que no hace nunca:**
 
-- Conectarse sin que nadie lo pida: «Buscar actualizaciones al iniciar»
-  viene apagado, y sin él ni «Buscar ahora» no se abre ni un socket.
-- Sustituir nada sin un clic: una versión nueva solo pinta un aviso.
+- Sustituir nada sin un clic: una versión nueva solo pinta un aviso en la
+  barra lateral, que lleva a Ajustes, y allí se pulsa «Actualizar».
 - Mandar datos del equipo: la petición lleva una sola cabecera propia,
   `User-Agent: silux/<versión>`.
 - Ejecutar algo que no coincide con lo publicado: lo bajado se compara con el

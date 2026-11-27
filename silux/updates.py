@@ -1,8 +1,9 @@
 """Look for a new version and, if the user asks, replace the AppImage.
 
-The only part of the program that goes on the network, and only when asked:
-the check-at-startup setting comes off, and «Check now» is pressed by hand.
-Who it connects to and why: `docs/arquitectura.md#el-actualizador`.
+The only part of the program that goes on the network: it asks for the
+latest version on opening (a setting turns that off) and with «Check now»,
+and downloads only when «Update» is pressed. Who it connects to and why:
+`docs/arquitectura.md#el-actualizador`.
 
 No Qt: the interface calls this from a thread. The network goes through
 `open_url`, which the tests replace with a fake; none reaches GitHub.

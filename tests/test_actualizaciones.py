@@ -431,7 +431,8 @@ class TestLaConexionSegura(unittest.TestCase):
     """
 
     def setUp(self):
-        self.addCleanup(setattr, updates, "_opener_built", None)
+        # Back as it was: the suite's offline opener (tests/__init__.py).
+        self.addCleanup(setattr, updates, "_opener_built", updates._opener_built)
         updates._opener_built = None
 
     def test_sin_ssl_se_dice_que_falta_tls_y_no_que_falta_red(self):

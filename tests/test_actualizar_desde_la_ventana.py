@@ -31,13 +31,98 @@ class TestLaVentana(unittest.TestCase):
         v._tarea_de_red.wait(5000)
         qt.app().processEvents()
 
-    def test_apagado_de_serie_y_sin_buscar_al_abrir(self):
-        from silux.settings import Preferences
-        self.assertFalse(Preferences().check_updates)
-        v = self.ventana()
-        self.assertTrue(v.settings_page.check_updates.isChecked() is False)
-        self.assertIsNone(v._tarea_de_red)
+    def start(self, v):
+        # The window started as `main` starts it, without reading anything.
+        with mock.patch.object(v.sampler, "start"):
+            v.start()
+
+    def test_on_by_default_it_checks_a_little_after_opening(self):
+        v = self.ventana(welcome_shown=True)
+        self.assertTrue(v.settings_page.check_updates.isChecked())
+        # Built alone, as a capture builds it, it asks nothing.
+        self.assertFalse(v._check_at_start.isActive())
+        self.start(v)
+        self.assertTrue(v._check_at_start.isActive())
         self.assertTrue(v.update_button.isHidden())
+
+    def test_switched_off_it_does_not_check_on_opening(self):
+        v = self.ventana(check_updates=False, welcome_shown=True)
+        self.start(v)
+        self.assertFalse(v._check_at_start.isActive())
+        self.assertIsNone(v._tarea_de_red)
+
+    def test_without_network_it_says_so_and_offers_nothing(self):
+        # The real check, with the suite offline (tests/__init__.py).
+        v = self.ventana()
+        self.assertIs(v._buscar_version, updates.check)
+        v.buscar_actualizacion()
+        self.esperar(v)
+        self.assertIn(_("updates.err.network"), v.settings_page.update_status.text())
+        self.assertTrue(v.update_button.isHidden())
+        self.assertTrue(v.settings_page.update_install_row.isHidden())
+
+    def test_closing_while_github_is_slow_neither_waits_nor_aborts(self):
+        # On by default, a check is under way in the first seconds of every
+        # session. A QThread destroyed with the window aborted the process.
+        import threading
+
+        import shiboken6
+        from silux.settings import Preferences
+        from silux.ui.app import MainWindow
+        answer = threading.Event()
+        self.addCleanup(answer.set)
+        qt.app()
+        v = MainWindow(Preferences().normalized())
+        v._buscar_version = lambda channel="stable": answer.wait(10) and None
+        v.buscar_actualizacion()
+        task = v._tarea_de_red
+        v.close()
+        shiboken6.delete(v)
+        answer.set()
+        self.assertTrue(task.wait(5000))
+        qt.app().processEvents()
+
+    def test_the_sidebar_notice_shows_with_the_bar_folded(self):
+        v = self.ventana()
+        v._version_nueva = NUEVA
+        v.set_nav_folded(True)
+        v._pintar_version_nueva()
+        self.assertFalse(v.update_button.isHidden())
+        self.assertEqual(v.update_button.text(), "↑")
+        self.assertIn("99.0", v.update_button.toolTip())
+        v.set_nav_folded(False)
+        v._pintar_version_nueva()
+        self.assertIn("99.0", v.update_button.text())
+
+    def test_the_sidebar_notice_leads_to_the_updates_in_settings(self):
+        v = self.ventana()
+        v.resize(900, 680)
+        v.show()
+        qt.app().processEvents()
+        v._version_nueva = NUEVA
+        v._pintar_version_nueva()
+        v._instalar_version = mock.Mock(side_effect=AssertionError("it only leads there"))
+        v.update_button.click()
+        for _turn in range(4):
+            qt.app().processEvents()
+        page = v.settings_page
+        self.assertIs(v.stack.currentWidget(), page)
+        self.assertTrue(page.update_install_row.isVisibleTo(page))
+        self.assertIn("99.0", page.update_install.text())
+        # Scrolled down to the group, its top in view.
+        top = page.updates_card.mapTo(page.viewport(), page.updates_card.rect().topLeft()).y()
+        self.assertGreater(page.verticalScrollBar().value(), 0)
+        self.assertTrue(0 <= top < page.viewport().height() // 3, top)
+        v._instalar_version.assert_not_called()
+
+    def test_the_button_in_settings_installs(self):
+        v = self.ventana()
+        v._version_nueva = NUEVA
+        v._pintar_version_nueva()
+        with mock.patch.object(updates, "replaceable_path", return_value=None), \
+                mock.patch("PySide6.QtWidgets.QMessageBox.information") as aviso:
+            v.settings_page.update_install.click()
+        self.assertIn(NUEVA.url, aviso.call_args[0][2])
 
     def test_buscar_ahora_con_version_nueva_pone_el_aviso(self):
         v = self.ventana()
