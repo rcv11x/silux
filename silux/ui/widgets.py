@@ -2374,6 +2374,29 @@ class _CuerpoDeTabla(QWidget):
         return resultado
 
 
+# Characters of the interface's font in a line of prose. A wider page keeps
+# its text to this and leaves the rest of the width to tables and figures.
+READING_CHARACTERS = 100
+
+
+class Paragraph(QLabel):
+    """Prose, wrapped at a comfortable width: across a 2560 px page a line
+    of two hundred characters is lost between one end and the other.
+
+    Its height is the one for that width. A layout asks for the height at
+    the whole width it offers, and a label held narrower lost its last
+    lines."""
+
+    def __init__(self, text: str = "", parent: Optional[QWidget] = None):
+        super().__init__(text, parent)
+        self.setWordWrap(True)
+        character = QFontMetrics(ui_font(theme.METRICS.base_pt)).averageCharWidth()
+        self.setMaximumWidth(character * READING_CHARACTERS)
+
+    def heightForWidth(self, width: int) -> int:  # noqa: N802
+        return super().heightForWidth(min(width, self.maximumWidth()))
+
+
 class PageRoot(QWidget):
     """A page's root inside its scroll area: the page's margins and its
     content in `column`, across the whole width, as every other page."""

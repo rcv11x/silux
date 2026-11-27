@@ -27,6 +27,7 @@ que hace falta.
 - El anexo guarda dónde empieza cada partición, para saber en qué parte del plato se hizo una prueba de disco
 - `--json` dice a qué velocidad va cada módulo de memoria
 - Rendimiento ocupa todo el ancho de la ventana, como las demás páginas: en una pantalla ancha dejaba mucho hueco a los lados
+- En Rendimiento, la tabla de pruebas anteriores usa el ancho, la descripción se lee a un ancho cómodo y «Renombrar» y «Borrar» son botones como los demás
 
 ### Arreglos
 

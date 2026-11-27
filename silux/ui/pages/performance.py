@@ -36,6 +36,7 @@ from ..widgets import (
     InfoGrid,
     Notice,
     PageRoot,
+    Paragraph,
     ProgressLine,
     ResponsiveRow,
     ScrollPage,
@@ -137,9 +138,8 @@ class PerformancePage(ScrollPage):
         self._layout.addWidget(fila)
 
         self.history_card = Card(_("bench.card.history"))
-        self.history_note = QLabel("")
+        self.history_note = Paragraph()
         self.history_note.setObjectName("Muted")
-        self.history_note.setWordWrap(True)
         # Rejilla propia y no una Table: cada fila lleva dos botones, y Table
         # solo sabe de texto. Se reconstruye al guardar o borrar, no en cada
         # muestreo, así que aquí no aplica la regla de reutilizar widgets.
@@ -150,16 +150,14 @@ class PerformancePage(ScrollPage):
 
         # Va dentro de la tarjeta del historial y no en un aviso aparte: solo
         # significa algo al lado de las pruebas de las que sale.
-        self.deriva_hint = QLabel()
+        self.deriva_hint = Paragraph()
         self.deriva_hint.setObjectName("NoticeHint")
-        self.deriva_hint.setWordWrap(True)
         self.deriva_hint.hide()
         self.history_card.body.addWidget(self.deriva_hint)
 
-        nota = QLabel(
-            _("bench.history.note"))
+        nota = Paragraph(_("bench.history.note"))
         nota.setObjectName("Muted")
-        nota.setWordWrap(True)
+        self.history_note_text = nota
         self.history_card.body.addWidget(nota)
 
         acciones = QHBoxLayout()
@@ -200,11 +198,9 @@ class PerformancePage(ScrollPage):
         titulo = QLabel(_("bench.card.title"))
         titulo.setObjectName("Headline")
         titulo.setWordWrap(True)
-        subtitulo = QLabel(
-            _("bench.intro")
-        )
+        subtitulo = Paragraph(_("bench.intro"))
         subtitulo.setObjectName("Subhead")
-        subtitulo.setWordWrap(True)
+        self.intro = subtitulo
 
         self.run_button = QPushButton(_("bench.button.run"))
         self.run_button.clicked.connect(lambda: self._start(quick=False))
@@ -447,21 +443,22 @@ class PerformancePage(ScrollPage):
             renombrar.clicked.connect(
                 lambda _pulsado=False, e=entrada: self._renombrar(e))
             borrar = QPushButton(_("bench.button.delete"))
-            borrar.setObjectName("Danger")
             borrar.clicked.connect(lambda _pulsado=False, e=entrada: self._borrar_una(e))
+            # As every other button, only lower: the row's text sets the height.
             for boton in (renombrar, borrar):
                 boton.setProperty("compacto", True)
-                boton.setFont(ui_font(theme.METRICS.small_pt))
                 acciones.addWidget(boton)
             contenedor = QWidget()
             contenedor.setLayout(acciones)
             rejilla.addWidget(contenedor, fila, len(HISTORY_HEADERS),
                               Qt.AlignmentFlag.AlignVCenter)
 
-        # El sobrante va detrás de los botones y no a la columna del nombre.
-        # Estirando la primera, en pantalla completa quedaba un palmo entre la
-        # fecha de la prueba y sus cifras, que son justo lo que se compara.
-        rejilla.setColumnStretch(len(HISTORY_HEADERS) + 1, 1)
+        # The width goes to every column, the name's twice: all of it after
+        # the buttons left the table narrow at the left of a wide card, and
+        # all of it to the name put a span between a run and its figures.
+        rejilla.setColumnStretch(0, 2)
+        for columna in range(1, len(HISTORY_HEADERS)):
+            rejilla.setColumnStretch(columna, 1)
         envoltorio = QWidget()
         envoltorio.setLayout(rejilla)
         self.history_host.addWidget(envoltorio)
