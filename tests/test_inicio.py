@@ -398,7 +398,7 @@ class TestLaFichaDeConsumoExplicaSuHueco(unittest.TestCase):
         # Lo que deja RaplPower cuando energy_uj es de root: sin el dato y con
         # su nota. Sin nota la ficha no inventa un motivo (test_rapl_nucleos).
         nota = Note("cpu.power", Need.ROOT, _("prov.rapl.denied"),
-                    _("prov.rapl.denied.hint"), _("what.cpu.power"))
+                    "", _("what.cpu.power"))
         sin_rapl = dataclasses.replace(
             foto, cpu=dataclasses.replace(
                 foto.cpu, power=dataclasses.replace(foto.cpu.power, package_w=None)),

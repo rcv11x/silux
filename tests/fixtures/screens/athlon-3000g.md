@@ -113,13 +113,11 @@ SMT · MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · SSE4A · AVX �
 
 > **Hace falta elevar permisos**
 > El reloj base lo dice el propio procesador, y leerlo pide permisos.
-> El contador de energía RAPL existe pero no se puede leer.
-> El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
-> Es su P-state 0, en un registro MSR que solo lee el administrador. Ni CPUID ni ACPI CPPC lo publican en este equipo. Muchas distribuciones lo restringen a root desde CVE-2020-8694. Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.
+> El consumo del procesador se lee con permisos de administrador.
+> El voltaje del núcleo se lee con permisos de administrador.
 
 > **Este equipo no lo expone**
 > Este equipo no publica su reloj de referencia (BCLK).
-> Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del procesador. Deducirlo del reloj base únicamente es fiable en plataformas con ACPI CPPC, donde son 100 MHz.
 
 > **Este equipo no lo expone**
 > Este procesador no tiene driver de frecuencia (cpufreq).
@@ -259,7 +257,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 > **Este equipo no lo expone**
 > Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-> Solo lo publican los procesadores Intel. En AMD el kernel no le pone nombre a esos contadores, y una cifra deducida a ciegas sería peor que ninguna.
+> Solo lo publican los procesadores Intel.
 
 ## Gráficos
 
@@ -634,7 +632,7 @@ SENSORES · 21 en 4 dispositivos
 
 > **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.
-> No conviene adivinar el módulo: cada placa lleva un chip distinto y cargar el que no es puede leer basura. sensors-detect lo identifica y dice cuál cargar.
+> sensors-detect dice cuál cargar en esta placa: el que no es puede dar lecturas falsas.
 > sudo sensors-detect
 
 > **Falta un driver del kernel**
@@ -658,6 +656,6 @@ SENSORES · 21 en 4 dispositivos
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `cpu.clocks.driver` (este equipo no lo expone): Este procesador no tiene driver de frecuencia (cpufreq).
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
-- `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
+- `cpu.power` (requiere permisos de administrador): El consumo del procesador se lee con permisos de administrador.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
+- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo se lee con permisos de administrador.

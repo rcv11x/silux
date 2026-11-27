@@ -19,13 +19,18 @@ def _helps(language: str) -> dict:
 class TestShortHelps(unittest.TestCase):
     def test_the_authors_words(self):
         helps = _helps("es")
-        self.assertEqual(helps["settings.language.help"],
-                         "Si una frase no está traducida, sale en español.")
         self.assertEqual(helps["settings.interval.help"],
                          "Cada cuánto se leen los sensores. Menos de 0.5 s gasta más; "
                          "más de 2 s, las gráficas pierden detalle.")
         self.assertTrue(helps["settings.fluid.help"].endswith(
             "se deslizan en vez de saltar. Gasta un poco más de procesador."))
+
+    def test_only_what_changes_a_choice(self):
+        # Obvious ones, or ones explaining what the user doesn't decide, went.
+        helps = _helps("es")
+        for row in ("language", "accent", "density", "fontsize", "updates", "welcome",
+                    "shortcut.desktop"):
+            self.assertNotIn(f"settings.{row}.help", helps)
 
     def test_none_is_long(self):
         for language in ("es", "en"):

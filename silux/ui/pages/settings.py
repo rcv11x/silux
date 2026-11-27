@@ -447,12 +447,10 @@ class SettingsPage(ScrollPage):
         self.welcome_button.clicked.connect(self.welcome_requested)
         return self._grupo(
             _("settings.group.general"),
-            _Renglon(_("settings.language.label"), self.language_box,
-                     _("settings.language.help")),
+            _Renglon(_("settings.language.label"), self.language_box),
             _Renglon(_("settings.tempunit.label"), self.unit_box),
             _Renglon(_("settings.netunit.label"), self.network_box, _("net.units.note")),
-            _Renglon(_("settings.welcome.label"), self.welcome_button,
-                     _("settings.welcome.help")),
+            _Renglon(_("settings.welcome.label"), self.welcome_button),
         )
 
     def _build_appearance(self) -> Card:
@@ -466,9 +464,9 @@ class SettingsPage(ScrollPage):
         return self._grupo(
             _("settings.card.appearance"),
             _Renglon(_("settings.theme.label"), self.theme_box),
-            _Renglon(_("settings.accent.label"), self.accent_box, _("settings.accent.help")),
-            _Renglon(_("settings.density.label"), self.density_box, _("settings.density.help")),
-            _Renglon(_("settings.fontsize.label"), self.font_box, _("settings.fontsize.help")),
+            _Renglon(_("settings.accent.label"), self.accent_box),
+            _Renglon(_("settings.density.label"), self.density_box),
+            _Renglon(_("settings.fontsize.label"), self.font_box),
             _Renglon(_("settings.fluid.label"), self.fluid_charts, _("settings.fluid.help")),
         )
 
@@ -528,8 +526,7 @@ class SettingsPage(ScrollPage):
         self.desktop_shortcut = Interruptor(self._p)
         self.desktop_shortcut.toggled.connect(
             lambda encendido: self._on_switch("desktop", encendido))
-        self.shortcut_row = _Renglon(_("settings.shortcut.desktop"), self.desktop_shortcut,
-                                     _("settings.shortcut.desktop.help"))
+        self.shortcut_row = _Renglon(_("settings.shortcut.desktop"), self.desktop_shortcut)
         # Only when an entry opens another copy, a file that is gone or an
         # older version: there is something to put right.
         self.desktop_fix = Button(_("settings.shortcut.fix"))
@@ -597,8 +594,7 @@ class SettingsPage(ScrollPage):
         self.update_install_row.hide()
         card = self._grupo(
             _("settings.group.updates"),
-            _Renglon(_("settings.updates.label"), self.check_updates,
-                     _("settings.updates.help")),
+            _Renglon(_("settings.updates.label"), self.check_updates),
             _Renglon(_("settings.updates.manual"), self.update_now),
         )
         card.body.addWidget(self.update_status)

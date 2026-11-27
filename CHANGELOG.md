@@ -35,7 +35,7 @@ que hace falta.
 - Cambiar de tema, de densidad o de letra tarda la mitad: menos de un segundo en un sobremesa
 - Color de acento en Ajustes → Apariencia: ámbar, azul, verde, frambuesa o morado, cada uno legible en claro y en oscuro; cambia todo a la vez, sin reiniciar, y con el azul lo que tiene arreglo y los candados pasan a morado
 - El ámbar del tema claro, un poco más oscuro: el texto de los botones principales y de las etiquetas se lee mejor
-- Ajustes explica cada fila en una o dos líneas, más cortas y directas
+- Ajustes solo explica las filas donde la explicación cambia lo que eliges, en una o dos líneas
 - En Ajustes, los desplegables van todos del ancho del más largo y quedan alineados
 - «Acerca de Silux» más corto: las licencias de terceros, plegadas; Claude, como «Asistente de IA: Claude»; y cada nombre de los agradecimientos en su etiqueta del color de acento
 - En Almacenamiento, las fichas de lectura, escritura y temperatura pueden enseñar una sola unidad: se elige en el desplegable «Unidad», encima de ellas, o pulsando su fila en «Unidades», con su gráfica desde que se abrió Silux, y se recuerda
@@ -60,6 +60,7 @@ que hace falta.
 - Lo que falta por permisos en una página sale en un solo aviso con un solo botón, y no en uno por dato
 - En una ventana estrecha, los desplegables de la prueba de disco quedan alineados en columna
 - Un dispositivo USB que no escribe su nombre sale con el de usb.ids, o como «Dispositivo USB 046d:c52b»
+- Los avisos de permisos dicen qué se lee con ellos («El consumo del procesador se lee con permisos de administrador») sin registros ni CVE
 
 ### Arreglos
 

@@ -177,7 +177,7 @@ class MsrVoltage(Provider):
             return ("cpu.voltage_v", Need.HARDWARE,
                     _("prov.msr.oldintel"), _("prov.msr.oldintel.hint"))
         return ("cpu.voltage_v", Need.ROOT,
-                _("prov.msr.novolt"), _("prov.msr.novolt.hint"), _("what.cpu.voltage"))
+                _("prov.msr.novolt"), "", _("what.cpu.voltage"))
 
     def collect(self, draft: Draft) -> None:
         # KVM answers the voltage register with a constant: a virtual machine

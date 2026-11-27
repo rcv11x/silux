@@ -121,16 +121,14 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI · SHA · CLMU
 
 > **Este equipo no lo expone**
 > Este equipo no publica su reloj de referencia (BCLK).
-> Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del procesador. Deducirlo del reloj base únicamente es fiable en plataformas con ACPI CPPC, donde son 100 MHz.
 
 > **Este equipo no lo expone**
 > Este procesador no publica su frecuencia máxima de fábrica.
-> La dan CPUID 0x16, en los Intel desde la sexta generación, y ACPI CPPC; este no tiene ninguno de los dos. La máxima que aplica el kernel sí está, en su fila.
+> La máxima que aplica el kernel sí está, en su fila.
 
 > **Hace falta elevar permisos**
-> El contador de energía RAPL existe pero no se puede leer.
-> El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
-> Muchas distribuciones lo restringen a root desde CVE-2020-8694. Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.
+> El consumo del procesador se lee con permisos de administrador.
+> El voltaje del núcleo se lee con permisos de administrador.
 
 ## Cachés
 
@@ -251,7 +249,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 > **Este equipo no lo expone**
 > Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-> Solo lo publican los procesadores Intel. En AMD el kernel no le pone nombre a esos contadores, y una cifra deducida a ciegas sería peor que ninguna.
+> Solo lo publican los procesadores Intel.
 
 ## Gráficos
 
@@ -677,7 +675,7 @@ UHD Graphics 600: no tiene sensor de temperatura propio.
 - `spd` (este equipo no lo expone): El bus de la memoria está, pero el kernel no ha registrado ningún chip SPD en él.
 - `gpus.0` (requiere permisos de administrador): El uso de la gráfica solo se lee con permisos de administrador.
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
-- `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
+- `cpu.power` (requiere permisos de administrador): El consumo del procesador se lee con permisos de administrador.
 - `memory.traffic` (este equipo no lo expone): Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
+- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo se lee con permisos de administrador.
 - `gpus.0.temp_c` (este equipo no lo expone): Esta gráfica va dentro del procesador y no tiene sensor de temperatura propio: se muestra la del paquete, que comparte con la CPU. (i915 y xe solo registran hwmon en las gráficas dedicadas; la temperatura es la del sensor del paquete (coretemp).)

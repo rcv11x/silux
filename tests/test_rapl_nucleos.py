@@ -174,7 +174,7 @@ class TestUnDatoUnMotivo(unittest.TestCase):
         from silux.i18n import _
         from silux.model import Need, Note, PrivilegedState
 
-        nota = Note("cpu.power", Need.ROOT, _("prov.rapl.denied"), _("prov.rapl.denied.hint"),
+        nota = Note("cpu.power", Need.ROOT, _("prov.rapl.denied"), "",
                     _("what.cpu.power"))
         sin = dataclasses.replace(
             self.parado, notes=tuple(n for n in self.parado.notes if n.path != "cpu.power")

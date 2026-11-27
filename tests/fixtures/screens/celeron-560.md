@@ -108,7 +108,6 @@ MMX · SSE · SSE2 · SSE3 · SSSE3
 
 > **Este equipo no lo expone**
 > Este equipo no publica su reloj de referencia (BCLK).
-> Solo lo dan CPUID 0x16 en Intel moderno o los registros MSR del procesador. Deducirlo del reloj base únicamente es fiable en plataformas con ACPI CPPC, donde son 100 MHz.
 
 > **Este equipo no lo expone**
 > Este procesador no tiene driver de frecuencia (cpufreq).
@@ -120,7 +119,7 @@ MMX · SSE · SSE2 · SSE3 · SSSE3
 
 > **Este equipo no lo expone**
 > Este procesador no publica el voltaje del núcleo.
-> Intel lo pone en el registro que se lee a partir de los Core de segunda generación (Sandy Bridge); en uno anterior no está, con permisos o sin ellos.
+> Los Intel anteriores a la segunda generación de Core no lo publican.
 
 ## Cachés
 
@@ -268,7 +267,7 @@ El ayudante que se lanza solo sabe leer esa tabla y unos registros del procesado
 
 > **Este equipo no lo expone**
 > Este equipo no publica cuánto tráfico mueve el controlador de memoria.
-> Solo lo publican los procesadores Intel. En AMD el kernel no le pone nombre a esos contadores, y una cifra deducida a ciegas sería peor que ninguna.
+> Solo lo publican los procesadores Intel.
 
 ## Gráficos
 

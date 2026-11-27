@@ -127,18 +127,18 @@ class CppcClocks(Provider):
             # A Zen reports it in its P0 (msr_pstate), and permissions fix that.
             draft.note(
                 "cpu.clocks.base_hz", Need.ROOT,
-                _("prov.cppc.nobase.zen"), _("prov.cppc.nobase.zen.hint"),
+                _("prov.cppc.nobase.zen"), "",
                 _("what.cpu.base"),
             )
         elif no_base:
             draft.note(
                 "cpu.clocks.base_hz", Need.HARDWARE,
-                _("prov.cppc.nobase"), _("prov.cppc.nobase.hint"),
+                _("prov.cppc.nobase"),
             )
         if no_bus:
             draft.note(
                 "cpu.clocks.bus_hz", Need.HARDWARE,
-                _("prov.cppc.nobclk"), _("prov.cppc.nobclk.hint"),
+                _("prov.cppc.nobclk"),
             )
         if no_ceiling_source and not no_ceiling:
             draft.note(

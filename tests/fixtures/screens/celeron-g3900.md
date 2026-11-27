@@ -124,9 +124,8 @@ MMX · SSE · SSE2 · SSE3 · SSSE3 · SSE4.1 · SSE4.2 · AES-NI · CLMUL · RD
 44 banderas detectadas por CPUID · 32 no destacadas
 
 > **Hace falta elevar permisos**
-> El contador de energía RAPL existe pero no se puede leer.
-> El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
-> Muchas distribuciones lo restringen a root desde CVE-2020-8694. Se lee de un registro del propio procesador, y eso lo reserva el kernel al administrador.
+> El consumo del procesador se lee con permisos de administrador.
+> El voltaje del núcleo se lee con permisos de administrador.
 
 ## Cachés
 
@@ -628,7 +627,7 @@ ACPI: 27.8 °C, 29.8 °C fijos no es una medida. Es el número que devuelve el f
 
 > **Falta un driver del kernel**
 > Con el driver del chip Super I/O de la placa tendrías ventiladores, voltajes de la placa y temperaturas del chipset.
-> No conviene adivinar el módulo: cada placa lleva un chip distinto y cargar el que no es puede leer basura. sensors-detect lo identifica y dice cuál cargar.
+> sensors-detect dice cuál cargar en esta placa: el que no es puede dar lecturas falsas.
 > sudo sensors-detect
 
 > **Falta un driver del kernel**
@@ -650,7 +649,7 @@ ACPI: 27.8 °C, 29.8 °C fijos no es una medida. Es el número que devuelve el f
 - `modules` (requiere permisos de administrador): Los módulos de memoria están en la tabla SMBIOS, que el kernel reserva al administrador.
 - `gpus.0` (requiere permisos de administrador): El uso de la gráfica solo se lee con permisos de administrador.
 - `disks.health` (requiere permisos de administrador): El diagnóstico de los discos lo guarda cada unidad en sus propios contadores.
-- `cpu.power` (requiere permisos de administrador): El contador de energía RAPL existe pero no se puede leer.
+- `cpu.power` (requiere permisos de administrador): El consumo del procesador se lee con permisos de administrador.
 - `memory.traffic` (requiere permisos de administrador): El contador de tráfico del controlador de memoria existe pero no se puede leer.
-- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo lo tiene el procesador, no un sensor de la placa.
+- `cpu.voltage_v` (requiere permisos de administrador): El voltaje del núcleo se lee con permisos de administrador.
 - `gpus.0.temp_c` (este equipo no lo expone): Esta gráfica va dentro del procesador y no tiene sensor de temperatura propio: se muestra la del paquete, que comparte con la CPU. (i915 y xe solo registran hwmon en las gráficas dedicadas; la temperatura es la del sensor del paquete (coretemp).)

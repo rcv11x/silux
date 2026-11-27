@@ -265,7 +265,7 @@ class RaplPower(Provider):
             return None
         if _packages():
             return ("cpu.power", Need.ROOT,
-                    _("prov.rapl.denied"), _("prov.rapl.denied.hint"),
+                    _("prov.rapl.denied"), "",
                     _("what.cpu.power"))
         if _in_a_container():
             return ("cpu.power", Need.HARDWARE,
