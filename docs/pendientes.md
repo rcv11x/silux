@@ -351,6 +351,10 @@ la memoria) no va: está propuesto en las notas
   frecuencia base (2,0 GHz en el A8-6410): hoy dice «Base: —». Falta
   comprobar que vale en otros AMD anteriores a Zen y qué pasa en un Intel
   con acpi-cpufreq (su P0 es la base más 1 MHz).
+* `providers/turbo.py` · baja · un AMD sin driver de frecuencia y con la
+  bandera `cpb` dice «Turbo: —»: sin `cpufreq/boost` nadie lo apaga, así que
+  está activado. Falta confirmarlo en un equipo así (sin `cpb` ya dice
+  «desactivado», por la BIOS).
 * `providers/storage.py` · baja · la velocidad de giro de un SATA de platos
   conectado por dentro sale del mismo IDENTIFY que ya se lee de sysfs
   (palabra 217) y hoy no se lee: solo la tienen los discos de una caja USB,
