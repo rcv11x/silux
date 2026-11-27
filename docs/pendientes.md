@@ -351,6 +351,9 @@ la memoria) no va: está propuesto en las notas
   frecuencia base (2,0 GHz en el A8-6410): hoy dice «Base: —». Falta
   comprobar que vale en otros AMD anteriores a Zen y qué pasa en un Intel
   con acpi-cpufreq (su P0 es la base más 1 MHz).
+* `providers/storage.py` · baja · la tarjeta de un disco SATA dice
+  «Temperatura —» sin drivetemp, aunque su diagnóstico traiga el 194: puede
+  salir de ahí, diciendo de dónde.
 * `providers/turbo.py` · baja · un AMD sin driver de frecuencia y con la
   bandera `cpb` dice «Turbo: —»: sin `cpufreq/boost` nadie lo apaga, así que
   está activado. Falta confirmarlo en un equipo así (sin `cpb` ya dice
@@ -512,6 +515,16 @@ la memoria) no va: está propuesto en las notas
 
 ## Interfaz
 
+* `ui/widgets.py` · media · las esquinas de los avisos (`Notice`) salen
+  escalonadas: Qt dibuja mal las esquinas redondeadas con bordes de distinto
+  grosor (3 px a la izquierda, 1 px el resto). Propuesta: pintar el aviso con
+  `QPainter` y suavizado, la raya de color como un trazado propio. Los
+  botones y las tarjetas ya salen suavizados.
+* `ui/pages/storage.py` · media · con una unidad elegida, sus fichas en vivo
+  sin permisos, de `/proc/diskstats`: tiempo activo, respuesta media de
+  lectura y escritura e IOPS, con su historia; los subtítulos con la unidad,
+  su fila y su tarjeta en el acento, y la ficha lleva a su tarjeta. Con todas
+  las unidades, solo lo que tiene sentido sumado (IOPS).
 * `ui/app.py` · media · al abrir Silux en un sobremesa se ve un momento la
   sección Batería en el menú y luego desaparece: está desde el principio y
   `_ajustar_bateria` la esconde con la primera lectura. Tiene que no salir
