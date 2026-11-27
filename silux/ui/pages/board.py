@@ -145,7 +145,8 @@ class BoardPage(ScrollPage):
         self.platform_card = Card(_("board.card.platform"))
         self.platform = InfoGrid()
         for name in PLATFORM_FIELDS:
-            self.platform.add(_(name))
+            self.platform.add(_(name), tooltip=_("board.tip.above4g")
+                              if name == "board.plat.above4g" else "")
         self.platform_card.body.addWidget(self.platform)
         bottom.add(self.platform_card)
 

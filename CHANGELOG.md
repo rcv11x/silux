@@ -67,6 +67,7 @@ que hace falta.
 - Ajustes abre la carpeta de datos (historial de pruebas, registros e informes) y la de los ajustes
 - En Sensores, la columna «Último minuto» llega siempre hasta el borde, también después de arrastrar las demás
 - En Memoria, por qué no se lee el chip SPD de los módulos va en un aviso propio y más corto
+- En Placa base, «Above 4G Decoding» se llama como en la BIOS, y su explicación va al pasar el ratón
 - En Gráficos, lo que el driver no da se dice en una frase corta por tarjeta, sin contar datos, y una tarjeta que se queda vacía no sale
 - Una NVIDIA enseña su estado de rendimiento (P0 a P15) en Relojes
 - Un dispositivo USB que no escribe su nombre sale con el de usb.ids, o como «Dispositivo USB 046d:c52b»
