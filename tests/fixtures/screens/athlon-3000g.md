@@ -403,6 +403,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### sda
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 8.3 GB · Libre 458 GB · Reservado 34.0 GB
 - Modelo: WDC WD5000LPVX-0
 - Fabricante: Western Digital
@@ -424,6 +426,8 @@ Un disco de platos no tiene «vida restante»: es el desgaste de las celdas de u
 
 ### sdb
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 63.6 GB · Libre 60.1 GB
 - Modelo: DataTraveler 3.0
 - Fabricante: Kingston

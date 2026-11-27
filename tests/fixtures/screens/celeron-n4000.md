@@ -396,6 +396,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### sda
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 35.4 GB · Libre 67.4 GB · Reservado 7.2 GB · Intercambio 4.9 GB · Sin montar 141 GB
 - Modelo: SAMSUNG MZ7LN256
 - Fabricante: Samsung
@@ -417,6 +419,8 @@ Ocupado 35.4 GB · Libre 67.4 GB · Reservado 7.2 GB · Intercambio 4.9 GB · Si
 
 ### sdb
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 - Modelo: DataTraveler 3.0
 - Fabricante: Kingston
 - Tipo: Memoria flash

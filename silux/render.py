@@ -2177,59 +2177,76 @@ def memory_channel_warning(modules) -> Optional[str]:
     return None
 
 
-NVME_WARNINGS = {
-    0: "disk.warn.spare",
-    1: "disk.warn.temp",
-    2: "disk.warn.reliability",
-    3: "disk.warn.readonly",
-    4: "disk.warn.backup",
-    5: "disk.warn.pmr",
+# Each reason of `disk_health`, as a sentence: the NVMe warning bits read
+# as part of one, the others whole.
+_NVME_REASONS = {
+    "nvme.spare": "disk.warn.spare",
+    "nvme.temperature": "disk.warn.temp",
+    "nvme.reliability": "disk.warn.reliability",
+    "nvme.readonly": "disk.warn.readonly",
+    "nvme.backup_device": "disk.warn.backup",
+    "nvme.pmr": "disk.warn.pmr",
 }
+_SECTOR_KINDS = ("reallocated", "pending", "uncorrectable")
 
-# Below this the SSD is said to have little left. The maker guarantees the
-# disk down to 0 %, so 10 % isn't a fault: it's time to think about the
-# backup, and saying so early is the only thing that helps.
-LOW_LIFE_PCT = 10
+
+def disk_reason(reason) -> str:
+    """A `disk_health.Reason` in words."""
+    if reason.code in _NVME_REASONS:
+        return _(_NVME_REASONS[reason.code]).capitalize() + "."
+    if reason.code == "nvme.unknown":
+        return _("disk.warn.unknown").format(codigo=f"{reason.count:#04x}")
+    if reason.code == "media_errors":
+        return counted("disk.warn.media", reason.count, n=thousands(reason.count))
+    if reason.code == "sectors":
+        sectors = [counted(f"disk.sectors.{kind}", count, n=thousands(count))
+                   for kind, count in zip(_SECTOR_KINDS, reason.figures) if count]
+        return _("disk.warn.sectors").format(lista=enumeration(sectors))
+    if reason.code == "life_low":
+        return _("disk.warn.life").format(pct=reason.count)
+    if reason.code == "worn_out":
+        return _("disk.warn.worn")
+    if reason.code == "cable":
+        return counted("disk.warn.cable", reason.count, n=thousands(reason.count))
+    return reason.code
 
 
 def disk_warnings(health) -> list[tuple[str, str]]:
-    """What a disk is saying about itself, as `(level, sentence)`.
+    """What a disk is saying about itself, as `(level, sentence)`: its
+    health's reasons (`disk_health`), «crítico» those that mean «back it up
+    now». Unsafe shutdowns aren't one: they count power cuts and reset
+    buttons, normal on a desktop."""
+    from . import disk_health
 
-    `critical_warning` is the field an NVMe warns through that it's on its
-    way to losing data.
+    verdict = disk_health.verdict(health)
+    return [("crítico" if disk_health.backup_reason(reason) else "alto", disk_reason(reason))
+            for reason in verdict.reasons]
 
-    Unsafe shutdowns aren't a warning: they count power cuts and reset
-    buttons, normal on a desktop.
-    """
-    warnings: list[tuple[str, str]] = []
-    if health is None:
-        return warnings
 
-    if health.critical_warning:
-        for bit, key in NVME_WARNINGS.items():
-            if health.critical_warning & (1 << bit):
-                warnings.append(("crítico", _(key).capitalize() + "."))
-        if not warnings:                     # a bit the specification doesn't cover
-            warnings.append(("crítico", _("disk.warn.unknown").format(
-                codigo=f"{health.critical_warning:#04x}")))
+_HEALTH_LEVELS = {"fine": "disk.health.fine", "watch": "disk.health.watch",
+                  "backup": "disk.health.backup", "no_data": "disk.health.no_data",
+                  "locked": "disk.health.locked"}
+_HEALTH_TEXTS = {"fine": "disk.health.fine.text", "no_data": "disk.health.no_data.text",
+                 "locked": "disk.health.locked.text"}
 
-    if health.media_errors:
-        key = ("disk.warn.media.one" if health.media_errors == 1
-                 else "disk.warn.media.many")
-        warnings.append(("alto", _(key).format(n=thousands(health.media_errors))))
-    sectors = [_(f"disk.sectors.{kind}.{'one' if count == 1 else 'many'}").format(
-                   n=thousands(count))
-               for kind, count in (("reallocated", health.reallocated_sectors),
-                                   ("pending", health.pending_sectors),
-                                   ("uncorrectable", health.uncorrectable_sectors))
-               if count]
-    if sectors:
-        warnings.append(("alto", _("disk.warn.sectors").format(lista=enumeration(sectors))))
 
-    life = health.life_left_percent
-    if life is not None and life <= LOW_LIFE_PCT:
-        warnings.append(("alto", _("disk.warn.life").format(pct=life)))
-    return warnings
+def disk_health_level(level: str) -> str:
+    """«Fine», «Watch», «Back it up now»… for a `disk_health` level."""
+    return _(_HEALTH_LEVELS[level])
+
+
+def disk_health_text(verdict, virtual: bool = False) -> str:
+    """Why a disk is at its level: its reasons, and what to do when it is
+    to be watched; or what there is to say without any. `virtual`: a
+    virtual machine's disk, which has no diagnosis of its own."""
+    if not verdict.reasons:
+        if virtual and verdict.level == "no_data":
+            return _("disk.health.virtual.text")
+        return _(_HEALTH_TEXTS.get(verdict.level, "disk.health.no_data.text"))
+    lines = [disk_reason(reason) for reason in verdict.reasons]
+    if verdict.level == "watch":
+        lines.append(_("disk.health.watch.hint"))
+    return " ".join(lines)
 
 
 def duration(seconds: float) -> str:

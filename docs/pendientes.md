@@ -303,6 +303,14 @@ la memoria) no va: está propuesto en las notas
 
 ## Datos que se leen mal o no se leen
 
+* `disk_health.py` · media · la salud de un disco SATA llega como mucho a
+  «vigilar»: «haz copia ya» pide el umbral de cada atributo (SMART READ
+  THRESHOLDS), otra orden ATA que el ayudante no manda. Toca privilegios: se
+  propone antes. Tampoco se leen aún, en un NVMe, los minutos por encima de
+  su temperatura de aviso y de la crítica (bytes 192 y 196 del registro), ni
+  los TB escritos frente a los que garantiza cada modelo (una tabla con su
+  fuente).
+
 * `providers/sysfs_cpu.py` · baja · la máxima de cada tipo de núcleo ya es
   la de todas sus CPUs, y los núcleos favoritos se dicen; falta verlo con
   datos de verdad. El volcado `i7-12700kf` (de la prueba11) solo trae la de

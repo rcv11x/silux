@@ -451,6 +451,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### nvme0n1
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 443 GB · Libre 23.3 GB · Reservado 34.0 GB
 - Modelo: KINGSTON SNV3S500G
 - Fabricante: Kingston
@@ -474,6 +476,8 @@ Ocupado 443 GB · Libre 23.3 GB · Reservado 34.0 GB
 
 ### nvme1n1
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 426 GB · Libre 40.0 GB · Reservado 34.0 GB
 - Modelo: KINGSTON SNV3S500G
 - Fabricante: Kingston
@@ -497,6 +501,8 @@ Ocupado 426 GB · Libre 40.0 GB · Reservado 34.0 GB
 
 ### sda
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 955 GB · Libre 45.3 GB
 - Modelo: SanDisk SSD PLUS 1000GB
 - Fabricante: SanDisk

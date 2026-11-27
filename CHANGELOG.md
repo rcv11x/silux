@@ -25,6 +25,7 @@ que hace falta.
 - La barra lateral se encoge a solo los iconos con el botón de arriba; al pasar el ratón dice el nombre de cada sección, y se queda como la dejaste
 - En Almacenamiento, las fichas de lectura, escritura y temperatura pueden enseñar una sola unidad: se elige en su desplegable o pulsando su fila en «Unidades», con su gráfica desde que se abrió Silux, y se recuerda
 - En Sensores, clic derecho en un sensor para fijarlo arriba, en su propia rama con el nombre de su aparato; se recuerda
+- La salud de cada disco de un vistazo, en su tarjeta de Almacenamiento: «Bien», «Vigilar» o «Haz copia ya», con el porqué, solo con lo que declara el propio disco o la especificación de NVMe; en SATA llega como mucho a «Vigilar»
 - La cabecera del informe dice qué valores son de ejemplo: el nombre del equipo, las direcciones IP y MAC, las carpetas de los discos
 - La vista previa del informe y la terminal ya no dicen que esos datos se quitan: se cambian por otros de ejemplo
 - Sin permisos, Memoria dice cuánta memoria suman los módulos leídos cuando no es toda la del equipo

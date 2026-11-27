@@ -391,6 +391,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### sda
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 46.3 GB · Libre 186 GB · Reservado 17.5 GB
 - Modelo: CT250MX500SSD1
 - Fabricante: Crucial
@@ -412,6 +414,8 @@ Ocupado 46.3 GB · Libre 186 GB · Reservado 17.5 GB
 
 ### sdb
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 - Modelo: TOSHIBA DT01ACA0
 - Fabricante: Toshiba
 - Tipo: HDD

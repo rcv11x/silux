@@ -449,6 +449,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### nvme0n1
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 214 GB · Libre 784 GB
 - Modelo: KINGSTON SNV2S1000G
 - Fabricante: Kingston
@@ -472,6 +474,8 @@ Ocupado 214 GB · Libre 784 GB
 
 ### sda
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 13.6 GB · Libre 987 GB
 - Modelo: WDC WD10JPCX-24U
 - Fabricante: Western Digital

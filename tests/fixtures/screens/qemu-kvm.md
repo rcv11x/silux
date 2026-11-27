@@ -279,6 +279,8 @@ Ocupado 2.8 GB · Libre 30.9 GB · Reservado 622 MB
 
 ### sda
 
+● Sin datos
+Un disco virtual no tiene diagnóstico propio: lo tiene el disco del equipo que lo aloja.
 Ocupado 2.8 GB · Libre 30.9 GB · Reservado 622 MB
 - Modelo: QEMU HARDDISK
 - Tipo: Virtual

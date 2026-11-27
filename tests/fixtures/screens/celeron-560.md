@@ -377,6 +377,8 @@ El ayudante que se lanza solo sabe pedir diagnóstico y leer unas tablas del sis
 
 ### sdc
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
 - Modelo: SSD PLUS 240 GB
 - Fabricante: SanDisk
@@ -398,6 +400,8 @@ Ocupado 92.0 GB · Libre 109 GB · Reservado 15.3 GB · Sin montar 24.0 GB
 
 ### sda
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 - Modelo: ST9160827AS
 - Tipo: HDD
 - Conexión: SATA
@@ -417,6 +421,8 @@ El disco no dice su fabricante, ni en su modelo ni en lo que publica el kernel. 
 
 ### sdb
 
+● Con permisos
+La salud la guarda cada disco y solo la lee el administrador.
 - Modelo: Cruzer U
 - Fabricante: SanDisk
 - Tipo: Memoria flash

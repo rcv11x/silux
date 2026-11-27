@@ -16,6 +16,7 @@ from collections import deque
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -25,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ... import render, thermal
+from ... import disk_health, render, thermal
 from ...i18n import _
 from ...model import DISK_KINDS, Disk, Snapshot
 from ...settings import Preferences
@@ -134,6 +135,8 @@ class StoragePage(ScrollPage):
         self._tests: dict = {}
         self._disk_tests: tuple = ()
         self._models: dict = {}
+        # Each disk card's health: its level and why.
+        self._health: dict = {}
         self._prefs = prefs
         # The drive the tiles show (its `disk_choice_key`), and each drive's
         # history since Silux opened, by name: what its tiles' charts are
@@ -670,8 +673,19 @@ class StoragePage(ScrollPage):
             self._folds.clear()
             self._bars.clear()
             fila = ResponsiveRow(min_item_width=360)
+            self._health.clear()
             for disco in discos:
                 card = Card(disco.name)
+                # Its health at a glance, first: a level and why.
+                level = QLabel("")
+                level.setFont(ui_font(theme.METRICS.base_pt, QFont.Weight.DemiBold))
+                why = QLabel("")
+                why.setObjectName("Muted")
+                why.setWordWrap(True)
+                why.setFont(ui_font(theme.METRICS.small_pt))
+                card.body.addWidget(level)
+                card.body.addWidget(why)
+                self._health[disco.name] = (level, why)
                 barra = StackedBar(self._p)
                 grid = InfoGrid()
                 for campo in DISK_FIELDS:
@@ -711,7 +725,30 @@ class StoragePage(ScrollPage):
 
         for disco in discos:
             self._fill(disco)
+            self._paint_health(disco)
         self._paint_disk_tests(discos)
+
+    # A level's colour: the palette's own for fine, watch and back it up.
+    HEALTH_COLOURS = {disk_health.FINE: "ok", disk_health.WATCH: "warn",
+                      disk_health.BACKUP: "crit"}
+
+    def _paint_health(self, disco: Disk) -> None:
+        """The disk's health, from what it or the specification declares,
+        never a threshold of ours (`disk_health`)."""
+        widgets = self._health.get(disco.name)
+        if widgets is None:
+            return
+        level, why = widgets
+        locked = self._candado is not None and disco.kind != "Virtual"
+        verdict = disk_health.verdict(disco.health, locked=locked)
+        text = f"● {render.disk_health_level(verdict.level)}"
+        if level.text() != text:
+            level.setText(text)
+        colour = self.HEALTH_COLOURS.get(verdict.level, "muted")
+        level.setStyleSheet(f"color: {getattr(self._p, colour)};")
+        sentence = render.disk_health_text(verdict, virtual=disco.kind == "Virtual")
+        if why.text() != sentence:
+            why.setText(sentence)
 
     def _last_test_line(self, name: str) -> QWidget:
         """A disk's last disk test, in short, and the way to its tab."""
