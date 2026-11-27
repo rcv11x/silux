@@ -298,10 +298,13 @@ class FoldingRow(QWidget):
         self._box.setContentsMargins(0, 0, 0, 0)
         if spacing is not None:
             self._box.setSpacing(spacing)
+        # Each widget's alignment as a row, given back when it unfolds.
+        self._alignments: dict[QWidget, Qt.AlignmentFlag] = {}
 
     def add_widget(self, widget: QWidget, stretch: int = 0,
                    alignment: Qt.AlignmentFlag = Qt.AlignmentFlag(0)) -> None:
         self._box.addWidget(widget, stretch, alignment)
+        self._alignments[widget] = alignment
 
     def add_layout(self, layout: QLayout, stretch: int = 0) -> None:
         self._box.addLayout(layout, stretch)
@@ -314,6 +317,7 @@ class FoldingRow(QWidget):
 
     def remove_widget(self, widget: QWidget) -> None:
         self._box.removeWidget(widget)
+        self._alignments.pop(widget, None)
         self.updateGeometry()
 
     def set_margins(self, left: int, top: int, right: int, bottom: int) -> None:
@@ -348,10 +352,15 @@ class FoldingRow(QWidget):
                      else QBoxLayout.Direction.TopToBottom)
         if self._box.direction() != direction:
             self._box.setDirection(direction)
-            # In a column each piece keeps its own width, on the left.
-            if not row:
-                for piece in self._pieces():
+            for piece in self._pieces():
+                if not row and piece.layout() is None:
+                    # In a column each control keeps its own width, on the left.
                     piece.setAlignment(Qt.AlignmentFlag.AlignLeft)
+                else:
+                    # A block of text takes the column's whole width: aligned,
+                    # it would get its narrower hint width while its height
+                    # was worked out for the whole one, and spill over.
+                    piece.setAlignment(self._alignments.get(piece.widget(), Qt.AlignmentFlag(0)))
             self.updateGeometry()
 
 

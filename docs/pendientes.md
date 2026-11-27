@@ -522,6 +522,12 @@ la memoria) no va: está propuesto en las notas
   lectura y escritura e IOPS, con su historia; los subtítulos con la unidad,
   su fila y su tarjeta en el acento, y la ficha lleva a su tarjeta. Con todas
   las unidades, solo lo que tiene sentido sumado (IOPS).
+* `ui/widgets.py` · baja · dos textos que se parten en líneas reciben menos
+  alto del que piden a su ancho y se les corta el borde de abajo: la línea de
+  órdenes del kernel en Sistema (66 de 72 px con la letra máxima a 720 px,
+  en varios volcados) y el pie de Relojes en Gráficos del `a8-6410` con la
+  letra «mayor» (40 de 60 px). `_cut_paragraphs` de `test_anchura.py` los
+  encuentra si se le quita el filtro de las filas plegables.
 * `ui/app.py` · media · al abrir Silux en un sobremesa se ve un momento la
   sección Batería en el menú y luego desaparece: está desde el principio y
   `_ajustar_bateria` la esconde con la primera lectura. Tiene que no salir

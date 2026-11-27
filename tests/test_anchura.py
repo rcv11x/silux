@@ -237,6 +237,32 @@ def _cut_values(page) -> list[str]:
     return cut
 
 
+def _cut_paragraphs(page) -> list[str]:
+    """Wrapped texts in a row that folds into a column, given less height
+    than their lines need at their width: they spilled over the setting's
+    name above them. Elsewhere two more are known (docs/pendientes.md)."""
+    from PySide6.QtWidgets import QLabel
+
+    from silux.ui.widgets import FoldingRow
+
+    def in_a_folding_row(widget) -> bool:
+        while widget is not None and widget is not page:
+            if isinstance(widget, FoldingRow):
+                return True
+            widget = widget.parentWidget()
+        return False
+
+    cut = []
+    for label in page.findChildren(QLabel):
+        if not (label.wordWrap() and label.text() and label.isVisibleTo(page)
+                and in_a_folding_row(label)):
+            continue
+        needed = label.heightForWidth(label.width())
+        if label.height() < needed:
+            cut.append(f"«{label.text()[:40]}» {label.height()} of {needed} px")
+    return cut
+
+
 def _short_controls(page) -> list[str]:
     """The buttons, lists and boxes shown lower than their own text: a fixed
     height that didn't grow with the font cuts them."""
@@ -336,6 +362,7 @@ class _EveryPageAt:
                               section=window.nav.item(row).text()):
                 self.assertEqual(probe._desbordados()[:12], [])
                 self.assertEqual(_cut_values(window.stack.currentWidget()), [])
+                self.assertEqual(_cut_paragraphs(window.stack.currentWidget()), [])
                 self.assertEqual(_short_controls(window.stack.currentWidget()), [])
                 self.assertEqual(_stretched_lists(window.stack.currentWidget()), [])
 
