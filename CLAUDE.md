@@ -138,6 +138,14 @@ No son preferencias de estilo: cada una viene de un problema concreto.
    página tiene su efecto visible en esa misma página. Lo comprueba
    `tests/test_al_momento.py`: una página abierta con una foto que recibe
    otra queda igual que montada directamente con la segunda.
+10. **Cada dato va en la página de su pieza, e Inicio solo resume con un
+    enlace.** Las ranuras de memoria libres, en Memoria; las PCIe y M.2, en
+    Placa base (las M.2 libres, recordadas en Almacenamiento), con una línea
+    en Inicio. «Sin driver», la huella, la cámara de infrarrojos y
+    Thunderbolt o USB4, en Dispositivos. El firmware que falta, en la página
+    de la pieza, con un resumen en Sistema; los fallos del kernel, en
+    Sistema; la salud de los discos, en Almacenamiento. **Ninguna página
+    nueva sin proponerla antes al autor.**
 
 El porqué largo de cada una y el resto de la arquitectura:
 [docs/arquitectura.md](docs/arquitectura.md).
@@ -381,7 +389,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2260 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2326 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
