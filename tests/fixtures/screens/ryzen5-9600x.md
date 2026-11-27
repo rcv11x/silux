@@ -382,7 +382,7 @@ amdgpu · Mesa 25.0.7 · 15.9 GiB · 32 CU · principal
 
 #### Consumo y temperaturas
 
-- Estado: sin límites
+- Estado: no está limitada
 - Límite de potencia: 175 W
 - Punto caliente: 37.0 °C
 - Chips de memoria: 36.0 °C
