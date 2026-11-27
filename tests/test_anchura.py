@@ -255,23 +255,34 @@ def _short_controls(page) -> list[str]:
     return short
 
 
+def list_content_width(box) -> int:
+    """A list's longest choice with the list's own margin and arrow."""
+    from PySide6.QtCore import QSize
+    from PySide6.QtWidgets import QStyle, QStyleOptionComboBox
+
+    metrics = box.fontMetrics()
+    text = max(metrics.horizontalAdvance(box.itemText(i)) for i in range(box.count()))
+    option = QStyleOptionComboBox()
+    box.initStyleOption(option)
+    return box.style().sizeFromContents(QStyle.ContentsType.CT_ComboBox, option,
+                                        QSize(text, box.height()), box).width()
+
+
 def _stretched_lists(page) -> list[str]:
     """The lists wider than their longest choice with the list's own margin
     and arrow, or than their least width when that is more: a list is never
-    stretched to its row's width."""
-    from PySide6.QtCore import QSize
-    from PySide6.QtWidgets import QComboBox, QStyle, QStyleOptionComboBox
+    stretched to its row's width. Lists matched in one column
+    (`widgets.match_widths`) go as wide as the widest of them."""
+    from PySide6.QtWidgets import QComboBox
 
     wide = []
     for box in page.findChildren(QComboBox):
         if not box.isVisibleTo(page) or not box.count():
             continue
-        metrics = box.fontMetrics()
-        text = max(metrics.horizontalAdvance(box.itemText(i)) for i in range(box.count()))
-        option = QStyleOptionComboBox()
-        box.initStyleOption(option)
-        whole = box.style().sizeFromContents(QStyle.ContentsType.CT_ComboBox, option,
-                                             QSize(text, box.height()), box).width()
+        whole = list_content_width(box)
+        group = getattr(box, "width_group", None)
+        if group:
+            whole = max(list_content_width(other) for other in group if other.count())
         if box.width() > max(whole, box.minimumSizeHint().width()) + 1:
             wide.append(f"«{box.currentText()[:30]}» {box.width()} px of {whole}")
     return wide

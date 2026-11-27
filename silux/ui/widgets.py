@@ -2666,6 +2666,16 @@ class TipsBeside(QObject):
         return QPoint(x, y)
 
 
+def match_widths(boxes) -> None:
+    """Lists one under another down a column, all as wide as the widest of
+    them: each at its own width, their edges made a saw. Never wider than
+    that one's longest choice, and each still narrows with its row."""
+    group = list(boxes)
+    for box in group:
+        box.width_group = group
+        box.updateGeometry()
+
+
 class ElidingComboBox(QComboBox):
     """The interface's list: as wide as its longest choice, from `shortest`
     characters up to `widest`, never stretched to its row's width, and
@@ -2684,8 +2694,17 @@ class ElidingComboBox(QComboBox):
         self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
         self.setMinimumContentsLength(shortest)
         self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+        # The lists it is matched with (`match_widths`), itself among them.
+        self.width_group: list["ElidingComboBox"] = []
 
     def sizeHint(self) -> QSize:  # noqa: N802
+        own = self.own_size_hint()
+        if not self.width_group:
+            return own
+        return QSize(max(box.own_size_hint().width() for box in self.width_group), own.height())
+
+    def own_size_hint(self) -> QSize:
+        """As wide as its own longest choice."""
         hint = super().sizeHint()
         if self._widest is None or not self.count():
             return hint

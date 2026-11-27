@@ -50,6 +50,7 @@ from ..widgets import (
     FoldingRow,
     ResponsiveRow,
     ScrollPage,
+    match_widths,
 )
 
 AUTORIA = (
@@ -385,12 +386,14 @@ class SettingsPage(ScrollPage):
         self.refresh_desktop()
 
     def _igualar_controles(self) -> None:
-        """The number boxes, as wide as the widest asks. A list is as wide as
-        its longest choice, like every list of Silux (`ElidingComboBox`)."""
+        """The number boxes, as wide as the widest asks, and the lists as the
+        widest of them: one under another down the page, at their own widths
+        they made a saw."""
         controles = self.columna.findChildren(QDoubleSpinBox)
         ancho = max([ANCHO_DEL_CONTROL] + [c.sizeHint().width() for c in controles])
         for control in controles:
             control.setFixedWidth(ancho)
+        match_widths(self.columna.findChildren(ElidingComboBox))
 
     # -- construcción -------------------------------------------------------
 
