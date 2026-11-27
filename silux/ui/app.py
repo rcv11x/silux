@@ -34,8 +34,6 @@ _comprobar_procesador()
 
 import shiboken6
 from PySide6.QtCore import (
-    QAbstractAnimation,
-    QEasingCurve,
     QElapsedTimer,
     QEvent,
     QRectF,
@@ -43,7 +41,6 @@ from PySide6.QtCore import (
     Qt,
     QThread,
     QTimer,
-    QVariantAnimation,
     Signal,
 )
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QIcon, QKeySequence, QPainter, QShortcut
@@ -90,7 +87,7 @@ from .pages.storage import StoragePage
 from .pages.system import SystemPage
 from .sampler import Sampler
 from .theme import ui_font
-from .widgets import Button, ElidingComboBox, ElidingLabel
+from .widgets import Button, ElidingComboBox, ElidingLabel, Glide
 
 # (etiqueta, ¿implementada?)
 # El orden va de arriba abajo por el equipo (procesador, cachés, placa, memoria,
@@ -155,20 +152,13 @@ class NavDelegate(QStyledItemDelegate):
 
 class NavList(QListWidget):
     """The sidebar's list. It paints the open section's pill under its row,
-    so that the pill can slide to the next one instead of jumping. It moves
-    for `SLIDE_MS` after a change, and nothing runs after that."""
-
-    SLIDE_MS = 150
+    so that the pill can slide to the next one (`widgets.Glide`)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.slides = True
         self.pill = QColor()
         self._shown_row = -1
-        self.slide = QVariantAnimation(self)
-        self.slide.setDuration(self.SLIDE_MS)
-        self.slide.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self.slide.valueChanged.connect(self._repaint)
+        self.glide = Glide(self.viewport())
         self.currentRowChanged.connect(self._slide_to)
 
     def _row_rect(self, row: int) -> Optional[QRectF]:
@@ -179,25 +169,11 @@ class NavList(QListWidget):
         return QRectF(self.visualItemRect(item)).adjusted(0, 0, 0, -theme.NAV_ROW_GAP)
 
     def _slide_to(self, row: int) -> None:
-        running = self.slide.state() == QAbstractAnimation.State.Running
-        start = self.slide.currentValue() if running else self._row_rect(self._shown_row)
-        end = self._row_rect(row)
+        self.glide.go(self._row_rect(self._shown_row), self._row_rect(row))
         self._shown_row = row
-        self.slide.stop()
-        if self.slides and self.isVisible() and start is not None and end is not None:
-            self.slide.setStartValue(start)
-            self.slide.setEndValue(end)
-            self.slide.start()
-        self.viewport().update()
-
-    def _repaint(self, _value) -> None:
-        self.viewport().update()
 
     def paintEvent(self, event) -> None:  # noqa: N802
-        # At rest the pill follows its row's current place: after a resize,
-        # a fold or another font there is nothing to keep up to date.
-        running = self.slide.state() == QAbstractAnimation.State.Running
-        rect = self.slide.currentValue() if running else self._row_rect(self.currentRow())
+        rect = self.glide.place(self._row_rect(self.currentRow()))
         if rect is not None and self.pill.isValid():
             painter = QPainter(self.viewport())
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -549,7 +525,6 @@ class MainWindow(QMainWindow):
         self.nav = NavList()
         self.nav.setObjectName("Nav")
         self.nav.pill = self._palette.q("accent_wash")
-        self.nav.slides = self.prefs.nav_slide
         self.nav.setFont(ui_font(m.base_pt))
         self.nav.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.nav.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -1099,8 +1074,6 @@ class MainWindow(QMainWindow):
         if prefs.fluid_charts != previous.fluid_charts:
             self._aplicar_fluidez()
 
-        self.nav.slides = prefs.nav_slide
-
         if prefs.language != previous.language:
             # Reconstruir la interfaz entera es lo que ya se hace al cambiar de
             # tema o de densidad, y aquí resuelve lo mismo de una vez: los
@@ -1162,9 +1135,11 @@ class MainWindow(QMainWindow):
             self.setUpdatesEnabled(True)
 
     def _aplicar_fluidez(self) -> None:
-        """Enciende o apaga el deslizamiento de las gráficas y las barras."""
+        """Smooth motion on or off: the charts, the bars and the marks that
+        slide (`widgets.Glide`)."""
         from .widgets import Deslizador
         Deslizador.fluido = bool(self.prefs.fluid_charts)
+        Glide.on = bool(self.prefs.fluid_charts)
         if self.prefs.fluid_charts and not self._congelado:
             self._animables = self._graficas(solo_visibles=True)
             self._latir_si_hace_falta()

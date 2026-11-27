@@ -730,9 +730,10 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
         color: {p.muted};
     }}
     QPushButton#TextButton:hover {{ color: {p.ink}; text-decoration: underline; }}
-    /* A tab of a page (Performance's tests): its name, and a line of the
-       accent under the one shown. Not Qt's tab bar, whose frame doesn't
-       match the cards. */
+    /* A tab of a page (Performance's tests): its name. The accent's line
+       under the open one is painted by its row (`benchmarks.TabStrip`), so
+       that it can slide. Not Qt's tab bar, whose frame doesn't match the
+       cards. */
     QPushButton#Tab {{
         background: transparent;
         border: none;
@@ -745,7 +746,7 @@ def stylesheet(p: Palette, m: Metrics | None = None) -> str:
     QPushButton#Tab:checked {{
         background: transparent;
         color: {p.ink};
-        border-bottom: 2px solid {p.accent};
+        border-bottom: 2px solid transparent;
         font-weight: 600;
     }}
     /* Para lo que acompaña a la acción principal sin competir con ella: el

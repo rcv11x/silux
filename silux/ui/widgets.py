@@ -3466,6 +3466,48 @@ class Table(QScrollArea):
 
 
 
+class Glide(QObject):
+    """A mark that goes from where it is to where it was asked: the open
+    section's pill, the open tab's line. With «Smooth motion» (`Glide.on`,
+    set by the window, as `Deslizador.fluido`) it slides for `MS` and brakes
+    at the end; off, it jumps. Nothing runs once it has arrived, and at rest
+    its owner paints it where it belongs now, so a resize or a fold needs
+    nothing kept up to date."""
+
+    MS = 180
+    on = False
+
+    def __init__(self, target: QWidget):
+        super().__init__(target)
+        self._target = target
+        self.animation = QVariantAnimation(self)
+        self.animation.setDuration(self.MS)
+        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.animation.valueChanged.connect(self._repaint)
+
+    def _running(self) -> bool:
+        return self.animation.state() == QVariantAnimation.State.Running
+
+    def go(self, start: Optional[QRectF], end: Optional[QRectF]) -> None:
+        """From `start` (or from where it is now, if it is moving) to `end`."""
+        if self._running():
+            start = self.animation.currentValue()
+        self.animation.stop()
+        if (Glide.on and self._target.isVisible() and start is not None
+                and end is not None and start != end):
+            self.animation.setStartValue(start)
+            self.animation.setEndValue(end)
+            self.animation.start()
+        self._target.update()
+
+    def place(self, at_rest: Optional[QRectF]) -> Optional[QRectF]:
+        """Where to paint it: on its way, or `at_rest`."""
+        return self.animation.currentValue() if self._running() else at_rest
+
+    def _repaint(self, _value) -> None:
+        self._target.update()
+
+
 class Deslizador:
     """El largo que se ve de una barra, que llega al dato nuevo en un momento.
 

@@ -1,12 +1,13 @@
-"""The sidebar's mark slides to the section opened instead of jumping, for a
-moment and only then: nothing keeps running after the click. Settings can
-switch it off, and then it jumps."""
+"""The sidebar's mark and Performance's tab line slide to the one opened
+instead of jumping, for a moment and only then: nothing keeps running after
+the click. «Smooth motion» in Settings moves them, as the charts; off, they
+jump."""
 
 import time
 import unittest
 from dataclasses import replace
 
-from PySide6.QtCore import QAbstractAnimation
+from PySide6.QtCore import QAbstractAnimation, QEasingCurve
 
 from silux.i18n import _
 from tests import geometry, pantalla, qt
@@ -24,6 +25,10 @@ def _wait(app, seconds: float) -> None:
         app.processEvents()
 
 
+def _smooth(window, on: bool) -> None:
+    window._on_preferences(replace(window.prefs, fluid_charts=on))
+
+
 class TestTheMarkSlides(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -32,38 +37,73 @@ class TestTheMarkSlides(unittest.TestCase):
 
     def test_it_goes_between_the_two_rows_and_stops(self):
         with pantalla.Ventana(self.snapshot) as window:
+            _smooth(window, True)
             geometry.settle(self.app)
             # From the first row to one far down: Sensors.
             target = window.section_names().index("Sensores")
             window.select_section("Sensores")
-            slide = window.nav.slide
-            self.assertEqual(slide.state(), QAbstractAnimation.State.Running)
+            glide = window.nav.glide
+            self.assertEqual(glide.animation.state(), QAbstractAnimation.State.Running)
+            self.assertEqual(glide.animation.duration(), 180)
+            self.assertEqual(glide.animation.easingCurve().type(), QEasingCurve.Type.OutCubic)
             _wait(self.app, 0.06)
-            top = slide.currentValue().top()
+            top = glide.animation.currentValue().top()
             self.assertGreater(top, _row_top(window, 0))
             self.assertLess(top, _row_top(window, target))
             _wait(self.app, 0.3)
             # Over: nothing left running after the click.
-            self.assertEqual(slide.state(), QAbstractAnimation.State.Stopped)
+            self.assertEqual(glide.animation.state(), QAbstractAnimation.State.Stopped)
 
-    def test_switched_off_it_jumps(self):
+    def test_without_smooth_motion_it_jumps(self):
         with pantalla.Ventana(self.snapshot) as window:
-            window._on_preferences(replace(window.prefs, nav_slide=False))
+            _smooth(window, False)
             geometry.settle(self.app)
-            window.nav.setCurrentRow(5)
-            self.assertEqual(window.nav.slide.state(), QAbstractAnimation.State.Stopped)
+            window.select_section("CPU")
+            self.assertEqual(window.nav.glide.animation.state(),
+                             QAbstractAnimation.State.Stopped)
 
-    def test_the_switch_is_in_appearance_and_acts_at_once(self):
+    def test_one_switch_for_every_motion(self):
         with pantalla.Ventana(self.snapshot) as window:
             window.select_section("Ajustes")
             geometry.settle(self.app)
             page = window.settings_page
-            self.assertTrue(page.nav_slide.isChecked())
-            page.nav_slide.click()
+            self.assertFalse(hasattr(page, "nav_slide"))
+            self.assertNotIn("nav_slide", vars(window.prefs))
+            self.assertIn(_("settings.fluid.help"), visible_texts(page))
+
+
+class TestTheTabLineSlides(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = qt.app()
+        cls.snapshot = shared_snapshot(EQUIPOS / "i5-10400")
+
+    def test_it_goes_to_the_tab_opened_and_stops(self):
+        with pantalla.Ventana(self.snapshot) as window:
+            _smooth(window, True)
+            window.select_section("Rendimiento")
             geometry.settle(self.app)
-            self.assertFalse(window.prefs.nav_slide)
-            self.assertFalse(window.nav.slides)
-            self.assertIn(_("settings.navslide.label"), visible_texts(page))
+            page = window.benchmarks_page
+            start = page.buttons["cpu"].geometry().left()
+            end = page.buttons["disk"].geometry().left()
+            page.select_tab("disk")
+            glide = page.tab_strip.glide
+            self.assertEqual(glide.animation.state(), QAbstractAnimation.State.Running)
+            _wait(self.app, 0.06)
+            left = glide.animation.currentValue().left()
+            self.assertGreater(left, start)
+            self.assertLess(left, end)
+            _wait(self.app, 0.3)
+            self.assertEqual(glide.animation.state(), QAbstractAnimation.State.Stopped)
+
+    def test_without_smooth_motion_it_jumps(self):
+        with pantalla.Ventana(self.snapshot) as window:
+            _smooth(window, False)
+            window.select_section("Rendimiento")
+            geometry.settle(self.app)
+            window.benchmarks_page.select_tab("memory")
+            self.assertEqual(window.benchmarks_page.tab_strip.glide.animation.state(),
+                             QAbstractAnimation.State.Stopped)
 
 
 class TestThePillIsPainted(unittest.TestCase):

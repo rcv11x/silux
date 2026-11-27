@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import Signal
-from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtCore import QRectF, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter
 from PySide6.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -23,13 +23,43 @@ from ...i18n import _
 from ...settings import Preferences
 from .. import theme
 from ..theme import Palette, ui_font
-from ..widgets import Button
+from ..widgets import Button, Glide
 from .disktest import DiskTestRun, DiskTestTab
 from .memtest import MemoryTestRun, MemoryTestTab
 from .performance import PerformancePage
 
 # Each tab's key, which `--tab` takes, and its name.
 TABS = (("cpu", "bench.tab.cpu"), ("memory", "bench.tab.memory"), ("disk", "bench.tab.disk"))
+
+
+class TabStrip(QWidget):
+    """The tabs' row. It paints the accent's line under the open tab, so that
+    the line can slide to the next one (`widgets.Glide`)."""
+
+    LINE = 2
+
+    def __init__(self, colour: QColor, parent=None):
+        super().__init__(parent)
+        self._colour = colour
+        self._open: Optional[QPushButton] = None
+        self.glide = Glide(self)
+
+    def _line(self, button: Optional[QPushButton]) -> Optional[QRectF]:
+        if button is None:
+            return None
+        box = button.geometry()
+        return QRectF(box.left(), box.bottom() + 1 - self.LINE, box.width(), self.LINE)
+
+    def show_open(self, button: QPushButton) -> None:
+        self.glide.go(self._line(self._open), self._line(button))
+        self._open = button
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        line = self.glide.place(self._line(self._open))
+        if line is not None:
+            painter = QPainter(self)
+            painter.fillRect(line, self._colour)
+            painter.end()
 
 
 class BenchmarksPage(QWidget):
@@ -50,7 +80,8 @@ class BenchmarksPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        bar = QHBoxLayout()
+        self.tab_strip = TabStrip(palette.q("accent"))
+        bar = QHBoxLayout(self.tab_strip)
         m = theme.METRICS
         bar.setContentsMargins(m.page_margin, m.page_margin // 2, m.page_margin, 0)
         bar.setSpacing(4)
@@ -74,9 +105,10 @@ class BenchmarksPage(QWidget):
             bar.addWidget(button)
             self.stack.addWidget(self._tabs[key])
         bar.addStretch(1)
-        layout.addLayout(bar)
+        layout.addWidget(self.tab_strip)
         layout.addWidget(self.stack, 1)
         self.buttons["cpu"].setChecked(True)
+        self.tab_strip.show_open(self.buttons["cpu"])
 
         # One test at a time: while one runs, the others can't start.
         for key, tab in self._tabs.items():
@@ -104,6 +136,7 @@ class BenchmarksPage(QWidget):
         if key not in self._tabs:
             return False
         self.buttons[key].setChecked(True)
+        self.tab_strip.show_open(self.buttons[key])
         if self.stack.currentWidget() is not self._tabs[key]:
             self.stack.setCurrentWidget(self._tabs[key])
             self.tab_changed.emit(key)

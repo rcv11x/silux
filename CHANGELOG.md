@@ -17,7 +17,7 @@ que hace falta.
 - Las pruebas de disco y de memoria se comparten como imagen: «Copiar como imagen» y «Guardar…» bajo su resultado, sin la carpeta donde se hizo ni el nombre del equipo
 - La imagen del equipo, con el diseño de las de las pruebas: el procesador y la gráfica de título, y al pie la versión y dónde está Silux
 - La barra lateral se encoge a solo los iconos con el botón de su panel, junto al logo; al pasar el ratón dice el nombre de cada sección, y se queda como la dejaste
-- La marca de la sección abierta se desliza por la barra lateral hasta la nueva en vez de saltar; se quita en Ajustes → Apariencia
+- Con «Movimiento fluido», la marca de la sección abierta en la barra lateral y la raya de la pestaña abierta en Rendimiento se deslizan hasta la nueva en vez de saltar
 - Cambiar de tema, de densidad o de letra tarda la mitad: menos de un segundo en un sobremesa
 - Color de acento en Ajustes → Apariencia: ámbar, azul, verde, rojo o morado, cada uno legible en claro y en oscuro; cambia todo a la vez, sin reiniciar, y con el azul lo que tiene arreglo y los candados pasan a morado
 - El ámbar del tema claro, un poco más oscuro: el texto de los botones principales y de las etiquetas se lee mejor
