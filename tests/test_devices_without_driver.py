@@ -38,6 +38,22 @@ class TestWithoutDriver(unittest.TestCase):
                 self.assertTrue(any(name in row[0] for row in rows), rows)
                 self.assertTrue(any(ids in row[2] for row in rows), rows)
 
+    def test_a_known_one_says_which_driver_and_the_rest_the_general_sentence(self):
+        """The BCM43142 only works with Broadcom's «wl», outside the kernel:
+        its own way out, and no general sentence when it is the only one. The
+        VL805 has no such entry: the general sentence."""
+        from silux.i18n import _
+
+        page = self.page("i7-4710hq")
+        self.assertTrue(page.nodriver_hints.isVisibleTo(page))
+        self.assertIn("«wl»", page.nodriver_hints.text())
+        self.assertIn("bcmwl-kernel-source", page.nodriver_hints.text())
+        self.assertFalse(page.nodriver_what.isVisibleTo(page))
+        page = self.page("fx-8150")
+        self.assertFalse(page.nodriver_hints.isVisibleTo(page))
+        self.assertTrue(page.nodriver_what.isVisibleTo(page))
+        self.assertEqual(page.nodriver_what.text(), _("dev.nodriver.what"))
+
     def test_a_second_function_of_a_card_with_its_driver_is_not_one(self):
         page = self.page("celeron-560")
         self.assertFalse(any("secondary" in row[0] for row in self.rows(page)))

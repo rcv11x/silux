@@ -2255,6 +2255,29 @@ def disk_reason(reason) -> str:
     return reason.code
 
 
+# What to say of a device that only works with a driver from outside the
+# kernel, by that driver (`providers.pci.OUT_OF_TREE_DRIVERS`).
+_OUT_OF_TREE_HINTS = {"wl": "dev.nodriver.wl"}
+
+
+def driver_hint(device) -> Optional[str]:
+    """What to do about a PCI device with no driver, when the one it needs
+    is known; None for the rest, which the general sentence covers."""
+    from .providers.pci import OUT_OF_TREE_DRIVERS
+
+    driver = OUT_OF_TREE_DRIVERS.get((device.vendor_id, device.device_id))
+    if driver is None:
+        return None
+    return _(_OUT_OF_TREE_HINTS[driver]).format(device=device.name or pci_id(device))
+
+
+def pci_id(device) -> str:
+    """«14e4:4365», or a dash without the IDs."""
+    if device.vendor_id is None or device.device_id is None:
+        return DASH
+    return f"{device.vendor_id:04x}:{device.device_id:04x}"
+
+
 def disk_label(disk) -> str:
     """«nvme0n1 · KINGSTON SNV3S500G»: its device and its model, which tell
     apart two drives of the same model."""

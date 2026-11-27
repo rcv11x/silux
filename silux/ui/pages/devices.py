@@ -130,7 +130,11 @@ class DevicesPage(ScrollPage):
         self.nodriver_card = Card(_("dev.card.nodriver"))
         self.nodriver = Table([_(h) for h in NODRIVER_HEADERS], cede=(0,))
         self.nodriver_card.body.addWidget(self.nodriver)
-        self.nodriver_card.body.addWidget(self._nota(_("dev.nodriver.what")))
+        # A known device's own way out; the general sentence for the rest.
+        self.nodriver_hints = self._nota("")
+        self.nodriver_card.body.addWidget(self.nodriver_hints)
+        self.nodriver_what = self._nota(_("dev.nodriver.what"))
+        self.nodriver_card.body.addWidget(self.nodriver_what)
         self.nodriver_card.hide()
         layout.addWidget(self.nodriver_card)
         layout.addStretch(1)
@@ -187,9 +191,14 @@ class DevicesPage(ScrollPage):
         sin_driver = snapshot.driverless_pci
         self.nodriver.set_rows([
             (d.name or render.DASH, _(PCI_KINDS[d.kind]) if d.kind in PCI_KINDS else d.kind,
-             f"{d.vendor_id:04x}:{d.device_id:04x}" if d.vendor_id is not None
-             and d.device_id is not None else render.DASH)
+             render.pci_id(d))
             for d in sin_driver])
+        hints = [render.driver_hint(d) for d in sin_driver]
+        known = "\n".join(h for h in hints if h)
+        if self.nodriver_hints.text() != known:
+            self.nodriver_hints.setText(known)
+        self.nodriver_hints.setVisible(bool(known))
+        self.nodriver_what.setVisible(any(h is None for h in hints))
         self.nodriver_card.setVisible(bool(sin_driver))
 
     def _apply_usb(self, usb) -> None:

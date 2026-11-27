@@ -39,6 +39,12 @@ ORDER = ("gpu", "nvme", "ethernet", "wifi", "sata", "usb", "audio")
 _ADDRESS = re.compile(r"[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]")
 
 
+# Devices whose only driver doesn't come with the kernel, by PCI ID, and
+# that driver. Broadcom's `wl` (broadcom-sta) lists the BCM43142, for which
+# the kernel has none.
+OUT_OF_TREE_DRIVERS = {(0x14E4, 0x4365): "wl"}
+
+
 def _hex(path: str) -> Optional[int]:
     raw = read_text(path)
     try:

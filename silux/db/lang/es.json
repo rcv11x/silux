@@ -538,6 +538,7 @@
   "dev.col.type": "Tipo",
   "dev.col.where": "Dónde",
   "dev.nodriver.what": "Sin un driver del kernel no funcionan. Puede faltar un módulo que no se cargó, un firmware o un kernel más nuevo; buscar su ID junto al nombre de tu distribución suele decir cuál.",
+  "dev.nodriver.wl": "{device}: funciona con el driver «wl» de Broadcom, que no viene con el kernel. Su paquete es bcmwl-kernel-source en Ubuntu y Mint, broadcom-sta-dkms en Debian y broadcom-wl en Fedora (RPM Fusion) y Arch; después, reiniciar.",
   "dev.sound.many": "{n} tarjetas de sonido",
   "dev.sound.one": "{n} tarjeta de sonido",
   "dev.sound.where.board": "en la placa",
