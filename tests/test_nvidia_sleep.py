@@ -224,14 +224,18 @@ class TestOnScreen(unittest.TestCase):
         laptop = Laptop(idle_laptop_card())
         read = self._snapshot(laptop.sample())
         left = self._snapshot(laptop.sample())
+        from tests import geometry
+
+        # Each page laid out whole before it is read: after one pass of
+        # events a badge could still be waiting for its width.
         with pantalla.Ventana(read) as window:
             window.select_section("nav.graphics")
-            QApplication.processEvents()
+            geometry.settle(QApplication.instance())
             window._on_sample(left)
-            QApplication.processEvents()
+            geometry.settle(QApplication.instance())
             followed = retrato(window)
         with pantalla.Ventana(left) as window:
             window.select_section("nav.graphics")
-            QApplication.processEvents()
+            geometry.settle(QApplication.instance())
             mounted = retrato(window)
         self.assertEqual(sorted(followed), sorted(mounted))
