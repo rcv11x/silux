@@ -38,10 +38,9 @@ class TestWide(unittest.TestCase):
         geometry.settle(self.app)
 
     def row_buttons(self):
-        from PySide6.QtWidgets import QPushButton
+        from silux.ui.pages.performance import RunMenu
 
-        card = self.page.history_card
-        return [b for b in card.findChildren(QPushButton) if b.property("compacto")]
+        return self.page.history_card.findChildren(RunMenu)
 
     def test_the_table_goes_across_the_card(self):
         card = self.page.history_card
@@ -69,17 +68,16 @@ class TestWide(unittest.TestCase):
                     label.text()).height()
                 self.assertGreaterEqual(label.height(), needed)
 
-    def test_rename_and_delete_are_buttons_as_any_other(self):
-        common = self.page.clear_history
-        for button in self.row_buttons():
-            with self.subTest(button=button.text()):
-                self.assertEqual(button.objectName(), common.objectName())
-                self.assertEqual(button.font().pointSizeF(), common.font().pointSizeF())
+    def test_each_run_has_its_menu(self):
+        self.assertTrue(self.row_buttons())
+        for menu in self.row_buttons():
+            self.assertEqual(menu.text(), "⋯")
+            self.assertEqual(len(menu.menu().actions()), 2)
 
 
 class TestNarrow(TestWide):
     def test_the_table_scrolls_on_its_own_and_the_page_stays_in_view(self):
-        """At 480 px the table, five columns and two buttons, made the whole
+        """At 480 px the table, five columns and its buttons, made the whole
         page wider than the window, its text cut at the right."""
         self.page.resize(440, 900)
         geometry.settle(self.app)

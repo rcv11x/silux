@@ -18,6 +18,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QMenu,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -64,6 +66,37 @@ DURACIONES = (
     ("bench.dur.stability", 300.0),
     ("bench.dur.other", None),
 )
+
+
+class RunMenu(QToolButton):
+    """«⋯» at the end of a past run's row: rename it or delete it. Two buttons
+    on every row made the table a column of buttons."""
+
+    rename = Signal(object)
+    delete = Signal(object)
+
+    def __init__(self, entry, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.entry = entry
+        self.setObjectName("RowMenu")
+        self.setText("⋯")
+        self.setAutoRaise(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(_("bench.history.actions"))
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(self)
+        self.rename_action = menu.addAction(_("bench.button.rename"))
+        self.rename_action.setToolTip(_("bench.dialog.name.tip"))
+        self.rename_action.triggered.connect(self._on_rename)
+        self.delete_action = menu.addAction(_("bench.button.delete"))
+        self.delete_action.triggered.connect(self._on_delete)
+        self.setMenu(menu)
+
+    def _on_rename(self) -> None:
+        self.rename.emit(self.entry)
+
+    def _on_delete(self) -> None:
+        self.delete.emit(self.entry)
 
 
 class PerformancePage(ScrollPage):
@@ -203,7 +236,9 @@ class PerformancePage(ScrollPage):
         subtitulo.setObjectName("Subhead")
         self.intro = subtitulo
 
+        # The accent's button at the right, as in the memory and disk tabs.
         self.run_button = Button(_("bench.button.run"))
+        self.run_button.setObjectName("Primary")
         self.run_button.clicked.connect(lambda: self._start(quick=False))
         self.quick_button = Button(_("bench.button.quick"))
         self.quick_button.setToolTip(
@@ -245,10 +280,10 @@ class PerformancePage(ScrollPage):
         # El área de desplazamiento no tiene barra horizontal, así que lo que
         # no cabía se cortaba contra el borde.
         botones = FoldingRow()
-        botones.add_widget(self.run_button)
+        botones.add_stretch(1)
         botones.add_widget(self.quick_button)
         botones.add_widget(self.cancel_button)
-        botones.add_stretch(1)
+        botones.add_widget(self.run_button)
         fila = FoldingRow()
         self.each_caption = QLabel(_("bench.label.each"))
         fila.add_widget(self.each_caption)
@@ -269,8 +304,8 @@ class PerformancePage(ScrollPage):
 
         card.body.addWidget(titulo)
         card.body.addWidget(subtitulo)
-        card.body.addWidget(botones)
         card.body.addWidget(fila)
+        card.body.addWidget(botones)
         card.body.addWidget(self.progress)
         return card
 
@@ -436,26 +471,10 @@ class PerformancePage(ScrollPage):
                         nueva=score.VERSION))
                 rejilla.addWidget(etiqueta, fila, columna)
 
-            # Pequeños y a la altura del texto de su fila: con los márgenes
-            # de serie del contenedor y el relleno de un botón normal, cada
-            # fila crecía y los botones quedaban por debajo de sus cifras.
-            acciones = QHBoxLayout()
-            acciones.setContentsMargins(0, 0, 0, 0)
-            acciones.setSpacing(4)
-            renombrar = Button(_("bench.button.rename"))
-            renombrar.setToolTip(_("bench.dialog.name.tip"))
-            renombrar.clicked.connect(
-                lambda _pulsado=False, e=entrada: self._renombrar(e))
-            borrar = Button(_("bench.button.delete"))
-            borrar.clicked.connect(lambda _pulsado=False, e=entrada: self._borrar_una(e))
-            # As every other button, only lower: the row's text sets the height.
-            for boton in (renombrar, borrar):
-                boton.setProperty("compacto", True)
-                acciones.addWidget(boton)
-            contenedor = QWidget()
-            contenedor.setLayout(acciones)
-            rejilla.addWidget(contenedor, fila, len(HISTORY_HEADERS),
-                              Qt.AlignmentFlag.AlignVCenter)
+            menu = RunMenu(entrada)
+            menu.rename.connect(self._renombrar)
+            menu.delete.connect(self._borrar_una)
+            rejilla.addWidget(menu, fila, len(HISTORY_HEADERS), Qt.AlignmentFlag.AlignVCenter)
 
         # The width goes to every column, the name's twice: all of it after
         # the buttons left the table narrow at the left of a wide card, and

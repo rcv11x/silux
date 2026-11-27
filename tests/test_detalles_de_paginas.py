@@ -122,15 +122,16 @@ class TestDetalles(unittest.TestCase):
             self.assertFalse(arbol.isColumnHidden(1))
             self.assertFalse(arbol.isColumnHidden(2))
 
-    def test_los_botones_del_historial_son_pequenos_y_van_en_su_fila(self):
-        # Renombrar y Borrar quedaban más bajos que el texto de su fila, y
-        # enormes: los márgenes de serie del contenedor y el relleno de un
-        # botón normal.
+    def test_renombrar_y_borrar_van_en_el_menu_de_su_fila(self):
+        # Two buttons on every row made the table a column of buttons: one
+        # «⋯» per run, no taller than its row's text.
         import os
         import tempfile
         from unittest import mock
-        from PySide6.QtWidgets import QPushButton
+        from PySide6.QtWidgets import QLabel
         from silux import history
+        from silux.i18n import _
+        from silux.ui.pages.performance import RunMenu
         from tests.test_historial import _resultado
         with tempfile.TemporaryDirectory() as datos, \
              mock.patch.dict(os.environ, {"XDG_DATA_HOME": datos}):
@@ -138,13 +139,19 @@ class TestDetalles(unittest.TestCase):
             with pantalla.Ventana(self.amd) as ventana:
                 pagina = ventana.benchmarks_page.cpu_tab
                 pagina._pintar_historial(history.load())
-                botones = [b for b in pagina.findChildren(QPushButton)
-                           if b.property("compacto")]
-                self.assertEqual(len(botones), 2)
-                for boton in botones:
-                    caja = boton.parentWidget().layout()
-                    self.assertEqual(caja.contentsMargins().top(), 0)
-                    self.assertEqual(caja.contentsMargins().bottom(), 0)
+                menus = pagina.history_card.findChildren(RunMenu)
+                self.assertEqual(len(menus), 1)
+                menu = menus[0]
+                self.assertEqual([a.text() for a in menu.menu().actions()],
+                                 [_("bench.button.rename"), _("bench.button.delete")])
+                fila = max(l.sizeHint().height() for l in pagina.history_card.findChildren(QLabel)
+                           if l.objectName() == "FieldName")
+                self.assertLessEqual(menu.sizeHint().height(), fila + 8)
+                # Delete asks first: the page's own method gets the run.
+                with mock.patch.object(type(pagina), "_borrar_una") as borrar:
+                    pagina._pintar_historial(history.load())
+                    pagina.history_card.findChildren(RunMenu)[-1].delete_action.trigger()
+                borrar.assert_called_once()
 
 
 if __name__ == "__main__":

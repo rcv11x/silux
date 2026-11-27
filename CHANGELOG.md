@@ -65,6 +65,7 @@ que hace falta.
 - «Comunidad» en la barra lateral, encima de la versión: abre el Discord; con la barra plegada, su icono
 - La bienvenida tiene el color de acento junto al tema, un paso que cuenta qué lleva el informe (sin el nombre del equipo ni números de serie) con su botón, y al final «Buscar actualizaciones al iniciar»
 - Ajustes abre la carpeta de datos (historial de pruebas, registros e informes) y la de los ajustes
+- Rendimiento → Procesador se ve como Memoria y Disco: las opciones a la izquierda y «Ejecutar la prueba» en el color de acento a la derecha; «Renombrar» y «Borrar» de cada prueba van en su menú «⋯»
 - En Sensores, la columna «Último minuto» llega siempre hasta el borde, también después de arrastrar las demás
 - En Memoria, por qué no se lee el chip SPD de los módulos va en un aviso propio y más corto
 - En Placa base, «Above 4G Decoding» se llama como en la BIOS, y su explicación va al pasar el ratón

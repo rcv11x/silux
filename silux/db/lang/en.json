@@ -169,6 +169,7 @@
   "bench.dur.warm": "30 s · once it is warm",
   "bench.duration.tip": "How long each of the ten measurements lasts: five loads, on one thread and on all of them. The whole run takes ten times this.\n\nLonger ones do not give a higher score: they give the one that holds up once the machine is already warm.",
   "bench.explain.scaling": "<b>Scaling</b><br>How much performance multiplies when using every thread. It never reaches the thread count: the ones sharing a core split the same execution units.",
+  "bench.history.actions": "Rename or delete",
   "bench.history.note": "Only from this machine and only on disk: nothing is sent anywhere. Comparing against numbers off the internet hardly ever helps, because they were measured with another governor and another temperature; comparing against yourself does tell you whether something changed.",
   "bench.history.oldscale": "{n} of these runs were measured before the benchmark was fixed and with a different scale, so they have no score: their figure would not mean the same as today's. Everything else they recorded is still there.",
   "bench.history.scale": "scale v{n}",
