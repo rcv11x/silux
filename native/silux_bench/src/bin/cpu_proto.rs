@@ -10,12 +10,14 @@
 //!                  [--threads N|all | --cpus 0,1,… | --loose N]
 //!                  [--report-hz HZ --report-to FILE] [--rows FILE] [--label TEXT]
 //! cpu_proto tiles  --csv FILE [--cpu C] [--kernel K] [--detail D] [--passes P] [--repeat R]
+//! cpu_proto counts [--cpu C] [--detail D] [--passes P]
 //! ```
 
 use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::os::fd::{AsRawFd, FromRawFd};
 use std::path::Path;
 use std::process::ExitCode;
 use std::str::FromStr;
@@ -24,9 +26,10 @@ use std::sync::Mutex;
 use silux_bench::common::cancel::Control;
 use silux_bench::common::hash::Fingerprint;
 use silux_bench::common::timer::now_ns;
-use silux_bench::common::topology::allowed_cpus;
-use silux_bench::cpu::render::film::{pass_samples, to_screen, Layout};
+use silux_bench::common::topology::{allowed_cpus, on_cpu};
+use silux_bench::cpu::render::film::{pass_samples, render_unit, to_screen, Layout, Unit};
 use silux_bench::cpu::render::scene::{prototype, Scene};
+use silux_bench::cpu::render::trace::{Counters, Scratch};
 use silux_bench::cpu::render::Kernel;
 use silux_bench::cpu::workers::{run, Outcome, Plan, Reporter, Row, Stop};
 
@@ -54,6 +57,7 @@ fn start() -> Result<ExitCode, Fail> {
         "render" => render(&options),
         "timed" => timed(&options),
         "tiles" => tiles(&options),
+        "counts" => counts(&options),
         other => Err(format!("no command called {other}").into()),
     }
 }
@@ -638,6 +642,161 @@ fn tiles(options: &Options) -> Result<ExitCode, Fail> {
         }
     }
     write_rows(Path::new(csv), &best)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+/// `perf_event_attr` as its first version defined it, which every kernel
+/// accepts.
+#[repr(C)]
+#[derive(Default)]
+struct PerfEventAttr {
+    kind: u32,
+    size: u32,
+    config: u64,
+    sample_period: u64,
+    sample_type: u64,
+    read_format: u64,
+    flags: u64,
+    wakeup_events: u32,
+    bp_type: u32,
+    config1: u64,
+}
+
+const PERF_TYPE_HARDWARE: u32 = 0;
+const PERF_TYPE_HW_CACHE: u32 = 3;
+/// What the processor can count for the calling thread, in user mode: the
+/// name, the event's type and its number. Four at a time, so the kernel
+/// never has to share a counter between two of them.
+const EVENTS: [[(&str, u32, u64); 4]; 2] = [
+    [
+        ("cycles", PERF_TYPE_HARDWARE, 0),
+        ("instructions", PERF_TYPE_HARDWARE, 1),
+        ("branches", PERF_TYPE_HARDWARE, 4),
+        ("branch misses", PERF_TYPE_HARDWARE, 5),
+    ],
+    [
+        ("cycles", PERF_TYPE_HARDWARE, 0),
+        ("cache references", PERF_TYPE_HARDWARE, 2),
+        ("cache misses", PERF_TYPE_HARDWARE, 3),
+        // The first-level data cache, reads, misses.
+        ("L1 data misses", PERF_TYPE_HW_CACHE, 0x1_0000),
+    ],
+];
+
+/// A counter of the calling thread's own events, already counting; `None`
+/// where the processor or the kernel won't give it.
+fn open_counter(kind: u32, config: u64) -> Option<File> {
+    const EXCLUDE_KERNEL: u64 = 1 << 5;
+    const EXCLUDE_HV: u64 = 1 << 6;
+    const PERF_FLAG_FD_CLOEXEC: libc::c_ulong = 1 << 3;
+    let attr = PerfEventAttr {
+        kind,
+        size: size_of::<PerfEventAttr>() as u32,
+        config,
+        flags: EXCLUDE_KERNEL | EXCLUDE_HV,
+        ..PerfEventAttr::default()
+    };
+    // SAFETY: `attr` is a valid perf_event_attr of the size it declares, alive
+    // for the whole call; pid 0 and cpu -1 mean this thread wherever it runs.
+    let fd = unsafe {
+        libc::syscall(
+            libc::SYS_perf_event_open,
+            &attr as *const PerfEventAttr,
+            0 as libc::pid_t,
+            -1 as libc::c_int,
+            -1 as libc::c_int,
+            PERF_FLAG_FD_CLOEXEC,
+        )
+    };
+    let fd = libc::c_int::try_from(fd).ok().filter(|fd| *fd >= 0)?;
+    // SAFETY: the kernel just returned `fd` to us, open and owned by nobody else.
+    Some(unsafe { File::from_raw_fd(fd) })
+}
+
+fn read_counter(counter: &File) -> Option<u64> {
+    let mut value = 0u64;
+    // SAFETY: `value` is 8 writable bytes, which is what a counter without a
+    // read format gives.
+    let read = unsafe {
+        libc::read(
+            counter.as_raw_fd(),
+            (&mut value as *mut u64).cast::<libc::c_void>(),
+            size_of::<u64>(),
+        )
+    };
+    (read == size_of::<u64>() as isize).then_some(value)
+}
+
+/// What every kernel costs a ray in the processor's own counters, on one
+/// pinned thread: where the time goes when two kernels take the same.
+fn counts(options: &Options) -> Result<ExitCode, Fail> {
+    options.only(&["cpu", "detail", "passes"])?;
+    let passes: u32 = options.number("passes", 4)?;
+    let cpu = options.number("cpu", allowed_cpus().first().copied().unwrap_or(0))?;
+    let (scene, detail, built) = options.scene()?;
+    println!("{}", describe(&scene, detail, built));
+    let layout = Layout::FULL;
+    for kernel in Kernel::ALL
+        .into_iter()
+        .filter(|kernel| kernel.is_available())
+    {
+        for events in EVENTS {
+            let (work, ns, values) = on_cpu(Some(cpu), || {
+                let mut scratch = Scratch::default();
+                let mut sums = vec![0.0f32; layout.tile as usize * layout.tile as usize * 3];
+                let counters: Vec<Option<File>> = events
+                    .iter()
+                    .map(|(_, kind, config)| open_counter(*kind, *config))
+                    .collect();
+                let before: Vec<Option<u64>> = counters
+                    .iter()
+                    .map(|counter| counter.as_ref().and_then(read_counter))
+                    .collect();
+                let begin = now_ns();
+                let mut work = Counters::default();
+                for pass in 0..passes {
+                    for tile in 0..layout.tiles() {
+                        let floats = layout.floats(tile).unwrap_or(0);
+                        let Some(sums) = sums.get_mut(..floats) else {
+                            continue;
+                        };
+                        let unit = Unit { pass, tile };
+                        work.add(render_unit(
+                            kernel,
+                            &scene,
+                            layout,
+                            unit,
+                            &mut scratch,
+                            sums,
+                        )?);
+                    }
+                }
+                let ns = now_ns() - begin;
+                let values: Vec<Option<u64>> = counters
+                    .iter()
+                    .zip(before)
+                    .map(|(counter, before)| read_counter(counter.as_ref()?)?.checked_sub(before?))
+                    .collect();
+                Ok((work, ns, values))
+            })?;
+            let rays = work.rays.max(1) as f64;
+            let mut line = format!(
+                "{:>10}: {:6.1} ns/ray, {:5.2} steps/ray ({:.2} nodes, {:.2} leaves)",
+                kernel.key(),
+                ns as f64 / rays,
+                work.weight() as f64 / rays,
+                work.nodes as f64 / rays,
+                work.leaves as f64 / rays,
+            );
+            for ((name, _, _), value) in events.iter().zip(values) {
+                match value {
+                    Some(value) => write!(line, ", {:.1} {name}", value as f64 / rays)?,
+                    None => write!(line, ", no {name}")?,
+                }
+            }
+            println!("{line} per ray");
+        }
+    }
     Ok(ExitCode::SUCCESS)
 }
 
