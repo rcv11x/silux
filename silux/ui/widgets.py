@@ -583,8 +583,10 @@ class Card(QFrame):
             # A long title in a wide font is wider than a narrow window's
             # page: in two lines rather than pushing the page off the edge.
             self._title_label.setWordWrap(True)
-            # Its section's icon, small and grey, as in the sidebar: taken
-            # on show from the page (`card_icon`), or given to the card.
+            # A section's icon, small and grey, as in the sidebar, when the
+            # card or a widget holding it names one (`card_icon`): Home's
+            # cards, each a different section. On a section's own page every
+            # card would carry the same one.
             self._icon_label = QLabel()
             self._icon_label.setObjectName("CardIcon")
             self._icon_label.hide()

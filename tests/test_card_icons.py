@@ -1,5 +1,6 @@
-"""Each card's title has its section's icon, small and grey, as the sidebar
-draws it: on Home, the one of the section the card leads to."""
+"""Home's cards carry the icon of the section each leads to, small and grey
+as the sidebar draws it. A section's own page doesn't: there every card
+would repeat the same one."""
 
 import unittest
 
@@ -19,16 +20,27 @@ class TestCardIcons(unittest.TestCase):
     def setUpClass(cls):
         qt.app()
 
-    def same(self, card, section, window):
-        return card.icon_section == section and not card._icon_label.pixmap().isNull()
+    def test_home_cards_carry_where_they_lead(self):
+        with pantalla.Ventana(shared_snapshot(EQUIPOS / "5800x3d")) as window:
+            QApplication.processEvents()
+            home = window.home_page
+            for card, section in ((home.cpu, "nav.cpu"), (home.gpu, "nav.graphics"),
+                                  (home.memoria, "nav.memory"), (home.discos, "nav.storage"),
+                                  (home.temperaturas, "nav.sensors"), (home.red, "nav.network"),
+                                  (home.placa, "nav.board")):
+                with self.subTest(card=card._title_label.text()):
+                    self.assertEqual(card.icon_section, section)
+                    self.assertTrue(card._icon_label.isVisible())
+                    self.assertFalse(card._icon_label.pixmap().isNull())
+            self.assertEqual(home.memoria._title_label.text(), _("nav.memory"))
 
-    def test_every_titled_card_of_every_page(self):
+    def test_no_other_page_repeats_one(self):
         from silux.ui.app import SECTIONS
         from silux.ui.widgets import Card
         seen = 0
         with pantalla.Ventana(shared_snapshot(EQUIPOS / "5800x3d")) as window:
             for section, _enabled in SECTIONS:
-                if section == "nav.battery":
+                if section in ("nav.home", "nav.battery"):
                     continue
                 window.select_section(section)
                 QApplication.processEvents()
@@ -38,19 +50,9 @@ class TestCardIcons(unittest.TestCase):
                 seen += len(titled)
                 with self.subTest(section=section):
                     for card in titled:
-                        self.assertTrue(card._icon_label.isVisible(), card._title_label.text())
-                        if section != "nav.home":
-                            self.assertTrue(self.same(card, section, window))
+                        self.assertIsNone(card.icon_section, card._title_label.text())
+                        self.assertFalse(card._icon_label.isVisible())
         self.assertGreater(seen, 30)
-
-    def test_home_cards_carry_where_they_lead(self):
-        with pantalla.Ventana(shared_snapshot(EQUIPOS / "5800x3d")) as window:
-            home = window.home_page
-            for card, section in ((home.cpu, "nav.cpu"), (home.gpu, "nav.graphics"),
-                                  (home.memoria, "nav.memory"), (home.placa, "nav.board")):
-                with self.subTest(card=card._title_label.text()):
-                    self.assertTrue(self.same(card, section, window))
-            self.assertEqual(home.memoria._title_label.text(), _("nav.memory"))
 
 
 if __name__ == "__main__":
