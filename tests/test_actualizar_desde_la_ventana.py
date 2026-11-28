@@ -13,8 +13,9 @@ from silux import __version__, updates
 from silux.i18n import _
 from tests import qt
 
-NUEVA = updates.Release(version=(99, 0, 0), tag="v99.0.0",
-                        url="https://github.com/rcv11x/silux/releases/tag/v99.0.0",
+# Ahead of any version by date as well as of the pruebas.
+NUEVA = updates.Release(version=(9999, 12, 31), tag="9999.12.31",
+                        url="https://github.com/rcv11x/silux/releases/tag/9999.12.31",
                         assets={updates.NORMAL: "https://example.invalid/a"})
 
 
@@ -89,10 +90,10 @@ class TestLaVentana(unittest.TestCase):
         v._pintar_version_nueva()
         self.assertFalse(v.update_button.isHidden())
         self.assertEqual(v.update_button.text(), "↑")
-        self.assertIn("99.0", v.update_button.toolTip())
+        self.assertIn("9999.12.31", v.update_button.toolTip())
         v.set_nav_folded(False)
         v._pintar_version_nueva()
-        self.assertIn("99.0", v.update_button.text())
+        self.assertIn("9999.12.31", v.update_button.text())
 
     def test_the_sidebar_notice_leads_to_the_updates_in_settings(self):
         v = self.ventana()
@@ -108,7 +109,7 @@ class TestLaVentana(unittest.TestCase):
         page = v.settings_page
         self.assertIs(v.stack.currentWidget(), page)
         self.assertTrue(page.update_install_row.isVisibleTo(page))
-        self.assertIn("99.0", page.update_install.text())
+        self.assertIn("9999.12.31", page.update_install.text())
         # Scrolled down to the group, its top in view.
         top = page.updates_card.mapTo(page.viewport(), page.updates_card.rect().topLeft()).y()
         self.assertGreater(page.verticalScrollBar().value(), 0)
@@ -130,9 +131,9 @@ class TestLaVentana(unittest.TestCase):
         v.settings_page.update_now.click()
         self.esperar(v)
         self.assertFalse(v.update_button.isHidden())
-        # As the window writes every version: «99.0», «0.4-prueba3».
-        self.assertIn("99.0", v.update_button.text())
-        self.assertIn("99.0", v.settings_page.update_status.text())
+        # As the window writes every version: «9999.12.31», «0.4-prueba3».
+        self.assertIn("9999.12.31", v.update_button.text())
+        self.assertIn("9999.12.31", v.settings_page.update_status.text())
 
     def test_sin_version_nueva_lo_dice_y_no_hay_aviso(self):
         v = self.ventana()

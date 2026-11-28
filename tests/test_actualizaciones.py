@@ -104,7 +104,8 @@ class TestLaVersionDePrueba(unittest.TestCase):
     def test_la_version_que_corre_se_entiende(self):
         # Contra la versión de verdad del paquete, no un caso escrito: si un
         # día cambia de forma, esto falla en vez de dejar de avisar callado.
-        mas_nueva = updates.Release(version=(99, 0, 0), tag="v99.0.0", url="u")
+        # Ahead of any version by date as well as of the pruebas.
+        mas_nueva = updates.Release(version=(9999, 12, 31), tag="9999.12.31", url="u")
         self.assertTrue(updates.is_newer(mas_nueva))
 
     def test_una_prueba_no_se_ofrece(self):
