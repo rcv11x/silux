@@ -550,6 +550,18 @@ fn timed(options: &Options) -> Result<ExitCode, Fail> {
         .iter()
         .map(|worker| format!("{:.0}", worker.rate()))
         .collect();
+    // Each thread's time and work, to try another weight on the same run.
+    let per_thread: Vec<String> = outcome
+        .workers
+        .iter()
+        .map(|worker| {
+            let work = worker.counters;
+            format!(
+                "[{},{},{},{},{}]",
+                worker.ns, work.nodes, work.leaves, work.rays, work.paths
+            )
+        })
+        .collect();
     let curve: Vec<String> = curve(&outcome, plan.warmup_ns, (run_seconds * 1e9) as u64)
         .into_iter()
         .map(|rate| format!("{rate:.0}"))
@@ -581,7 +593,7 @@ fn timed(options: &Options) -> Result<ExitCode, Fail> {
         "\"ghz_min\":{},\"ghz_mean\":{mean_ghz},\"ghz_max\":{},\"governor\":\"{}\",\
          \"driver\":\"{}\",\"epp\":\"{}\",\"boost\":\"{}\",\"thp\":\"{}\",\"load_before\":\"{}\",\
          \"background_pct\":{},\"temp_before\":{},\"temp_after\":{},\"thread_rates\":[{}],\
-         \"curve\":[{}]}}",
+         \"per_thread\":[{}],\"curve\":[{}]}}",
         ghz(f64::min, f64::INFINITY),
         ghz(f64::max, 0.0),
         before.governor,
@@ -596,6 +608,7 @@ fn timed(options: &Options) -> Result<ExitCode, Fail> {
         degrees(before.millidegrees),
         degrees(after.millidegrees),
         rates.join(","),
+        per_thread.join(","),
         curve.join(","),
     )?;
     println!("{line}");
