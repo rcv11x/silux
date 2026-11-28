@@ -144,6 +144,15 @@ class NavDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.folded = False
+        # A row's height while the window is too low for them all
+        # (`NavList.fit_rows`); None for the style's own.
+        self.row_cap: Optional[int] = None
+
+    def sizeHint(self, option, index):  # noqa: N802
+        size = super().sizeHint(option, index)
+        if self.row_cap is not None and size.height() > self.row_cap:
+            size.setHeight(self.row_cap)
+        return size
 
     def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
         super().initStyleOption(option, index)
@@ -174,6 +183,32 @@ class NavList(QListWidget):
         self.glide.go(self._row_rect(self._shown_row), self._row_rect(row))
         self._shown_row = row
 
+    def fit_rows(self) -> None:
+        """In a window too low for every section, the rows draw closer, down
+        to their icon and text with a little room, instead of the list
+        scrolling: with it, what was lower than the window went unseen."""
+        delegate = self.itemDelegate()
+        if not isinstance(delegate, NavDelegate):
+            return
+        shown = [self.item(r) for r in range(self.count()) if not self.item(r).isHidden()]
+        if not shown:
+            return
+        cap, delegate.row_cap = delegate.row_cap, None
+        natural = self.sizeHintForRow(self.row(shown[0]))
+        delegate.row_cap = cap
+        room = self.viewport().height() - 2 * theme.NAV_PADDING
+        floor = max(self.iconSize().height(), self.fontMetrics().height()) + 2 * theme.NAV_PADDING
+        per_row = room // len(shown) - theme.NAV_ROW_GAP
+        wanted = None if per_row >= natural else max(floor, per_row)
+        if wanted != delegate.row_cap:
+            delegate.row_cap = wanted
+            self.doItemsLayout()
+            self.glide.go(None, self._row_rect(self.currentRow()))
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self.fit_rows()
+
     def paintEvent(self, event) -> None:  # noqa: N802
         rect = self.glide.place(self._row_rect(self.currentRow()))
         if rect is not None and self.pill.isValid():
@@ -200,8 +235,8 @@ def application_icon() -> QIcon:
 
 
 class FootNotice(QFrame):
-    """A notice at the sidebar's foot that is pressed as a whole: its text in
-    the bar's small type, broken in lines as a label breaks them."""
+    """A notice at the sidebar's foot that is pressed as a whole: one line in
+    the bar's small type, and what dismisses it inside, at its end."""
 
     clicked = Signal()
 
@@ -209,13 +244,18 @@ class FootNotice(QFrame):
         super().__init__(parent)
         self.setObjectName("NavNotice")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(6, 3, 6, 3)
+        self._row = QHBoxLayout(self)
+        self._row.setContentsMargins(6, 0, 0, 0)
+        self._row.setSpacing(2)
         self.label = QLabel(text)
         self.label.setObjectName("NavNoticeText")
+        # Broken only where a large type leaves no room for one line.
         self.label.setWordWrap(True)
         self.label.setFont(ui_font(theme.METRICS.small_pt))
-        layout.addWidget(self.label)
+        self._row.addWidget(self.label, 1)
+
+    def add_end(self, widget: QWidget) -> None:
+        self._row.addWidget(widget, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def text(self) -> str:
         return self.label.text()
@@ -636,20 +676,20 @@ class MainWindow(QMainWindow):
         notice_row = QHBoxLayout(self.report_notice)
         notice_row.setContentsMargins(0, 0, 0, 0)
         notice_row.setSpacing(2)
-        # In the bar's small type: as a button it took three lines and pushed
-        # the sections off a short window.
+        # One line in the bar's small type, its × inside.
         self.report_ask = FootNotice(_("sidebar.report.ask"))
+        self.report_ask.setToolTip(_("sidebar.report.tip"))
         self.report_ask.clicked.connect(self._on_send_report_requested)
         self.report_dismiss = self._foot_button("", lado_pie)
         self.report_dismiss.setText("×")
         self.report_dismiss.setToolTip(_("sidebar.report.dismiss"))
         self.report_dismiss.clicked.connect(self.report_answered)
+        self.report_ask.add_end(self.report_dismiss)
         # Folded, its icon; the question is its tooltip.
         self.report_icon = self._foot_button("report", lado_pie)
-        self.report_icon.setToolTip(_("sidebar.report.ask"))
+        self.report_icon.setToolTip(_("sidebar.report.tip"))
         self.report_icon.clicked.connect(self._on_send_report_requested)
         notice_row.addWidget(self.report_ask, 1)
-        notice_row.addWidget(self.report_dismiss, 0, Qt.AlignmentFlag.AlignTop)
         notice_row.addWidget(self.report_icon, 1, Qt.AlignmentFlag.AlignHCenter)
         column.addWidget(self.report_notice)
         self.community_button = self._foot_button("community", lado_pie)
@@ -2014,6 +2054,7 @@ class MainWindow(QMainWindow):
         sobra = not snapshot.batteries
         if item.isHidden() != sobra:
             item.setHidden(sobra)
+            self.nav.fit_rows()
             # Si estábamos mirándola justo cuando desaparece, hay que irse a
             # algún sitio: una página escondida y seleccionada deja la ventana
             # en blanco sin nada seleccionado en el menú.

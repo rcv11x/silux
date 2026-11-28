@@ -14,6 +14,17 @@ que hace falta.
 
 ---
 
+## Sin publicar
+
+### Mejoras
+
+- En una ventana baja, las filas de la barra lateral se juntan un poco en vez de que la lista de secciones se desplace
+- La pregunta del informe en la barra lateral va en una línea, «¿Mandas tu informe?», con su × dentro
+
+### Arreglos
+
+- Mientras la barra lateral preguntaba por el informe, la lista de secciones se desplazaba en ventanas de menos de unos 830 px de alto
+
 ## 2026.11.28
 
 ### Lo destacado
