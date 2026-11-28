@@ -69,7 +69,8 @@ ejecuta.
 que pase en el mínimo, y lo que rompe el suelo no se ve leyendo el código. El
 AppImage normal lleva 3.14 y PySide6 6.12; el compat, 3.10 y PySide6 6.9,
 los dos Python de python-build-standalone. El CI pasa la suite con esas dos
-parejas. **El AppImage se construye siempre con `--container`**:
+parejas; las de anchura, solo con la normal, partida en dos
+(`tests/reparto.py`). **El AppImage se construye siempre con `--container`**:
 sin él se lleva la glibc y el juego de instrucciones de quien lo compila. Por
 qué, los dos techos de PySide6 y las dos guardas del procesador:
 [docs/empaquetado.md](docs/empaquetado.md).
@@ -428,7 +429,7 @@ Sensores, Ajustes**. La de Batería solo aparece en los equipos que tienen una.
 `dispositivo`, `equipo`); el código nuevo, en inglés (ver «Código»). Las claves
 de idioma son símbolos (`cpu.card.clocks`) y `_()` cae al español y luego a la
 clave. La interfaz está entera en los dos idiomas:
-2401 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
+2402 claves, ninguna sin traducir. Tres reglas que no se ven hasta que fallan:
 
 - **Nada de `_()` en una constante de módulo**: se resuelve al importar, antes
   de saber el idioma.
