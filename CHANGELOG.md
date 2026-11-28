@@ -32,7 +32,7 @@ que hace falta.
 - Silux pasa a rolling release: cada versión se llama por el día en que sale, y la última es la que hay que usar
 - Silux avisa cuando hay una versión nueva: al abrirse pregunta a GitHub, sin mandar nada del equipo, y se puede apagar en Ajustes
 - Color de acento en Ajustes: ámbar, azul, verde, frambuesa o morado, legibles en claro y en oscuro, y todo cambia a la vez
-- «Enviar mi informe»: se guarda, se copia y se abre el Discord para pegarlo; nada se envía solo
+- «Enviar mi informe»: se guarda, se copia y se abre el Discord de UniversoLinux para pegarlo en #silux-app-chat; nada se envía solo
 - Sistema dice cuántos paquetes hay, la versión del escritorio, los servicios que fallan y los errores del kernel desde el arranque
 - La salud de cada disco de un vistazo en Almacenamiento, y un desplegable para elegir qué unidad enseñan sus fichas
 - Dispositivos dice qué no tiene driver y, de lo que se conoce, qué instalar
@@ -46,7 +46,7 @@ que hace falta.
 - La barra lateral se encoge a solo los iconos con el botón de su panel, junto al logo; al pasar el ratón dice el nombre de cada sección, y se queda como la dejaste
 - Con «Movimiento fluido», la marca de la sección abierta en la barra lateral y la raya de la pestaña abierta en Rendimiento se deslizan hasta la nueva en vez de saltar
 - Cambiar de tema, de densidad o de letra tarda la mitad: menos de un segundo en un sobremesa
-- Color de acento en Ajustes → Apariencia: ámbar, azul, verde, frambuesa o morado, cada uno legible en claro y en oscuro; cambia todo a la vez, sin reiniciar, y con el azul lo que tiene arreglo y los candados pasan a morado
+- Color de acento en Ajustes → Apariencia: ámbar, azul, verde, frambuesa o morado, cada uno legible en claro y en oscuro; cambia todo a la vez, sin reiniciar, y con el acento azul, los avisos de lo que tiene arreglo y los candados pasan a morado para no confundirse
 - El ámbar del tema claro, un poco más oscuro: el texto de los botones principales y de las etiquetas se lee mejor
 - Ajustes solo explica las filas donde la explicación cambia lo que eliges, en una o dos líneas
 - En Ajustes, los desplegables van todos del ancho del más largo y quedan alineados
@@ -54,7 +54,7 @@ que hace falta.
 - En Almacenamiento, las fichas de lectura, escritura y temperatura pueden enseñar una sola unidad: se elige en el desplegable «Unidad», encima de ellas, o pulsando su fila en «Unidades», con su gráfica desde que se abrió Silux, y se recuerda
 - En Sensores, clic derecho en un sensor para fijarlo arriba, en su propia rama con el nombre de su aparato; se recuerda
 - La salud de cada disco de un vistazo, en su tarjeta de Almacenamiento (que lo nombra por su dispositivo y su modelo): «Bien», «Vigilar» o «Haz copia ya», con el porqué una sola vez y arriba un resumen de los que piden atención, solo con lo que declara el propio disco o la especificación de NVMe; en SATA llega como mucho a «Vigilar»
-- Dispositivos lista lo que no tiene driver del kernel (una wifi, un controlador USB, el sonido, algo enchufado por USB) con su ID y qué se puede hacer, y de los que se conocen, el driver y el paquete que les faltan (la wifi Broadcom BCM43142); un driver que se carga se ve al momento
+- Dispositivos lista lo que no tiene driver del kernel (una Wi-Fi, un controlador USB, el sonido, algo enchufado por USB) con su ID y qué se puede hacer, y de los que se conocen, el driver y el paquete que les faltan (la Wi-Fi Broadcom BCM43142); un driver que se carga se ve al momento
 - En una Radeon, Gráficos calcula las unidades de sombreado y de texturas, los TFLOPS en FP32 y los rellenos de píxeles y texturas, cada cifra marcada como calculada, con el reloj al que se calculó («41.3 TFLOPS (calculado a 2.52 GHz)») y su fórmula al pasar el ratón
 - La prueba de disco tiene un perfil «Personalizado»: patrón, bloque y cola a elegir, con un hilo; su comparación con la vez anterior y su historial van solo con pruebas iguales
 - Los botones, desplegables y casillas llevan la letra del resto del programa en todas las páginas y crecen con el tamaño de letra de Ajustes; un botón que no cabe parte su texto en dos líneas
@@ -72,7 +72,7 @@ que hace falta.
 - Con la base cambiada a mano, la fila «Base» de CPU dice que está fijada en la BIOS y cuál es la de fábrica
 - Lo que falta por permisos en una página sale en un solo aviso con un solo botón, y no en uno por dato
 - En una ventana estrecha, los desplegables de la prueba de disco quedan alineados en columna
-- «Enviar mi informe», en Ajustes → Compartir e informes: enseña el informe, lo guarda en tu carpeta de datos, lo copia y abre #silux-app-chat en Discord para que lo pegues o arrastres; nada se envía solo
+- «Enviar mi informe», en Ajustes → Compartir e informes: enseña el informe, lo guarda en tu carpeta de datos, lo copia y abre el Discord de UniversoLinux para que lo pegues o arrastres en #silux-app-chat; nada se envía solo
 - Tras actualizar, la barra lateral pregunta una vez «¿Nos mandas el informe de esta versión?»; se descarta con la × hasta la versión siguiente, y un aviso de versión nueva va antes
 - «Comunidad» en la barra lateral, encima de la versión: abre el Discord; con la barra plegada, su icono
 - La bienvenida tiene el color de acento junto al tema, un paso que cuenta qué lleva el informe (sin el nombre del equipo ni números de serie) con su botón, y al final «Buscar actualizaciones al iniciar»
@@ -102,7 +102,7 @@ que hace falta.
 - Con nouveau, una GeForce que no publica ningún sensor (una RTX 3070) salía con «Temperatura: —» y un aviso que prometía la temperatura: ahora dice que nouveau no la publica en esa tarjeta
 - Inicio dice por qué una gráfica sale sin ninguna cifra cuando es cosa de su driver (nouveau), en vez de enseñar solo su nombre
 - En la terminal, las categorías de Sensores salían como claves («cat.temperature») y quién montó la gráfica con su razón social («Micro-Star International Co., Ltd. [MSI]»)
-- Una wifi Atheros AR242x salía como «Ethernet» en los dispositivos PCIe de Placa base: declara esa clase, pero es inalámbrica
+- Una Wi-Fi Atheros AR242x salía como «Ethernet» en los dispositivos PCIe de Placa base: declara esa clase, pero es inalámbrica
 - En Sensores, los sensores del firmware de un portátil salían como un aparato con el nombre del kernel («dell_smm», «thinkpad», «hp»), con dos «CPU (dell_smm)» iguales: ahora van con el equipo, numerados si se llaman igual, y el chip se nombra en palabras («ACPI», «Dell») solo cuando hace falta
 - El ventilador de un portátil salía como «cpu_fan»: ahora «Ventilador del procesador»
 - Placa base decía «Chip de sensores: ASUS» en placas sin driver de Super I/O: era el firmware de la placa
