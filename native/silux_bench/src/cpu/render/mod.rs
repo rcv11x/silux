@@ -7,3 +7,4 @@
 
 pub mod bvh;
 pub mod math;
+pub mod scene;
