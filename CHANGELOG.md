@@ -14,7 +14,7 @@ que hace falta.
 
 ---
 
-## Sin publicar
+## 2026.11.28
 
 ### Lo destacado
 
@@ -115,6 +115,8 @@ que hace falta.
 - El camino AVX-512 de la prueba de memoria funciona, pero aún no se ha comparado con otras herramientas
 - Que una NVIDIA de portátil se quede dormida solo se ha probado en un modelo
 - En KDE, Dolphin puede no enseñar el icono del AppImage
+- En Fedora y openSUSE, Sistema aún no cuenta los paquetes ni dice la versión del escritorio (salvo la de GNOME)
+- En una ventana de menos de unos 830 px de alto, la lista de secciones se desplaza mientras la barra lateral pregunta por el informe
 
 ## 0.4-prueba14 (27 de noviembre de 2026)
 

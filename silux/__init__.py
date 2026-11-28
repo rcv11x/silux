@@ -16,16 +16,11 @@ hertz, bytes, degrees) and the model keeps them as they are. The text the
 user sees is produced in `silux.render`, never earlier.
 """
 
-# Bumped when there is something the user notices. The minor number (0.1 to
-# 0.2) is kept for when something really changes for them: a new section, a
-# datum that didn't show before, or something that stops working as it did.
-# The last digit, for fixes that don't require reading anything.
-#
-# Not cosmetic: without it, the only way to know whether a copy is behind is
-# the build identifier, and a hash can't be compared at a glance. What
-# changes in each version is in CHANGELOG.md, and a test won't let this
-# number go up without writing it there.
-__version__ = "0.4.0rc14"
+# The day this version was published, «AAAA.M.D» without leading zeros:
+# Silux is a rolling release (docs/convenciones.md). Set in the commit that
+# publishes it, with its CHANGELOG entry; a test won't let it go without one.
+# Between two publications it keeps the last: `build_id` says the commit.
+__version__ = "2026.11.28"
 
 
 def build_id() -> str:
