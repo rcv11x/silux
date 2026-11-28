@@ -2,3 +2,4 @@
 //! enough of it to measure what the design rests on.
 
 pub mod render;
+pub mod workers;
