@@ -3,6 +3,7 @@
 //! file reads and writes past the page cache. Linux only.
 
 pub mod common;
+pub mod cpu;
 pub mod disk;
 pub mod memory;
 
