@@ -65,8 +65,11 @@ llevó once tests en el CI, y hasta 3.12 un traceback perdía el texto de la
 línea. `vermin -t=3.10` no cazaba ninguno de los dos.
 
 Por eso el CI pasa la suite con las dos parejas que se reparten: 3.14 con la
-PySide6 del normal y 3.10 con la del compat. `tests/test_empaquetado.py`
-compara la matriz del CI con la tabla `PYTHON` del empaquetador. Antes de
+PySide6 del normal y 3.10 con la del compat. Las de anchura (cada página de
+cada volcado con cada letra) van solo con la normal, y ese trabajo va partido
+en dos mitades que entre las dos pasan cada test una vez
+(`tests/reparto.py`). `tests/test_empaquetado.py` compara la matriz del CI
+con la tabla `PYTHON` del empaquetador. Antes de
 empujar, lo mismo en local: `python3 tools/probar_en_minimo.py --container`.
 
 El ayudante con permisos no corre con el Python del AppImage sino con el del

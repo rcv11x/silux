@@ -17,6 +17,7 @@ QT_QPA_PLATFORM=offscreen uv run pytest -m a_solas
 
 Son unos 4700 y tardan cerca de una hora en paralelo con ocho núcleos, casi
 toda en las de anchura, que abren cada página de cada volcado con cada letra.
+En el CI, esas van solo con la pareja normal, partida en dos trabajos.
 Cómo se ejecuta todo lo demás, en
 [arquitectura.md](arquitectura.md#cómo-se-ejecuta-cada-cosa). El suelo es
 Python 3.10: lo que pasa en un Python reciente no dice que pase en 3.10, y

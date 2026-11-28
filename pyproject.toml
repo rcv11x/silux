@@ -95,4 +95,5 @@ testpaths = ["tests"]
 norecursedirs = ["fixtures"]
 markers = [
     "a_solas: compara dos medidas de rendimiento y necesita el equipo para él (tests/conftest.py)",
+    "anchura: cada página de cada volcado con cada letra; el CI los pasa solo con el paquete normal (tests/reparto.py)",
 ]

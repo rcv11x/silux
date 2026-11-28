@@ -84,7 +84,7 @@ jobs:
         run: cargo test --release
 
   tests:
-    name: tests (${{ matrix.paquete }}, Python ${{ matrix.python }}, ${{ matrix.modulo }} módulo)
+    name: tests (${{ matrix.paquete }}, Python ${{ matrix.python }}, ${{ matrix.modulo }} módulo${{ matrix.parte != '1/1' && format(', parte {0}', matrix.parte) || '' }})
     runs-on: ubuntu-22.04
 
     strategy:
@@ -95,23 +95,38 @@ jobs:
         # Both packages carry the native module; a pip install may not have
         # it, and then the tests run their simple measure: that path too,
         # on the floor's Python.
+        #
+        # The width tests (every page of every dump at every font size, the
+        # longest) run with the normal pair only, and that job goes in two
+        # halves that together run every test once (`tests/reparto.py`).
         include:
           - paquete: normal
             python: "3.14"
             modulo: con
+            parte: "1/2"
+          - paquete: normal
+            python: "3.14"
+            modulo: con
+            parte: "2/2"
           - paquete: compat
             python: "3.10"
             modulo: con
+            parte: "1/1"
           - paquete: compat
             python: "3.10"
             modulo: sin
+            parte: "1/1"
 
     steps:
       - uses: actions/checkout@v5
 
+      # The pip cache keeps PySide6's wheels between runs: downloading them was
+      # a minute of each job.
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       # Lo que no es de documentación (IP, MAC, IPv6 con identificador,
       # claves, correos, series de los volcados) en cualquier archivo
@@ -123,7 +138,7 @@ jobs:
       # Pyflakes and the import order, as pyproject.toml sets them; the same
       # version as .pre-commit-config.yaml.
       - name: Comprobar el código con ruff
-        if: matrix.paquete == 'normal'
+        if: matrix.paquete == 'normal' && matrix.parte == '1/2'
         run: |
           python -m pip install ruff==0.17.6
           ruff check silux tools tests
@@ -155,7 +170,7 @@ jobs:
       # Informative only: the code is not typed through yet. Its count says
       # whether a change made it better or worse.
       - name: mypy (informativo)
-        if: matrix.paquete == 'normal'
+        if: matrix.paquete == 'normal' && matrix.parte == '1/2'
         continue-on-error: true
         run: |
           python -m pip install mypy==2.4.1
@@ -171,13 +186,20 @@ jobs:
       # En dos pasadas: todo repartido entre los procesadores del runner, y
       # después, solos, los tres tests que comparan dos medidas de rendimiento
       # (`tests/conftest.py`). Repartidos con los demás miden cuánto les dejan
-      # los otros procesos, no el equipo.
+      # los otros procesos, no el equipo. Those three, once per pair: in the
+      # normal pair's first half.
+      #
+      # `worksteal`: a worker left without tests takes them from a busy one,
+      # instead of the run waiting on one process with a long queue.
       - name: Pasar los tests
         run: |
           set -o pipefail
           export QT_QPA_PLATFORM=offscreen
-          { python -m pytest -n auto -q -m "not a_solas" \
-              && python -m pytest -q -m a_solas; } 2>&1 | tee /tmp/tests.log && exit 0
+          marcas="not a_solas"
+          if [ "${{ matrix.paquete }}" = compat ]; then marcas="not a_solas and not anchura"; fi
+          { python -m pytest -n auto --dist worksteal -q -m "$marcas" --parte "${{ matrix.parte }}" \
+              && { [ "${{ matrix.parte }}" = "2/2" ] || python -m pytest -q -m a_solas; }; } \
+              2>&1 | tee /tmp/tests.log && exit 0
           echo "::error::Los tests no pasan en $(python -V)"
           grep -E "^(FAILED|ERROR) |crashed while running" /tmp/tests.log | while read -r linea; do
             echo "::error::$linea"
